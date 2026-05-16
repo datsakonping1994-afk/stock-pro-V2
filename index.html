@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>STOCK PRO ◈</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -54,7 +55,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .logo-wrap{display:flex;align-items:center;gap:8px}
 .logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#000;font-family:'Syne',sans-serif}
 .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:2px;color:var(--text);text-transform:uppercase}
-.logo-ver{font-size:9px;color:var(--gold);letter-spacing:1px;font-family:'Inter',sans-serif;opacity:0.8}
+.logo-ver{font-size:10px;color:var(--gold);letter-spacing:1px;font-family:'Inter',sans-serif;opacity:0.8}
 .topbar-stats{display:flex;gap:12px;align-items:center}
 .stat-pill{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:4px 10px;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
 .stat-pill .val{color:var(--text);font-weight:500}
@@ -76,7 +77,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-item.active .nav-label{color:var(--gold)}
 .nav-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:var(--gold);border-radius:0 0 2px 2px}
 .nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
-.nav-label{font-size:9px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
+.nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
 /* ── PAGES ── */
 .page{display:none;animation:fadeIn 0.2s ease}
@@ -108,7 +109,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .mood-num-val{font-size:22px;font-weight:700;font-family:'Manrope',sans-serif;line-height:1}
 .mood-num-val.up{color:var(--green)}
 .mood-num-val.dn{color:var(--red)}
-.mood-num-lbl{font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:0.5px}
+.mood-num-lbl{font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.5px}
 
 /* SPY/QQQ Row */
 .index-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
@@ -133,7 +134,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .port-stat-val{font-size:18px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)}
 .port-stat-val.gold{color:var(--gold)}
 .port-stat-val.green{color:var(--green)}
-.port-stat-lbl{font-size:9px;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase}
+.port-stat-lbl{font-size:10px;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase}
 
 /* Top Movers */
 .movers-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
@@ -164,7 +165,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .ctrl-btn.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)}
 .sector-row{padding:0 14px 8px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .sector-row::-webkit-scrollbar{display:none}
-.sector-btn{flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:9px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px;transition:all 0.15s}
+.sector-btn{flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px;transition:all 0.15s}
 .sector-btn.active{background:rgba(100,210,255,0.12);border-color:rgba(100,210,255,0.3);color:var(--ice)}
 
 /* ── STOCK CARD ── */
@@ -188,7 +189,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .card-ticker{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);letter-spacing:0.5px}
 .card-name{font-size:10px;color:var(--text3);margin-top:1px}
 .card-badges{display:flex;gap:4px;margin-top:4px}
-.card-badge{font-size:8px;padding:2px 6px;border-radius:8px;font-weight:600;letter-spacing:0.5px;background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
+.card-badge{font-size:10px;padding:2px 6px;border-radius:8px;font-weight:600;letter-spacing:0.5px;background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
 .card-badge.earn{background:rgba(201,168,76,0.15);color:var(--gold);border-color:rgba(201,168,76,0.3)}
 .card-right{text-align:right}
 .card-price{font-family:'Manrope',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
@@ -208,7 +209,7 @@ canvas.spark{width:100%;height:48px;display:block}
 .levels-bar-fill.up-zone{background:linear-gradient(90deg,rgba(0,230,118,0.6),rgba(0,230,118,0.2))}
 .levels-bar-fill.dn-zone{background:linear-gradient(90deg,rgba(255,77,106,0.6),rgba(255,77,106,0.2))}
 .levels-bar-pos{position:absolute;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--text);border:2px solid var(--bg2);z-index:2}
-.levels-info{display:flex;justify-content:space-between;font-size:9px;color:var(--text3)}
+.levels-info{display:flex;justify-content:space-between;font-size:10px;color:var(--text3)}
 .levels-info span.s1{color:var(--red2)}
 .levels-info span.r1{color:var(--green2)}
 .levels-info span.zone{color:var(--text2)}
@@ -217,7 +218,7 @@ canvas.spark{width:100%;height:48px;display:block}
 .card-stats{padding:0 14px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .card-stat{background:var(--bg3);border-radius:8px;padding:6px 8px}
 .card-stat-val{font-size:11px;font-weight:600;color:var(--text)}
-.card-stat-lbl{font-size:8px;color:var(--text3);margin-top:1px;letter-spacing:0.3px}
+.card-stat-lbl{font-size:10px;color:var(--text3);margin-top:1px;letter-spacing:0.3px}
 
 /* RSI bar */
 .rsi-bar{height:3px;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));margin-top:4px;position:relative}
@@ -225,7 +226,7 @@ canvas.spark{width:100%;height:48px;display:block}
 
 /* ── DETAIL DRAWER ── */
 #drawer{
-  position:fixed;inset:0;z-index:500;
+  position:fixed;inset:0;z-index:700;
   display:flex;flex-direction:column;
   background:var(--bg1);
   transform:translateY(100%);
@@ -365,7 +366,7 @@ canvas.bigchart{width:100%;height:100%}
 @keyframes toastIn{from{opacity:0;top:calc(env(safe-area-inset-top) + 50px)}to{opacity:1;top:calc(env(safe-area-inset-top) + 60px)}}
 
 /* ── EARNINGS TABLE ── */
-.earn-hdr{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:6px 10px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.earn-hdr{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:6px 10px;font-size:10px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid var(--border)}
 .earn-row{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:10px;border-radius:10px;margin-bottom:6px;border:1px solid var(--border);align-items:center;cursor:pointer;transition:all 0.15s}
 .earn-row:active{opacity:0.8}
 .earn-ticker{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
@@ -373,7 +374,7 @@ canvas.bigchart{width:100%;height:100%}
 .earn-date{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
 .earn-eps{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
 .earn-rev{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
-.earn-badge{font-size:9px;font-weight:600;padding:3px 6px;border-radius:6px;text-align:center;white-space:nowrap}
+.earn-badge{font-size:10px;font-weight:600;padding:3px 6px;border-radius:6px;text-align:center;white-space:nowrap}
 .earn-done{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
 .earn-soon{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25)}
 .earn-grp{font-size:10px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 2px 4px;margin-top:8px}
@@ -384,7 +385,7 @@ canvas.bigchart{width:100%;height:100%}
 .wl-btn.active{background:rgba(201,168,76,0.2);border-color:rgba(201,168,76,0.5)}
 .wl-filter-btn{flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:10px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap}
 .wl-filter-btn.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)}
-.wl-count{background:var(--gold);color:#000;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px;font-family:'Syne',sans-serif}
+.wl-count{background:var(--gold);color:#000;font-size:10px;font-weight:800;border-radius:10px;padding:1px 5px;font-family:'Syne',sans-serif}
 .wl-empty{text-align:center;padding:60px 20px;color:var(--text3)}
 .wl-empty-icon{font-size:40px;margin-bottom:12px}
 .wl-empty-text{font-size:13px;line-height:1.6}
@@ -420,7 +421,7 @@ canvas.bigchart{width:100%;height:100%}
 .pa-progress{height:3px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden}
 .pa-progress-bar{height:100%;border-radius:2px;transition:width 0.3s}
 .pa-empty{text-align:center;padding:50px 20px;color:var(--text3);font-size:12px;line-height:1.8}
-.pa-badge{font-size:9px;background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:1px 6px;color:var(--red);font-family:'Syne',sans-serif;font-weight:700;margin-left:4px;vertical-align:middle}
+.pa-badge{font-size:10px;background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:1px 6px;color:var(--red);font-family:'Syne',sans-serif;font-weight:700;margin-left:4px;vertical-align:middle}
 
 
 /* ── SETTINGS LOCK ── */
@@ -434,11 +435,36 @@ canvas.bigchart{width:100%;height:100%}
 #content::-webkit-scrollbar-track{background:transparent}
 #content::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
 
+
 /* ── SEARCH ── */
 .search-bar{padding:0 14px 10px;display:flex;gap:8px}
 .search-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:9px 14px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none}
 .search-input:focus{border-color:var(--ice)}
 .search-input::placeholder{color:var(--text3)}
+
+/* ── RESPONSIVE — Tablet (≥600px) ── */
+@media(min-width:600px){
+  #app{max-width:480px;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+  #bottomnav{max-width:480px;left:50%;transform:translateX(-50%)}
+  #drawer{max-width:480px;left:50%;transform:translateX(-50%) translateY(100%)}
+  #drawer.open{transform:translateX(-50%) translateY(0)}
+  .mood-numbers{grid-template-columns:1fr 1fr 1fr}
+  .index-row{grid-template-columns:1fr 1fr}
+}
+
+/* ── RESPONSIVE — Desktop (≥1024px) ── */
+@media(min-width:1024px){
+  body{background:#060810}
+  #app{max-width:420px;box-shadow:0 0 60px rgba(0,0,0,0.8)}
+  #bottomnav{max-width:420px}
+  #drawer{max-width:420px}
+  .cards-grid{gap:12px}
+}
+
+/* ── Reduced Motion ── */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:0.01ms !important;transition-duration:0.01ms !important}
+}
 </style>
 </head>
 <body>
@@ -531,7 +557,7 @@ canvas.bigchart{width:100%;height:100%}
             </svg>
             <div id="fngEmoji" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px">😐</div>
           </div>
-          <div id="fngPrev" style="font-size:9px;color:var(--text3);margin-top:4px">เมื่อวาน: --</div>
+          <div id="fngPrev" style="font-size:10px;color:var(--text3);margin-top:4px">เมื่อวาน: --</div>
         </div>
       </div>
 
@@ -577,7 +603,7 @@ canvas.bigchart{width:100%;height:100%}
   <!-- STOCKS PAGE -->
   <div class="page" id="page-stocks">
     <div class="search-bar">
-      <input class="search-input" placeholder="ค้นหาหุ้น..." id="searchInput" oninput="filterStocks()">
+      <input class="search-input" placeholder="ค้นหาหุ้น..." id="searchInput" oninput="filterStocks()" aria-label="ค้นหาหุ้น">
     </div>
     <div class="stocks-controls">
       <button class="wl-filter-btn" id="wlFilterBtn" onclick="toggleWatchlistFilter(this)">⭐ Watchlist <span class="wl-count" id="wlCount">0</span></button>
@@ -592,7 +618,7 @@ canvas.bigchart{width:100%;height:100%}
   </div>
 
   <!-- ALERTS PAGE -->
-  <div class="page" id="page-news">
+  <div class="page" id="page-news" style="background:var(--bg0);min-height:100%">
     <div style="padding:12px 14px 0">
       <div class="section-title" style="margin-bottom:10px">📰 ข่าวเศรษฐกิจ</div>
       <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;margin-bottom:10px" id="newsCatRow">
@@ -755,25 +781,25 @@ canvas.bigchart{width:100%;height:100%}
 </div><!-- /content -->
 
 <!-- BOTTOM NAV -->
-<div id="bottomnav">
-  <div class="nav-item active" onclick="navTo('dash',this)">
-    <div class="nav-icon">◈</div>
+<div id="bottomnav" role="navigation" aria-label="เมนูหลัก">
+  <div class="nav-item active" onclick="navTo('dash',this)" role="button" aria-label="หน้าภาพรวม">
+    <div class="nav-icon" aria-hidden="true">◈</div>
     <div class="nav-label">Overview</div>
   </div>
-  <div class="nav-item" onclick="navTo('stocks',this)">
-    <div class="nav-icon">▦</div>
+  <div class="nav-item" onclick="navTo('stocks',this)" role="button" aria-label="หน้าหุ้น">
+    <div class="nav-icon" aria-hidden="true">▦</div>
     <div class="nav-label">Stocks</div>
   </div>
-  <div class="nav-item" onclick="navTo('news',this)">
-    <div class="nav-icon">📰</div>
+  <div class="nav-item" onclick="navTo('news',this)" role="button" aria-label="หน้าข่าว">
+    <div class="nav-icon" aria-hidden="true">📰</div>
     <div class="nav-label">News</div>
   </div>
-  <div class="nav-item" onclick="navTo('alerts',this)">
-    <div class="nav-icon">🔔</div>
+  <div class="nav-item" onclick="navTo('alerts',this)" role="button" aria-label="หน้าสัญญาณ">
+    <div class="nav-icon" aria-hidden="true">🔔</div>
     <div class="nav-label">Signals</div>
   </div>
-  <div class="nav-item" onclick="navTo('settings',this)">
-    <div class="nav-icon">⚙</div>
+  <div class="nav-item" onclick="navTo('settings',this)" role="button" aria-label="หน้าตั้งค่า">
+    <div class="nav-icon" aria-hidden="true">⚙</div>
     <div class="nav-label">Settings</div>
   </div>
 </div>
@@ -793,7 +819,7 @@ canvas.bigchart{width:100%;height:100%}
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()">✕</div></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px" aria-label="เพิ่ม/ลบ Watchlist">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()" aria-label="ปิด">✕</div></div>
   </div>
   <div class="drawer-tabs">
     <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
@@ -814,6 +840,16 @@ canvas.bigchart{width:100%;height:100%}
 // ═══════════════════════════════════════
 // STOCK PRO v2 — Dark Premium Terminal
 // ═══════════════════════════════════════
+
+// ── Global Error Handler — ดักจับ error ทั้งหมด ป้องกัน iOS crash ──
+window.onerror = function(msg, src, line, col, err){
+  console.warn('[StockPro Error]', msg, src, line);
+  return true; // prevent default browser error handling
+};
+window.addEventListener('unhandledrejection', function(e){
+  console.warn('[StockPro Promise Error]', e.reason);
+  e.preventDefault();
+});
 
 // ── DOM Cache — ต้อง define ก่อนทุกอย่าง ──
 const _domCache={};
@@ -1051,7 +1087,7 @@ function renderPriceAlerts(){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
           <span class="pa-ticker">${a.ticker}</span>
           <span class="pa-dir ${a.dir}">${isAbove?'↑ ขึ้นถึง':'↓ ลงถึง'}</span>
-          ${a.triggered?'<span style="font-size:9px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700">✅ แจ้งแล้ว</span>':''}
+          ${a.triggered?'<span style="font-size:10px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700">✅ แจ้งแล้ว</span>':''}
         </div>
         <div style="display:flex;align-items:baseline;justify-content:space-between">
           <span class="pa-target">${target.toFixed(2)}</span>
@@ -1807,6 +1843,11 @@ function updateDashboard(){
 
 // ── Drawer ──
 function openDrawer(ticker){
+  // ปิด modal ทั้งหมดก่อนเปิด drawer
+  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>{
+    const m=document.getElementById(id);
+    if(m) m.style.display='none';
+  });
   currentDrawerTicker=ticker;
   const s=stocks.find(x=>x.t===ticker);
   if(!s)return;
@@ -1943,7 +1984,7 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
         <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
-          <div style="font-family:'Syne',sans-serif;font-size:9px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
+          <div style="font-family:'Syne',sans-serif;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="drawerAlertDir" class="pa-select" style="flex:none;width:100px">
               <option value="above">↑ ขึ้นถึง</option>
@@ -2329,9 +2370,9 @@ async function renderAlerts(){
   if(statsEl) statsEl.innerHTML = stats ?
     `<div style="color:var(--text);font-size:13px;font-weight:600;margin-bottom:6px">สถิติรวม ${stats.total} สัญญาณ</div>
      <div style="display:flex;gap:16px">
-       <div><div style="color:var(--green);font-size:16px;font-weight:700">${stats.winRate}%</div><div style="font-size:9px;color:var(--text3)">WIN RATE</div></div>
-       <div><div style="color:${stats.avgPct>=0?'var(--green)':'var(--red)'};font-size:16px;font-weight:700">${stats.avgPct>=0?'+':''}${stats.avgPct}%</div><div style="font-size:9px;color:var(--text3)">AVG P&L</div></div>
-       <div><div style="color:var(--text);font-size:16px;font-weight:700">${stats.wins}W / ${stats.losses}L</div><div style="font-size:9px;color:var(--text3)">RECORD</div></div>
+       <div><div style="color:var(--green);font-size:16px;font-weight:700">${stats.winRate}%</div><div style="font-size:10px;color:var(--text3)">WIN RATE</div></div>
+       <div><div style="color:${stats.avgPct>=0?'var(--green)':'var(--red)'};font-size:16px;font-weight:700">${stats.avgPct>=0?'+':''}${stats.avgPct}%</div><div style="font-size:10px;color:var(--text3)">AVG P&L</div></div>
+       <div><div style="color:var(--text);font-size:16px;font-weight:700">${stats.wins}W / ${stats.losses}L</div><div style="font-size:10px;color:var(--text3)">RECORD</div></div>
      </div>` :
     '<div style="color:var(--text3)">ยังไม่มีสัญญาณที่มีผลแล้ว</div>';
 
@@ -2401,8 +2442,8 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   overlay.className='signal-overlay';
   overlay.style.display='flex';
   const indicatorBadge=hasCandleData
-    ?`<span style="font-size:9px;background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);color:var(--green);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">✅ FULL INDICATOR</span>`
-    :`<span style="font-size:9px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);color:var(--yellow);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">⚠️ BASIC ONLY</span>`;
+    ?`<span style="font-size:10px;background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);color:var(--green);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">✅ FULL INDICATOR</span>`
+    :`<span style="font-size:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);color:var(--yellow);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">⚠️ BASIC ONLY</span>`;
   overlay.innerHTML=`
     <div class="signal-card">
       <div class="signal-glow"></div>
@@ -2791,15 +2832,16 @@ function checkAllBuySignals(){
   if(!hasApiKey()) return;
   // รัน async แบบ sequential ป้องกัน rate limit
   (async()=>{
-    for(const s of stocks){
-      // ใช้ cooldown เดียวกับ updateCardLive — ป้องกัน popup ซ้ำ
-      if(s.p>0 && !_buyAlerted.has(s.t)){
-        _buyAlerted.add(s.t);
-        setTimeout(()=>_buyAlerted.delete(s.t), 900000); // cooldown 15 นาที
-        await checkBuySignalFull(s.t,s.p);
+    try{
+      for(const s of stocks){
+        if(s.p>0 && !_buyAlerted.has(s.t)){
+          _buyAlerted.add(s.t);
+          setTimeout(()=>_buyAlerted.delete(s.t), 900000);
+          await checkBuySignalFull(s.t,s.p);
+        }
+        await new Promise(r=>setTimeout(r,150));
       }
-      await new Promise(r=>setTimeout(r,150));
-    }
+    }catch{}
   })();
 }
 
@@ -3084,10 +3126,12 @@ async function initYahooPrices(){
 // อัพเดทราคาทุก 2 นาที
 let _yahooTimer=null;
 setTimeout(()=>{
-  initYahooPrices();
-  if(!_yahooTimer){
-    _yahooTimer=setInterval(initYahooPrices, 120000);
-  }
+  try{
+    initYahooPrices();
+    if(!_yahooTimer){
+      _yahooTimer=setInterval(()=>{try{initYahooPrices();}catch{}}, 120000);
+    }
+  }catch{}
 }, 500);
 
 
@@ -4153,7 +4197,7 @@ function _renderNewsItems(pane, items, ticker, isStatic=false){
     pane.innerHTML=`<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px 0">ไม่พบข่าว</div>`;
     return;
   }
-  const staticTag=isStatic?'<div style="font-size:9px;color:var(--text3);margin-bottom:8px;text-align:right">⚠️ ข้อมูลสำรอง</div>':'';
+  const staticTag=isStatic?'<div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-align:right">⚠️ ข้อมูลสำรอง</div>':'';
   pane.innerHTML=staticTag+items.map(n=>{
     const headline=n.h||n.headline||'';
     const summary=(n.x||n.summary||'').slice(0,200);
@@ -4165,8 +4209,8 @@ function _renderNewsItems(pane, items, ticker, isStatic=false){
         <div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:6px">${headline}</div>
         ${summary?`<div style="font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:6px">${summary}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:9px;color:var(--text3)">${source}</div>
-          <div style="font-size:9px;color:var(--text3)">${date}</div>
+          <div style="font-size:10px;color:var(--text3)">${source}</div>
+          <div style="font-size:10px;color:var(--text3)">${date}</div>
         </div>
       </div>
     </a>`;
@@ -4420,7 +4464,7 @@ function renderEarningsData(data, isLive=false){
       :isSoon
       ?`<span class="earn-badge earn-soon">${countdown(e.d)||'⏳'}</span>`
       :`<span style="color:var(--dim);font-size:11px">—</span>`;
-    const liveTag=e._live?'<span style="font-size:8px;color:var(--accent);margin-left:3px">●</span>':'';
+    const liveTag=e._live?'<span style="font-size:10px;color:var(--accent);margin-left:3px">●</span>':'';
     return`<div class="earn-row" style="background:${bg};border-color:${bc}" onclick="goCard('${e.t}')">
       <span class="earn-ticker" style="color:${tc}">${e.t}${liveTag}</span><span class="earn-name">${e.n}</span>
       <span class="earn-date">${e.d}</span><span class="earn-eps">${epsStr}</span>
@@ -4600,8 +4644,9 @@ async function _fetchEconNews(query){
   for(const url of proxies){
     try{
       const ctrl=new AbortController();
-      setTimeout(()=>ctrl.abort(),8000);
+      const tid=setTimeout(()=>ctrl.abort(),8000);
       const r=await fetch(url,{signal:ctrl.signal});
+      clearTimeout(tid);
       if(!r.ok) continue;
       let text=await r.text();
       if(text.includes('"contents"')){try{text=JSON.parse(text).contents;}catch{}}
@@ -4664,7 +4709,7 @@ function renderHeatmapV2(){
       const intensity=Math.min(1,Math.abs(s.c)/10);
       const bg=isUp?`rgba(0,230,118,${0.1+intensity*0.35})`:`rgba(255,77,106,${0.1+intensity*0.35})`;
       const border=isUp?`rgba(0,230,118,${0.2+intensity*0.4})`:`rgba(255,77,106,${0.2+intensity*0.4})`;
-      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${isUp?"var(--green)":"var(--red)"};margin-top:2px">${isUp?"+":""}${s.c}%</div><div style="font-size:9px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
+      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${isUp?"var(--green)":"var(--red)"};margin-top:2px">${isUp?"+":""}${s.c}%</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
     });
     html+="</div></div>";
   });
@@ -4789,15 +4834,15 @@ async function _smartPreloadCandles(){
 }
 
 // เริ่ม preload หลัง init 3 วินาที (เร็วขึ้นจาก 5 วินาที)
-setTimeout(()=>_smartPreloadCandles(), 3000);
+setTimeout(()=>{try{_smartPreloadCandles();}catch{}}, 3000);
 
 // โหลดใหม่ทุก 30 นาที (cache หมดอายุ)
-setInterval(()=>_smartPreloadCandles(), 1800000);
+setInterval(()=>{try{_smartPreloadCandles();}catch{}}, 1800000);
 
 // โหลด Fear & Greed ตอนเปิดแอป
-setTimeout(()=>fetchFearGreed(), 1500);
+setTimeout(()=>{try{fetchFearGreed();}catch{}}, 1500);
 // รีเฟรชทุก 1 ชั่วโมง
-setInterval(()=>fetchFearGreed(), 3600000);
+setInterval(()=>{try{fetchFearGreed();}catch{}}, 3600000);
 
 </script>
 </body>
