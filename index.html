@@ -807,10 +807,11 @@ function fmt(n){return n>=1000?n.toLocaleString('en-US',{minimumFractionDigits:2
 function parseMcap(s){if(!s)return 0;const m=parseFloat(s);if(s.endsWith('T'))return m*1e12;if(s.endsWith('B'))return m*1e9;if(s.endsWith('M'))return m*1e6;return m;}
 
 // ── Clock ──
-setInterval(()=>{
+if(window._clockTimer)clearInterval(window._clockTimer);
+window._clockTimer=setInterval(()=>{
   const now=new Date();
-  document.getElementById('timeDisplay').textContent=
-    now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const el=document.getElementById('timeDisplay');
+  if(el)el.textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
 },1000);
 
 // ── Navigation ──
@@ -828,7 +829,8 @@ function navTo(page, el){
 
 // ── Toast ──
 function toast(msg,dur=2500){
-  const el=document.getElementById('toastEl');
+  const el=$id('toastEl');
+  if(!el)return;
   el.textContent=msg;el.style.display='block';
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>el.style.display='none',dur);
@@ -948,36 +950,57 @@ function makeCard(s){
 }
 
 const LOGO_MAP = {};
+const _logoCache = {}; // cache URL ที่สำเร็จแล้ว ไม่ต้อง retry
 
 function loadLogo(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
+
+  // ถ้าเคยโหลดสำเร็จแล้ว ใช้ URL เดิมได้เลย
+  if(_logoCache[ticker]){
+    _applyLogoImg(el, _logoCache[ticker], size);
+    return;
+  }
+
   const domain = getLogoUrl(ticker);
   const r = size<=36?10:12;
-  const imgStyle = `width:100%;height:100%;object-fit:contain;border-radius:${r}px;display:block;background:#fff;padding:2px`;
-  // Source chain: Clearbit → Google Favicons HD → fallback gradient
+
+  // logo.dev เป็น primary — รองรับ CORS, ฟรี, ไม่ต้อง key, ไม่มี rate limit
+  // Google HD favicon เป็น secondary
+  // Clearbit เป็น tertiary (อาจ block บนมือถือ)
   const sources = [
-    `https://logo.clearbit.com/${domain}`,
+    `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+    `https://logo.clearbit.com/${domain}`,
   ];
+
   let idx = 0;
   const tryNext = () => {
     if(idx >= sources.length){ el.innerHTML = buildLogoFallback(ticker); return; }
+    const src = sources[idx++];
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      if(img.naturalWidth < 8){ idx++; tryNext(); return; } // reject tiny/broken icons
-      el.innerHTML = '';
-      el.style.background = 'transparent';
-      el.style.padding = '0';
-      img.style.cssText = imgStyle;
-      el.appendChild(img);
+      if(img.naturalWidth < 16){ tryNext(); return; } // reject tiny/broken
+      _logoCache[ticker] = src; // cache URL ที่สำเร็จ
+      _applyLogoImg(el, src, size);
     };
-    img.onerror = () => { idx++; tryNext(); };
-    img.src = sources[idx++];
+    img.onerror = () => tryNext();
+    img.src = src;
   };
   tryNext();
+}
+
+function _applyLogoImg(el, src, size){
+  const r = size<=36?10:12;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = src;
+  img.style.cssText = `width:100%;height:100%;object-fit:contain;border-radius:${r}px;display:block;background:#fff;padding:2px`;
+  el.innerHTML = '';
+  el.style.background = 'transparent';
+  el.style.padding = '0';
+  el.appendChild(img);
 }
 
 
@@ -1489,16 +1512,26 @@ function showSignalPopup(ticker,price,s1,score){
 
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
   try{
-    const res=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      model:'claude-haiku-4-5-20251001',max_tokens:200,
-      system:'คุณคือที่ปรึกษาหุ้น ตอบภาษาไทยสั้นกระชับ 2-3 ประโยค ห้ามใช้ศัพท์เทคนิค',
-      messages:[{role:'user',content:`${ticker} ราคา $${price} ชิดแนวรับ $${s1.toFixed(2)} Score ${score}/100 ควรเข้าไหม? ตอบสั้นๆ`}]
-    })});
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),15000);
+    const res=await fetch(WORKER,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:200,
+        system:'คุณคือที่ปรึกษาหุ้น ตอบภาษาไทยสั้นกระชับ 2-3 ประโยค ห้ามใช้ศัพท์เทคนิค',
+        messages:[{role:'user',content:`${ticker} ราคา $${price} ชิดแนวรับ $${s1.toFixed(2)} Score ${score}/100 ควรเข้าไหม? ตอบสั้นๆ`}]
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
     const d=await res.json();
     const txt=d?.content?.[0]?.text||'ไม่ได้รับคำวิเคราะห์';
     const el=document.getElementById('signalAiText');
     if(el)el.textContent=txt;
-  }catch{}
+  }catch(e){
+    const el=document.getElementById('signalAiText');
+    if(el)el.textContent='⚠️ ไม่สามารถวิเคราะห์ได้ในขณะนี้';
+  }
 }
 
 function closeSignal(){
@@ -1519,15 +1552,47 @@ function toggleTG(){
   localStorage.setItem('tgEnabled',on?'true':'false');
 }
 async function testTG(){
-  await sendTG('🧪 Stock Pro v2 — ทดสอบแจ้งเตือน ✅');
+  // อ่านจาก input โดยตรง ไม่ต้องกด บันทึก ก่อน
+  const token=document.getElementById('tgToken')?.value?.trim()||localStorage.getItem('tgToken');
+  const chatId=document.getElementById('tgChatId')?.value?.trim()||localStorage.getItem('tgChatId');
+  if(!token||!chatId){
+    toast('⚠️ กรุณาใส่ Bot Token และ Chat ID ก่อน');
+    return;
+  }
+  toast('📤 กำลังส่งทดสอบ...');
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatId,text:'🧪 Stock Pro v2 — ทดสอบแจ้งเตือน ✅'}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    const d=await r.json();
+    if(d.ok) toast('✅ ส่ง Telegram สำเร็จ!');
+    else toast('❌ '+( d.description||'ส่งไม่สำเร็จ'));
+  }catch(e){
+    toast('❌ เชื่อมต่อไม่ได้ ตรวจสอบ Token/Chat ID');
+  }
 }
+
 async function sendTG(msg){
   const token=localStorage.getItem('tgToken');
   const chatId=localStorage.getItem('tgChatId');
   const enabled=localStorage.getItem('tgEnabled')==='true';
   if(!token||!chatId||!enabled)return;
   try{
-    const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})});
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatId,text:msg}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
     const d=await r.json();
     if(d.ok)toast('📲 ส่ง Telegram แล้ว');
     else toast('❌ '+d.description);
@@ -1549,7 +1614,11 @@ function saveSettings(){
   PORT_SIZE=port;localStorage.setItem('_sp_portsize',port);
   saveTG();
   toast('✅ บันทึกแล้ว');
-  if(hasApiKey()&&!isLive) startLive();
+  // restart live cleanly ถ้ามี key
+  if(hasApiKey()){
+    stopLive();
+    setTimeout(startLive,300);
+  }
 }
 
 function addStock(){
@@ -1563,14 +1632,20 @@ function addStock(){
 }
 
 // ── WebSocket Live ──
-function startLive(){
-  if(isLive)return;
-  isLive=true;
-  document.getElementById('statusText').textContent='Live';
-  document.getElementById('liveDot').style.background='var(--green)';
+function stopLive(){
+  isLive=false;
+  clearInterval(pollTimer); pollTimer=null;
+  clearInterval(signalTimer); signalTimer=null;
+  clearInterval(wsPing); wsPing=null;
+  clearTimeout(_wsReconnectTimer); _wsReconnectTimer=null;
+  if(ws){try{ws.close();}catch{} ws=null;}
+}
 
-  clearInterval(pollTimer);
-  clearInterval(signalTimer);
+function startLive(){
+  if(isLive) stopLive(); // reset ก่อนเสมอ ป้องกัน stack
+  isLive=true;
+  $id('statusText').textContent='Live';
+  $id('liveDot').style.background='var(--green)';
 
   pollTimer=setInterval(httpPoll,15000);
   signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
@@ -1581,17 +1656,17 @@ function startLive(){
 
 function wsConnect(){
   if(!hasApiKey())return;
-  if(ws&&ws.readyState<=1)return;
-  clearInterval(wsPing);
-  clearTimeout(_wsReconnectTimer);
-  if(ws){try{ws.close();}catch{}}
+  if(ws&&ws.readyState<=1)return; // already connecting or open
+  clearInterval(wsPing); wsPing=null;
+  clearTimeout(_wsReconnectTimer); _wsReconnectTimer=null;
+  if(ws){try{ws.close();}catch{} ws=null;}
   ws=new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
   ws.onopen=()=>{
-    _wsReconnectCount=0;
+    _wsReconnectCount=0; // reset on success
     stocks.slice(0,50).forEach(s=>ws.send(JSON.stringify({type:'subscribe',symbol:s.t})));
     clearInterval(wsPing);
-    wsPing=setInterval(()=>{if(ws.readyState===1)ws.send(JSON.stringify({type:'ping'}));},20000);
-    document.getElementById('statusText').textContent='WS Live';
+    wsPing=setInterval(()=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'ping'}));},20000);
+    $id('statusText').textContent='WS Live';
   };
   ws.onmessage=e=>{
     try{
@@ -1610,26 +1685,42 @@ function wsConnect(){
     }catch{}
   };
   ws.onclose=()=>{
-    clearInterval(wsPing);
-    if(isLive){_wsReconnectTimer=setTimeout(()=>wsConnect(),Math.min(30000,1000*2**_wsReconnectCount++));}
+    clearInterval(wsPing); wsPing=null;
+    if(isLive&&_wsReconnectCount<10){
+      const delay=Math.min(30000,1000*Math.pow(2,_wsReconnectCount));
+      _wsReconnectCount++;
+      _wsReconnectTimer=setTimeout(()=>wsConnect(),delay);
+    }
   };
   ws.onerror=()=>{
     try{ws.close();}catch{}
   };
 }
 
+// ── Finnhub rate limit guard: max 30 req/s, เราใช้ max 8 ทุก 15s = ปลอดภัย ──
+let _pollInFlight=false;
 async function httpPoll(){
-  if(!hasApiKey())return;
-  const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,8);
-  await Promise.allSettled(batch.map(async s=>{
-    try{
-      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.t}&token=${FINNHUB_KEY}`);
-      if(!r.ok)return;
-      const d=await r.json();
-      if(d.c>0){s.p=d.c;s.c=d.dp||0;liveCache[s.t]=Date.now();updateCardLive(s);}
-    }catch{}
-  }));
-  document.getElementById('statusText').textContent=`${stocks.length} ตัว`;
+  if(!hasApiKey()||_pollInFlight)return;
+  _pollInFlight=true;
+  try{
+    // กรองเฉพาะที่ cache หมดอายุ และ stagger เพื่อไม่โดน rate limit
+    const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,8);
+    for(const s of batch){
+      try{
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),5000);
+        const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.t}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
+        clearTimeout(tid);
+        if(!r.ok)continue;
+        const d=await r.json();
+        if(d.c>0){s.p=d.c;s.c=d.dp||0;liveCache[s.t]=Date.now();updateCardLive(s);}
+      }catch{}
+      await new Promise(r=>setTimeout(r,200)); // 200ms ระหว่าง request ป้องกัน burst
+    }
+    $id('statusText').textContent=`${stocks.length} ตัว`;
+  }finally{
+    _pollInFlight=false;
+  }
 }
 
 function checkAllBuySignals(){
@@ -1650,16 +1741,19 @@ if(hasApiKey()){
 // ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
 // ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
 async function fetchYahooQuote(ticker){
+  const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
+  // worker เป็น fallback สุดท้าย เพื่อไม่ให้ทุกอย่างพังถ้า worker ล่ม
   const proxies=[
-    `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
-    `https://corsproxy.io/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+    `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(yahooUrl)}`,
   ];
   for(const url of proxies){
     try{
       const ctrl=new AbortController();
-      setTimeout(()=>ctrl.abort(),6000);
+      const tid=setTimeout(()=>ctrl.abort(),5000); // ลด 6000→5000
       const r=await fetch(url,{signal:ctrl.signal});
+      clearTimeout(tid); // fix: ต้อง clear ทุกครั้ง ป้องกัน memory leak
       if(!r.ok) continue;
       const d=await r.json();
       const res=d?.chart?.result?.[0];
@@ -1694,16 +1788,25 @@ async function initYahooPrices(){
     await new Promise(r=>setTimeout(r,DELAY));
   }
   updateDashboard();
-  document.getElementById('statusText').textContent=`${stocks.length} ตัว (Yahoo)`;
+  $id('statusText').textContent=`${stocks.length} ตัว (Yahoo)`;
 }
 
 // อัพเดทราคา Yahoo ทุก 3 นาที ถ้าไม่มี Finnhub key
+let _yahooTimer=null;
 setTimeout(()=>{
   initYahooPrices();
-  if(!hasApiKey()){
-    setInterval(initYahooPrices, 180000);
+  if(!hasApiKey()&&!_yahooTimer){
+    _yahooTimer=setInterval(initYahooPrices, 180000);
   }
 }, 800);
+
+// ── DOM Cache — ลด getElementById calls ──
+const _domCache={};
+function $id(id){
+  if(!_domCache[id]) _domCache[id]=document.getElementById(id);
+  return _domCache[id];
+}
+function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
 
 
 
@@ -1769,6 +1872,27 @@ async function safeFetch(url, opt={}, retry=2){
 
 const liveNewsCache={};
 const _translatedCache={};
+
+// ── Cache cleanup — ล้าง cache เก่า ป้องกัน memory leak ──
+const CACHE_TTL=600000; // 10 นาที
+setInterval(()=>{
+  const now=Date.now();
+  // ล้าง liveNewsCache ที่เก่าเกิน 10 นาที
+  Object.keys(liveNewsCache).forEach(k=>{
+    if(now-liveNewsCache[k].ts>CACHE_TTL) delete liveNewsCache[k];
+  });
+  // ล้าง candleCache ที่เก่าเกิน 2 ชั่วโมง
+  Object.keys(candleCache).forEach(k=>{
+    if(now-candleCache[k].ts>7200000) delete candleCache[k];
+  });
+  // ล้าง liveCache quote เก่าเกิน 5 นาที
+  Object.keys(liveCache).forEach(k=>{
+    if(now-liveCache[k]>300000) delete liveCache[k];
+  });
+  // จำกัด _translatedCache ไม่เกิน 200 entries
+  const tKeys=Object.keys(_translatedCache);
+  if(tKeys.length>200) tKeys.slice(0,50).forEach(k=>delete _translatedCache[k]);
+},300000); // รัน cleanup ทุก 5 นาที
 
 
 // ── calcRSI ──
@@ -1890,21 +2014,22 @@ function _genMockCandles(ticker, currentPrice, days=60){
   return{c,h,l,o,v,t,_mock:true};
 }
 
-// ── fetchCandles ──
+// ── fetchCandles — rate limit guard ──
+const _candleFetching=new Set(); // ป้องกัน concurrent fetch ตัวเดียวกัน
 async function fetchCandles(ticker, days=60){
   if(candleCache[ticker]&&candleCache[ticker].ts>Date.now()-1800000&&(candleCache[ticker].days||0)>=days) return candleCache[ticker].data;
-  // FIX: ถ้ามี mock cache อยู่และยังไม่มี key → รอก่อน ป้องกัน mock ปน real data
   if(candleCache[ticker]?.data?._mock && !hasApiKey()) return candleCache[ticker].data;
-  // ใช้ Yahoo Finance v8 chart API (ฟรี ไม่ต้องใช้ key)
+  if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
+  _candleFetching.add(ticker);
   try{
     const range=days<=30?'1mo':days<=90?'3mo':days<=150?'6mo':days<=210?'1y':'2y';
     const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
+    // worker เป็น fallback สุดท้าย
     const proxies=[
-      `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(yahooUrl)}`,
-      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(yahooUrl)}`,
       `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-      `https://cors-anywhere.herokuapp.com/${yahooUrl}`,
+      `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(yahooUrl)}`,
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(yahooUrl)}`,
     ];
     let r=null;
     for(const p of proxies){
@@ -1940,11 +2065,12 @@ async function fetchCandles(ticker, days=60){
       }
     }
   }catch(e){}
-  // ── Fallback: ใช้ mock data แทนเพื่อให้กราฟแสดงผลได้ ──
+  finally{ _candleFetching.delete(ticker); }
+  // Fallback: mock data
   const s=stocks.find(x=>x.t===ticker);
   if(s&&s.p>0){
     const data=_genMockCandles(ticker,s.p,days);
-    if(data){ // FIX: ตรวจ null ก่อน cache
+    if(data){
       candleCache[ticker]={data,ts:Date.now()-240000,days};
       return data;
     }
@@ -2825,16 +2951,17 @@ async function renderNewsTab(ticker){
 async function translateNewsItems(items){
   if(!items||!items.length) return items;
   try{
-    const toTranslate=items.map(n=>({h:n.h||'',x:(n.x||'').slice(0,300)}));
-    // ใช้ Claude proxy แทน callGemini ที่ไม่ได้นิยาม
+    // จำกัดที่ 15 ข่าว ป้องกัน token overflow
+    const slice=items.slice(0,15);
+    const toTranslate=slice.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
     const _trCtrl=new AbortController();
-    const _trTimeout=setTimeout(()=>_trCtrl.abort(),30000);
-    const res = await fetch('https://anthropic-proxy.datsakonping1994.workers.dev', {
+    const _trTimeout=setTimeout(()=>_trCtrl.abort(),12000); // ลด 30s→12s
+    const res=await fetch('https://anthropic-proxy.datsakonping1994.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
-        max_tokens:4000,
+        max_tokens:3000,
         system:'แปลข่าวการเงินเป็นภาษาไทยให้เป็นธรรมชาติ ตอบเป็น JSON array ของ [{h,x},...] เท่านั้น ห้ามมี markdown หรือ preamble',
         messages:[{role:'user',content:`input: ${JSON.stringify(toTranslate)}`}]
       }),
@@ -2847,8 +2974,10 @@ async function translateNewsItems(items){
     if(raw){
       const clean=raw.replace(/```json|```/g,'').trim();
       const arr=JSON.parse(clean);
-      if(Array.isArray(arr)&&arr.length===items.length){
-        return items.map((n,i)=>({...n,h:arr[i]?.h||n.h,x:arr[i]?.x||n.x}));
+      if(Array.isArray(arr)&&arr.length===slice.length){
+        // merge: translated slice + untranslated remainder
+        const translated=items.map((n,i)=>i<slice.length?{...n,h:arr[i]?.h||n.h,x:arr[i]?.x||n.x}:n);
+        return translated;
       }
     }
   }catch(e){console.warn('translateNewsItems failed:',e);}
@@ -3183,10 +3312,14 @@ async function checkBuySignalFull(ticker,price){
 // ── Enhanced updateCardLive with buy signal check ──
 const _buyAlerted=new Set();
 function updateCardLive(s){
+  // ใช้ direct getElementById (ไม่ cache เพราะ cards อาจ re-render)
   const priceEl=document.getElementById(`price-v2-${s.t}`);
   const chgEl=document.getElementById(`chg-v2-${s.t}`);
   if(priceEl)priceEl.textContent='$'+fmt(s.p);
   if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
+  // Dashboard live update ถ้าอยู่หน้า dash
+  const dashActive=document.getElementById('page-dash')?.classList.contains('active');
+  if(dashActive) updateDashboard();
   if(!_buyAlerted.has(s.t)&&s.p>0){
     _buyAlerted.add(s.t);
     setTimeout(()=>_buyAlerted.delete(s.t),600000);
