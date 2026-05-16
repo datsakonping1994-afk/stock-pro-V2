@@ -2238,9 +2238,11 @@ function loadSettings(){
   applyLockState();
 }
 function saveSettings(){
-  const key=document.getElementById('apiKeyInput')?.value?.trim();
+  // FIX: ถ้า input ถูก lock/ซ่อน ให้ใช้ key ที่มีอยู่แล้ว
+  const inputEl=document.getElementById('apiKeyInput');
+  const key=(inputEl?.style.display!=='none' ? inputEl?.value?.trim() : '') || FINNHUB_KEY;
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
-  if(key){
+  if(key && key.length>10){
     FINNHUB_KEY=key;
     try{localStorage.setItem('_fh_key',key);}catch{}
     try{sessionStorage.setItem('_fh_key',key);}catch{}
@@ -2248,9 +2250,8 @@ function saveSettings(){
   }
   PORT_SIZE=port;localStorage.setItem('_sp_portsize',port);
   toast('✅ บันทึกแล้ว');
-  // lock API key ถ้ามี
-  if(key) lockSection('api');
-  // restart live cleanly ถ้ามี key
+  if(inputEl?.value?.trim()) lockSection('api');
+  // restart live
   if(hasApiKey()){
     stopLive();
     setTimeout(startLive,300);
