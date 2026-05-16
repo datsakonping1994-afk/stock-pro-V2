@@ -1629,8 +1629,21 @@ function openDrawer(ticker){
   loadLogo(ticker,'drawerLogo',40);
   drawerTab('tech',document.querySelector('.drawer-tab'));
   document.getElementById('drawer').classList.add('open');
-  // ── Async fetch candles แล้ว refresh tech tab อัตโนมัติ ──
-  if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+  // ── โหลด candle: ถ้ามี cache แสดงทันที แล้ว refresh ใน background ──
+  if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
+    // มี cache แล้ว — render ทันที
+    drawerTab('tech',document.querySelector('.drawer-tab'));
+    // refresh ใน background ถ้า cache เก่าเกิน 30 นาที
+    if(Date.now()-candleCache[ticker].ts > 1800000){
+      fetchCandles(ticker,60).then(()=>{
+        if(currentDrawerTicker===ticker){
+          updateRSIFromCandles(ticker);
+          drawerTab('tech',document.querySelector('.drawer-tab'));
+        }
+      }).catch(()=>{});
+    }
+  } else {
+    // ไม่มี cache — โหลดใหม่ทันที
     fetchCandles(ticker,60).then(()=>{
       if(currentDrawerTicker===ticker){
         updateRSIFromCandles(ticker);
@@ -4250,18 +4263,45 @@ async function updateRSIFromCandles(ticker){
   }
 }
 
-// Load candles for visible stocks after startup
-setTimeout(async()=>{
-  if(!hasApiKey()) return;
-  const batch=stocks.slice(0,10);
-  for(const s of batch){
-    try{
-      await fetchCandles(s.t,60);
-      await updateRSIFromCandles(s.t);
-      await new Promise(r=>setTimeout(r,300));
-    }catch{}
+
+// ── Smart Candle Preloader — โหลดเร็วขึ้น ความแม่นยำเท่าเดิม ──
+async function _smartPreloadCandles(){
+  // Priority 1: Watchlist ก่อนเลย
+  const wlTickers=[...watchlist].filter(t=>stocks.find(s=>s.t===t));
+  // Priority 2: ใกล้ S1 มากที่สุด (โอกาส signal สูง)
+  const nearS1=stocks
+    .filter(s=>s.p>0&&!candleCache[s.t]?.data)
+    .map(s=>({t:s.t,pct:(s.p-getS1(s.t,s.p))/getS1(s.t,s.p)*100}))
+    .sort((a,b)=>a.pct-b.pct)
+    .slice(0,15)
+    .map(x=>x.t);
+  // Priority 3: ที่เหลือ
+  const rest=stocks
+    .filter(s=>!wlTickers.includes(s.t)&&!nearS1.includes(s.t)&&!candleCache[s.t]?.data)
+    .map(s=>s.t);
+
+  const queue=[...new Set([...wlTickers,...nearS1,...rest])];
+
+  // โหลด parallel 3 ตัวพร้อมกัน ไม่โหลดทีละตัว
+  const PARALLEL=3;
+  for(let i=0;i<queue.length;i+=PARALLEL){
+    const batch=queue.slice(i,i+PARALLEL);
+    await Promise.allSettled(batch.map(async t=>{
+      try{
+        await fetchCandles(t,60);
+        await updateRSIFromCandles(t);
+      }catch{}
+    }));
+    // หน่วงน้อยลง — 150ms ต่อ batch แทน 300ms ต่อตัว
+    await new Promise(r=>setTimeout(r,150));
   }
-},5000);
+}
+
+// เริ่ม preload หลัง init 3 วินาที (เร็วขึ้นจาก 5 วินาที)
+setTimeout(()=>_smartPreloadCandles(), 3000);
+
+// โหลดใหม่ทุก 30 นาที (cache หมดอายุ)
+setInterval(()=>_smartPreloadCandles(), 1800000);
 
 </script>
 </body>
