@@ -308,38 +308,52 @@ canvas.bigchart{width:100%;height:100%}
 /* ── BUY SIGNAL POPUP ── */
 .signal-overlay{
   position:fixed;inset:0;z-index:1000;
-  background:rgba(0,0,0,0.85);
-  backdrop-filter:blur(8px);
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(12px);
   display:flex;align-items:flex-end;justify-content:center;
   padding:0 0 env(safe-area-inset-bottom);
   animation:fadeIn 0.2s ease;
 }
 .signal-card{
   width:100%;max-width:500px;
-  background:var(--bg1);
-  border-top:1px solid var(--border2);
-  border-radius:24px 24px 0 0;
+  background:linear-gradient(180deg,var(--bg2),var(--bg1));
+  border-top:1px solid rgba(201,168,76,0.3);
+  border-left:1px solid var(--border2);
+  border-right:1px solid var(--border2);
+  border-radius:28px 28px 0 0;
   overflow:hidden;
-  animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1);
+  animation:slideUp 0.35s cubic-bezier(0.32,0.72,0,1);
+  box-shadow:0 -20px 60px rgba(0,0,0,0.6),0 -4px 20px rgba(201,168,76,0.08);
 }
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.signal-glow{height:3px;background:linear-gradient(90deg,transparent,var(--gold),var(--gold2),var(--gold),transparent)}
-.signal-header{padding:20px 20px 16px;display:flex;align-items:center;justify-content:space-between}
-.signal-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
-.signal-close{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2);cursor:pointer}
+.signal-glow{height:2px;background:linear-gradient(90deg,transparent 0%,var(--gold) 30%,var(--gold2) 50%,var(--gold) 70%,transparent 100%);opacity:0.9}
+.signal-handle{width:40px;height:4px;border-radius:2px;background:var(--bg4);margin:12px auto 0}
+.signal-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+.signal-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:6px}
+.signal-close{width:30px;height:30px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2);cursor:pointer;transition:all 0.15s}
+.signal-close:active{background:var(--bg4)}
 .signal-ticker-row{padding:0 20px 16px;display:flex;align-items:center;gap:14px}
-.signal-logo{width:48px;height:48px;border-radius:14px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--text2);font-family:'Syne',sans-serif}
-.signal-ticker{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--text)}
-.signal-name{font-size:11px;color:var(--text3);margin-top:2px}
+.signal-logo{
+  width:52px;height:52px;border-radius:16px;
+  background:var(--bg3);
+  border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:800;color:var(--text);
+  font-family:'Syne',sans-serif;
+  flex-shrink:0;overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
+}
+.signal-ticker{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1}
+.signal-name{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;font-weight:400}
 .signal-price{margin-left:auto;text-align:right}
-.signal-price-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text)}
-.signal-score{font-size:10px;color:var(--gold);margin-top:2px}
+.signal-price-val{font-family:'Manrope',sans-serif;font-size:24px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
+.signal-score{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--gold);margin-top:3px;letter-spacing:0.5px}
 .signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 16px}
-.signal-stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px}
-.signal-stat-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
-.signal-stat-lbl{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:0.5px}
-.signal-ai{margin:0 20px 20px;background:var(--bg2);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;font-size:11px;color:var(--text2);line-height:1.7;min-height:80px}
-.signal-ai-header{font-size:9px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700}
+.signal-stat{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:14px}
+.signal-stat-val{font-family:'Manrope',sans-serif;font-size:17px;font-weight:700;color:var(--text)}
+.signal-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:0.8px;text-transform:uppercase}
+.signal-ai{margin:0 20px 20px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.75;min-height:80px}
+.signal-ai-header{font-family:'Syne',sans-serif;font-size:9px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700}
 
 /* ── TOAST ── */
 .toast{
@@ -597,29 +611,29 @@ canvas.bigchart{width:100%;height:100%}
 
 <!-- Heatmap Modal -->
 <div id="heatmapModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">
-    <button onclick="document.getElementById('heatmapModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:12px;cursor:pointer">← กลับ</button>
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px">HEATMAP</div>
+  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
+    <button onclick="document.getElementById('heatmapModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text)">🌡️ HEATMAP</div>
   </div>
   <div id="heatmapGrid" style="padding:14px"></div>
 </div>
 
 <!-- Earnings Modal -->
 <div id="earningsModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">
-    <button onclick="document.getElementById('earningsModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:12px;cursor:pointer">← กลับ</button>
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px">📅 รายงานผลประกอบการ</div>
+  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
+    <button onclick="document.getElementById('earningsModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
   </div>
   <div id="earningsBody" style="padding:14px"></div>
 </div>
 
 <!-- AI Summary Modal -->
 <div id="aiSummaryModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">
-    <button onclick="document.getElementById('aiSummaryModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:12px;cursor:pointer">← กลับ</button>
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px">🤖 AI Market Summary</div>
+  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
+    <button onclick="document.getElementById('aiSummaryModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">🤖 AI Market Summary</div>
   </div>
-  <div id="aiSummaryBody" style="padding:16px;font-size:13px;line-height:1.8;color:var(--text2)">กด "วิเคราะห์" เพื่อเริ่ม</div>
+  <div id="aiSummaryBody" style="padding:16px;font-family:'Inter',sans-serif;font-size:13px;line-height:1.9;color:var(--text2)">กด "วิเคราะห์" เพื่อเริ่ม</div>
   <div style="padding:0 16px 16px">
     <button id="aiSummaryBtn" onclick="triggerAISummary()" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:12px 24px;color:var(--gold);font-size:13px;cursor:pointer;width:100%;font-family:'Syne',sans-serif;font-weight:600">🤖 วิเคราะห์ตลาดทั้งหมด</button>
   </div>
@@ -1426,6 +1440,7 @@ function showSignalPopup(ticker,price,s1,score){
   overlay.innerHTML=`
     <div class="signal-card">
       <div class="signal-glow"></div>
+      <div class="signal-handle"></div>
       <div class="signal-header">
         <div class="signal-title">🔔 Buy Signal Detected</div>
         <div class="signal-close" onclick="closeSignal()">✕</div>
