@@ -555,8 +555,12 @@ canvas.bigchart{width:100%;height:100%}
         </div>
         <div class="settings-row" style="border-bottom:none">
           <div></div>
-          <button class="settings-btn" onclick="saveSettings()">บันทึก</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="settings-btn" onclick="saveSettings()">บันทึก</button>
+            <button class="settings-btn" id="testApiBtn" onclick="testApiKey()">🔑 ทดสอบ Key</button>
+          </div>
         </div>
+        <div id="apiKeyStatus" style="display:none;margin:0 16px 14px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
       </div>
 
       <div class="settings-section">
@@ -1650,6 +1654,76 @@ function saveSettings(){
     stopLive();
     setTimeout(startLive,300);
   }
+}
+
+async function testApiKey(){
+  const btn=document.getElementById('testApiBtn');
+  const statusEl=document.getElementById('apiKeyStatus');
+  const key=document.getElementById('apiKeyInput')?.value?.trim();
+  if(!key||key.length<10){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.12)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='⚠️ กรุณาใส่ API Key ก่อนทดสอบ';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังเชื่อมต่อ Finnhub...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.status===401||r.status===403){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — กรุณาตรวจสอบ Key อีกครั้ง';
+    } else if(!r.ok){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ เซิร์ฟเวอร์ตอบกลับ: ${r.status} — ลองใหม่อีกครั้ง`;
+    } else {
+      const d=await r.json();
+      if(d&&d.c>0){
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent=`✅ API Key ใช้ได้! — AAPL ราคาปัจจุบัน $${d.c.toFixed(2)} (${d.dp>=0?'+':''}${d.dp?.toFixed(2)||0}%)`;
+      } else if(d&&typeof d.c==='number'){
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='✅ API Key ใช้ได้! — เชื่อมต่อ Finnhub สำเร็จ (ตลาดปิดอยู่)';
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ เชื่อมต่อได้ แต่ข้อมูลผิดปกติ — Key อาจถูกจำกัดสิทธิ์';
+      }
+    }
+  } catch(e){
+    if(e.name==='AbortError'){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⏱️ หมดเวลาเชื่อมต่อ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+    } else {
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ เชื่อมต่อล้มเหลว — ตรวจสอบอินเทอร์เน็ตหรือ Key อีกครั้ง';
+    }
+  }
+  btn.disabled=false;
+  btn.textContent='🔑 ทดสอบ Key';
 }
 
 function addStock(){
