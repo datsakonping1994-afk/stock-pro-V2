@@ -3969,7 +3969,7 @@ async function renderNewsTab(ticker){
   const now=Date.now();
   const FETCH_TTL=300000; // 5 นาที
 
-  // ถ้ามี cache ใหม่อยู่ แสดงผลทันที
+  // ถ้ามี cache แปลแล้วและยังไม่หมดอายุ
   if(cached&&cached.translated&&(now-cached.ts<FETCH_TTL)){
     _renderNewsItems(pane,cached.items,ticker);
     return;
@@ -3980,20 +3980,39 @@ async function renderNewsTab(ticker){
   const raw=await fetchLiveNews(ticker);
   let items=null;
   let isStatic=false;
+
   if(raw&&raw.length){
-    const toTranslate=raw.filter(n=>!_translatedCache[n.h?.slice(0,60)]);
-    if(toTranslate.length>0){
-      pane.innerHTML=`<div style="color:var(--dim);font-size:12px;padding:14px 0;text-align:center">⏳ กำลังแปล ${toTranslate.length} ข่าว...</div>`;
-      const translated=await translateNewsItems(toTranslate);
-      translated.forEach(n=>{if(n.h) _translatedCache[n.h.slice(0,60)]=n;});
+    // แสดงข่าวภาษาอังกฤษก่อนทันที ไม่รอแปล
+    _renderNewsItems(pane, raw, ticker);
+
+    // แปลทุกข่าวใหม่ทั้งหมด (ไม่ใช้ cache เก่า เพราะอาจเป็น key ผิด)
+    pane.innerHTML+=`<div id="translateStatus" style="color:var(--gold);font-size:11px;padding:8px 0;text-align:center">⏳ กำลังแปลเป็นภาษาไทย...</div>`;
+
+    const translated=await translateNewsItems(raw);
+
+    // เช็คว่าแปลสำเร็จจริงไหม (อย่างน้อย 1 ข่าวที่เปลี่ยนไปจากต้นฉบับ)
+    const didTranslate=translated.some((n,i)=>n.h!==raw[i]?.h);
+
+    // อัพเดท cache
+    translated.forEach(n=>{if(n.h) _translatedCache[n.h.slice(0,60)]=n;});
+    liveNewsCache[ticker]={items:translated,ts:now,translated:didTranslate};
+
+    // แสดงผลที่แปลแล้ว (หรือภาษาอังกฤษถ้าแปลไม่ได้)
+    const statusEl=document.getElementById('translateStatus');
+    if(statusEl) statusEl.remove();
+    items=translated;
+    if(!didTranslate){
+      // แปลไม่สำเร็จ — แสดง banner แจ้ง
+      pane.innerHTML=`<div style="color:var(--gold);font-size:11px;padding:6px 10px;text-align:center;background:rgba(201,168,76,0.1);border-radius:8px;margin-bottom:8px">⚠️ ไม่สามารถแปลได้ขณะนี้ — แสดงภาษาอังกฤษ</div>`;
+    } else {
+      pane.innerHTML='';
     }
-    items=raw.map(n=>_translatedCache[n.h?.slice(0,60)]||n);
-    liveNewsCache[ticker]={items,ts:now,translated:true};
+    _renderNewsItems(pane,items,ticker,false);
   } else {
     items=cached?.items||newsData[ticker]||[];
-    isStatic=!cached?.items; // ถ้าไม่มี live cache เลย = fallback hardcoded
+    isStatic=!cached?.items;
+    _renderNewsItems(pane,items,ticker,isStatic);
   }
-  _renderNewsItems(pane,items,ticker,isStatic);
 }
 
 // ── translateNewsItems ── (v2: batch 10, 25s timeout, partial merge)
