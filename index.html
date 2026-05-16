@@ -342,17 +342,17 @@ canvas.bigchart{width:100%;height:100%}
   flex-shrink:0;overflow:hidden;
   box-shadow:0 4px 16px rgba(0,0,0,0.3);
 }
-.signal-ticker{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1}
-.signal-name{font-family:'Inter',sans-serif;font-size:11px;color:var(--text3);margin-top:3px;font-weight:400}
+.signal-ticker{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1}
+.signal-name{font-family:'Inter',sans-serif;font-size:13px;color:var(--text3);margin-top:4px;font-weight:400}
 .signal-price{margin-left:auto;text-align:right}
-.signal-price-val{font-family:'Manrope',sans-serif;font-size:24px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
-.signal-score{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--gold);margin-top:3px;letter-spacing:0.5px}
+.signal-price-val{font-family:'Manrope',sans-serif;font-size:26px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
+.signal-score{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--gold);margin-top:4px;letter-spacing:0.5px}
 .signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 16px}
 .signal-stat{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:14px}
-.signal-stat-val{font-family:'Manrope',sans-serif;font-size:17px;font-weight:700;color:var(--text)}
-.signal-stat-lbl{font-family:'Inter',sans-serif;font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:0.8px;text-transform:uppercase}
-.signal-ai{margin:0 20px 20px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text2);line-height:1.75;min-height:80px}
-.signal-ai-header{font-family:'Syne',sans-serif;font-size:9px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700}
+.signal-stat-val{font-family:'Manrope',sans-serif;font-size:19px;font-weight:700;color:var(--text)}
+.signal-stat-lbl{font-family:'Inter',sans-serif;font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:0.5px;text-transform:uppercase}
+.signal-ai{margin:0 20px 20px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text2);line-height:1.75;min-height:80px}
+.signal-ai-header{font-family:'Inter',sans-serif;font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700}
 
 /* ── TOAST ── */
 .toast{
@@ -903,7 +903,15 @@ const sectorMap={
 };
 
 // ── State ──
-let FINNHUB_KEY = localStorage.getItem('_fh_key')||'';
+// FIX: โหลด key จากทุก storage — iOS PWA บางครั้ง localStorage ล้าช้า
+let FINNHUB_KEY = (()=>{
+  try{
+    return localStorage.getItem('_fh_key')
+      || sessionStorage.getItem('_fh_key')
+      || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
+      || '';
+  }catch{return '';}
+})();
 let PORT_SIZE = parseInt(localStorage.getItem('_sp_portsize')||'10000');
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
@@ -1215,8 +1223,12 @@ function toast(msg,dur=2500){
 
 // ── Sparkline ──
 function drawSpark(canvas,prices,isUp){
+  if(!canvas||!prices||prices.length<2) return;
   const ctx=canvas.getContext('2d');
-  const W=canvas.offsetWidth||300,H=canvas.offsetHeight||48;
+  // FIX: ถ้า offsetWidth=0 ให้ใช้ parentElement หรือ default
+  const W=canvas.offsetWidth||canvas.parentElement?.offsetWidth||360;
+  const H=canvas.offsetHeight||canvas.parentElement?.offsetHeight||48;
+  if(W<=0||H<=0) return;
   canvas.width=W*2;canvas.height=H*2;ctx.scale(2,2);
   ctx.clearRect(0,0,W,H);
   if(!prices||prices.length<2)return;
@@ -1249,18 +1261,17 @@ function drawSpark(canvas,prices,isUp){
 // ── Levels (simplified pivot) ──
 function getS1(t,p){
   const hardcoded = sup0[t];
-  // Only use hardcoded value if it's BELOW current price (valid support)
-  if(hardcoded && hardcoded < p * 0.995) return hardcoded;
-  // Otherwise calculate dynamically: S1 = ~5-8% below current price
-  // Use ATR-style estimate based on price magnitude
+  // FIX: S1 ต้องอยู่ใต้ราคาปัจจุบันเสมอ
+  if(hardcoded && hardcoded < p * 0.99) return hardcoded;
+  // คำนวณ dynamic: S1 = 5-10% ใต้ราคา
   const pct = p > 500 ? 0.06 : p > 100 ? 0.07 : p > 20 ? 0.08 : 0.10;
   return +(p * (1 - pct)).toFixed(2);
 }
 function getR1(t,p){
   const s1 = getS1(t,p);
-  // R1 mirrors the S1 distance above price (classic pivot symmetry)
+  // R1 = เหนือราคาปัจจุบัน สมมาตรกับ S1
   const range = p - s1;
-  return +(p + range).toFixed(2);
+  return +(p + range * 1.5).toFixed(2);
 }
 
 // ── Render Card ──
@@ -1718,20 +1729,34 @@ function drawerTab(tab, btn){
           </div>
         </div>
       </div>`;
-    // Draw big chart
-    setTimeout(()=>{
+    // Draw big chart — fetch candles ถ้ายังไม่มี แล้วค่อยวาด
+    const _drawBigChart = ()=>{
       const c=document.getElementById('bigChartCanvas');
-      if(c&&candleCache[s.t]?.data?.c){
-        const prices=candleCache[s.t].data.c;
-        drawSpark(c,prices,s.c>=0);
-      } else if(c){
-        // Generate mock for demo
-        const mock=[];let p=s.p*0.8;
-        for(let i=0;i<60;i++){p+=p*(Math.random()-0.45)*0.03;mock.push(p);}
-        mock.push(s.p);
+      if(!c) return;
+      // Set canvas size explicitly
+      const container=c.parentElement;
+      const W=container?.offsetWidth||360;
+      const H=200;
+      c.style.width=W+'px'; c.style.height=H+'px';
+      if(candleCache[s.t]?.data?.c && !candleCache[s.t]?.data?._mock){
+        drawSpark(c,candleCache[s.t].data.c,s.c>=0);
+      } else {
+        // Mock data จากราคาจริง
+        const mock=[];let p=s.p*0.88;
+        for(let i=0;i<60;i++){p+=p*(Math.random()-0.47)*0.025;mock.push(Math.max(p,s.p*0.5));}
+        mock[mock.length-1]=s.p;
         drawSpark(c,mock,s.c>=0);
+        // พยายามดึง candle จริงในพื้นหลัง
+        if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
+          const c2=document.getElementById('bigChartCanvas');
+          if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock){
+            drawSpark(c2,candleCache[s.t].data.c,s.c>=0);
+          }
+        }).catch(()=>{});
       }
-    },50);
+    };
+    // รอ DOM render ก่อน
+    requestAnimationFrame(()=>setTimeout(_drawBigChart,50));
   } else if(tab==='ai'){
     const hist=aiHistory[s.t]||[];
     body.innerHTML=`
@@ -1762,6 +1787,27 @@ function drawerTab(tab, btn){
 
 // ── AI Chat ──
 let _aiSending=false;
+// ── Markdown → HTML (simple) ──
+function mdToHtml(text){
+  if(!text) return '';
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // Headers
+    .replace(/^#{1,3}\s+(.+)$/gm,'<strong>$1</strong>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    // Horizontal rule
+    .replace(/^---+$/gm,'<hr style="border-color:var(--border);margin:8px 0">')
+    // Line breaks
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>')
+    // Bullet points
+    .replace(/^[•\-\*]\s+(.+)/gm,'<span style="margin-left:8px">• $1</span>')
+    .trim();
+}
+
 async function sendAI(ticker){
   if(_aiSending)return;
   const input=document.getElementById('aiInput');
@@ -1785,7 +1831,7 @@ async function sendAI(ticker){
   try{
     const res=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       model:'claude-sonnet-4-6',max_tokens:600,
-      system:'คุณคือที่ปรึกษาหุ้นมืออาชีพ ตอบภาษาไทยเข้าใจง่าย ห้ามใช้ศัพท์อังกฤษเทคนิค ตอบกระชับ',
+      system:'คุณคือที่ปรึกษาหุ้นมืออาชีพ ตอบภาษาไทยเข้าใจง่าย ห้ามใช้ศัพท์อังกฤษเทคนิค ตอบกระชับ ห้ามใช้ Markdown เช่น ## ** --- ให้ตอบเป็นข้อความธรรมดาและใช้ emoji แทน',
       messages:[...aiHistory[ticker].slice(-6).map(m=>({role:m.role,content:m.content})),
         {role:'user',content:`ข้อมูล: ${context}\n\nคำถาม: ${msg}`}]
     })});
@@ -1793,7 +1839,11 @@ async function sendAI(ticker){
     const reply=d?.content?.[0]?.text||'ไม่ได้รับคำตอบ';
     aiHistory[ticker].push({role:'assistant',content:reply});
     const loading=document.getElementById('aiLoading');
-    if(loading){loading.id='';loading.textContent=reply;}
+    if(loading){
+      loading.id='';
+      // FIX: แปลง Markdown เป็น HTML ก่อนแสดง
+      loading.innerHTML=mdToHtml(reply);
+    }
     if(chat)chat.scrollTop=chat.scrollHeight;
   }catch(e){
     const loading=document.getElementById('aiLoading');
@@ -1953,12 +2003,12 @@ function showSignalPopup(ticker,price,s1,score){
           <div class="signal-stat-lbl">แนวต้าน R1</div>
         </div>
         <div class="signal-stat">
-          <div class="signal-stat-val">${((price-s1)/s1*100).toFixed(2)}%</div>
+          <div class="signal-stat-val" style="color:var(--text2)">+${((price-s1)/s1*100).toFixed(2)}%</div>
           <div class="signal-stat-lbl">ห่าง S1</div>
         </div>
         <div class="signal-stat">
-          <div class="signal-stat-val">${((r1-price)/price*100).toFixed(2)}%</div>
-          <div class="signal-stat-lbl">เป้าหมาย</div>
+          <div class="signal-stat-val" style="color:var(--green2)">+${((r1-price)/price*100).toFixed(2)}%</div>
+          <div class="signal-stat-lbl">เป้าหมาย R1</div>
         </div>
       </div>
       <div class="signal-ai">
@@ -2172,7 +2222,12 @@ function loadSettings(){
 function saveSettings(){
   const key=document.getElementById('apiKeyInput')?.value?.trim();
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
-  if(key){FINNHUB_KEY=key;localStorage.setItem('_fh_key',key);}
+  if(key){
+    FINNHUB_KEY=key;
+    try{localStorage.setItem('_fh_key',key);}catch{}
+    try{sessionStorage.setItem('_fh_key',key);}catch{}
+    try{document.cookie=`_fh_key=${key};max-age=31536000;path=/`;}catch{}
+  }
   PORT_SIZE=port;localStorage.setItem('_sp_portsize',port);
   toast('✅ บันทึกแล้ว');
   // lock API key ถ้ามี
@@ -2374,6 +2429,47 @@ buildTickerSelect();
 if(hasApiKey()){
   startLive();
 }
+
+// ── FIX: Restart live เมื่อกลับมาเปิดแอปจาก Home Screen ──
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    // โหลด key ใหม่จาก localStorage เผื่อ iOS ล้างไป
+    const saved=localStorage.getItem('_fh_key');
+    if(saved && saved.length>10) FINNHUB_KEY=saved;
+    if(hasApiKey()&&!isLive){
+      console.log('App resumed — restarting live...');
+      startLive();
+    } else if(hasApiKey()&&isLive){
+      // WS อาจตายไป — reconnect
+      if(!ws||ws.readyState>1) wsConnect();
+      // Fetch ราคาทันทีที่กลับมา
+      httpPoll();
+    }
+    updateDashboard();
+  }
+});
+
+// pageshow ครอบคลุม iOS Home Screen PWA
+window.addEventListener('pageshow',(e)=>{
+  if(e.persisted){
+    // หน้าถูก restore จาก bfcache — restart ทุกอย่าง
+    const saved=localStorage.getItem('_fh_key');
+    if(saved && saved.length>10) FINNHUB_KEY=saved;
+    if(hasApiKey()){
+      stopLive();
+      setTimeout(startLive,200);
+    }
+  }
+});
+
+// focus event สำหรับกรณี switch app
+window.addEventListener('focus',()=>{
+  if(hasApiKey()){
+    if(!isLive) startLive();
+    else if(!ws||ws.readyState>1) wsConnect();
+    httpPoll();
+  }
+});
 
 // ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
 // ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
