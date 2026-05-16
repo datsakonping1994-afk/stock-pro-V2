@@ -791,6 +791,16 @@ canvas.bigchart{width:100%;height:100%}
 // STOCK PRO v2 — Dark Premium Terminal
 // ═══════════════════════════════════════
 
+// ── DOM Cache — ต้อง define ก่อนทุกอย่าง ──
+const _domCache={};
+const _noCachePrefix=['price-v2-','chg-v2-','spark-'];
+function $id(id){
+  if(_noCachePrefix.some(p=>id.startsWith(p))) return document.getElementById(id);
+  if(!_domCache[id]) _domCache[id]=document.getElementById(id);
+  return _domCache[id];
+}
+function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
+
 // ── Data ──
 const stocks=[
   {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"8 พ.ค. 2026"},
@@ -1815,6 +1825,54 @@ function mdToHtml(text){
     .trim();
 }
 
+// ── callGemini: Claude Haiku → Gemini fallback (เหมือนเวอร์ชันเก่า) ──
+async function callGemini(systemPrompt, userPrompt, maxTokens=800){
+  // ลอง Claude Haiku ก่อน
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),30000);
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:maxTokens,
+        system:systemPrompt,
+        messages:[{role:'user',content:userPrompt}]
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      if(d.type!=='error'&&d?.content?.length){
+        return d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
+      }
+    }
+  }catch(e){console.warn('Claude error:',e);}
+  // Fallback: Gemini Flash
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),30000);
+    const r2=await fetch(WORKER+'/gemini/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents:[{parts:[{text:userPrompt}]}],
+        generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r2.ok){
+      const d2=await r2.json();
+      return d2?.candidates?.[0]?.content?.parts?.[0]?.text||null;
+    }
+  }catch(e){console.warn('Gemini fallback error:',e);}
+  return null;
+}
+
 async function sendAI(ticker){
   if(_aiSending)return;
   const input=document.getElementById('aiInput');
@@ -1836,21 +1894,13 @@ async function sendAI(ticker){
   const s1=getS1(ticker,s.p),r1=getR1(ticker,s.p),rsi=rsiData[ticker]||50;
   const context=`หุ้น ${ticker} (${s.n}) ราคา $${s.p} (${s.c>=0?'+':''}${s.c}%) | RSI ${rsi} | S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)} | MCap ${s.mktcap} | RevGrowth ${s.rev} | P/E ${s.pe||'N/A'} | Earn ${s.earn||'N/A'}`;
   try{
-    const res=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      model:'claude-sonnet-4-6',max_tokens:600,
-      system:'คุณคือที่ปรึกษาหุ้นมืออาชีพ ตอบภาษาไทยเข้าใจง่าย ห้ามใช้ศัพท์อังกฤษเทคนิค ตอบกระชับ ห้ามใช้ Markdown เช่น ## ** --- ให้ตอบเป็นข้อความธรรมดาและใช้ emoji แทน',
-      messages:[...aiHistory[ticker].slice(-6).map(m=>({role:m.role,content:m.content})),
-        {role:'user',content:`ข้อมูล: ${context}\n\nคำถาม: ${msg}`}]
-    })});
-    const d=await res.json();
-    const reply=d?.content?.[0]?.text||'ไม่ได้รับคำตอบ';
-    aiHistory[ticker].push({role:'assistant',content:reply});
+    const systemPrompt='คุณคือที่ปรึกษาหุ้นมืออาชีพ ตอบภาษาไทยเข้าใจง่าย ห้ามใช้ศัพท์อังกฤษเทคนิค ตอบกระชับ ห้ามใช้ Markdown เช่น ## ** --- ให้ตอบเป็นข้อความธรรมดาและใช้ emoji แทน';
+    const userPrompt=`ข้อมูล: ${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
+    const reply=await callGemini(systemPrompt, userPrompt, 600);
+    const replyText=reply||'❌ ไม่ได้รับคำตอบ กรุณาลองใหม่';
+    aiHistory[ticker].push({role:'assistant',content:replyText});
     const loading=document.getElementById('aiLoading');
-    if(loading){
-      loading.id='';
-      // FIX: แปลง Markdown เป็น HTML ก่อนแสดง
-      loading.innerHTML=mdToHtml(reply);
-    }
+    if(loading){loading.id='';loading.innerHTML=mdToHtml(replyText);}
     if(chat)chat.scrollTop=chat.scrollHeight;
   }catch(e){
     const loading=document.getElementById('aiLoading');
@@ -2146,75 +2196,10 @@ function maskKey(str){
   return str.slice(0,3)+'•'.repeat(Math.min(str.length-4,12))+str.slice(-2);
 }
 
-function lockSection(section){
-  if(section==='api'){
-    const key=document.getElementById('apiKeyInput')?.value?.trim();
-    if(!key){toast('⚠️ ใส่ API Key ก่อนล็อก');return;}
-    document.getElementById('apiKeyLocked').style.display='flex';
-    document.getElementById('apiKeyMasked').textContent=maskKey(key);
-    document.getElementById('apiKeyInput').style.display='none';
-    document.getElementById('apiLockBadge').style.display='';
-    localStorage.setItem('_api_locked','1');
-  } else if(section==='tg'){
-    const token=document.getElementById('tgToken')?.value?.trim();
-    const chatId=document.getElementById('tgChatId')?.value?.trim();
-    if(!token||!chatId){toast('⚠️ ใส่ Bot Token และ Chat ID ก่อนล็อก');return;}
-    document.getElementById('tgTokenLocked').style.display='flex';
-    document.getElementById('tgTokenMasked').textContent=maskKey(token);
-    document.getElementById('tgChatIdLocked').style.display='flex';
-    document.getElementById('tgChatIdMasked').textContent=maskKey(chatId);
-    document.getElementById('tgToken').style.display='none';
-    document.getElementById('tgChatId').style.display='none';
-    document.getElementById('tgLockBadge').style.display='';
-    localStorage.setItem('_tg_locked','1');
-  }
-}
-
-function unlockSection(section){
-  if(section==='api'){
-    document.getElementById('apiKeyLocked').style.display='none';
-    document.getElementById('apiKeyInput').style.display='';
-    document.getElementById('apiKeyInput').focus();
-    document.getElementById('apiLockBadge').style.display='none';
-    localStorage.removeItem('_api_locked');
-  } else if(section==='tg'){
-    document.getElementById('tgTokenLocked').style.display='none';
-    document.getElementById('tgChatIdLocked').style.display='none';
-    document.getElementById('tgToken').style.display='';
-    document.getElementById('tgChatId').style.display='';
-    document.getElementById('tgToken').focus();
-    document.getElementById('tgLockBadge').style.display='none';
-    localStorage.removeItem('_tg_locked');
-  }
-}
-
-function applyLockState(){
-  const apiLocked=localStorage.getItem('_api_locked')==='1';
-  const tgLocked=localStorage.getItem('_tg_locked')==='1';
-  if(apiLocked && FINNHUB_KEY){
-    document.getElementById('apiKeyLocked').style.display='flex';
-    document.getElementById('apiKeyMasked').textContent=maskKey(FINNHUB_KEY);
-    document.getElementById('apiKeyInput').style.display='none';
-    document.getElementById('apiLockBadge').style.display='';
-  } else {
-    document.getElementById('apiLockBadge').style.display='none';
-  }
-  if(tgLocked){
-    const token=localStorage.getItem('tgToken')||'';
-    const chatId=localStorage.getItem('tgChatId')||'';
-    if(token&&chatId){
-      document.getElementById('tgTokenLocked').style.display='flex';
-      document.getElementById('tgTokenMasked').textContent=maskKey(token);
-      document.getElementById('tgChatIdLocked').style.display='flex';
-      document.getElementById('tgChatIdMasked').textContent=maskKey(chatId);
-      document.getElementById('tgToken').style.display='none';
-      document.getElementById('tgChatId').style.display='none';
-      document.getElementById('tgLockBadge').style.display='';
-    }
-  } else {
-    document.getElementById('tgLockBadge').style.display='none';
-  }
-}
+// ── Lock functions (stub — ระบบ lock ถูกเอาออกแล้ว) ──
+function lockSection(){}
+function unlockSection(){}
+function applyLockState(){}
 
 // ── Settings ──
 function loadSettings(){
@@ -2722,15 +2707,9 @@ setTimeout(()=>{
   }
 }, 500);
 
-// ── DOM Cache — ลด getElementById calls (ไม่ cache card elements ที่ re-render) ──
-const _domCache={};
-const _noCachePrefix=['price-v2-','chg-v2-','spark-'];
-function $id(id){
-  if(_noCachePrefix.some(p=>id.startsWith(p))) return document.getElementById(id);
-  if(!_domCache[id]) _domCache[id]=document.getElementById(id);
-  return _domCache[id];
-}
-function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
+
+
+
 
 
 
@@ -4059,24 +4038,22 @@ function countdown(d){
 
 
 const WORKER_AI=WORKER;
-async function _callAI(sys, usr, maxTok=800){
-  try{
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),30000);
-    const r=await fetch(WORKER_AI,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTok,system:sys,messages:[{role:'user',content:usr}]}),
-      signal:ctrl.signal});
-    if(r.ok){const d=await r.json();return d?.content?.[0]?.text||null;}
-  }catch{}return null;
-}
 
 async function runAIMarketSummaryV2(){
   const up=stocks.filter(s=>s.c>0).length, dn=stocks.filter(s=>s.c<0).length;
   const topG=stocks.filter(s=>s.c>3).map(s=>`${s.t}+${s.c}%`).slice(0,5).join(', ');
   const topL=stocks.filter(s=>s.c<-3).map(s=>`${s.t}${s.c}%`).slice(0,5).join(', ');
+  const nearS=stocks.filter(s=>{const s1=getS1(s.t,s.p);return s.p>0&&((s.p-s1)/s1*100)<2;}).map(s=>s.t).slice(0,5).join(', ');
   const stats=getTradeStats();
-  const prompt=`ตลาดวันนี้: ขึ้น ${up} ลง ${dn} | ขึ้นแรง: ${topG||'-'} | ลงแรง: ${topL||'-'} | SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | ${stats?`Win Rate ${stats.winRate}%`:''} | สรุป 3 ประโยคภาษาไทยธรรมดา`;
-  return _callAI('ที่ปรึกษาหุ้น ตอบภาษาไทยธรรมดา ห้ามใช้ศัพท์เทคนิค', prompt, 300);
+  const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const prompt=`วิเคราะห์ตลาดหุ้น ${todayStr}
+ขึ้น ${up} ตัว / ลง ${dn} ตัว | SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}%
+ขึ้นแรง: ${topG||'ไม่มี'} | ลงแรง: ${topL||'ไม่มี'}
+ใกล้แนวรับ: ${nearS||'ไม่มี'}
+${stats?`Win Rate ${stats.winRate}% | ${stats.total} สัญญาณ`:''}
+
+วิเคราะห์ 3 หัวข้อ: 1)ภาพรวมตลาดวันนี้ 2)หุ้นน่าสนใจ 3)หุ้นที่ควรระวัง ตอบภาษาไทยธรรมดา ห้ามใช้ศัพท์เทคนิค`;
+  return callGemini('คุณคือที่ปรึกษาหุ้นที่พูดภาษาไทยแบบชาวบ้านเข้าใจได้ ห้ามใช้ศัพท์อังกฤษ เช่น RSI, bullish, pullback ให้เปลี่ยนเป็นคำไทย ตอบกระชับ', prompt, 600);
 }
 
 
@@ -4108,9 +4085,13 @@ async function loadEconNews(cat, btn){
 }
 
 async function _fetchEconNews(query){
+  const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const proxies=[
-    `https://corsproxy.io/?url=${encodeURIComponent(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`)}`,
+    `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`,
   ];
   for(const url of proxies){
     try{
