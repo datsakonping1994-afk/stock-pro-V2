@@ -444,9 +444,9 @@ canvas.bigchart{width:100%;height:100%}
 
       <!-- Quick Actions -->
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button onclick="document.getElementById('heatmapModal').style.display='block';renderHeatmapV2()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🌡️ Heatmap</button>
-        <button onclick="document.getElementById('earningsModal').style.display='block';fetchAndRenderEarnings()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">📅 Earnings</button>
-        <button onclick="document.getElementById('aiSummaryModal').style.display='block'" style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:10px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🤖 AI Summary</button>
+        <button onclick="const m=document.getElementById('heatmapModal');m.style.display='flex';m.style.flexDirection='column';renderHeatmapV2()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🌡️ Heatmap</button>
+        <button onclick="const m=document.getElementById('earningsModal');m.style.display='flex';m.style.flexDirection='column';fetchAndRenderEarnings()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">📅 Earnings</button>
+        <button onclick="const m=document.getElementById('aiSummaryModal');m.style.display='flex';m.style.flexDirection='column'" style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:10px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🤖 AI Summary</button>
       </div>
       <!-- SPY/QQQ -->
       <div class="index-row">
@@ -613,32 +613,34 @@ canvas.bigchart{width:100%;height:100%}
 
 
 <!-- Heatmap Modal -->
-<div id="heatmapModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
-    <button onclick="document.getElementById('heatmapModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+<div id="heatmapModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);flex-direction:column;overflow:hidden">
+  <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
+    <button onclick="document.getElementById('heatmapModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text)">🌡️ HEATMAP</div>
   </div>
-  <div id="heatmapGrid" style="padding:14px"></div>
+  <div id="heatmapGrid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
 
 <!-- Earnings Modal -->
-<div id="earningsModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
-    <button onclick="document.getElementById('earningsModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+<div id="earningsModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);flex-direction:column;overflow:hidden">
+  <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
+    <button onclick="document.getElementById('earningsModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
   </div>
-  <div id="earningsBody" style="padding:14px"></div>
+  <div id="earningsBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
 
 <!-- AI Summary Modal -->
-<div id="aiSummaryModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);overflow-y:auto;padding-bottom:80px">
-  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(8,10,15,0.95);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10">
-    <button onclick="document.getElementById('aiSummaryModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:7px 14px;color:var(--text2);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">← Back</button>
+<div id="aiSummaryModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);flex-direction:column;overflow:hidden">
+  <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
+    <button onclick="document.getElementById('aiSummaryModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">🤖 AI Market Summary</div>
   </div>
-  <div id="aiSummaryBody" style="padding:16px;font-family:'Inter',sans-serif;font-size:13px;line-height:1.9;color:var(--text2)">กด "วิเคราะห์" เพื่อเริ่ม</div>
-  <div style="padding:0 16px 16px">
-    <button id="aiSummaryBtn" onclick="triggerAISummary()" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:12px 24px;color:var(--gold);font-size:13px;cursor:pointer;width:100%;font-family:'Syne',sans-serif;font-weight:600">🤖 วิเคราะห์ตลาดทั้งหมด</button>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+    <div id="aiSummaryBody" style="padding:16px;font-family:'Inter',sans-serif;font-size:13px;line-height:1.9;color:var(--text2)">กด "วิเคราะห์" เพื่อเริ่ม</div>
+    <div style="padding:0 16px 80px">
+      <button id="aiSummaryBtn" onclick="triggerAISummary()" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:12px 24px;color:var(--gold);font-size:13px;cursor:pointer;width:100%;font-family:'Syne',sans-serif;font-weight:600">🤖 วิเคราะห์ตลาดทั้งหมด</button>
+    </div>
   </div>
 </div>
 </div><!-- /content -->
@@ -819,15 +821,32 @@ window._clockTimer=setInterval(()=>{
 
 // ── Navigation ──
 function navTo(page, el){
+  // ปิด modal ทั้งหมดก่อน (ป้องกัน modal ค้างทับหน้า)
+  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>{
+    const m=document.getElementById(id);
+    if(m) m.style.display='none';
+  });
+  // ปิด drawer ถ้าเปิดอยู่
+  const drawer=document.getElementById('drawer');
+  if(drawer&&drawer.classList.contains('open')) drawer.classList.remove('open');
+
+  // สลับหน้าทันที ก่อนทำงานหนัก
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
+  const targetPage=document.getElementById('page-'+page);
+  if(targetPage) targetPage.classList.add('active');
   el.classList.add('active');
-  if(page==='stocks') renderCards();
-  if(page==='alerts') renderAlerts();
-  if(page==='dash') updateDashboard();
-  if(page==='settings') loadSettings();
-  if(page==='news') loadEconNews('market', document.querySelector('#newsCatRow .sector-btn'));
+  // scroll กลับขึ้นบน
+  const content=document.getElementById('content');
+  if(content) content.scrollTop=0;
+  // ทำงานหนักใน requestAnimationFrame ถัดไป (หลัง UI repaint)
+  requestAnimationFrame(()=>{
+    if(page==='stocks') renderCards();
+    else if(page==='alerts') renderAlerts();
+    else if(page==='dash') updateDashboard();
+    else if(page==='settings') loadSettings();
+    else if(page==='news') loadEconNews('market', document.querySelector('#newsCatRow .sector-btn'));
+  });
 }
 
 // ── Toast ──
@@ -947,15 +966,31 @@ function makeCard(s){
       </div>
     </div>
   `;
-  // Load logo — multi-source fallback chain
-  loadLogo(s.t, 'logo-'+s.t, 36);
+  // Load logo — throttled queue
+  _loadLogoNow(s.t, 'logo-'+s.t, 36);
   return div;
 }
 
 const LOGO_MAP = {};
 const _logoCache = {}; // cache URL ที่สำเร็จแล้ว ไม่ต้อง retry
 
-function loadLogo(ticker, elId, size){
+let _logoQueue=[];
+let _logoRunning=false;
+function loadLogo(ticker, elId, size, delay=0){
+  _logoQueue.push({ticker,elId,size,delay});
+  if(!_logoRunning) _processLogoQueue();
+}
+async function _processLogoQueue(){
+  _logoRunning=true;
+  while(_logoQueue.length){
+    const {ticker,elId,size,delay}=_logoQueue.shift();
+    if(delay>0) await new Promise(r=>setTimeout(r,delay));
+    _loadLogoNow(ticker,elId,size);
+    await new Promise(r=>setTimeout(r,30)); // throttle: max ~33 logos/sec
+  }
+  _logoRunning=false;
+}
+function _loadLogoNow(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
 
@@ -1100,20 +1135,34 @@ function getVisibleStocks(){
 
 function renderCards(){
   const grid=document.getElementById('cardsGrid');
+  if(!grid) return;
   grid.innerHTML='';
-  getVisibleStocks().forEach(s=>{
-    const card=makeCard(s);
-    grid.appendChild(card);
-  });
-  // Draw sparklines after DOM
-  setTimeout(()=>{
-    stocks.forEach(s=>{
-      const canvas=document.getElementById('spark-'+s.t);
-      if(canvas&&candleCache[s.t]?.data?.c){
-        drawSpark(canvas,candleCache[s.t].data.c.slice(-30),s.c>=0);
-      }
-    });
-  },50);
+  const list=getVisibleStocks();
+  // render ทีละ 10 ตัว ไม่ block UI
+  const CHUNK=10;
+  let i=0;
+  const fragment=document.createDocumentFragment();
+  function renderChunk(){
+    const end=Math.min(i+CHUNK,list.length);
+    for(;i<end;i++){
+      fragment.appendChild(makeCard(list[i]));
+    }
+    grid.appendChild(fragment);
+    if(i<list.length){
+      requestAnimationFrame(renderChunk);
+    } else {
+      // Draw sparklines หลัง render ครบ
+      setTimeout(()=>{
+        list.forEach(s=>{
+          const canvas=document.getElementById('spark-'+s.t);
+          if(canvas&&candleCache[s.t]?.data?.c){
+            drawSpark(canvas,candleCache[s.t].data.c.slice(-30),s.c>=0);
+          }
+        });
+      },50);
+    }
+  }
+  requestAnimationFrame(renderChunk);
 }
 
 // ── Dashboard ──
@@ -1863,42 +1912,56 @@ if(hasApiKey()){
 // ── Yahoo Finance: ค้นหา proxy ที่ใช้ได้ก่อน แล้วดึงทุกตัวพร้อมกัน ──
 let _workingProxy=null; // cache proxy ที่ใช้ได้
 
+// Worker ของเราเอง — route /yahoo/?url=... ส่งต่อไป Yahoo
+const _OWN_WORKER_YAHOO = url =>
+  `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`;
+
 async function _detectWorkingProxy(){
   if(_workingProxy) return _workingProxy;
   const testUrl=`https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d`;
   const proxies=[
+    // Worker ของเราก่อน — เสถียรที่สุด
+    url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
+    url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
     url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
     url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    url=>`https://thingproxy.freeboard.io/fetch/${url}`,
   ];
-  // ลองพร้อมกันทุกตัว เอาตัวแรกที่ตอบกลับได้
+  // ลองทุกตัวพร้อมกัน เอาตัวแรกที่ได้ข้อมูล
   try{
     const result=await Promise.any(proxies.map(async mkProxy=>{
       const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const tid=setTimeout(()=>ctrl.abort(),6000);
       const r=await fetch(mkProxy(testUrl),{signal:ctrl.signal});
       clearTimeout(tid);
       if(!r.ok) throw new Error('bad');
-      const d=await r.json();
+      const text=await r.text();
+      // allorigins returns {contents:'...'}
+      let d;
+      try{ d=JSON.parse(text); }catch{ throw new Error('no json'); }
+      if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
       if(!d?.chart?.result?.[0]) throw new Error('no data');
-      return mkProxy; // return the working proxy function
+      return mkProxy;
     }));
     _workingProxy=result;
     return result;
-  }catch{ return null; }
+  }catch{ return proxies[0]; } // fallback to our worker anyway
 }
 
 async function fetchYahooQuote(ticker){
   const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
-  const mkProxy=_workingProxy||(url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+  const mkProxy=_workingProxy||(url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`);
   try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const tid=setTimeout(()=>ctrl.abort(),6000);
     const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) throw new Error('bad');
-    const d=await r.json();
+    let text=await r.text();
+    let d;
+    try{ d=JSON.parse(text); }catch{ return null; }
+    // allorigins wraps in {contents:'...'}
+    if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
     const res=d?.chart?.result?.[0];
     if(res){
       const meta=res.meta;
