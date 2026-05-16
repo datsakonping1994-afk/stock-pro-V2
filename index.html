@@ -625,32 +625,22 @@ canvas.bigchart{width:100%;height:100%}
     <div class="settings-page">
 
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>API & Connection</span>
-          <span id="apiLockBadge" style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px">🔒 ล็อกแล้ว</span>
-        </div>
+        <div class="settings-section-title">API & Connection</div>
         <div class="settings-row" id="apiKeyRow">
           <div style="width:100%">
             <div class="settings-label">Finnhub API Key</div>
-            <div class="settings-sublabel">ใส่ key เพื่อดึงราคาจริง</div>
-            <!-- แสดงตอนล็อก -->
-            <div class="locked-field" id="apiKeyLocked" style="display:none">
-              <span class="lock-icon">🔒</span>
-              <span id="apiKeyMasked">••••••••••••••••</span>
-              <button class="unlock-btn" style="margin-left:auto" onclick="unlockSection('api')">ปลดล็อก</button>
-            </div>
-            <!-- แสดงตอนแก้ไข -->
-            <input class="settings-input full" id="apiKeyInput" type="password" placeholder="ใส่ API Key...">
+            <div class="settings-sublabel">ใส่ key เพื่อดึงราคา real-time</div>
+            <input class="settings-input full" id="apiKeyInput" type="text" placeholder="ใส่ API Key..." autocomplete="off" spellcheck="false">
           </div>
         </div>
         <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
-        <div class="settings-row" style="border-bottom:none" id="apiActionRow">
+        <div class="settings-row" style="border-bottom:none">
           <div></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="settings-btn" onclick="saveSettings()">🔒 บันทึก & ล็อก</button>
+            <button class="settings-btn" onclick="saveSettings()">💾 บันทึก</button>
             <button class="settings-btn" id="testApiBtn" onclick="testApiKey()">🔑 ทดสอบ Key</button>
           </div>
         </div>
@@ -658,28 +648,16 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Telegram Notifications</span>
-          <span id="tgLockBadge" style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px">🔒 ล็อกแล้ว</span>
-        </div>
+        <div class="settings-section-title">Telegram Notifications</div>
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Bot Token</div>
-            <div class="locked-field" id="tgTokenLocked" style="display:none">
-              <span class="lock-icon">🔒</span>
-              <span id="tgTokenMasked">••••••••••••••••</span>
-              <button class="unlock-btn" style="margin-left:auto" onclick="unlockSection('tg')">ปลดล็อก</button>
-            </div>
             <input class="settings-input full" id="tgToken" type="text" placeholder="123456:ABCdef...">
           </div>
         </div>
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Chat ID</div>
-            <div class="locked-field" id="tgChatIdLocked" style="display:none">
-              <span class="lock-icon">🔒</span>
-              <span id="tgChatIdMasked">••••••••</span>
-            </div>
             <input class="settings-input full" id="tgChatId" type="text" placeholder="เช่น 8790390001">
           </div>
         </div>
@@ -687,10 +665,10 @@ canvas.bigchart{width:100%;height:100%}
           <div class="settings-label">เปิดแจ้งเตือน</div>
           <div class="toggle" id="tgToggle" onclick="toggleTG()"></div>
         </div>
-        <div class="settings-row" style="border-bottom:none" id="tgActionRow">
+        <div class="settings-row" style="border-bottom:none">
           <div></div>
           <div style="display:flex;gap:8px">
-            <button class="settings-btn" onclick="saveTG()">🔒 บันทึก & ล็อก</button>
+            <button class="settings-btn" onclick="saveTG()">💾 บันทึก</button>
             <button class="settings-btn" onclick="testTG()">🧪 ทดสอบ</button>
           </div>
         </div>
@@ -2101,15 +2079,11 @@ function closeSignal(){
 
 // ── Telegram ──
 function saveTG(){
-  // FIX: ถ้า input ถูก lock/ซ่อน ให้ใช้ค่าจาก localStorage แทน
-  const tEl=document.getElementById('tgToken');
-  const cEl=document.getElementById('tgChatId');
-  const t=(tEl?.style.display!=='none'?tEl?.value?.trim():'')||localStorage.getItem('tgToken')||'';
-  const c=(cEl?.style.display!=='none'?cEl?.value?.trim():'')||localStorage.getItem('tgChatId')||'';
+  const t=document.getElementById('tgToken')?.value?.trim();
+  const c=document.getElementById('tgChatId')?.value?.trim();
   if(t) localStorage.setItem('tgToken',t);
   if(c) localStorage.setItem('tgChatId',c);
   toast('✅ บันทึก Telegram แล้ว');
-  if(t&&c) lockSection('tg');
 }
 function toggleTG(){
   const el=document.getElementById('tgToggle');
@@ -2244,17 +2218,14 @@ function applyLockState(){
 
 // ── Settings ──
 function loadSettings(){
-  document.getElementById('apiKeyInput').value=FINNHUB_KEY;
+  document.getElementById('apiKeyInput').value=FINNHUB_KEY||'';
   document.getElementById('portSizeInput').value=PORT_SIZE;
   document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
   document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
   if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
-  applyLockState();
 }
 function saveSettings(){
-  // FIX: ถ้า input ถูก lock/ซ่อน ให้ใช้ key ที่มีอยู่แล้ว
-  const inputEl=document.getElementById('apiKeyInput');
-  const key=(inputEl?.style.display!=='none' ? inputEl?.value?.trim() : '') || FINNHUB_KEY;
+  const key=document.getElementById('apiKeyInput')?.value?.trim();
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
   if(key && key.length>10){
     FINNHUB_KEY=key;
@@ -2262,13 +2233,21 @@ function saveSettings(){
     try{sessionStorage.setItem('_fh_key',key);}catch{}
     try{document.cookie=`_fh_key=${key};max-age=31536000;path=/`;}catch{}
   }
-  PORT_SIZE=port;localStorage.setItem('_sp_portsize',port);
-  toast('✅ บันทึกแล้ว');
-  if(inputEl?.value?.trim()) lockSection('api');
-  // restart live
+  PORT_SIZE=port;
+  localStorage.setItem('_sp_portsize',port);
+  // restart live ทันที
+  const statusEl=document.getElementById('statusText');
+  const liveDot=document.getElementById('liveDot');
   if(hasApiKey()){
     stopLive();
-    setTimeout(startLive,300);
+    if(statusEl) statusEl.textContent='🔄 กำลังเชื่อมต่อ...';
+    if(liveDot) liveDot.style.background='var(--gold)';
+    setTimeout(()=>{
+      startLive();
+      toast('✅ บันทึกแล้ว — เชื่อมต่อ Finnhub...');
+    },300);
+  } else {
+    toast('✅ บันทึกแล้ว');
   }
 }
 
@@ -2363,10 +2342,12 @@ function stopLive(){
 }
 
 function startLive(){
-  if(isLive) stopLive(); // reset ก่อนเสมอ ป้องกัน stack
+  if(isLive) stopLive();
   isLive=true;
-  $id('statusText').textContent='Live';
-  $id('liveDot').style.background='var(--green)';
+  const statusEl=$id('statusText');
+  const liveDot=$id('liveDot');
+  if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
+  if(liveDot) liveDot.style.background='var(--gold)';
 
   pollTimer=setInterval(httpPoll,15000);
   signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
@@ -2383,11 +2364,14 @@ function wsConnect(){
   if(ws){try{ws.close();}catch{} ws=null;}
   ws=new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_KEY}`);
   ws.onopen=()=>{
-    _wsReconnectCount=0; // reset on success
+    _wsReconnectCount=0;
     stocks.slice(0,50).forEach(s=>ws.send(JSON.stringify({type:'subscribe',symbol:s.t})));
     clearInterval(wsPing);
     wsPing=setInterval(()=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'ping'}));},20000);
-    $id('statusText').textContent='WS Live';
+    const statusEl=$id('statusText');
+    const liveDot=$id('liveDot');
+    if(statusEl) statusEl.textContent='🟢 WS Live';
+    if(liveDot) liveDot.style.background='var(--green)';
   };
   ws.onmessage=e=>{
     try{
@@ -2436,9 +2420,11 @@ async function httpPoll(){
         const d=await r.json();
         if(d.c>0){s.p=d.c;s.c=d.dp||0;liveCache[s.t]=Date.now();updateCardLive(s);}
       }catch{}
-      await new Promise(r=>setTimeout(r,200)); // 200ms ระหว่าง request ป้องกัน burst
+      await new Promise(r=>setTimeout(r,200));
     }
-    $id('statusText').textContent=`${stocks.length} ตัว`;
+    const liveDot=$id('liveDot');
+    if(liveDot) liveDot.style.background='var(--green)';
+    $id('statusText').textContent=`✅ Finnhub Live`;
   }finally{
     _pollInFlight=false;
   }
@@ -2518,14 +2504,27 @@ window.addEventListener('focus',()=>{
 });
 
 // ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
-// ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
-// ── Yahoo Finance proxy chain — ลองทุกตัวพร้อมกัน เอาตัวแรกที่สำเร็จ ──
-// เรียงตาม stability: public proxies ที่เชื่อถือได้ก่อน worker ส่วนตัว
+// ── Yahoo Finance proxy chain — ลองทุกตัว เอาตัวแรกที่สำเร็จ ──
+// Yahoo endpoint หลายตัว + proxy หลากหลายที่มา
+const _YAHOO_ENDPOINTS = [
+  t=>`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`,
+  t=>`https://query2.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`,
+  t=>`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${t}`,
+  t=>`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${t}`,
+];
+
 const _YAHOO_PROXIES = [
+  // CORS proxies สาธารณะ
   url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
   url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
   url=>`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
   url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url=>`https://cors-anywhere.herokuapp.com/${url}`,
+  url=>`https://crossorigin.me/${url}`,
+  url=>`https://yacdn.org/proxy/${url}`,
+  url=>`https://cors.sh/?${url}`,
+  // Workers ส่วนตัว
   url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
   url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
 ];
@@ -2535,9 +2534,54 @@ let _workingProxy=null;
 function _parseYahooText(text){
   let d;
   try{ d=JSON.parse(text); }catch{ return null; }
+  // allorigins /get wraps in {contents:'...'}
   if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
   if(d?.body) try{ d=JSON.parse(d.body); }catch{}
-  return d?.chart?.result?.[0] ? d : null;
+  // v8/chart response
+  if(d?.chart?.result?.[0]) return {_type:'chart', data:d};
+  // v7/quote response
+  if(d?.quoteResponse?.result?.[0]) return {_type:'quote', data:d};
+  return null;
+}
+
+function _extractQuoteFromParsed(parsed){
+  if(!parsed) return null;
+  if(parsed._type==='chart'){
+    const res=parsed.data?.chart?.result?.[0];
+    if(!res) return null;
+    const meta=res.meta;
+    const price=meta.regularMarketPrice||meta.previousClose;
+    const prev=meta.chartPreviousClose||meta.regularMarketPreviousClose||meta.previousClose;
+    if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
+  }
+  if(parsed._type==='quote'){
+    const res=parsed.data?.quoteResponse?.result?.[0];
+    if(!res) return null;
+    const price=res.regularMarketPrice;
+    const chg=res.regularMarketChangePercent;
+    if(price>0) return{p:+price.toFixed(2),c:+(chg||0).toFixed(2)};
+  }
+  return null;
+}
+
+// cache candle data ที่ parse แล้วสำหรับ sparklines
+function _extractCandleFromParsed(parsed){
+  if(!parsed||parsed._type!=='chart') return null;
+  const res=parsed.data?.chart?.result?.[0];
+  if(!res||!res.timestamp||res.timestamp.length<5) return null;
+  const q=res.indicators?.quote?.[0];
+  if(!q) return null;
+  const c=[],h=[],l=[],o=[],v=[],t=[];
+  for(let i=0;i<res.timestamp.length;i++){
+    if(q.close[i]==null) continue;
+    c.push(q.close[i]);
+    h.push(q.high[i]||q.close[i]);
+    l.push(q.low[i]||q.close[i]);
+    o.push(q.open[i]||q.close[i]);
+    v.push(q.volume[i]||0);
+    t.push(res.timestamp[i]);
+  }
+  return c.length>=5?{c,h,l,o,v,t}:null;
 }
 
 async function _tryProxy(mkProxy, url, timeout=6000){
@@ -2548,18 +2592,19 @@ async function _tryProxy(mkProxy, url, timeout=6000){
     clearTimeout(tid);
     if(!r.ok) return null;
     const text=await r.text();
-    const d=_parseYahooText(text);
-    if(!d) return null;
-    return {data:d, proxy:mkProxy};
+    const parsed=_parseYahooText(text);
+    if(!parsed) return null;
+    return {parsed, proxy:mkProxy};
   }catch{ clearTimeout(tid); return null; }
 }
 
 async function _detectWorkingProxy(){
   if(_workingProxy) return _workingProxy;
-  const testUrl=`https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d`;
+  // ลอง endpoint v8 + proxy ทุกตัวพร้อมกัน เอาตัวแรกที่ได้ข้อมูล
+  const testEndpoint=_YAHOO_ENDPOINTS[0]('AAPL');
   try{
     const result=await Promise.any(_YAHOO_PROXIES.map(async mkProxy=>{
-      const r=await _tryProxy(mkProxy, testUrl, 7000);
+      const r=await _tryProxy(mkProxy, testEndpoint, 7000);
       if(!r) throw new Error('fail');
       return mkProxy;
     }));
@@ -2569,25 +2614,28 @@ async function _detectWorkingProxy(){
 }
 
 async function fetchYahooQuote(ticker){
-  const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
-  // ถ้ามี working proxy ให้ลองก่อน แล้ว fallback ถ้าไม่ได้
-  const proxiesToTry = _workingProxy
-    ? [_workingProxy, ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy)]
-    : _YAHOO_PROXIES;
-  for(const mkProxy of proxiesToTry){
-    const result=await _tryProxy(mkProxy, yahooUrl, 6000);
-    if(result){
-      _workingProxy=mkProxy; // cache proxy ที่สำเร็จ
-      const res=result.data?.chart?.result?.[0];
-      if(res){
-        const meta=res.meta;
-        const price=meta.regularMarketPrice||meta.previousClose;
-        const prev=meta.chartPreviousClose||meta.regularMarketPreviousClose||meta.previousClose;
-        if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
-      }
+  // สร้าง combo ทุก endpoint x proxy — ลองพร้อมกัน เอาตัวแรกที่ได้ราคา
+  const combos=[];
+  for(const mkEndpoint of _YAHOO_ENDPOINTS){
+    const url=mkEndpoint(ticker);
+    // ลอง working proxy ก่อน ถ้ามี
+    if(_workingProxy) combos.push({mkProxy:_workingProxy, url});
+    for(const mkProxy of _YAHOO_PROXIES){
+      if(mkProxy===_workingProxy) continue;
+      combos.push({mkProxy, url});
     }
   }
-  return null;
+  try{
+    const result=await Promise.any(combos.map(async ({mkProxy,url})=>{
+      const r=await _tryProxy(mkProxy, url, 6000);
+      if(!r) throw new Error('fail');
+      const q=_extractQuoteFromParsed(r.parsed);
+      if(!q||q.p<=0) throw new Error('no price');
+      _workingProxy=mkProxy; // cache ตัวที่สำเร็จ
+      return q;
+    }));
+    return result;
+  }catch{ return null; }
 }
 
 // ── fetchSingleQuoteFast: Finnhub ถ้ามี key, Yahoo ถ้าไม่มี ──
@@ -2904,41 +2952,21 @@ async function fetchCandles(ticker, days=60){
     const proxiesToUse = _workingProxy
       ? [_workingProxy, ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy)]
       : _YAHOO_PROXIES;
-    let parsedJson=null;
-    for(const mkProxy of proxiesToUse){
-      try{
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),6000);
-        const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(!r||!r.ok) continue;
-        const text=await r.text();
-        const d=_parseYahooText(text);
-        if(d?.chart?.result?.[0]){ _workingProxy=mkProxy; parsedJson=d; break; }
-      }catch{}
-    }
-    if(parsedJson){
-      const d=parsedJson;
-      const res=d?.chart?.result?.[0];
-      if(res&&res.timestamp&&res.timestamp.length>=5){
-        const q=res.indicators.quote[0];
-        const n=res.timestamp.length;
-        const c=[],h=[],l=[],o=[],v=[],t=[];
-        for(let i=0;i<n;i++){
-          if(q.close[i]==null) continue;
-          c.push(q.close[i]);
-          h.push(q.high[i]||q.close[i]);
-          l.push(q.low[i]||q.close[i]);
-          o.push(q.open[i]||q.close[i]);
-          v.push(q.volume[i]||0);
-          t.push(res.timestamp[i]);
-        }
-        if(c.length>=5){
-          const data={c,h,l,o,v,t};
-          candleCache[ticker]={data,ts:Date.now(),days};
-          return data;
-        }
-      }
+    let candleData=null;
+    // ลองทุก proxy พร้อมกัน เอาตัวแรกที่ได้ candle
+    try{
+      candleData=await Promise.any(proxiesToUse.map(async mkProxy=>{
+        const r=await _tryProxy(mkProxy, yahooUrl, 7000);
+        if(!r) throw new Error('fail');
+        const c=_extractCandleFromParsed(r.parsed);
+        if(!c) throw new Error('no candle');
+        _workingProxy=mkProxy;
+        return c;
+      }));
+    }catch{}
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days};
+      return candleData;
     }
   }catch(e){}
   finally{ _candleFetching.delete(ticker); }
