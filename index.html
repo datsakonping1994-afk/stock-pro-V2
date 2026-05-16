@@ -2449,20 +2449,19 @@ buildTickerSelect();
 
 // ── Auto-start with retry for iOS PWA ──
 function _tryStartLive(attempt=0){
-  // โหลด key จากทุก storage ทุกครั้ง
+  // โหลด key จากทุก storage — ถ้าไม่มีให้ใช้ค่าที่ hardcode ไว้
   const k = localStorage.getItem('_fh_key')
     || sessionStorage.getItem('_fh_key')
     || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
-    || '';
+    || FINNHUB_KEY; // ← ใช้ hardcoded key เป็น fallback
   if(k && k.length>10) FINNHUB_KEY=k;
 
   if(hasApiKey()){
     if(!isLive) startLive();
-    else httpPoll(); // refresh ราคาทันที
+    else httpPoll();
     return;
   }
-  // ยังไม่มี key — retry สูงสุด 5 ครั้ง ทุก 500ms (iOS อาจโหลด localStorage ช้า)
-  if(attempt<5){
+  if(attempt<3){
     setTimeout(()=>_tryStartLive(attempt+1), 500);
   }
 }
