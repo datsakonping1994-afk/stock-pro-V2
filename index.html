@@ -1336,8 +1336,6 @@ function makeCard(s){
       </div>
     </div>
   `;
-  // Load logo — throttled queue
-  _loadLogoNow(s.t, 'logo-'+s.t, 36);
   return div;
 }
 
@@ -1517,13 +1515,17 @@ function renderCards(){
   // render ทีละ 10 ตัว ไม่ block UI
   const CHUNK=10;
   let i=0;
-  const fragment=document.createDocumentFragment();
   function renderChunk(){
+    const fragment=document.createDocumentFragment();
+    const batch=[];
     const end=Math.min(i+CHUNK,list.length);
     for(;i<end;i++){
+      batch.push(list[i]);
       fragment.appendChild(makeCard(list[i]));
     }
     grid.appendChild(fragment);
+    // โหลด logo หลัง append เข้า DOM — element มีอยู่แล้ว
+    batch.forEach(s=>_loadLogoNow(s.t,'logo-'+s.t,36));
     if(i<list.length){
       requestAnimationFrame(renderChunk);
     } else {
