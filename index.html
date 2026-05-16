@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>STOCK PRO ◈</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -30,6 +30,9 @@
   --glow-gold:rgba(201,168,76,0.15);
   --glow-ice:rgba(100,210,255,0.12);
   --glow-green:rgba(0,230,118,0.12);
+  --yellow:#ffd700;
+  --accent:#c9a84c;
+  --dim:#4a5568;
 }
 html,body{height:100%;background:var(--bg0);color:var(--text);overflow:hidden}
 body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
@@ -347,6 +350,20 @@ canvas.bigchart{width:100%;height:100%}
   box-shadow:0 8px 32px rgba(0,0,0,0.4);
 }
 @keyframes toastIn{from{opacity:0;top:calc(env(safe-area-inset-top) + 50px)}to{opacity:1;top:calc(env(safe-area-inset-top) + 60px)}}
+
+/* ── EARNINGS TABLE ── */
+.earn-hdr{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:6px 10px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.earn-row{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:10px;border-radius:10px;margin-bottom:6px;border:1px solid var(--border);align-items:center;cursor:pointer;transition:all 0.15s}
+.earn-row:active{opacity:0.8}
+.earn-ticker{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
+.earn-name{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.earn-date{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.earn-eps{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
+.earn-rev{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
+.earn-badge{font-size:9px;font-weight:600;padding:3px 6px;border-radius:6px;text-align:center;white-space:nowrap}
+.earn-done{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
+.earn-soon{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25)}
+.earn-grp{font-size:10px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 2px 4px;margin-top:8px}
 
 /* ── SCROLLBAR ── */
 #content::-webkit-scrollbar{width:3px}
@@ -754,6 +771,7 @@ const sectorMap={
   'สุขภาพ':['LLY','NVO','ISRG','TMDX','HIMS'],
   'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL'],
   'EV':['TSLA','RIVN','LCID'],
+  'LatAm':['MELI'],
   'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG'],
   'พลังงาน':['XOM','EOSE','SLNH','MP'],
 };
@@ -915,93 +933,37 @@ function makeCard(s){
   return div;
 }
 
-const LOGO_MAP = {
-  'AAPL': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BQVBMPC90ZXh0Pjwvc3ZnPg==',
-  'MSFT': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDBhNGVmIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NU0ZUPC90ZXh0Pjwvc3ZnPg==',
-  'GOOGL': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNDI4NWY0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5HPC90ZXh0Pjwvc3ZnPg==',
-  'META': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA4MmZiIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5mPC90ZXh0Pjwvc3ZnPg==',
-  'AMZN': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRkY5OTAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5hPC90ZXh0Pjwvc3ZnPg==',
-  'TSLA': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjY2MwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5UPC90ZXh0Pjwvc3ZnPg==',
-  'NVDA': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNzZiOTAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OVkRBPC90ZXh0Pjwvc3ZnPg==',
-  'AMD': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZWQxYzI0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BTUQ8L3RleHQ+PC9zdmc+',
-  'INTC': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA3MWM1Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5pbnRlbDwvdGV4dD48L3N2Zz4=',
-  'AVGO': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjY2MwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BVkdPPC90ZXh0Pjwvc3ZnPg==',
-  'ASML': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA5ZmUzIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BU01MPC90ZXh0Pjwvc3ZnPg==',
-  'QCOM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMzI1M2RjIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5RQ09NPC90ZXh0Pjwvc3ZnPg==',
-  'AMAT': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BTUFUPC90ZXh0Pjwvc3ZnPg==',
-  'LRCX': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA1ZGFhIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5MQU08L3RleHQ+PC9zdmc+',
-  'MU': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjYzQxMjMwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NVTwvdGV4dD48L3N2Zz4=',
-  'TSM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA5ZmRhIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5UU008L3RleHQ+PC9zdmc+',
-  'ARM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA5MUJEIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BUk08L3RleHQ+PC9zdmc+',
-  'CRDO': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMWExYTJlIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5DUkQ8L3RleHQ+PC9zdmc+',
-  'NVTS': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNmUyZGU1Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OVlQ8L3RleHQ+PC9zdmc+',
-  'CRM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA5RURCIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5DUk08L3RleHQ+PC9zdmc+',
-  'ADBE': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRkYwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BZTwvdGV4dD48L3N2Zz4=',
-  'NOW': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNjJkODRlIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OT1c8L3RleHQ+PC9zdmc+',
-  'SNOW': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMjlCNUU4Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj7inYQ8L3RleHQ+PC9zdmc+',
-  'DDOG': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNzc0QUE0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5ERDwvdGV4dD48L3N2Zz4=',
-  'MDB': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDBFRDY0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NREI8L3RleHQ+PC9zdmc+',
-  'NET': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRjQ4MTIwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5ORVQ8L3RleHQ+PC9zdmc+',
-  'PLTR': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMjUyNTI1Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5QTFQ8L3RleHQ+PC9zdmc+',
-  'CRWD': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRTIwMDJBIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5DV0Q8L3RleHQ+PC9zdmc+',
-  'NFLX': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRTUwOTE0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OPC90ZXh0Pjwvc3ZnPg==',
-  'RBRK': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA1QkQ0Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5SQks8L3RleHQ+PC9zdmc+',
-  'V': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMUExRjcxIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5WSVNBPC90ZXh0Pjwvc3ZnPg==',
-  'MA': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRUIwMDFCIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NQTwvdGV4dD48L3N2Zz4=',
-  'PYPL': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5QUDwvdGV4dD48L3N2Zz4=',
-  'JPM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5KUE08L3RleHQ+PC9zdmc+',
-  'HOOD': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDBDODA1Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5SSDwvdGV4dD48L3N2Zz4=',
-  'SOFI': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNzk1RUM2Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5Tb0ZpPC90ZXh0Pjwvc3ZnPg==',
-  'SPGI': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5TUEdJPC90ZXh0Pjwvc3ZnPg==',
-  'LLY': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZTMxODM3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5MTFk8L3RleHQ+PC9zdmc+',
-  'NVO': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAxOTY1Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OVk88L3RleHQ+PC9zdmc+',
-  'ISRG': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA1ZGFhIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5JU1JHPC90ZXh0Pjwvc3ZnPg==',
-  'HIMS': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMWExYTFhIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5oaW1zPC90ZXh0Pjwvc3ZnPg==',
-  'TMDX': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5UTVg8L3RleHQ+PC9zdmc+',
-  'RKLB': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjYzkxNTFlIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5SS0xCPC90ZXh0Pjwvc3ZnPg==',
-  'ASTS': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA1N2I4Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BU1RTPC90ZXh0Pjwvc3ZnPg==',
-  'KTOS': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5LVE9TPC90ZXh0Pjwvc3ZnPg==',
-  'IONQ': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNjIwMEVBIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5Jb25RPC90ZXh0Pjwvc3ZnPg==',
-  'OKLO': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZmY1NzIyIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5PS0xPPC90ZXh0Pjwvc3ZnPg==',
-  'TEM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMTk3NkQyIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5URU08L3RleHQ+PC9zdmc+',
-  'XOM': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZTMxODM3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5YT008L3RleHQ+PC9zdmc+',
-  'EOSE': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMUI0RjhBIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5FT1NFPC90ZXh0Pjwvc3ZnPg==',
-  'SLNH': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMmU3ZDMyIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5TTE48L3RleHQ+PC9zdmc+',
-  'MP': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjYjcxYzFjIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMzYiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NUDwvdGV4dD48L3N2Zz4=',
-  'RIVN': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDBhMGU5Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5SSVZOPC90ZXh0Pjwvc3ZnPg==',
-  'LCID': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjYzBhMDYwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5MQ0lEPC90ZXh0Pjwvc3ZnPg==',
-  'KO': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZjQwMDA5Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5Db2NhPC90ZXh0Pjwvc3ZnPg==',
-  'PEP': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA0QjkzIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5QRVBTPC90ZXh0Pjwvc3ZnPg==',
-  'NKE': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OS0U8L3RleHQ+PC9zdmc+',
-  'MCD': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRkZDNzJDIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiNkYTI5MWMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NPC90ZXh0Pjwvc3ZnPg==',
-  'WMT': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA3MUNFIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5XTVQ8L3RleHQ+PC9zdmc+',
-  'JNJ': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjY2MwMDAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5KJko8L3RleHQ+PC9zdmc+',
-  'PG': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5QJkc8L3RleHQ+PC9zdmc+',
-  'MELI': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjRkZFNjAwIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiMzOWI1NGEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5NRUxJPC90ZXh0Pjwvc3ZnPg==',
-  'ANET': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDAzMDg3Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BTlQ8L3RleHQ+PC9zdmc+',
-  'VRT': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA1ZGFhIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5WUlQ8L3RleHQ+PC9zdmc+',
-  'NBIS': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjNjIwMEVBIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5OQlM8L3RleHQ+PC9zdmc+',
-  'CRWV': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDA2NmZmIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5DV1Y8L3RleHQ+PC9zdmc+',
-  'IREN': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMDBiNGQ4Ii8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5JUkVOPC90ZXh0Pjwvc3ZnPg==',
-  'AXON': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjZjVhNjIzIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssSGVsdmV0aWNhIE5ldWUsQXJpYWwiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjgiIGZpbGw9IiMwMDAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5BWE48L3RleHQ+PC9zdmc+',
-};
+const LOGO_MAP = {};
 
 function loadLogo(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
-  // Use embedded brand logo if available
-  if(LOGO_MAP[ticker]){
-    el.innerHTML = '';
-    el.style.background = 'transparent';
-    el.style.padding = '0';
+  const domain = getLogoUrl(ticker);
+  const r = size<=36?10:12;
+  const imgStyle = `width:100%;height:100%;object-fit:contain;border-radius:${r}px;display:block;background:#fff;padding:2px`;
+  // Source chain: Clearbit → Google Favicons HD → fallback gradient
+  const sources = [
+    `https://logo.clearbit.com/${domain}`,
+    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+  ];
+  let idx = 0;
+  const tryNext = () => {
+    if(idx >= sources.length){ el.innerHTML = buildLogoFallback(ticker); return; }
     const img = new Image();
-    img.src = LOGO_MAP[ticker];
-    img.style.cssText = `width:100%;height:100%;object-fit:cover;border-radius:${size<=36?10:12}px;display:block`;
-    el.appendChild(img);
-    return;
-  }
-  // Fallback gradient for unlisted tickers
-  el.innerHTML = buildLogoFallback(ticker);
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if(img.naturalWidth < 8){ idx++; tryNext(); return; } // reject tiny/broken icons
+      el.innerHTML = '';
+      el.style.background = 'transparent';
+      el.style.padding = '0';
+      img.style.cssText = imgStyle;
+      el.appendChild(img);
+    };
+    img.onerror = () => { idx++; tryNext(); };
+    img.src = sources[idx++];
+  };
+  tryNext();
 }
 
 
@@ -1020,7 +982,26 @@ function buildLogoFallback(t){
 }
 
 function getLogoUrl(t){
-  const m={NVDA:'nvidia.com',AAPL:'apple.com',MSFT:'microsoft.com',GOOGL:'google.com',META:'meta.com',AMZN:'amazon.com',TSLA:'tesla.com',AMD:'amd.com',INTC:'intel.com',AVGO:'broadcom.com',PLTR:'palantir.com',CRWD:'crowdstrike.com',NFLX:'netflix.com',NOW:'servicenow.com',AXON:'axon.com',ANET:'arista.com',VRT:'vertiv.com',ARM:'arm.com',TSM:'tsmc.com',ASML:'asml.com',JPM:'jpmorgan.com',XOM:'exxonmobil.com',V:'visa.com',MA:'mastercard.com',PYPL:'paypal.com',KO:'coca-cola.com',PEP:'pepsico.com',NKE:'nike.com',MCD:'mcdonalds.com',WMT:'walmart.com',JNJ:'jnj.com',PG:'pg.com',CRM:'salesforce.com',ADBE:'adobe.com',SNOW:'snowflake.com',DDOG:'datadoghq.com',MDB:'mongodb.com',NET:'cloudflare.com',RKLB:'rocketlabusa.com',HOOD:'robinhood.com',SOFI:'sofi.com',LLY:'lilly.com',NVO:'novonordisk.com',ISRG:'intuitivesurgical.com',QCOM:'qualcomm.com',AMAT:'appliedmaterials.com',LRCX:'lamresearch.com'};
+  const m={
+    NVDA:'nvidia.com', AAPL:'apple.com', MSFT:'microsoft.com', GOOGL:'google.com',
+    META:'meta.com', AMZN:'amazon.com', TSLA:'tesla.com', AMD:'amd.com',
+    INTC:'intel.com', AVGO:'broadcom.com', PLTR:'palantir.com', CRWD:'crowdstrike.com',
+    NFLX:'netflix.com', NOW:'servicenow.com', AXON:'axon.com', ANET:'arista.com',
+    VRT:'vertiv.com', ARM:'arm.com', TSM:'tsmc.com', ASML:'asml.com',
+    JPM:'jpmorganchase.com', XOM:'exxonmobil.com', V:'visa.com', MA:'mastercard.com',
+    PYPL:'paypal.com', KO:'coca-cola.com', PEP:'pepsico.com', NKE:'nike.com',
+    MCD:'mcdonalds.com', WMT:'walmart.com', JNJ:'jnj.com', PG:'pg.com',
+    CRM:'salesforce.com', ADBE:'adobe.com', SNOW:'snowflake.com', DDOG:'datadoghq.com',
+    MDB:'mongodb.com', NET:'cloudflare.com', RKLB:'rocketlabusa.com', HOOD:'robinhood.com',
+    SOFI:'sofi.com', LLY:'lilly.com', NVO:'novonordisk.com', ISRG:'intuitivesurgical.com',
+    QCOM:'qualcomm.com', AMAT:'appliedmaterials.com', LRCX:'lamresearch.com',
+    MU:'micron.com', ASTS:'ast-science.com', HIMS:'hims.com', IREN:'iren.com',
+    IONQ:'ionq.com', OKLO:'oklo.com', TEM:'tempus.com', CRDO:'credotechnology.com',
+    SPGI:'spglobal.com', MP:'mpmaterials.com', NBIS:'nebius.com', TMDX:'transmedics.com',
+    CRWV:'coreweave.com', MELI:'mercadolibre.com', RIVN:'rivian.com', LCID:'lucidmotors.com',
+    KTOS:'kratosdefense.com', RBRK:'rubrik.com', AXON:'axon.com', EOSE:'eosenergy.com',
+    SLNH:'solunaholdings.com', NVTS:'navitassemi.com', ARM:'arm.com',
+  };
   return m[t]||(t.toLowerCase()+'.com');
 }
 
@@ -1175,6 +1156,15 @@ function openDrawer(ticker){
   loadLogo(ticker,'drawerLogo',40);
   drawerTab('tech',document.querySelector('.drawer-tab'));
   document.getElementById('drawer').classList.add('open');
+  // ── Async fetch candles แล้ว refresh tech tab อัตโนมัติ ──
+  if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+    fetchCandles(ticker,60).then(()=>{
+      if(currentDrawerTicker===ticker){
+        updateRSIFromCandles(ticker);
+        drawerTab('tech',document.querySelector('.drawer-tab'));
+      }
+    }).catch(()=>{});
+  }
 }
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');}
 
@@ -1193,6 +1183,35 @@ function drawerTab(tab, btn){
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
   const rsi=rsiData[s.t]||50;
   if(tab==='tech'){
+    const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
+    const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
+    const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
+    const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">$${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
+    const tenkanTxt=sig?.tenkan!=null&&sig?.kijun!=null?`<span class="ind-val ${sig.tenkan>sig.kijun?'bull':'bear'}">${sig.tenkan>sig.kijun?'Bull Cross ✅':'Bear Cross ⚠️'}</span>`:'<span class="ind-val">--</span>';
+    const cloudTxt=sig?.senkouA!=null?`<span class="ind-val ${s.p>Math.max(sig.senkouA,sig.senkouB)?'bull':s.p<Math.min(sig.senkouA,sig.senkouB)?'bear':'neut'}">${s.p>Math.max(sig.senkouA,sig.senkouB)?'Above ☁️✅':s.p<Math.min(sig.senkouA,sig.senkouB)?'Below ☁️⚠️':'In Cloud ☁️'}</span>`:'<span class="ind-val">--</span>';
+    const sarTxt=sig?.psar!=null?`<span class="ind-val ${sig.psarBullish?'bull':'bear'}">$${sig.psar} ${sig.psarBullish?'↑ Bull':'↓ Bear'}</span>`:'<span class="ind-val">--</span>';
+    const bbTxt=sig?.bbPct!=null?`<span class="ind-val ${sig.bbPct<=10?'bull':sig.bbPct>=90?'bear':'neut'}">${sig.bbPct}% ${sig.bbPct<=10?'Near Lower':''}${sig.bbPct>=90?'Near Upper':''}</span>`:'<span class="ind-val">--</span>';
+    const vwapTxt=sig?.vwap!=null?`<span class="ind-val ${s.p<=sig.vwap?'bull':'neut'}">$${sig.vwap} ${s.p<=sig.vwap?'↓ below':'↑ above'}</span>`:'<span class="ind-val">--</span>';
+    const wRTxt=sig?.williamsR!=null?`<span class="ind-val ${sig.williamsR<=-80?'bull':sig.williamsR>=-20?'bear':'neut'}">${sig.williamsR}</span>`:'<span class="ind-val">--</span>';
+    const scoreTxt=sig?`<span class="ind-val ${sig.score>=60?'bull':sig.score>=40?'neut':'bear'}">${sig.score}/100</span>`:'<span class="ind-val">--</span>';
+    // Chikou Span
+    const chikouTxt=sig?.chikouSignal!=null?`<span class="ind-val ${sig.chikouSignal==='bull'?'bull':'bear'}">${sig.chikouSignal==='bull'?'↑ เหนือราคาเก่า ✅':'↓ ต่ำกว่าราคาเก่า ⚠️'}</span>`:'<span class="ind-val">--</span>';
+    // Supertrend
+    const stTxt=sig?.supertrendVal!=null?`<span class="ind-val ${sig.supertrendBull?'bull':'bear'}">$${sig.supertrendVal} ${sig.supertrendBull?'↑ Bull ✅':'↓ Bear ⚠️'}</span>`:'<span class="ind-val">--</span>';
+    // ATR Stop Loss
+    const atrStopTxt=sig?.atrStopLoss!=null?`<span class="ind-val bear">$${sig.atrStopLoss} (ATR ${sig.atr})</span>`:'<span class="ind-val">--</span>';
+    // Stochastic
+    const stochTxt=sig?.stochK!=null?`<span class="ind-val ${sig.stochK<=20?'bull':sig.stochK>=80?'bear':'neut'}">%K ${sig.stochK} / %D ${sig.stochD} ${sig.stochK<=20?'Oversold':sig.stochK>=80?'Overbought':sig.stochK>sig.stochD?'↑':'↓'}</span>`:'<span class="ind-val">--</span>';
+    // EMA Ribbon
+    const ribbonTxt=sig?.ema8!=null?`<span class="ind-val ${sig.ribbonBull?'bull':sig.ribbonBear?'bear':'neut'}">${sig.ribbonBull?'↑ Bull (8>13>21)':sig.ribbonBear?'↓ Bear (8<13<21)':'⚠️ Mixed'}</span>`:'<span class="ind-val">--</span>';
+    // MACD Histogram
+    const macdHistTxt=sig?.macdHist!=null?`<span class="ind-val ${sig.macdHist>0?'bull':'bear'}">${sig.macdHist>0?'+':''}${sig.macdHist} ${sig.macdHist>0?'▲ Positive':'▼ Negative'}</span>`:'<span class="ind-val">--</span>';
+    // Donchian Channel
+    const donchTxt=sig?.donchianHi!=null?`<span class="ind-val ${sig.donchianPct<=15?'bull':sig.donchianPct>=85?'bear':'neut'}">Hi $${sig.donchianHi} / Lo $${sig.donchianLo} (${sig.donchianPct}%)</span>`:'<span class="ind-val">--</span>';
+    // CMF
+    const cmfTxt=sig?.cmf!=null?`<span class="ind-val ${sig.cmf>0.05?'bull':sig.cmf<-0.05?'bear':'neut'}">${sig.cmf>0?'+':''}${sig.cmf} ${sig.cmf>0.05?'Buy Pressure':sig.cmf<-0.05?'Sell Pressure':'Neutral'}</span>`:'<span class="ind-val">--</span>';
+    // ROC
+    const rocTxt=sig?.roc!=null?`<span class="ind-val ${sig.roc>0?'bull':'bear'}">${sig.roc>0?'+':''}${sig.roc}%</span>`:'<span class="ind-val">--</span>';
     body.innerHTML=`
       <div class="chart-timeframes">
         <button class="tf-btn active">1M</button>
@@ -1202,14 +1221,30 @@ function drawerTab(tab, btn){
       </div>
       <div class="big-chart"><canvas id="bigChartCanvas"></canvas></div>
       <div class="ind-table">
+        <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
+        <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
+        <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
+        <div class="ind-row"><span class="ind-name">MACD Signal</span>${macdTxt}</div>
+        <div class="ind-row"><span class="ind-name">MACD Histogram</span>${macdHistTxt}</div>
+        <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
+        <div class="ind-row"><span class="ind-name">Bollinger %B</span>${bbTxt}</div>
+        <div class="ind-row"><span class="ind-name">VWAP (20d avg)</span>${vwapTxt}</div>
+        <div class="ind-row"><span class="ind-name">EMA Ribbon 8/13/21</span>${ribbonTxt}</div>
+        <div class="ind-row"><span class="ind-name">Donchian Ch. (20)</span>${donchTxt}</div>
+        <div class="ind-row"><span class="ind-name">CMF (20)</span>${cmfTxt}</div>
+        <div class="ind-row"><span class="ind-name">ROC (10)</span>${rocTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Ichimoku Kijun</span>${kijunTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Tenkan/Kijun</span>${tenkanTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Cloud Position</span>${cloudTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Chikou Span</span>${chikouTxt}</div>
+        <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
+        <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
+        <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
         <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
         <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
         <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
-        <div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">${s.mktcap||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val ${parseFloat(s.rev||0)>0?'bull':'bear'}">${s.rev||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val">${s.pe||'N/A'}</span></div>
-        ${s.earn?`<div class="ind-row"><span class="ind-name">Earnings</span><span class="ind-val neut">${s.earn}</span></div>`:''}
+        ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
       </div>`;
     // Draw big chart
     setTimeout(()=>{
@@ -1254,10 +1289,16 @@ function drawerTab(tab, btn){
 }
 
 // ── AI Chat ──
+let _aiSending=false;
 async function sendAI(ticker){
+  if(_aiSending)return;
   const input=document.getElementById('aiInput');
   const msg=input?.value?.trim();
   if(!msg)return;
+  _aiSending=true;
+  // disable send button while waiting
+  const sendBtn=input?.nextElementSibling;
+  if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.5';}
   input.value='';
   const s=stocks.find(x=>x.t===ticker);
   if(!aiHistory[ticker])aiHistory[ticker]=[];
@@ -1285,6 +1326,10 @@ async function sendAI(ticker){
   }catch(e){
     const loading=document.getElementById('aiLoading');
     if(loading){loading.id='';loading.textContent='❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';}
+  }finally{
+    _aiSending=false;
+    const sendBtn=document.getElementById('aiInput')?.nextElementSibling;
+    if(sendBtn){sendBtn.disabled=false;sendBtn.style.opacity='';}
   }
 }
 
@@ -1558,13 +1603,6 @@ function wsConnect(){
   };
 }
 
-function updateCardLive(s){
-  const priceEl=document.getElementById(`price-v2-${s.t}`);
-  const chgEl=document.getElementById(`chg-v2-${s.t}`);
-  if(priceEl)priceEl.textContent='$'+fmt(s.p);
-  if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
-}
-
 async function httpPoll(){
   if(!hasApiKey())return;
   const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,8);
@@ -1594,8 +1632,64 @@ if(hasApiKey()){
   startLive();
 }
 
-// Clock
-document.getElementById('timeDisplay').textContent=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+// ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
+// ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
+async function fetchYahooQuote(ticker){
+  const proxies=[
+    `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
+    `https://corsproxy.io/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`)}`,
+  ];
+  for(const url of proxies){
+    try{
+      const ctrl=new AbortController();
+      setTimeout(()=>ctrl.abort(),6000);
+      const r=await fetch(url,{signal:ctrl.signal});
+      if(!r.ok) continue;
+      const d=await r.json();
+      const res=d?.chart?.result?.[0];
+      if(!res) continue;
+      const meta=res.meta;
+      const price=meta.regularMarketPrice||meta.previousClose;
+      const prev=meta.chartPreviousClose||meta.previousClose;
+      if(price>0&&prev>0){
+        return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
+      }
+    }catch{}
+  }
+  return null;
+}
+
+// โหลดราคาจาก Yahoo สำหรับหุ้นทุกตัวทีละ batch (ไม่ต้อง key)
+async function initYahooPrices(){
+  if(hasApiKey()) return; // มี Finnhub แล้วไม่ต้อง
+  const BATCH=5, DELAY=600;
+  for(let i=0;i<stocks.length;i+=BATCH){
+    const batch=stocks.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(async s=>{
+      try{
+        const q=await fetchYahooQuote(s.t);
+        if(q&&q.p>0){
+          s.p=q.p;
+          s.c=q.c;
+          updateCardLive(s);
+        }
+      }catch{}
+    }));
+    await new Promise(r=>setTimeout(r,DELAY));
+  }
+  updateDashboard();
+  document.getElementById('statusText').textContent=`${stocks.length} ตัว (Yahoo)`;
+}
+
+// อัพเดทราคา Yahoo ทุก 3 นาที ถ้าไม่มี Finnhub key
+setTimeout(()=>{
+  initYahooPrices();
+  if(!hasApiKey()){
+    setInterval(initYahooPrices, 180000);
+  }
+}, 800);
+
 
 
 
@@ -1659,6 +1753,7 @@ async function safeFetch(url, opt={}, retry=2){
 }
 
 const liveNewsCache={};
+const _translatedCache={};
 
 
 // ── calcRSI ──
@@ -1842,6 +1937,36 @@ async function fetchCandles(ticker, days=60){
   return null;
 }
 
+// ── _calcMacdSignal ──
+// คำนวณ MACD Line และ Signal Line (12,26,9) แบบ EMA จริง
+function _calcMacdSignal(closes, ticker){
+  if(!closes||closes.length<35) return {macdLine:null,macdSignal:null};
+  const k12=2/13, k26=2/27;
+  // ── EMA12: seed = SMA ของ 12 แท่งแรก, แล้ว loop ต่อจาก index 12 ──
+  let em12=closes.slice(0,12).reduce((a,b)=>a+b,0)/12;
+  for(let i=12;i<closes.length;i++) em12=closes[i]*k12+em12*(1-k12);
+  // ── EMA26 + MACD series: seed = SMA ของ 26 แท่งแรก, loop จาก index 26 ──
+  let em26=closes.slice(0,26).reduce((a,b)=>a+b,0)/26;
+  // ต้อง rebuild em12 แบบ step-by-step ตั้งแต่ต้น เพื่อให้ sync กับ em26 ทุก bar
+  let m12=closes.slice(0,12).reduce((a,b)=>a+b,0)/12;
+  for(let i=12;i<26;i++) m12=closes[i]*k12+m12*(1-k12); // warm-up ถึง bar 25
+  const macdArr=[];
+  for(let i=26;i<closes.length;i++){
+    m12=closes[i]*k12+m12*(1-k12);
+    em26=closes[i]*k26+em26*(1-k26);
+    macdArr.push(m12-em26);
+  }
+  if(macdArr.length<9) return {macdLine:null,macdSignal:null};
+  // ── Signal Line = EMA9 ของ MACD array ──
+  const k9=2/10;
+  let sig9=macdArr.slice(0,9).reduce((a,b)=>a+b,0)/9;
+  for(let i=9;i<macdArr.length;i++) sig9=macdArr[i]*k9+sig9*(1-k9);
+  return {
+    macdLine:+macdArr[macdArr.length-1].toFixed(4),
+    macdSignal:+sig9.toFixed(4)
+  };
+}
+
 // ── _calcBuyScore ──
 function _calcBuyScore(ticker, price, s1, r1){
   const scoreBreakdown = [];
@@ -1974,20 +2099,61 @@ function _calcBuyScore(ticker, price, s1, r1){
     }
   }
 
-  // ── Ichimoku Cloud — Kijun-sen (Base Line) as support ──
-  // Kijun-sen = (highest high + lowest low) / 2 ของ 26 แท่ง
-  let kijun=null, tenkan=null;
-  if(highs.length>=26 && lows.length>=26){
+  // ── Ichimoku Cloud — ครบ Kijun + Tenkan + Cloud ──
+  let kijun=null, tenkan=null, senkouA=null, senkouB=null;
+  let ichimokuSignal=0;
+  if(highs.length>=52 && lows.length>=52){
+    // Kijun-sen (26)
+    const kHigh=Math.max(...highs.slice(-26)), kLow=Math.min(...lows.slice(-26));
+    kijun=+((kHigh+kLow)/2).toFixed(3);
+    // Tenkan-sen (9)
+    const tHigh=Math.max(...highs.slice(-9)), tLow=Math.min(...lows.slice(-9));
+    tenkan=+((tHigh+tLow)/2).toFixed(3);
+    // Senkou Span A = (Tenkan + Kijun) / 2
+    senkouA=+((tenkan+kijun)/2).toFixed(3);
+    // Senkou Span B = (highest high + lowest low) / 2 ของ 52 แท่ง
+    const sHigh=Math.max(...highs.slice(-52)), sLow=Math.min(...lows.slice(-52));
+    senkouB=+((sHigh+sLow)/2).toFixed(3);
+    // คลาวด์ bullish = senkouA > senkouB
+    const cloudTop=Math.max(senkouA,senkouB);
+    const cloudBot=Math.min(senkouA,senkouB);
+    const aboveCloud = price > cloudTop;
+    const inCloud    = price >= cloudBot && price <= cloudTop;
+    const belowCloud = price < cloudBot;
+    // Tenkan > Kijun = bullish crossover
+    const tkBull = tenkan > kijun;
+    // ราคาชิด Kijun (แนวรับ)
+    const kPct=Math.abs(price-kijun)/kijun*100;
+    if(price>=kijun && kPct<=0.5)  { g1+=6; ichimokuSignal=2; }
+    else if(price>=kijun && kPct<=1.5){ g1+=3; ichimokuSignal=1; }
+    // Bonus: อยู่เหนือ cloud + Tenkan > Kijun
+    if(aboveCloud && tkBull)  g1+=4;
+    else if(inCloud && tkBull) g1+=2;
+  } else if(highs.length>=26 && lows.length>=26){
+    // fallback สำหรับข้อมูลน้อยกว่า 52 แท่ง
     const kHigh=Math.max(...highs.slice(-26)), kLow=Math.min(...lows.slice(-26));
     kijun=+((kHigh+kLow)/2).toFixed(3);
     const tHigh=Math.max(...highs.slice(-9)), tLow=Math.min(...lows.slice(-9));
     tenkan=+((tHigh+tLow)/2).toFixed(3);
-  }
-  if(kijun!==null){
     const kPct=Math.abs(price-kijun)/kijun*100;
-    // ราคาชิด Kijun หรืออยู่เหนือ Kijun (แนวรับแข็ง)
     if(price>=kijun && kPct<=0.5)      g1+=6;
     else if(price>=kijun && kPct<=1.5) g1+=3;
+  }
+
+  // ── Chikou Span (Ichimoku) — ยืนยัน trend ──
+  // Chikou = close ปัจจุบัน เปรียบเทียบกับ close 26 แท่งที่แล้ว
+  let chikouSignal = null;
+  if(closes.length >= 27){
+    const chikouCompare = closes[closes.length - 27]; // close 26 แท่งที่แล้ว
+    const chikouCurrent = closes[closes.length - 1];
+    chikouSignal = chikouCurrent > chikouCompare ? 'bull' : 'bear';
+    // Chikou อยู่เหนือราคาเก่า = bullish confirmation
+    if(chikouSignal === 'bull'){
+      const pctAbove = (chikouCurrent - chikouCompare) / chikouCompare * 100;
+      if(pctAbove > 5)  g1 += 5;
+      else if(pctAbove > 2) g1 += 3;
+      else g1 += 1;
+    }
   }
 
   const score1 = Math.min(g1, 30);
@@ -2053,29 +2219,40 @@ function _calcBuyScore(ticker, price, s1, r1){
 
   if(macdLine&&macdSignal&&macdLine>macdSignal) g3+=8;
 
-  // ADX
+  // ADX — Wilder's smoothing แบบเต็ม (ต้องการ >= 29 แท่ง)
   let adx=null,diPlus=null,diMinus=null;
-  if(closes.length>=20 && highs.length>=20 && lows.length>=20){
-    const trs=[],dmp=[],dmm=[];
-    for(let i=closes.length-14-1;i<closes.length-1;i++){
-      const h=highs[i+1],l=lows[i+1],ph=highs[i],pl=lows[i],prev=closes[i];
-      trs.push(Math.max(h-l,Math.abs(h-prev),Math.abs(l-prev)));
+  if(closes.length>=29 && highs.length>=29 && lows.length>=29){
+    const P=14;
+    const allTR=[],allDMP=[],allDMM=[];
+    for(let i=1;i<closes.length;i++){
+      const h=highs[i],l=lows[i],ph=highs[i-1],pl=lows[i-1],pc=closes[i-1];
+      allTR.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
       const up=h-ph,dn=pl-l;
-      dmp.push(up>dn&&up>0?up:0); dmm.push(dn>up&&dn>0?dn:0);
+      allDMP.push(up>dn&&up>0?up:0);
+      allDMM.push(dn>up&&dn>0?dn:0);
     }
-    const atr14=trs.reduce((a,b)=>a+b,0)/14;
-    if(atr14>0){
-      diPlus=+(dmp.reduce((a,b)=>a+b,0)/14/atr14*100).toFixed(1);
-      diMinus=+(dmm.reduce((a,b)=>a+b,0)/14/atr14*100).toFixed(1);
-      // FIX: ADX = smoothed average of DX values, not a single ratio
-      // คำนวณ DX ทีละแท่ง แล้ว smooth ด้วย EMA
-      const dxArr=[];
-      for(let j=0;j<trs.length;j++){
-        const dp_j=dmp[j]/atr14*100, dm_j=dmm[j]/atr14*100;
-        const sum=dp_j+dm_j;
-        dxArr.push(sum>0?Math.abs(dp_j-dm_j)/sum*100:0);
-      }
-      adx=+(dxArr.reduce((a,b)=>a+b,0)/dxArr.length).toFixed(1);
+    let smTR=allTR.slice(0,P).reduce((a,b)=>a+b,0);
+    let smDMP=allDMP.slice(0,P).reduce((a,b)=>a+b,0);
+    let smDMM=allDMM.slice(0,P).reduce((a,b)=>a+b,0);
+    const dxSeries=[];
+    const pushDX=(sDMP,sDMM,sTR)=>{
+      if(sTR===0) return;
+      const dp=sDMP/sTR*100,dm=sDMM/sTR*100,s=dp+dm;
+      if(s>0) dxSeries.push(Math.abs(dp-dm)/s*100);
+    };
+    pushDX(smDMP,smDMM,smTR);
+    for(let i=P;i<allTR.length;i++){
+      smTR=smTR-smTR/P+allTR[i];
+      smDMP=smDMP-smDMP/P+allDMP[i];
+      smDMM=smDMM-smDMM/P+allDMM[i];
+      pushDX(smDMP,smDMM,smTR);
+    }
+    if(dxSeries.length>=P){
+      let adxVal=dxSeries.slice(0,P).reduce((a,b)=>a+b,0)/P;
+      for(let i=P;i<dxSeries.length;i++) adxVal=(adxVal*(P-1)+dxSeries[i])/P;
+      adx=+adxVal.toFixed(1);
+      diPlus=+(smDMP/smTR*100).toFixed(1);
+      diMinus=+(smDMM/smTR*100).toFixed(1);
     }
   }
   if(adx!==null&&adx>=25&&diPlus>diMinus) g3+=7;
@@ -2098,6 +2275,62 @@ function _calcBuyScore(ticker, price, s1, r1){
     if(rLow<pLow&&rsi>pr+3) rsiDivergence=true;
   }
   if(rsiDivergence) g3+=5;
+
+  // ── Supertrend ──
+  // Supertrend = ATR-based trend indicator (multiplier=3, period=10)
+  let supertrendBull = null, supertrendVal = null;
+  if(closes.length >= 22 && highs.length >= 22 && lows.length >= 22){
+    const ST_PERIOD = 10, ST_MULT = 3.0;
+    // คำนวณ TR ทุกแท่ง
+    const atrArr = [];
+    for(let i = 1; i < closes.length; i++){
+      const tr = Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+      atrArr.push(tr);
+    }
+    // Wilder smooth ATR
+    if(atrArr.length < ST_PERIOD) { /* skip */ } else {
+      let atrSmooth = atrArr.slice(0, ST_PERIOD).reduce((a,b)=>a+b,0) / ST_PERIOD;
+      const atrSmoothed = [atrSmooth];
+      for(let i = ST_PERIOD; i < atrArr.length; i++){
+        atrSmooth = (atrSmooth * (ST_PERIOD-1) + atrArr[i]) / ST_PERIOD;
+        atrSmoothed.push(atrSmooth);
+      }
+      // Supertrend bands — ci starts at ST_PERIOD (index>=10), ci-1 >=9 ✅ safe
+      const startCI = ST_PERIOD;
+      const hl2_0 = (highs[startCI] + lows[startCI]) / 2;
+      let prevUpper = hl2_0 + ST_MULT * atrSmoothed[0];
+      let prevLower = hl2_0 - ST_MULT * atrSmoothed[0];
+      let prevTrend = closes[startCI] >= prevLower ? 1 : -1;
+      let lastTrend = prevTrend;
+      let lastST = prevTrend === 1 ? prevLower : prevUpper;
+      for(let i = 1; i < atrSmoothed.length; i++){
+        const ci = i + ST_PERIOD;
+        if(ci >= closes.length) break;
+        const hl2 = (highs[ci] + lows[ci]) / 2;
+        const atr = atrSmoothed[i];
+        let upper = hl2 + ST_MULT * atr;
+        let lower = hl2 - ST_MULT * atr;
+        // ไม่ให้แบนด์ขยายออก (Supertrend rule)
+        if(upper < prevUpper || closes[ci-1] > prevUpper) { /* keep new upper */ } else { upper = prevUpper; }
+        if(lower > prevLower || closes[ci-1] < prevLower) { /* keep new lower */ } else { lower = prevLower; }
+        // Trend direction
+        if(prevTrend === 1){
+          lastTrend = closes[ci] >= lower ? 1 : -1;
+        } else {
+          lastTrend = closes[ci] <= upper ? -1 : 1;
+        }
+        lastST = lastTrend === 1 ? lower : upper;
+        prevUpper = upper; prevLower = lower; prevTrend = lastTrend;
+      }
+      supertrendBull = lastTrend === 1;
+      supertrendVal = +lastST.toFixed(3);
+      if(supertrendBull){
+        const stPct = (closes[closes.length-1] - supertrendVal) / supertrendVal * 100;
+        if(stPct <= 2) g3 += 6;
+        else           g3 += 3;
+      }
+    }
+  }
 
   const score3 = Math.min(g3, 20);
   if(score3>0) scoreBreakdown.push(`📈 momentum ${score3}/20`);
@@ -2182,9 +2415,140 @@ function _calcBuyScore(ticker, price, s1, r1){
   if(score5>0) scoreBreakdown.push(`🕯️ pattern ${score5}/10`);
 
   // ════════════════════════════════════════════════
+  // GROUP 6 — Volume Profile POC + Parabolic SAR (15 คะแนน)
+  // ════════════════════════════════════════════════
+  let g6=0;
+
+  // ── Volume Profile POC ──
+  // POC = ราคาที่มี volume มากที่สุด → แนวรับ/ต้านแม่นมาก
+  if(data && closes.length>=10){
+    const vp=calcVolumeProfile(data, 20);
+    if(vp){
+      const poc=vp.profile[vp.pocIdx].price;
+      const valLo=vp.profile[vp.valLo].lo;
+      const valHi=vp.profile[vp.valHi].hi;
+      const pocPct=Math.abs(price-poc)/poc*100;
+      // ราคาชิด POC
+      if(pocPct<=0.5)      g6+=8;
+      else if(pocPct<=1.5) g6+=5;
+      else if(pocPct<=3.0) g6+=2;
+      // ราคาอยู่ใน Value Area (70% ของ volume) = โซน fair value
+      if(price>=valLo && price<=valHi) g6+=3;
+      scoreBreakdown.push(`📊 POC $${poc} (${pocPct.toFixed(1)}%)`);
+    }
+  }
+
+  // ── Parabolic SAR ──
+  // SAR อยู่ต่ำกว่าราคา = uptrend, ราคาชิด SAR = potential reversal up
+  let psar=null, psarBullish=false;
+  if(closes.length>=10 && highs.length>=10 && lows.length>=10){
+    const AF_STEP=0.02, AF_MAX=0.20;
+    let bull=closes[1]>closes[0]; // เริ่มจาก trend แรก
+    let sar=bull?Math.min(...lows.slice(0,2)):Math.max(...highs.slice(0,2));
+    let ep=bull?highs[1]:lows[1];
+    let af=AF_STEP;
+    for(let i=2;i<closes.length;i++){
+      const prevSar=sar;
+      sar=sar+af*(ep-sar);
+      if(bull){
+        sar=Math.min(sar,lows[i-1],lows[i-2]||lows[i-1]);
+        if(lows[i]<sar){ bull=false; sar=ep; ep=lows[i]; af=AF_STEP; }
+        else{ if(highs[i]>ep){ ep=highs[i]; af=Math.min(af+AF_STEP,AF_MAX); } }
+      } else {
+        sar=Math.max(sar,highs[i-1],highs[i-2]||highs[i-1]);
+        if(highs[i]>sar){ bull=true; sar=ep; ep=highs[i]; af=AF_STEP; }
+        else{ if(lows[i]<ep){ ep=lows[i]; af=Math.min(af+AF_STEP,AF_MAX); } }
+      }
+    }
+    psar=+sar.toFixed(3);
+    psarBullish=bull; // SAR ต่ำกว่าราคา = uptrend
+    if(psarBullish){
+      const sarPct=(price-psar)/psar*100;
+      // SAR อยู่ใกล้ราคา = กำลังจะกลับตัวขึ้น
+      if(sarPct<=1.5)      g6+=4;
+      else if(sarPct<=4.0) g6+=2;
+      // SAR bullish ยืนยัน uptrend
+      g6+=2;
+    }
+    // SAR เพิ่งกลับตัวจาก bearish → bullish (2 แท่งล่าสุด)
+    // (ถ้า bull=true แสดงว่าเพิ่ง flip ใน loop รอบสุดท้าย)
+  }
+
+  const score6 = Math.min(g6, 15);
+  if(score6>0) scoreBreakdown.push(`📈 POC+SAR ${score6}/15`);
+
+  // ════════════════════════════════════════════════
+  // EXTRA INDICATORS — แสดงผลเพิ่มเติม (ไม่นับคะแนนเพิ่ม ป้องกัน score เกิน)
+  // ════════════════════════════════════════════════
+
+  // ── Stochastic %K / %D (14,3,3) ──
+  let stochK=null, stochD=null;
+  if(closes.length>=17 && highs.length>=17 && lows.length>=17){
+    const rawK=[];
+    for(let i=13;i<closes.length;i++){
+      const hh=Math.max(...highs.slice(i-13,i+1));
+      const ll=Math.min(...lows.slice(i-13,i+1));
+      rawK.push(hh>ll?+((closes[i]-ll)/(hh-ll)*100).toFixed(2):50);
+    }
+    // smooth %K with 3-period SMA
+    const smK=[];
+    for(let i=2;i<rawK.length;i++) smK.push(+((rawK[i]+rawK[i-1]+rawK[i-2])/3).toFixed(2));
+    // %D = 3-period SMA of smooth %K
+    if(smK.length>=3){
+      stochK=smK[smK.length-1];
+      stochD=+((smK[smK.length-1]+smK[smK.length-2]+smK[smK.length-3])/3).toFixed(2);
+    }
+  }
+
+  // ── EMA Ribbon (8, 13, 21) ──
+  let ema8=null, ema13=null, ema21=null;
+  ema8  = closes.length>=8  ? ema(closes,8)  : null;
+  ema13 = closes.length>=13 ? ema(closes,13) : null;
+  ema21 = closes.length>=21 ? ema(closes,21) : null;
+  // ribbon bullish = ema8 > ema13 > ema21
+  const ribbonBull = ema8&&ema13&&ema21 ? ema8>ema13&&ema13>ema21 : null;
+  const ribbonBear = ema8&&ema13&&ema21 ? ema8<ema13&&ema13<ema21 : null;
+
+  // ── MACD Histogram ──
+  let macdHist=null;
+  if(closes.length>=35){
+    const {macdLine:ml, macdSignal:ms} = _calcMacdSignal(closes, ticker);
+    if(ml!=null && ms!=null) macdHist=+(ml-ms).toFixed(4);
+  }
+
+  // ── Donchian Channel (20) ──
+  let donchianHi=null, donchianLo=null, donchianMid=null, donchianPct=null;
+  if(highs.length>=20 && lows.length>=20){
+    donchianHi=+(Math.max(...highs.slice(-20))).toFixed(2);
+    donchianLo=+(Math.min(...lows.slice(-20))).toFixed(2);
+    donchianMid=+((donchianHi+donchianLo)/2).toFixed(2);
+    const rng=donchianHi-donchianLo;
+    donchianPct=rng>0?+((price-donchianLo)/rng*100).toFixed(1):50;
+  }
+
+  // ── CMF — Chaikin Money Flow (20) ──
+  let cmf=null;
+  if(closes.length>=20 && highs.length>=20 && lows.length>=20 && vols.length>=20){
+    let mfv=0, totalVol=0;
+    for(let i=closes.length-20;i<closes.length;i++){
+      const h=highs[i],l=lows[i],c=closes[i],v=vols[i]||0;
+      const clv=(h>l)?((c-l)-(h-c))/(h-l):0;
+      mfv+=clv*v; totalVol+=v;
+    }
+    cmf=totalVol>0?+(mfv/totalVol).toFixed(3):null;
+  }
+
+  // ── ROC — Rate of Change (10) ──
+  let roc=null;
+  if(closes.length>=11){
+    const prev10=closes[closes.length-11];
+    roc=prev10>0?+((closes[closes.length-1]-prev10)/prev10*100).toFixed(2):null;
+  }
+
+  // ════════════════════════════════════════════════
   // รวมคะแนน + Trend multiplier
   // ════════════════════════════════════════════════
-  let total = score1 + score2 + score3 + score4 + score5; // max = 100
+  let total = score1 + score2 + score3 + score4 + score5 + score6; // max = 115 → clamp 100
 
   if(inUptrend===true){
     total = Math.round(total*1.05); // ขาขึ้น: บวกเพิ่ม 5%
@@ -2197,16 +2561,24 @@ function _calcBuyScore(ticker, price, s1, r1){
   return {
     score: Math.min(total, 100),
     scoreBreakdown,
-    rsi, macdLine, macdSignal, volRatio,
-    ema20, ema50, ema100, ema200,
+    rsi, macdLine, macdSignal, macdHist, volRatio,
+    ema8, ema13, ema21, ema20, ema50, ema100, ema200,
     emaSupport20, emaSupport50, emaSupport100, emaSupport200,
+    ribbonBull, ribbonBear,
     hammerPattern, engulfingPattern, dojiPattern,
     morningStarPattern, threeWhiteSoldiersPattern, piercingPattern,
     rsiDivergence, inUptrend,
     pctFromS1,
     bbLower, bbUpper, bbMid, bbPct,
     williamsR, atr, atrPct, atrStopLoss, obvTrend,
-    cci, mfi, adx, diPlus, diMinus, vwap
+    cci, mfi, adx, diPlus, diMinus, vwap,
+    stochK, stochD,
+    donchianHi, donchianLo, donchianMid, donchianPct,
+    cmf, roc,
+    kijun, tenkan, senkouA, senkouB, ichimokuSignal,
+    chikouSignal,
+    supertrendBull, supertrendVal,
+    psar, psarBullish
   };
 }
 
@@ -2369,10 +2741,40 @@ async function fetchLiveNews(ticker){
   }catch{return null;}
 }
 
+// ── newsData — fallback static headlines per ticker ──
+const newsData = {};
+
+// ── _renderNewsItems ──
+function _renderNewsItems(pane, items, ticker, isStatic=false){
+  if(!items||!items.length){
+    pane.innerHTML=`<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px 0">ไม่พบข่าว</div>`;
+    return;
+  }
+  const staticTag=isStatic?'<div style="font-size:9px;color:var(--text3);margin-bottom:8px;text-align:right">⚠️ ข้อมูลสำรอง</div>':'';
+  pane.innerHTML=staticTag+items.map(n=>{
+    const headline=n.h||n.headline||'';
+    const summary=(n.x||n.summary||'').slice(0,200);
+    const source=n.s||n.source||'';
+    const date=n.d||'';
+    const url=n.u||n.url||'#';
+    return`<a href="${url}" target="_blank" rel="noopener" style="text-decoration:none;display:block;margin-bottom:10px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;transition:all 0.15s" onclick="">
+        <div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:6px">${headline}</div>
+        ${summary?`<div style="font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:6px">${summary}</div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:9px;color:var(--text3)">${source}</div>
+          <div style="font-size:9px;color:var(--text3)">${date}</div>
+        </div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
 // ── renderNewsTab ──
 async function renderNewsTab(ticker){
-  const pane=document.getElementById('news-'+ticker);
-  if(!pane) return;
+  const body=document.getElementById('drawerBody');
+  if(!body) return;
+  const pane=body.querySelector('.news-pane')||(()=>{const d=document.createElement('div');d.className='news-pane';body.appendChild(d);return d;})();
   const cached=liveNewsCache[ticker];
   const now=Date.now();
   const FETCH_TTL=300000; // 5 นาที
@@ -2510,10 +2912,17 @@ async function fetchAndRenderEarnings(){
     }catch(e){}
   }
   // fallback: ใช้ hardcoded data
-  renderEarnings();
+  renderEarningsData(earningsData, false);
 }
 
 // ── renderEarningsData ──
+function goCard(ticker){
+  document.getElementById('earningsModal').style.display='none';
+  const stocksNavItem=document.querySelector('#bottomnav .nav-item:nth-child(2)');
+  navTo('stocks', stocksNavItem);
+  setTimeout(()=>openDrawer(ticker), 150);
+}
+
 function renderEarningsData(data, isLive=false){
   const body=document.getElementById('earningsBody');
   function row(e){
@@ -2578,13 +2987,11 @@ function _getEarningsSt(e){
 // ── _getEarningsDaysLeft ──
 function _getEarningsDaysLeft(earnStr){
   if(!earnStr) return null;
-  const thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
-  // แก้: ใช้ชื่อเดือนที่รู้จักแทน Unicode range [฀-๿] ที่อาจพลาด
-  const monPattern=Object.keys(thMonths).map(k=>k.replace('.','\\.')).join('|');
+  const monPattern=Object.keys(_thMonths).map(k=>k.replace('.','\\.')).join('|');
   const m=earnStr.match(new RegExp('(\\d+)\\s*('+monPattern+')\\s*(\\d{4})'));
   if(!m) return null;
   const [,day,mon,year]=m;
-  const monIdx=thMonths[mon];
+  const monIdx=_thMonths[mon];
   if(monIdx===undefined) return null;
   const earnDate=new Date(parseInt(year),monIdx,parseInt(day));
   const diff=Math.round((earnDate-new Date())/86400000);
@@ -2593,19 +3000,17 @@ function _getEarningsDaysLeft(earnStr){
 
 // ── countdown ──
 function countdown(d){
-  const m={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
   const p=d.split(' ');if(p.length<3)return'';
   const day=parseInt(p[0]);
-  // Bug fix: if day is NaN (e.g. "ปลาย"), can't compute exact countdown
-  if(isNaN(day)||!(p[1] in m)) return'';
-  const t=new Date(parseInt(p[2]),m[p[1]],day,20,30,0);
+  if(isNaN(day)||!(p[1] in _thMonths)) return'';
+  const t=new Date(parseInt(p[2]),_thMonths[p[1]],day,20,30,0);
   const diff=t-new Date();if(diff<0)return'ผ่านไปแล้ว';
   const days=Math.floor(diff/86400000),hrs=Math.floor((diff%86400000)/3600000);
   return days>0?`อีก ${days}วัน ${hrs}ชม.`:`อีก ${hrs}ชม.`;
 }
 
 
-const WORKER_AI='https://anthropic-proxy.datsakonping1994.workers.dev';
+const WORKER_AI=WORKER;
 async function _callAI(sys, usr, maxTok=800){
   try{
     const ctrl=new AbortController();
@@ -2762,9 +3167,11 @@ async function checkBuySignalFull(ticker,price){
 
 // ── Enhanced updateCardLive with buy signal check ──
 const _buyAlerted=new Set();
-const _origUpdateCardLive=updateCardLive;
 function updateCardLive(s){
-  _origUpdateCardLive(s);
+  const priceEl=document.getElementById(`price-v2-${s.t}`);
+  const chgEl=document.getElementById(`chg-v2-${s.t}`);
+  if(priceEl)priceEl.textContent='$'+fmt(s.p);
+  if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
   if(!_buyAlerted.has(s.t)&&s.p>0){
     _buyAlerted.add(s.t);
     setTimeout(()=>_buyAlerted.delete(s.t),600000);
