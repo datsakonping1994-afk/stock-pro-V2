@@ -378,6 +378,57 @@ canvas.bigchart{width:100%;height:100%}
 .earn-soon{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25)}
 .earn-grp{font-size:10px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 2px 4px;margin-top:8px}
 
+
+/* ── WATCHLIST ── */
+.wl-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border2);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all 0.2s;flex-shrink:0}
+.wl-btn.active{background:rgba(201,168,76,0.2);border-color:rgba(201,168,76,0.5)}
+.wl-filter-btn{flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:10px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap}
+.wl-filter-btn.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)}
+.wl-count{background:var(--gold);color:#000;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px;font-family:'Syne',sans-serif}
+.wl-empty{text-align:center;padding:60px 20px;color:var(--text3)}
+.wl-empty-icon{font-size:40px;margin-bottom:12px}
+.wl-empty-text{font-size:13px;line-height:1.6}
+
+
+/* ── PRICE ALERTS ── */
+.alert-tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.alert-tab{flex:1;padding:10px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);cursor:pointer;text-align:center;border-bottom:2px solid transparent;font-family:'Syne',sans-serif;transition:all 0.15s}
+.alert-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.pa-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.pa-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border2)}
+.pa-card.above::before{background:var(--green)}
+.pa-card.below::before{background:var(--red)}
+.pa-card.triggered::before{background:var(--gold)}
+.pa-card.triggered{opacity:0.6}
+.pa-ticker{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);width:52px;flex-shrink:0}
+.pa-dir{font-size:10px;font-weight:600;letter-spacing:0.5px;margin-top:2px}
+.pa-dir.above{color:var(--green)}
+.pa-dir.below{color:var(--red)}
+.pa-target{font-family:'Manrope',sans-serif;font-size:16px;font-weight:700;color:var(--text);text-align:right;flex:1}
+.pa-current{font-size:10px;color:var(--text3);margin-top:2px;text-align:right}
+.pa-del{width:28px;height:28px;border-radius:50%;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.25);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--red);flex-shrink:0;transition:all 0.15s}
+.pa-del:active{background:rgba(255,77,106,0.25)}
+.pa-add-form{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:14px}
+.pa-form-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.pa-form-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pa-select{flex:1;min-width:80px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none;-webkit-appearance:none}
+.pa-select:focus{border-color:var(--gold)}
+.pa-input{flex:1;min-width:80px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Manrope',sans-serif;outline:none}
+.pa-input:focus{border-color:var(--gold)}
+.pa-add-btn{background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);border-radius:10px;padding:9px 16px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;transition:all 0.15s}
+.pa-add-btn:active{background:rgba(201,168,76,0.3)}
+.pa-progress{height:3px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden}
+.pa-progress-bar{height:100%;border-radius:2px;transition:width 0.3s}
+.pa-empty{text-align:center;padding:50px 20px;color:var(--text3);font-size:12px;line-height:1.8}
+.pa-badge{font-size:9px;background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:1px 6px;color:var(--red);font-family:'Syne',sans-serif;font-weight:700;margin-left:4px;vertical-align:middle}
+
+
+/* ── SETTINGS LOCK ── */
+.locked-field{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;display:flex;align-items:center;gap:8px;margin-top:6px}
+.locked-field .lock-icon{font-size:14px;flex-shrink:0}
+.unlock-btn{background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--red);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;transition:all 0.15s;white-space:nowrap}
+.unlock-btn:active{background:rgba(255,77,106,0.25)}
+
 /* ── SCROLLBAR ── */
 #content::-webkit-scrollbar{width:3px}
 #content::-webkit-scrollbar-track{background:transparent}
@@ -485,6 +536,14 @@ canvas.bigchart{width:100%;height:100%}
       <div class="section-title">Top Movers</div>
       <div class="movers-grid" id="topMovers"></div>
 
+      <!-- Watchlist on Dashboard -->
+      <div id="dashWlSection" style="display:none">
+        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span>⭐ Watchlist</span>
+          <span id="dashWlCount" style="font-size:10px;color:var(--gold)"></span>
+        </div>
+        <div class="movers-grid" id="dashWlList"></div>
+      </div>
       <!-- Near Support -->
       <div class="section-title">ใกล้แนวรับ 🎯</div>
       <div class="movers-grid" id="nearSupport"></div>
@@ -497,6 +556,7 @@ canvas.bigchart{width:100%;height:100%}
       <input class="search-input" placeholder="ค้นหาหุ้น..." id="searchInput" oninput="filterStocks()">
     </div>
     <div class="stocks-controls">
+      <button class="wl-filter-btn" id="wlFilterBtn" onclick="toggleWatchlistFilter(this)">⭐ Watchlist <span class="wl-count" id="wlCount">0</span></button>
       <button class="ctrl-btn active" onclick="sortStocks('chg',this)">% Change</button>
       <button class="ctrl-btn" onclick="sortStocks('name',this)">A–Z</button>
       <button class="ctrl-btn" onclick="sortStocks('rsi',this)">RSI</button>
@@ -527,11 +587,36 @@ canvas.bigchart{width:100%;height:100%}
 
   <div class="page" id="page-alerts">
     <div class="alerts-page">
-      <div class="section-title" style="margin-bottom:14px">Trade Log</div>
-      <div id="alertsStats" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2)">
-        ยังไม่มีสัญญาณ
+      <!-- Tab switcher -->
+      <div class="alert-tab-row">
+        <div class="alert-tab active" id="tabPriceAlert" onclick="switchAlertTab('price',this)">🔔 Price Alert</div>
+        <div class="alert-tab" id="tabTradeLog" onclick="switchAlertTab('trade',this)">📋 Trade Log</div>
       </div>
-      <div id="alertsList"></div>
+
+      <!-- Price Alert Panel -->
+      <div id="panelPriceAlert">
+        <div class="pa-add-form">
+          <div class="pa-form-title">ตั้งแจ้งเตือนราคา</div>
+          <div class="pa-form-row">
+            <select class="pa-select" id="paTickerSel" style="max-width:110px"></select>
+            <select class="pa-select" id="paDirSel" style="max-width:90px">
+              <option value="above">↑ ขึ้นถึง</option>
+              <option value="below">↓ ลงถึง</option>
+            </select>
+            <input class="pa-input" id="paPriceInput" type="number" placeholder="ราคา $" step="0.01" style="max-width:100px">
+            <button class="pa-add-btn" onclick="addPriceAlert()">+ เพิ่ม</button>
+          </div>
+        </div>
+        <div id="paList"></div>
+      </div>
+
+      <!-- Trade Log Panel -->
+      <div id="panelTradeLog" style="display:none">
+        <div id="alertsStats" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+          ยังไม่มีสัญญาณ
+        </div>
+        <div id="alertsList"></div>
+      </div>
     </div>
   </div>
 
@@ -540,11 +625,21 @@ canvas.bigchart{width:100%;height:100%}
     <div class="settings-page">
 
       <div class="settings-section">
-        <div class="settings-section-title">API & Connection</div>
-        <div class="settings-row">
-          <div>
+        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>API & Connection</span>
+          <span id="apiLockBadge" style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px">🔒 ล็อกแล้ว</span>
+        </div>
+        <div class="settings-row" id="apiKeyRow">
+          <div style="width:100%">
             <div class="settings-label">Finnhub API Key</div>
             <div class="settings-sublabel">ใส่ key เพื่อดึงราคาจริง</div>
+            <!-- แสดงตอนล็อก -->
+            <div class="locked-field" id="apiKeyLocked" style="display:none">
+              <span class="lock-icon">🔒</span>
+              <span id="apiKeyMasked">••••••••••••••••</span>
+              <button class="unlock-btn" style="margin-left:auto" onclick="unlockSection('api')">ปลดล็อก</button>
+            </div>
+            <!-- แสดงตอนแก้ไข -->
             <input class="settings-input full" id="apiKeyInput" type="password" placeholder="ใส่ API Key...">
           </div>
         </div>
@@ -552,10 +647,10 @@ canvas.bigchart{width:100%;height:100%}
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
-        <div class="settings-row" style="border-bottom:none">
+        <div class="settings-row" style="border-bottom:none" id="apiActionRow">
           <div></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="settings-btn" onclick="saveSettings()">บันทึก</button>
+            <button class="settings-btn" onclick="saveSettings()">🔒 บันทึก & ล็อก</button>
             <button class="settings-btn" id="testApiBtn" onclick="testApiKey()">🔑 ทดสอบ Key</button>
           </div>
         </div>
@@ -563,16 +658,28 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-title">Telegram Notifications</div>
+        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Telegram Notifications</span>
+          <span id="tgLockBadge" style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px">🔒 ล็อกแล้ว</span>
+        </div>
         <div class="settings-row">
-          <div>
+          <div style="width:100%">
             <div class="settings-label">Bot Token</div>
+            <div class="locked-field" id="tgTokenLocked" style="display:none">
+              <span class="lock-icon">🔒</span>
+              <span id="tgTokenMasked">••••••••••••••••</span>
+              <button class="unlock-btn" style="margin-left:auto" onclick="unlockSection('tg')">ปลดล็อก</button>
+            </div>
             <input class="settings-input full" id="tgToken" type="text" placeholder="123456:ABCdef...">
           </div>
         </div>
         <div class="settings-row">
-          <div>
+          <div style="width:100%">
             <div class="settings-label">Chat ID</div>
+            <div class="locked-field" id="tgChatIdLocked" style="display:none">
+              <span class="lock-icon">🔒</span>
+              <span id="tgChatIdMasked">••••••••</span>
+            </div>
             <input class="settings-input full" id="tgChatId" type="text" placeholder="เช่น 8790390001">
           </div>
         </div>
@@ -580,10 +687,10 @@ canvas.bigchart{width:100%;height:100%}
           <div class="settings-label">เปิดแจ้งเตือน</div>
           <div class="toggle" id="tgToggle" onclick="toggleTG()"></div>
         </div>
-        <div class="settings-row" style="border-bottom:none">
+        <div class="settings-row" style="border-bottom:none" id="tgActionRow">
           <div></div>
           <div style="display:flex;gap:8px">
-            <button class="settings-btn" onclick="saveTG()">บันทึก</button>
+            <button class="settings-btn" onclick="saveTG()">🔒 บันทึก & ล็อก</button>
             <button class="settings-btn" onclick="testTG()">🧪 ทดสอบ</button>
           </div>
         </div>
@@ -684,7 +791,7 @@ canvas.bigchart{width:100%;height:100%}
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
     </div>
-    <div class="drawer-close" onclick="closeDrawer()">✕</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()">✕</div></div>
   </div>
   <div class="drawer-tabs">
     <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
@@ -803,6 +910,10 @@ let pollTimer=null, signalTimer=null;
 let candleCache={}, liveCache={};
 let currentSector='all', currentSort='chg', searchQuery='';
 let currentDrawerTicker=null;
+let watchlist=new Set(JSON.parse(localStorage.getItem('_sp_watchlist')||'[]'));
+let showWatchlistOnly=false;
+let priceAlerts=JSON.parse(localStorage.getItem('_sp_alerts')||'[]'); // [{ticker,price,dir,triggered}]
+const _alertFired=new Set();
 let marketCtx={SPY:{change:0,price:0},QQQ:{change:0,price:0}};
 let aiHistory={};
 const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
@@ -842,11 +953,255 @@ function navTo(page, el){
   // ทำงานหนักใน requestAnimationFrame ถัดไป (หลัง UI repaint)
   requestAnimationFrame(()=>{
     if(page==='stocks') renderCards();
-    else if(page==='alerts') renderAlerts();
+    else if(page==='alerts'){buildTickerSelect();renderPriceAlerts();renderAlerts();}
     else if(page==='dash') updateDashboard();
     else if(page==='settings') loadSettings();
     else if(page==='news') loadEconNews('market', document.querySelector('#newsCatRow .sector-btn'));
   });
+}
+
+
+// ── Price Alerts ──
+function savePriceAlerts(){
+  localStorage.setItem('_sp_alerts', JSON.stringify(priceAlerts));
+}
+
+function buildTickerSelect(){
+  const sel=document.getElementById('paTickerSel');
+  if(!sel||sel.options.length>1) return;
+  sel.innerHTML='<option value="">เลือกหุ้น</option>'+
+    stocks.map(s=>`<option value="${s.t}">${s.t} — ${s.n}</option>`).join('');
+}
+
+function addPriceAlert(){
+  const ticker=document.getElementById('paTickerSel')?.value;
+  const dir=document.getElementById('paDirSel')?.value;
+  const priceStr=document.getElementById('paPriceInput')?.value;
+  const price=parseFloat(priceStr);
+  if(!ticker){toast('⚠️ เลือกหุ้นก่อน');return;}
+  if(!price||price<=0){toast('⚠️ ใส่ราคาเป้าหมาย');return;}
+  // ตรวจซ้ำ
+  const dup=priceAlerts.find(a=>a.ticker===ticker&&a.dir===dir&&a.price===price&&!a.triggered);
+  if(dup){toast('มี alert นี้อยู่แล้ว');return;}
+  const s=stocks.find(x=>x.t===ticker);
+  priceAlerts.push({ticker,price,dir,triggered:false,addedAt:Date.now(),currentAtAdd:s?.p||0});
+  savePriceAlerts();
+  document.getElementById('paPriceInput').value='';
+  document.getElementById('paTickerSel').value='';
+  toast('✅ ตั้ง Alert '+ticker+' '+(dir==='above'?'↑':'↓')+' $'+price.toFixed(2));
+  renderPriceAlerts();
+}
+
+function deletePriceAlert(idx){
+  priceAlerts.splice(idx,1);
+  savePriceAlerts();
+  renderPriceAlerts();
+  updateAlertBadge();
+}
+
+function renderPriceAlerts(){
+  const list=document.getElementById('paList');
+  if(!list) return;
+  const active=priceAlerts.filter(a=>!a.triggered);
+  const fired=priceAlerts.filter(a=>a.triggered);
+  if(!priceAlerts.length){
+    list.innerHTML='<div class="pa-empty">🔔 ยังไม่มี Alert<br><br>เลือกหุ้น + ตั้งราคาเป้าหมาย<br>ระบบจะแจ้งเตือนเมื่อราคาถึง</div>';
+    return;
+  }
+  const renderRow=(a,i)=>{
+    const s=stocks.find(x=>x.t===a.ticker);
+    const cur=s?.p||a.currentAtAdd||0;
+    const target=a.price;
+    const isAbove=a.dir==='above';
+    // progress bar: ความคืบหน้าไปถึงราคาเป้า
+    let pct=0;
+    if(a.currentAtAdd>0&&target>0){
+      if(isAbove) pct=Math.min(100,Math.max(0,(cur-a.currentAtAdd)/(target-a.currentAtAdd)*100));
+      else pct=Math.min(100,Math.max(0,(a.currentAtAdd-cur)/(a.currentAtAdd-target)*100));
+    }
+    const barColor=isAbove?'var(--green)':`var(--red)`;
+    const realIdx=priceAlerts.indexOf(a);
+    return`<div class="pa-card ${a.dir} ${a.triggered?'triggered':''}">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <span class="pa-ticker">${a.ticker}</span>
+          <span class="pa-dir ${a.dir}">${isAbove?'↑ ขึ้นถึง':'↓ ลงถึง'}</span>
+          ${a.triggered?'<span style="font-size:9px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700">✅ แจ้งแล้ว</span>':''}
+        </div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span class="pa-target">$${target.toFixed(2)}</span>
+          <span class="pa-current">ปัจจุบัน $${cur>0?fmt(cur):'--'}</span>
+        </div>
+        ${!a.triggered?`<div class="pa-progress"><div class="pa-progress-bar" style="width:${pct}%;background:${barColor}"></div></div>`:''}
+      </div>
+      <div class="pa-del" onclick="deletePriceAlert(${realIdx})">✕</div>
+    </div>`;
+  };
+  let html='';
+  if(active.length){
+    html+='<div style="font-size:10px;color:var(--text3);font-family:Syne,sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">กำลังติดตาม</div>';
+    html+=active.map(a=>renderRow(a,priceAlerts.indexOf(a))).join('');
+  }
+  if(fired.length){
+    html+='<div style="font-size:10px;color:var(--text3);font-family:Syne,sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 8px">แจ้งแล้ว</div>';
+    html+=fired.map(a=>renderRow(a,priceAlerts.indexOf(a))).join('');
+  }
+  list.innerHTML=html;
+}
+
+function checkPriceAlerts(ticker, price){
+  if(!priceAlerts.length) return;
+  priceAlerts.forEach((a,i)=>{
+    if(a.triggered||a.ticker!==ticker) return;
+    const hit=(a.dir==='above'&&price>=a.price)||(a.dir==='below'&&price<=a.price);
+    if(!hit) return;
+    const fireKey=ticker+'_'+a.dir+'_'+a.price;
+    if(_alertFired.has(fireKey)) return;
+    _alertFired.add(fireKey);
+    a.triggered=true;
+    savePriceAlerts();
+    // เสียงแจ้งเตือน
+    playAlertSound();
+    // แสดง toast
+    toast(`🔔 ${ticker} ${a.dir==='above'?'↑':'↓'} $${a.price.toFixed(2)} แล้ว! ราคาปัจจุบัน $${fmt(price)}`);
+    // ส่ง Telegram
+    sendTG(`🔔 Price Alert!
+${ticker} ${a.dir==='above'?'↑ ขึ้นถึง':'↓ ลงถึง'} $${a.price.toFixed(2)}
+ราคาปัจจุบัน $${fmt(price)}`);
+    updateAlertBadge();
+    // refresh list ถ้าอยู่หน้า alerts
+    if(document.getElementById('panelPriceAlert')?.style.display!=='none') renderPriceAlerts();
+  });
+}
+
+function updateAlertBadge(){
+  const active=priceAlerts.filter(a=>!a.triggered).length;
+  // ใส่ badge บน nav item
+  const navItems=document.querySelectorAll('#bottomnav .nav-item');
+  const alertNav=navItems[3]; // Signals tab
+  const existing=alertNav?.querySelector('.pa-badge');
+  if(existing) existing.remove();
+  if(active>0&&alertNav){
+    const badge=document.createElement('span');
+    badge.className='pa-badge';
+    badge.textContent=active;
+    alertNav.querySelector('.nav-label').appendChild(badge);
+  }
+}
+
+function switchAlertTab(tab, el){
+  document.querySelectorAll('.alert-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panelPriceAlert').style.display=tab==='price'?'block':'none';
+  document.getElementById('panelTradeLog').style.display=tab==='trade'?'block':'none';
+  if(tab==='price'){buildTickerSelect();renderPriceAlerts();}
+  else renderAlerts();
+}
+
+
+function addAlertFromDrawer(){
+  if(!currentDrawerTicker) return;
+  const ticker=currentDrawerTicker;
+  const dir=document.getElementById('drawerAlertDir')?.value||'above';
+  const price=parseFloat(document.getElementById('drawerAlertPrice')?.value||'0');
+  if(!price||price<=0){toast('⚠️ ใส่ราคาเป้าหมาย');return;}
+  const dup=priceAlerts.find(a=>a.ticker===ticker&&a.dir===dir&&a.price===price&&!a.triggered);
+  if(dup){toast('มี alert นี้อยู่แล้ว');return;}
+  const s=stocks.find(x=>x.t===ticker);
+  priceAlerts.push({ticker,price,dir,triggered:false,addedAt:Date.now(),currentAtAdd:s?.p||0});
+  savePriceAlerts();
+  document.getElementById('drawerAlertPrice').value='';
+  toast('✅ Alert '+ticker+' '+(dir==='above'?'↑':'↓')+' $'+price.toFixed(2)+' ตั้งแล้ว');
+  updateAlertBadge();
+}
+
+// ── Watchlist ──
+function saveWatchlist(){
+  localStorage.setItem('_sp_watchlist', JSON.stringify([...watchlist]));
+  updateWlCount();
+}
+
+function updateWlCount(){
+  const count=watchlist.size;
+  const countEl=document.getElementById('wlCount');
+  if(countEl) countEl.textContent=count;
+  const filterBtn=document.getElementById('wlFilterBtn');
+  if(filterBtn){
+    filterBtn.classList.toggle('active', showWatchlistOnly);
+  }
+}
+
+function toggleWatchlist(ticker, btn){
+  if(watchlist.has(ticker)){
+    watchlist.delete(ticker);
+    if(btn){btn.textContent='☆';btn.classList.remove('active');}
+    toast('ลบ '+ticker+' ออกจาก Watchlist');
+  } else {
+    watchlist.add(ticker);
+    if(btn){btn.textContent='⭐';btn.classList.add('active');}
+    toast('⭐ เพิ่ม '+ticker+' ใน Watchlist');
+  }
+  saveWatchlist();
+  // อัพเดท drawer star ถ้าเปิดอยู่
+  const dBtn=document.getElementById('drawerWlBtn');
+  if(dBtn&&currentDrawerTicker===ticker){
+    dBtn.textContent=watchlist.has(ticker)?'⭐':'☆';
+    dBtn.classList.toggle('active', watchlist.has(ticker));
+  }
+  // อัพเดท dashboard watchlist section
+  updateDashWatchlist();
+  if(showWatchlistOnly) renderCards();
+}
+
+function toggleWatchlistFromDrawer(){
+  if(!currentDrawerTicker) return;
+  const ticker=currentDrawerTicker;
+  const btn=document.getElementById('drawerWlBtn');
+  // อัพเดท card button ด้วย
+  const cardBtn=document.getElementById('wl-'+ticker);
+  toggleWatchlist(ticker, btn);
+  if(cardBtn){
+    cardBtn.textContent=watchlist.has(ticker)?'⭐':'☆';
+    cardBtn.classList.toggle('active', watchlist.has(ticker));
+  }
+}
+
+function toggleWatchlistFilter(btn){
+  showWatchlistOnly=!showWatchlistOnly;
+  btn.classList.toggle('active', showWatchlistOnly);
+  if(showWatchlistOnly && watchlist.size===0){
+    showWatchlistOnly=false;
+    btn.classList.remove('active');
+    toast('⭐ ยังไม่มีหุ้นใน Watchlist — กด ☆ บนการ์ดเพื่อเพิ่ม');
+    return;
+  }
+  renderCards();
+}
+
+function updateDashWatchlist(){
+  const section=document.getElementById('dashWlSection');
+  const list=document.getElementById('dashWlList');
+  const countEl=document.getElementById('dashWlCount');
+  if(!section||!list) return;
+  if(watchlist.size===0){
+    section.style.display='none';
+    return;
+  }
+  section.style.display='block';
+  if(countEl) countEl.textContent=watchlist.size+' ตัว';
+  const wlStocks=stocks.filter(s=>watchlist.has(s.t));
+  list.innerHTML=wlStocks.map(s=>`
+    <div class="mover-row" onclick="openDrawer('${s.t}')">
+      <div class="mover-left">
+        <div class="mover-ticker">${s.t}</div>
+        <div class="mover-name">${s.n}</div>
+      </div>
+      <div>
+        <div class="mover-price">$${fmt(s.p)}</div>
+        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c.toFixed(2)}%</div>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ── Toast ──
@@ -933,7 +1288,10 @@ function makeCard(s){
           </div>
         </div>
       </div>
-      <div class="card-right">
+      <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
+        </div>
         <div class="card-price" id="price-v2-${s.t}">$${fmt(s.p)}</div>
         <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${isUp?'+':''}${s.c}%</div>
       </div>
@@ -1114,6 +1472,7 @@ function filterStocks(){
 
 function getVisibleStocks(){
   let list=[...stocks];
+  if(showWatchlistOnly) list=list.filter(s=>watchlist.has(s.t));
   if(searchQuery) list=list.filter(s=>s.t.includes(searchQuery)||s.n.toUpperCase().includes(searchQuery));
   if(currentSector!=='all'){
     const tickers=sectorMap[currentSector]||[];
@@ -1138,6 +1497,11 @@ function renderCards(){
   if(!grid) return;
   grid.innerHTML='';
   const list=getVisibleStocks();
+  // Empty state สำหรับ watchlist
+  if(showWatchlistOnly && list.length===0){
+    grid.innerHTML='<div class="wl-empty"><div class="wl-empty-icon">⭐</div><div class="wl-empty-text">ยังไม่มีหุ้นใน Watchlist<br><br>กดปุ่ม ☆ บนการ์ดหุ้น<br>เพื่อเพิ่มเข้า Watchlist</div></div>';
+    return;
+  }
   // render ทีละ 10 ตัว ไม่ block UI
   const CHUNK=10;
   let i=0;
@@ -1206,6 +1570,8 @@ function updateDashboard(){
       </div>
     </div>
   `).join('');
+  // Watchlist section on dashboard
+  updateDashWatchlist();
   // Near support
   const near=[...stocks].filter(s=>s.p>0).sort((a,b)=>{
     const pa=(a.p-getS1(a.t,a.p))/getS1(a.t,a.p)*100;
@@ -1239,6 +1605,12 @@ function openDrawer(ticker){
   const chg=document.getElementById('drawerChg');
   chg.textContent=(s.c>=0?'+':'')+s.c+'%';
   chg.className='card-chg '+(s.c>=0?'up':'dn');
+  // อัพเดท watchlist star ใน drawer
+  const dWlBtn=document.getElementById('drawerWlBtn');
+  if(dWlBtn){
+    dWlBtn.textContent=watchlist.has(ticker)?'⭐':'☆';
+    dWlBtn.classList.toggle('active', watchlist.has(ticker));
+  }
   // Load drawer logo
   const dLogo=document.getElementById('drawerLogo');
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
@@ -1334,6 +1706,17 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
         <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
+        <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
+          <div style="font-family:'Syne',sans-serif;font-size:9px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="drawerAlertDir" class="pa-select" style="flex:none;width:100px">
+              <option value="above">↑ ขึ้นถึง</option>
+              <option value="below">↓ ลงถึง</option>
+            </select>
+            <input id="drawerAlertPrice" class="pa-input" type="number" placeholder="ราคา $" step="0.01" style="flex:1;min-width:80px">
+            <button class="pa-add-btn" onclick="addAlertFromDrawer()">+ เพิ่ม</button>
+          </div>
+        </div>
       </div>`;
     // Draw big chart
     setTimeout(()=>{
@@ -1644,6 +2027,7 @@ function saveTG(){
   if(t)localStorage.setItem('tgToken',t);
   if(c)localStorage.setItem('tgChatId',c);
   toast('✅ บันทึก Telegram แล้ว');
+  if(t&&c) lockSection('tg');
 }
 function toggleTG(){
   const el=document.getElementById('tgToggle');
@@ -1698,6 +2082,84 @@ async function sendTG(msg){
   }catch{}
 }
 
+
+// ── Settings Lock ──
+function maskKey(str){
+  if(!str) return '••••••••••••••••';
+  if(str.length<=4) return '••••';
+  return str.slice(0,3)+'•'.repeat(Math.min(str.length-4,12))+str.slice(-2);
+}
+
+function lockSection(section){
+  if(section==='api'){
+    const key=document.getElementById('apiKeyInput')?.value?.trim();
+    if(!key){toast('⚠️ ใส่ API Key ก่อนล็อก');return;}
+    document.getElementById('apiKeyLocked').style.display='flex';
+    document.getElementById('apiKeyMasked').textContent=maskKey(key);
+    document.getElementById('apiKeyInput').style.display='none';
+    document.getElementById('apiLockBadge').style.display='';
+    localStorage.setItem('_api_locked','1');
+  } else if(section==='tg'){
+    const token=document.getElementById('tgToken')?.value?.trim();
+    const chatId=document.getElementById('tgChatId')?.value?.trim();
+    if(!token||!chatId){toast('⚠️ ใส่ Bot Token และ Chat ID ก่อนล็อก');return;}
+    document.getElementById('tgTokenLocked').style.display='flex';
+    document.getElementById('tgTokenMasked').textContent=maskKey(token);
+    document.getElementById('tgChatIdLocked').style.display='flex';
+    document.getElementById('tgChatIdMasked').textContent=maskKey(chatId);
+    document.getElementById('tgToken').style.display='none';
+    document.getElementById('tgChatId').style.display='none';
+    document.getElementById('tgLockBadge').style.display='';
+    localStorage.setItem('_tg_locked','1');
+  }
+}
+
+function unlockSection(section){
+  if(section==='api'){
+    document.getElementById('apiKeyLocked').style.display='none';
+    document.getElementById('apiKeyInput').style.display='';
+    document.getElementById('apiKeyInput').focus();
+    document.getElementById('apiLockBadge').style.display='none';
+    localStorage.removeItem('_api_locked');
+  } else if(section==='tg'){
+    document.getElementById('tgTokenLocked').style.display='none';
+    document.getElementById('tgChatIdLocked').style.display='none';
+    document.getElementById('tgToken').style.display='';
+    document.getElementById('tgChatId').style.display='';
+    document.getElementById('tgToken').focus();
+    document.getElementById('tgLockBadge').style.display='none';
+    localStorage.removeItem('_tg_locked');
+  }
+}
+
+function applyLockState(){
+  const apiLocked=localStorage.getItem('_api_locked')==='1';
+  const tgLocked=localStorage.getItem('_tg_locked')==='1';
+  if(apiLocked && FINNHUB_KEY){
+    document.getElementById('apiKeyLocked').style.display='flex';
+    document.getElementById('apiKeyMasked').textContent=maskKey(FINNHUB_KEY);
+    document.getElementById('apiKeyInput').style.display='none';
+    document.getElementById('apiLockBadge').style.display='';
+  } else {
+    document.getElementById('apiLockBadge').style.display='none';
+  }
+  if(tgLocked){
+    const token=localStorage.getItem('tgToken')||'';
+    const chatId=localStorage.getItem('tgChatId')||'';
+    if(token&&chatId){
+      document.getElementById('tgTokenLocked').style.display='flex';
+      document.getElementById('tgTokenMasked').textContent=maskKey(token);
+      document.getElementById('tgChatIdLocked').style.display='flex';
+      document.getElementById('tgChatIdMasked').textContent=maskKey(chatId);
+      document.getElementById('tgToken').style.display='none';
+      document.getElementById('tgChatId').style.display='none';
+      document.getElementById('tgLockBadge').style.display='';
+    }
+  } else {
+    document.getElementById('tgLockBadge').style.display='none';
+  }
+}
+
 // ── Settings ──
 function loadSettings(){
   document.getElementById('apiKeyInput').value=FINNHUB_KEY;
@@ -1705,14 +2167,16 @@ function loadSettings(){
   document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
   document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
   if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
+  applyLockState();
 }
 function saveSettings(){
   const key=document.getElementById('apiKeyInput')?.value?.trim();
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
   if(key){FINNHUB_KEY=key;localStorage.setItem('_fh_key',key);}
   PORT_SIZE=port;localStorage.setItem('_sp_portsize',port);
-  saveTG();
   toast('✅ บันทึกแล้ว');
+  // lock API key ถ้ามี
+  if(key) lockSection('api');
   // restart live cleanly ถ้ามี key
   if(hasApiKey()){
     stopLive();
@@ -1901,6 +2365,10 @@ function checkAllBuySignals(){
 buildSectorRow();
 updateDashboard();
 loadSettings();
+updateWlCount();
+updateDashWatchlist();
+updateAlertBadge();
+buildTickerSelect();
 
 // Auto-start if key saved
 if(hasApiKey()){
@@ -3575,6 +4043,8 @@ function updateCardLive(s){
   // Dashboard live update ถ้าอยู่หน้า dash
   const dashActive=document.getElementById('page-dash')?.classList.contains('active');
   if(dashActive) updateDashboard();
+  // ตรวจ price alerts
+  if(s.p>0) checkPriceAlerts(s.t, s.p);
   if(!_buyAlerted.has(s.t)&&s.p>0){
     _buyAlerted.add(s.t);
     setTimeout(()=>_buyAlerted.delete(s.t),600000);
