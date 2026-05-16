@@ -875,7 +875,8 @@ const stocks=[
 
 const rsiData={NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
 
-const sup0={RKLB:98.09,EOSE:7.21,SLNH:1.65,MU:97.65,NVTS:6.48,ASTS:26.22,INTC:19.32,AMD:104.16,HIMS:32.2,IREN:12.15,ASML:681.5,CRWD:418.5,AVGO:209.25,IONQ:49.68,AAPL:184.14,NVDA:121.83,KTOS:30.36,RBRK:75.44,HOOD:56.12,OKLO:38.64,TEM:50.6,GOOGL:162.75,NVO:65.32,AMZN:204.6,PLTR:116.25,CRDO:71.76,ANET:87.4,VRT:97.65,ARM:125.55,TSM:165.54,ISRG:535.8,NFLX:1052.8,META:564.0,MSFT:390.6,JPM:251.1,XOM:106.95,SOFI:16.2,SPGI:507.6,MP:18.0,NOW:930.6,LLY:780.2,NBIS:38.64,AXON:465.0,TMDX:61.64,CRWV:53.36,MELI:2115.0,QCOM:144.15,AMAT:162.75,LRCX:799.0,CRM:265.05,ADBE:344.1,SNOW:144.15,DDOG:106.95,MDB:176.7,NET:102.3,TSLA:274.35,RIVN:12.15,LCID:2.52,V:314.34,MA:502.9,PYPL:62.56,KO:66.24,PEP:125.55,NKE:57.04,MCD:288.3,WMT:90.16,JNJ:146.94,PG:158.1};
+// S1 อัพเดทตามราคาจริง พ.ค. 2026
+const sup0={RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:22.50,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:55.00,HOOD:52.00,OKLO:55.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:92.00,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,RIVN:10.50,LCID:2.20,V:308.0,MA:475.0,PYPL:58.00,KO:64.00,PEP:118.0,NKE:52.00,MCD:275.0,WMT:88.00,JNJ:148.0,PG:155.0};
 
 const sectorMap={
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
@@ -1259,18 +1260,19 @@ function drawSpark(canvas,prices,isUp){
 
 // ── Levels (simplified pivot) ──
 function getS1(t,p){
-  const hardcoded = sup0[t];
-  // FIX: S1 ต้องอยู่ใต้ราคาปัจจุบันเสมอ
-  if(hardcoded && hardcoded < p * 0.99) return hardcoded;
-  // คำนวณ dynamic: S1 = 5-10% ใต้ราคา
-  const pct = p > 500 ? 0.06 : p > 100 ? 0.07 : p > 20 ? 0.08 : 0.10;
-  return +(p * (1 - pct)).toFixed(2);
+  if(!p||p<=0) return 0;
+  const hardcoded=sup0[t];
+  // ใช้ hardcode เฉพาะถ้าอยู่ใต้ราคา 1-15% (ไม่สูงกว่าราคาจริง)
+  if(hardcoded && hardcoded < p*0.99 && hardcoded > p*0.85) return hardcoded;
+  // dynamic fallback
+  const pct=p>500?0.06:p>100?0.07:p>20?0.08:p>5?0.10:0.12;
+  return +(p*(1-pct)).toFixed(2);
 }
 function getR1(t,p){
-  const s1 = getS1(t,p);
-  // R1 = เหนือราคาปัจจุบัน สมมาตรกับ S1
-  const range = p - s1;
-  return +(p + range * 1.5).toFixed(2);
+  if(!p||p<=0) return 0;
+  const s1=getS1(t,p);
+  const range=p-s1;
+  return +(p+range*1.5).toFixed(2);
 }
 
 // ── Render Card ──
@@ -1982,18 +1984,10 @@ function exportCSV(){
 }
 
 // ── Buy Signal ──
+// ── Buy Signal — ใช้ _calcBuyScore เต็มๆ ทุกครั้ง ──
 function checkBuySignal(ticker,price){
-  const s1=getS1(ticker,price);
-  const pctFromS1=(price-s1)/s1*100;
-  const rsi=rsiData[ticker]||50;
-  const score=Math.max(0,Math.min(100,
-    (pctFromS1<=0.5?30:pctFromS1<=1.5?20:pctFromS1<=3?10:0)+
-    (rsi<=30?25:rsi<=40?18:rsi<=50?10:0)+
-    (Math.random()*10)
-  ));
-  if(pctFromS1<=1.5&&score>=45){
-    showSignalPopup(ticker,price,s1,Math.round(score));
-  }
+  // เรียก full version แบบ async (ไม่ block UI)
+  checkBuySignalFull(ticker,price);
 }
 
 // ── Alert Sound — Web Audio API (ไม่ต้องไฟล์เสียง) ──
@@ -2416,8 +2410,14 @@ async function httpPoll(){
 }
 
 function checkAllBuySignals(){
-  if(!hasApiKey())return;
-  stocks.forEach(s=>{if(s.p>0)checkBuySignal(s.t,s.p);});
+  if(!hasApiKey()) return;
+  // รัน async แบบ sequential ป้องกัน rate limit
+  (async()=>{
+    for(const s of stocks){
+      if(s.p>0) await checkBuySignalFull(s.t,s.p);
+      await new Promise(r=>setTimeout(r,100));
+    }
+  })();
 }
 
 // ── Init ──
@@ -4179,18 +4179,42 @@ async function triggerAISummary(){
 
 // ── Check Buy Signal Full ──
 async function checkBuySignalFull(ticker,price){
-  const s1=sup0[ticker]||(price*0.94);
+  if(!price||price<=0) return;
+  const s1=getS1(ticker,price);
+  const r1=getR1(ticker,price);
   const pctFromS1=(price-s1)/s1*100;
-  if(pctFromS1>1.5) return;
-  if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
-    try{await fetchCandles(ticker,60);}catch{}
+
+  // Pre-filter: ราคาต้องอยู่ใกล้ S1 ไม่เกิน 3% (กว้างขึ้นจากเดิม 1.5%)
+  if(pctFromS1>3) return;
+
+  // โหลด candle data ถ้ายังไม่มี
+  if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+    try{ await fetchCandles(ticker,60); }catch{}
+    // อัพเดท RSI จาก candle จริง
+    await updateRSIFromCandles(ticker);
   }
-  if(candleCache[ticker]?.data?._mock) return;
-  const lvl={s1,s2:s1*0.95,r1:price+(price-s1)*1.5,r2:price+(price-s1)*2.5};
-  const sig=_calcBuyScore(ticker,price,s1,lvl.r1);
-  if(sig.score>=52){
-    showSignalPopup(ticker,price,s1,Math.round(sig.score));
-    sendTG(`🔔 Buy Signal: ${ticker}\n💰 ราคา $${price.toFixed(2)} | Score ${Math.round(sig.score)}/100\n📊 S1 $${s1.toFixed(2)} | R1 $${lvl.r1.toFixed(2)}`);
+
+  // ต้องมี candle จริง (ไม่ใช่ mock) ถึงจะคำนวณ indicator ครบ
+  const hasCandleData = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock;
+
+  let score=0;
+  if(hasCandleData){
+    // ใช้ _calcBuyScore เต็มๆ ครบทุก indicator
+    const sig=_calcBuyScore(ticker,price,s1,r1);
+    score=sig.score||0;
+  } else {
+    // Fallback: คำนวณจาก RSI + S1 เท่าที่มี
+    const rsi=rsiData[ticker]||50;
+    score=
+      (pctFromS1<=0.5?35:pctFromS1<=1.5?25:pctFromS1<=3?12:0)+
+      (rsi<=30?30:rsi<=40?20:rsi<=50?10:rsi<=60?5:0);
+  }
+
+  // Threshold: score >= 52 (เหมือนเดิม)
+  if(score>=52){
+    showSignalPopup(ticker,price,s1,Math.round(score));
+    const tgMsg=`🔔 Buy Signal: ${ticker}\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📊 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}\n${hasCandleData?'✅ Full Analysis':'⚠️ Basic Analysis'}`;
+    sendTG(tgMsg);
   }
 }
 
