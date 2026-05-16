@@ -515,7 +515,7 @@ canvas.bigchart{width:100%;height:100%}
       <div class="section-title">Portfolio Stats</div>
       <div class="port-card">
         <div class="port-stat">
-          <div class="port-stat-val gold" id="portSize">$10,000</div>
+          <div class="port-stat-val gold" id="portSize">10,000</div>
           <div class="port-stat-lbl">Port Size</div>
         </div>
         <div class="port-stat">
@@ -1026,8 +1026,8 @@ function renderPriceAlerts(){
           ${a.triggered?'<span style="font-size:9px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700">✅ แจ้งแล้ว</span>':''}
         </div>
         <div style="display:flex;align-items:baseline;justify-content:space-between">
-          <span class="pa-target">$${target.toFixed(2)}</span>
-          <span class="pa-current">ปัจจุบัน $${cur>0?fmt(cur):'--'}</span>
+          <span class="pa-target">${target.toFixed(2)}</span>
+          <span class="pa-current">ปัจจุบัน ${cur>0?fmt(cur):'--'}</span>
         </div>
         ${!a.triggered?`<div class="pa-progress"><div class="pa-progress-bar" style="width:${pct}%;background:${barColor}"></div></div>`:''}
       </div>
@@ -1060,11 +1060,11 @@ function checkPriceAlerts(ticker, price){
     // เสียงแจ้งเตือน
     playAlertSound();
     // แสดง toast
-    toast(`🔔 ${ticker} ${a.dir==='above'?'↑':'↓'} $${a.price.toFixed(2)} แล้ว! ราคาปัจจุบัน $${fmt(price)}`);
+    toast(`🔔 ${ticker} ${a.dir==='above'?'↑':'↓'} $${a.price.toFixed(2)} แล้ว! ราคาปัจจุบัน ${fmt(price)}`);
     // ส่ง Telegram
     sendTG(`🔔 Price Alert!
 ${ticker} ${a.dir==='above'?'↑ ขึ้นถึง':'↓ ลงถึง'} $${a.price.toFixed(2)}
-ราคาปัจจุบัน $${fmt(price)}`);
+ราคาปัจจุบัน ${fmt(price)}`);
     updateAlertBadge();
     // refresh list ถ้าอยู่หน้า alerts
     if(document.getElementById('panelPriceAlert')?.style.display!=='none') renderPriceAlerts();
@@ -1194,7 +1194,7 @@ function updateDashWatchlist(){
         <div class="mover-name">${s.n}</div>
       </div>
       <div>
-        <div class="mover-price">$${fmt(s.p)}</div>
+        <div class="mover-price">${fmt(s.p)}</div>
         <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c.toFixed(2)}%</div>
       </div>
     </div>
@@ -1304,7 +1304,7 @@ function makeCard(s){
         <div style="display:flex;align-items:center;gap:8px">
           <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
         </div>
-        <div class="card-price" id="price-v2-${s.t}">$${fmt(s.p)}</div>
+        <div class="card-price" id="price-v2-${s.t}">${fmt(s.p)}</div>
         <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${isUp?'+':''}${s.c}%</div>
       </div>
     </div>
@@ -1315,9 +1315,9 @@ function makeCard(s){
         <div class="levels-bar-pos" style="left:${pos}%"></div>
       </div>
       <div class="levels-info">
-        <span class="s1">S1 $${s1.toFixed(2)}</span>
+        <span class="s1">S1 ${s1.toFixed(2)}</span>
         <span class="zone">${zone}</span>
-        <span class="r1">R1 $${r1.toFixed(2)}</span>
+        <span class="r1">R1 ${r1.toFixed(2)}</span>
       </div>
     </div>
     <div class="card-stats">
@@ -1633,7 +1633,7 @@ function updateDashboard(){
   qqqEl.className='index-chg '+(qqqC>=0?'up':'dn');
   // Portfolio stats
   const stats=getTradeStats();
-  document.getElementById('portSize').textContent='$'+PORT_SIZE.toLocaleString();
+  document.getElementById('portSize').textContent=PORT_SIZE.toLocaleString();
   document.getElementById('dashWinRate').textContent=stats?stats.winRate+'%':'--';
   document.getElementById('dashSignals').textContent=stats?stats.total+'x':'--';
   document.getElementById('dashAvgPct').textContent=stats?(stats.avgPct>=0?'+':'')+stats.avgPct+'%':'--';
@@ -1646,7 +1646,7 @@ function updateDashboard(){
         <div class="mover-name">${s.n}</div>
       </div>
       <div>
-        <div class="mover-price">$${fmt(s.p)}</div>
+        <div class="mover-price">${fmt(s.p)}</div>
         <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c}%</div>
       </div>
     </div>
@@ -1665,10 +1665,10 @@ function updateDashboard(){
     return`<div class="mover-row" onclick="openDrawer('${s.t}')">
       <div class="mover-left">
         <div class="mover-ticker">${s.t}</div>
-        <div class="mover-name">S1 $${s1.toFixed(2)}</div>
+        <div class="mover-name">S1 ${s1.toFixed(2)}</div>
       </div>
       <div>
-        <div class="mover-price">$${fmt(s.p)}</div>
+        <div class="mover-price">${fmt(s.p)}</div>
         <div class="mover-chg ${parseFloat(pct)<=1.5?'up':'dn'}">+${pct}%</div>
       </div>
     </div>`;
@@ -1682,7 +1682,7 @@ function openDrawer(ticker){
   if(!s)return;
   document.getElementById('drawerTicker').textContent=s.t;
   document.getElementById('drawerName').textContent=s.n;
-  document.getElementById('drawerPrice').textContent='$'+fmt(s.p);
+  document.getElementById('drawerPrice').textContent=fmt(s.p);
   const chg=document.getElementById('drawerChg');
   chg.textContent=(s.c>=0?'+':'')+s.c+'%';
   chg.className='card-chg '+(s.c>=0?'up':'dn');
@@ -1751,20 +1751,20 @@ function drawerTab(tab, btn){
       const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
     const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
     const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
-    const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">$${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
+    const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
     const tenkanTxt=sig?.tenkan!=null&&sig?.kijun!=null?`<span class="ind-val ${sig.tenkan>sig.kijun?'bull':'bear'}">${sig.tenkan>sig.kijun?'Bull Cross ✅':'Bear Cross ⚠️'}</span>`:'<span class="ind-val">--</span>';
     const cloudTxt=sig?.senkouA!=null?`<span class="ind-val ${s.p>Math.max(sig.senkouA,sig.senkouB)?'bull':s.p<Math.min(sig.senkouA,sig.senkouB)?'bear':'neut'}">${s.p>Math.max(sig.senkouA,sig.senkouB)?'Above ☁️✅':s.p<Math.min(sig.senkouA,sig.senkouB)?'Below ☁️⚠️':'In Cloud ☁️'}</span>`:'<span class="ind-val">--</span>';
-    const sarTxt=sig?.psar!=null?`<span class="ind-val ${sig.psarBullish?'bull':'bear'}">$${sig.psar} ${sig.psarBullish?'↑ Bull':'↓ Bear'}</span>`:'<span class="ind-val">--</span>';
+    const sarTxt=sig?.psar!=null?`<span class="ind-val ${sig.psarBullish?'bull':'bear'}">${sig.psar} ${sig.psarBullish?'↑ Bull':'↓ Bear'}</span>`:'<span class="ind-val">--</span>';
     const bbTxt=sig?.bbPct!=null?`<span class="ind-val ${sig.bbPct<=10?'bull':sig.bbPct>=90?'bear':'neut'}">${sig.bbPct}% ${sig.bbPct<=10?'Near Lower':''}${sig.bbPct>=90?'Near Upper':''}</span>`:'<span class="ind-val">--</span>';
-    const vwapTxt=sig?.vwap!=null?`<span class="ind-val ${s.p<=sig.vwap?'bull':'neut'}">$${sig.vwap} ${s.p<=sig.vwap?'↓ below':'↑ above'}</span>`:'<span class="ind-val">--</span>';
+    const vwapTxt=sig?.vwap!=null?`<span class="ind-val ${s.p<=sig.vwap?'bull':'neut'}">${sig.vwap} ${s.p<=sig.vwap?'↓ below':'↑ above'}</span>`:'<span class="ind-val">--</span>';
     const wRTxt=sig?.williamsR!=null?`<span class="ind-val ${sig.williamsR<=-80?'bull':sig.williamsR>=-20?'bear':'neut'}">${sig.williamsR}</span>`:'<span class="ind-val">--</span>';
     const scoreTxt=sig?`<span class="ind-val ${sig.score>=60?'bull':sig.score>=40?'neut':'bear'}">${sig.score}/100</span>`:'<span class="ind-val">--</span>';
     // Chikou Span
     const chikouTxt=sig?.chikouSignal!=null?`<span class="ind-val ${sig.chikouSignal==='bull'?'bull':'bear'}">${sig.chikouSignal==='bull'?'↑ เหนือราคาเก่า ✅':'↓ ต่ำกว่าราคาเก่า ⚠️'}</span>`:'<span class="ind-val">--</span>';
     // Supertrend
-    const stTxt=sig?.supertrendVal!=null?`<span class="ind-val ${sig.supertrendBull?'bull':'bear'}">$${sig.supertrendVal} ${sig.supertrendBull?'↑ Bull ✅':'↓ Bear ⚠️'}</span>`:'<span class="ind-val">--</span>';
+    const stTxt=sig?.supertrendVal!=null?`<span class="ind-val ${sig.supertrendBull?'bull':'bear'}">${sig.supertrendVal} ${sig.supertrendBull?'↑ Bull ✅':'↓ Bear ⚠️'}</span>`:'<span class="ind-val">--</span>';
     // ATR Stop Loss
-    const atrStopTxt=sig?.atrStopLoss!=null?`<span class="ind-val bear">$${sig.atrStopLoss} (ATR ${sig.atr})</span>`:'<span class="ind-val">--</span>';
+    const atrStopTxt=sig?.atrStopLoss!=null?`<span class="ind-val bear">${sig.atrStopLoss} (ATR ${sig.atr})</span>`:'<span class="ind-val">--</span>';
     // Stochastic
     const stochTxt=sig?.stochK!=null?`<span class="ind-val ${sig.stochK<=20?'bull':sig.stochK>=80?'bear':'neut'}">%K ${sig.stochK} / %D ${sig.stochD} ${sig.stochK<=20?'Oversold':sig.stochK>=80?'Overbought':sig.stochK>sig.stochD?'↑':'↓'}</span>`:'<span class="ind-val">--</span>';
     // EMA Ribbon
@@ -1772,7 +1772,7 @@ function drawerTab(tab, btn){
     // MACD Histogram
     const macdHistTxt=sig?.macdHist!=null?`<span class="ind-val ${sig.macdHist>0?'bull':'bear'}">${sig.macdHist>0?'+':''}${sig.macdHist} ${sig.macdHist>0?'▲ Positive':'▼ Negative'}</span>`:'<span class="ind-val">--</span>';
     // Donchian Channel
-    const donchTxt=sig?.donchianHi!=null?`<span class="ind-val ${sig.donchianPct<=15?'bull':sig.donchianPct>=85?'bear':'neut'}">Hi $${sig.donchianHi} / Lo $${sig.donchianLo} (${sig.donchianPct}%)</span>`:'<span class="ind-val">--</span>';
+    const donchTxt=sig?.donchianHi!=null?`<span class="ind-val ${sig.donchianPct<=15?'bull':sig.donchianPct>=85?'bear':'neut'}">Hi ${sig.donchianHi} / Lo ${sig.donchianLo} (${sig.donchianPct}%)</span>`:'<span class="ind-val">--</span>';
     // CMF
     const cmfTxt=sig?.cmf!=null?`<span class="ind-val ${sig.cmf>0.05?'bull':sig.cmf<-0.05?'bear':'neut'}">${sig.cmf>0?'+':''}${sig.cmf} ${sig.cmf>0.05?'Buy Pressure':sig.cmf<-0.05?'Sell Pressure':'Neutral'}</span>`:'<span class="ind-val">--</span>';
     // ROC
@@ -1806,8 +1806,8 @@ function drawerTab(tab, btn){
         <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
         <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">${s1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">${r1.toFixed(2)}</span></div>
         <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
         <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
@@ -1957,13 +1957,90 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
+// ── buildFullIndicatorContext — รวม indicator ทุกตัวเป็น string ──
+function buildFullIndicatorContext(ticker, price){
+  const s=stocks.find(x=>x.t===ticker);
+  if(!s) return '';
+  const s1=getS1(ticker,price), r1=getR1(ticker,price);
+  const ind = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock
+    ? _calcBuyScore(ticker, price, s1, r1)
+    : null;
+
+  // ── Fundamental ──
+  let ctx=`📊 ข้อมูลหุ้น ${ticker} (${s.n})
+ราคา: $${price} (${s.c>=0?'+':''}${s.c}%) | MCap: ${s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
+แนวรับ S1: $${s1.toFixed(2)} | แนวต้าน R1: $${r1.toFixed(2)} | ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}%`;
+
+  if(ind){
+    // ── Momentum ──
+    ctx+=`\n\n📈 Momentum
+RSI(14): ${ind.rsi??'N/A'} ${ind.rsi<=30?'(Oversold🟢)':ind.rsi>=70?'(Overbought🔴)':'(Normal)'}
+MACD: ${ind.macdLine!=null?ind.macdLine.toFixed(4):'N/A'} | Signal: ${ind.macdSignal!=null?ind.macdSignal.toFixed(4):'N/A'} | Hist: ${ind.macdHist!=null?ind.macdHist.toFixed(4):'N/A'}
+Stoch %K: ${ind.stochK??'N/A'} | %D: ${ind.stochD??'N/A'}
+Williams %R: ${ind.williamsR!=null?ind.williamsR.toFixed(1):'N/A'}
+CCI: ${ind.cci!=null?ind.cci.toFixed(1):'N/A'} | MFI: ${ind.mfi!=null?ind.mfi.toFixed(1):'N/A'}
+ROC(10): ${ind.roc!=null?ind.roc.toFixed(2)+'%':'N/A'}`;
+
+    // ── Trend ──
+    ctx+=`\n\n📡 Trend
+EMA8: ${ind.ema8!=null?'$'+ind.ema8.toFixed(2):'N/A'} | EMA13: ${ind.ema13!=null?'$'+ind.ema13.toFixed(2):'N/A'} | EMA21: ${ind.ema21!=null?'$'+ind.ema21.toFixed(2):'N/A'}
+EMA50: ${ind.ema50!=null?'$'+ind.ema50.toFixed(2):'N/A'} | EMA100: ${ind.ema100!=null?'$'+ind.ema100.toFixed(2):'N/A'} | EMA200: ${ind.ema200!=null?'$'+ind.ema200.toFixed(2):'N/A'}
+EMA Ribbon: ${ind.ribbonBull?'🟢 Bullish (8>13>21)':ind.ribbonBear?'🔴 Bearish (8<13<21)':'Neutral'}
+Supertrend: ${ind.supertrendBull!=null?(ind.supertrendBull?'🟢 Bullish $'+ind.supertrendVal?.toFixed(2):'🔴 Bearish $'+ind.supertrendVal?.toFixed(2)):'N/A'}
+Parabolic SAR: ${ind.psar!=null?'$'+ind.psar+' '+(ind.psarBullish?'🟢 Uptrend':'🔴 Downtrend'):'N/A'}
+ADX: ${ind.adx!=null?ind.adx.toFixed(1):'N/A'} | DI+: ${ind.diPlus!=null?ind.diPlus.toFixed(1):'N/A'} | DI-: ${ind.diMinus!=null?ind.diMinus.toFixed(1):'N/A'}
+แนวโน้ม: ${ind.inUptrend===true?'🟢 ขาขึ้น':ind.inUptrend===false?'🔴 ขาลง':'Sideways'}`;
+
+    // ── Volatility / Volume ──
+    ctx+=`\n\n🔊 Volatility & Volume
+Bollinger: Upper $${ind.bbUpper!=null?ind.bbUpper.toFixed(2):'N/A'} | Mid $${ind.bbMid!=null?ind.bbMid.toFixed(2):'N/A'} | Lower $${ind.bbLower!=null?ind.bbLower.toFixed(2):'N/A'} | %B ${ind.bbPct!=null?ind.bbPct.toFixed(1):'N/A'}
+ATR: ${ind.atr!=null?'$'+ind.atr.toFixed(2)+' ('+ind.atrPct?.toFixed(2)+'%)':'N/A'} | Stop Loss: ${ind.atrStopLoss!=null?'$'+ind.atrStopLoss.toFixed(2):'N/A'}
+Volume Ratio: ${ind.volRatio!=null?ind.volRatio.toFixed(2)+'x':'N/A'}
+OBV Trend: ${ind.obvTrend??'N/A'}
+CMF: ${ind.cmf!=null?ind.cmf.toFixed(3):'N/A'}
+VWAP: ${ind.vwap!=null?'$'+ind.vwap.toFixed(2):'N/A'}`;
+
+    // ── Support/Resistance ──
+    ctx+=`\n\n🏔️ Support & Resistance
+Donchian: Hi $${ind.donchianHi??'N/A'} | Lo $${ind.donchianLo??'N/A'} | %Pos ${ind.donchianPct??'N/A'}
+Volume Profile POC: ราคาที่ซื้อขายมากที่สุดใน range ปัจจุบัน`;
+
+    // ── Ichimoku ──
+    ctx+=`\n\n☁️ Ichimoku
+Tenkan: ${ind.tenkan!=null?'$'+ind.tenkan.toFixed(2):'N/A'} | Kijun: ${ind.kijun!=null?'$'+ind.kijun.toFixed(2):'N/A'}
+Senkou A: ${ind.senkouA!=null?'$'+ind.senkouA.toFixed(2):'N/A'} | Senkou B: ${ind.senkouB!=null?'$'+ind.senkouB.toFixed(2):'N/A'}
+Ichimoku Signal: ${ind.ichimokuSignal??'N/A'} | Chikou: ${ind.chikouSignal??'N/A'}`;
+
+    // ── Candlestick Patterns ──
+    const patterns=[];
+    if(ind.hammerPattern) patterns.push('🔨 Hammer');
+    if(ind.engulfingPattern) patterns.push('🕯️ Bullish Engulfing');
+    if(ind.dojiPattern) patterns.push('➕ Doji');
+    if(ind.morningStarPattern) patterns.push('🌟 Morning Star');
+    if(ind.threeWhiteSoldiersPattern) patterns.push('💂 Three White Soldiers');
+    if(ind.piercingPattern) patterns.push('🗡️ Piercing Line');
+    ctx+=`\n\n🕯️ Candlestick Patterns: ${patterns.length?patterns.join(', '):'ไม่พบ pattern'}`;
+
+    // ── Score ──
+    ctx+=`\n\n🎯 Buy Score: ${ind.score}/100
+Breakdown: ${ind.scoreBreakdown?.join(' | ')||'N/A'}`;
+  } else {
+    ctx+=`\n\nRSI: ${rsiData[ticker]||'N/A'} (ข้อมูล indicator เพิ่มเติมยังโหลดไม่ครบ)`;
+  }
+
+  // ── Market Context ──
+  ctx+=`\n\n🌎 ภาพรวมตลาด
+SPY: ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ: ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%`;
+
+  return ctx;
+}
+
 async function sendAI(ticker){
   if(_aiSending)return;
   const input=document.getElementById('aiInput');
   const msg=input?.value?.trim();
   if(!msg)return;
   _aiSending=true;
-  // disable send button while waiting
   const sendBtn=input?.nextElementSibling;
   if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.5';}
   input.value='';
@@ -1975,12 +2052,18 @@ async function sendAI(ticker){
     chat.innerHTML+=`<div class="ai-msg user">${msg}</div><div class="ai-msg bot" id="aiLoading">⏳ กำลังวิเคราะห์...</div>`;
     chat.scrollTop=chat.scrollHeight;
   }
-  const s1=getS1(ticker,s.p),r1=getR1(ticker,s.p),rsi=rsiData[ticker]||50;
-  const context=`หุ้น ${ticker} (${s.n}) ราคา $${s.p} (${s.c>=0?'+':''}${s.c}%) | RSI ${rsi} | S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)} | MCap ${s.mktcap} | RevGrowth ${s.rev} | P/E ${s.pe||'N/A'} | Earn ${s.earn||'N/A'}`;
+  // โหลด candle ถ้ายังไม่มี เพื่อให้ indicator ครบ
+  if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+    try{ await fetchCandles(ticker,60); await updateRSIFromCandles(ticker); }catch{}
+  }
+  const context=buildFullIndicatorContext(ticker, s.p);
   try{
-    const systemPrompt='คุณคือที่ปรึกษาหุ้นมืออาชีพ ตอบภาษาไทยเข้าใจง่าย ห้ามใช้ศัพท์อังกฤษเทคนิค ตอบกระชับ ห้ามใช้ Markdown เช่น ## ** --- ให้ตอบเป็นข้อความธรรมดาและใช้ emoji แทน';
-    const userPrompt=`ข้อมูล: ${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
-    const reply=await callGemini(systemPrompt, userPrompt, 600);
+    const systemPrompt=`คุณคือนักวิเคราะห์หุ้นมืออาชีพที่มีข้อมูล indicator ครบทุกตัว
+ตอบภาษาไทยเข้าใจง่าย ใช้ emoji แทน bullet point
+อธิบาย indicator เป็นภาษาชาวบ้าน เช่น "RSI ต่ำ = ราคาถูกเกินไปแล้ว" แทนที่จะพูดศัพท์เทคนิค
+ตอบกระชับ ตรงประเด็น ห้ามใช้ Markdown เช่น ## ** ---`;
+    const userPrompt=`${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
+    const reply=await callGemini(systemPrompt, userPrompt, 800);
     const replyText=reply||'❌ ไม่ได้รับคำตอบ กรุณาลองใหม่';
     aiHistory[ticker].push({role:'assistant',content:replyText});
     const loading=document.getElementById('aiLoading');
@@ -2122,17 +2205,17 @@ function showSignalPopup(ticker,price,s1,score){
           <div class="signal-name">${s?.n||ticker}</div>
         </div>
         <div class="signal-price">
-          <div class="signal-price-val">$${fmt(price)}</div>
+          <div class="signal-price-val">${fmt(price)}</div>
           <div class="signal-score">SCORE ${score}/100</div>
         </div>
       </div>
       <div class="signal-grid">
         <div class="signal-stat">
-          <div class="signal-stat-val" style="color:var(--red2)">$${s1.toFixed(2)}</div>
+          <div class="signal-stat-val" style="color:var(--red2)">${s1.toFixed(2)}</div>
           <div class="signal-stat-lbl">แนวรับ S1</div>
         </div>
         <div class="signal-stat">
-          <div class="signal-stat-val" style="color:var(--green2)">$${r1.toFixed(2)}</div>
+          <div class="signal-stat-val" style="color:var(--green2)">${r1.toFixed(2)}</div>
           <div class="signal-stat-lbl">แนวต้าน R1</div>
         </div>
         <div class="signal-stat">
@@ -2154,7 +2237,7 @@ function showSignalPopup(ticker,price,s1,score){
   // เล่นเสียงแจ้งเตือน
   playAlertSound();
   logTrade(ticker,price,score);
-  sendTG(`🔔 Buy Signal: ${ticker}\n💰 ราคา $${fmt(price)} | Score ${score}/100\n📊 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}`);
+  sendTG(`🔔 Buy Signal: ${ticker}\n💰 ราคา $${fmt(price)} | Score ${score}/100\n📊 S1 ${s1.toFixed(2)} | R1 ${r1.toFixed(2)}`);
   // AI analysis
   _analyzeSignalAI(ticker,price,s1,r1,score);
 }
@@ -2162,8 +2245,9 @@ function showSignalPopup(ticker,price,s1,score){
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
   const el=document.getElementById('signalAiText');
   if(el) el.textContent='รอสักครู่...';
-  const prompt=`${ticker} ราคา $${price} ชิดแนวรับ $${s1.toFixed(2)} เป้า $${r1.toFixed(2)} Score ${score}/100 ควรเข้าไหม? ตอบสั้นๆ 2-3 ประโยคภาษาไทย`;
-  const sys='คุณคือที่ปรึกษาหุ้น ตอบภาษาไทยสั้นกระชับ 2-3 ประโยค ห้ามใช้ศัพท์เทคนิค';
+  const indCtx=buildFullIndicatorContext(ticker,price);
+  const prompt=`${indCtx}\n\nBuy Score: ${score}/100 — ราคาชิดแนวรับ S1 ${s1.toFixed(2)} เป้าหมาย R1 ${r1.toFixed(2)}\nควรเข้าซื้อตอนนี้ไหม? วิเคราะห์จาก indicator ที่มีแล้วตอบสั้นๆ 3-4 ประโยคภาษาไทย`;
+  const sys='คุณคือนักวิเคราะห์หุ้นมืออาชีพ ตอบภาษาไทยสั้นกระชับ 3-4 ประโยค อธิบาย indicator เป็นภาษาชาวบ้าน ใช้ emoji แทน bullet';
 
   // ลอง WORKER ก่อน แล้ว fallback ไป Anthropic โดยตรง
   const endpoints=[
@@ -2194,8 +2278,8 @@ async function _analyzeSignalAI(ticker,price,s1,r1,score){
   const el3=document.getElementById('signalAiText');
   if(el3){
     if(score>=70) el3.textContent=`📈 ${ticker} Score ${score}/100 — สัญญาณซื้อแข็งแกร่ง ราคาใกล้แนวรับ ความเสี่ยงต่ำ`;
-    else if(score>=55) el3.textContent=`⚡ ${ticker} Score ${score}/100 — สัญญาณซื้อปานกลาง แนวรับอยู่ที่ $${s1.toFixed(2)} เป้าหมาย $${r1.toFixed(2)}`;
-    else el3.textContent=`⚠️ ${ticker} Score ${score}/100 — สัญญาณอ่อน ควรรอยืนยันแนวรับที่ $${s1.toFixed(2)} ก่อน`;
+    else if(score>=55) el3.textContent=`⚡ ${ticker} Score ${score}/100 — สัญญาณซื้อปานกลาง แนวรับอยู่ที่ ${s1.toFixed(2)} เป้าหมาย ${r1.toFixed(2)}`;
+    else el3.textContent=`⚠️ ${ticker} Score ${score}/100 — สัญญาณอ่อน ควรรอยืนยันแนวรับที่ ${s1.toFixed(2)} ก่อน`;
   }
 }
 
@@ -2748,7 +2832,7 @@ async function initYahooPrices(){
           loaded++;
           const priceEl=document.getElementById(`price-v2-${s.t}`);
           const chgEl=document.getElementById(`chg-v2-${s.t}`);
-          if(priceEl) priceEl.textContent='$'+fmt(s.p);
+          if(priceEl) priceEl.textContent=fmt(s.p);
           if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c.toFixed(2)+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
           if(statusEl) statusEl.textContent=`⏳ ${loaded}/${stocks.length}`;
         } else { failed++; }
@@ -3912,41 +3996,66 @@ async function renderNewsTab(ticker){
   _renderNewsItems(pane,items,ticker,isStatic);
 }
 
-// ── translateNewsItems ──
+// ── translateNewsItems ── (v2: batch 10, 25s timeout, partial merge)
 async function translateNewsItems(items){
   if(!items||!items.length) return items;
-  try{
-    // จำกัดที่ 15 ข่าว ป้องกัน token overflow
-    const slice=items.slice(0,15);
-    const toTranslate=slice.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
-    const _trCtrl=new AbortController();
-    const _trTimeout=setTimeout(()=>_trCtrl.abort(),12000); // ลด 30s→12s
-    const res=await fetch('https://anthropic-proxy.datsakonping1994.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:3000,
-        system:'แปลข่าวการเงินเป็นภาษาไทยให้เป็นธรรมชาติ ตอบเป็น JSON array ของ [{h,x},...] เท่านั้น ห้ามมี markdown หรือ preamble',
-        messages:[{role:'user',content:`input: ${JSON.stringify(toTranslate)}`}]
-      }),
-      signal:_trCtrl.signal
-    });
-    clearTimeout(_trTimeout);
-    if(!res.ok) return items;
-    const d=await res.json();
-    const raw=d?.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'';
-    if(raw){
-      const clean=raw.replace(/```json|```/g,'').trim();
-      const arr=JSON.parse(clean);
-      if(Array.isArray(arr)&&arr.length===slice.length){
-        // merge: translated slice + untranslated remainder
-        const translated=items.map((n,i)=>i<slice.length?{...n,h:arr[i]?.h||n.h,x:arr[i]?.x||n.x}:n);
-        return translated;
+
+  // แปล batch ละ 10 ข่าว ป้องกัน token overflow และ timeout
+  const BATCH=10;
+  const result=[...items]; // copy ไว้ merge
+
+  for(let start=0;start<items.length;start+=BATCH){
+    const batch=items.slice(start,start+BATCH);
+    const toTranslate=batch.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
+    try{
+      const _trCtrl=new AbortController();
+      const _trTimeout=setTimeout(()=>_trCtrl.abort(),25000); // เพิ่มจาก 12s → 25s
+      const res=await fetch('https://anthropic-proxy.datsakonping1994.workers.dev',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:3000,
+          system:`คุณคือนักแปลข่าวการเงิน แปลจากภาษาอังกฤษเป็นภาษาไทยให้เป็นธรรมชาติและเข้าใจง่าย
+กฎเหล็ก:
+1. ตอบเป็น JSON array เท่านั้น เช่น [{"h":"...","x":"..."},...]
+2. ห้ามมี markdown, backtick, หรือข้อความนอก array
+3. รักษาจำนวน element ให้เท่ากับ input เสมอ
+4. ถ้า x ว่างเปล่าให้ส่งกลับเป็น "" เหมือนเดิม`,
+          messages:[{role:'user',content:`แปลข่าวเหล่านี้เป็นภาษาไทย: ${JSON.stringify(toTranslate)}`}]
+        }),
+        signal:_trCtrl.signal
+      });
+      clearTimeout(_trTimeout);
+      if(!res.ok) continue; // batch นี้ fail → ข้ามไป batch ถัดไป (คง English ไว้)
+      const d=await res.json();
+      const raw=d?.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'';
+      if(raw){
+        // strip backticks/markdown ให้หมด
+        const clean=raw.replace(/```[\w]*\n?/g,'').replace(/```/g,'').trim();
+        let arr=null;
+        try{ arr=JSON.parse(clean); }catch{
+          // ถ้า parse fail ลอง extract array ด้วย regex
+          const m=clean.match(/\[[\s\S]*\]/);
+          if(m) try{ arr=JSON.parse(m[0]); }catch{}
+        }
+        if(Array.isArray(arr)){
+          // partial merge — ใช้เท่าที่มี ไม่บังคับต้องครบ
+          arr.forEach((translated,i)=>{
+            const globalIdx=start+i;
+            if(globalIdx<result.length&&translated){
+              result[globalIdx]={
+                ...result[globalIdx],
+                h:translated.h||result[globalIdx].h,
+                x:translated.x||result[globalIdx].x
+              };
+            }
+          });
+        }
       }
-    }
-  }catch(e){console.warn('translateNewsItems failed:',e);}
-  return items;
+    }catch(e){console.warn(`translateNewsItems batch ${start} failed:`,e);}
+  }
+  return result;
 }
 
 // ── fetchAndRenderEarnings ──
@@ -4125,17 +4234,35 @@ async function runAIMarketSummaryV2(){
   const up=stocks.filter(s=>s.c>0).length, dn=stocks.filter(s=>s.c<0).length;
   const topG=stocks.filter(s=>s.c>3).map(s=>`${s.t}+${s.c}%`).slice(0,5).join(', ');
   const topL=stocks.filter(s=>s.c<-3).map(s=>`${s.t}${s.c}%`).slice(0,5).join(', ');
-  const nearS=stocks.filter(s=>{const s1=getS1(s.t,s.p);return s.p>0&&((s.p-s1)/s1*100)<2;}).map(s=>s.t).slice(0,5).join(', ');
+  const nearS=stocks.filter(s=>{const s1=getS1(s.t,s.p);return s.p>0&&((s.p-s1)/s1*100)<2;})
+    .map(s=>{const s1=getS1(s.t,s.p);const rsi=rsiData[s.t]||50;return`${s.t}(RSI ${rsi}, ห่าง S1 ${((s.p-s1)/s1*100).toFixed(1)}%)`;})
+    .slice(0,5).join(', ');
+  // หุ้นที่ Supertrend/EMA ribbon bullish มี candle data
+  const bullishInd=stocks.filter(s=>{
+    if(!candleCache[s.t]?.data||candleCache[s.t]?.data?._mock) return false;
+    const ind=_calcBuyScore(s.t,s.p,getS1(s.t,s.p),getR1(s.t,s.p));
+    return ind.supertrendBull&&ind.ribbonBull&&ind.score>=50;
+  }).map(s=>s.t).slice(0,5).join(', ');
+  // RSI Oversold (<35) ทั้งพอร์ต
+  const oversold=stocks.filter(s=>(rsiData[s.t]||50)<=35).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
   const stats=getTradeStats();
   const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const prompt=`วิเคราะห์ตลาดหุ้น ${todayStr}
-ขึ้น ${up} ตัว / ลง ${dn} ตัว | SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}%
-ขึ้นแรง: ${topG||'ไม่มี'} | ลงแรง: ${topL||'ไม่มี'}
-ใกล้แนวรับ: ${nearS||'ไม่มี'}
-${stats?`Win Rate ${stats.winRate}% | ${stats.total} สัญญาณ`:''}
+🌎 ภาพรวม: ขึ้น ${up} ตัว / ลง ${dn} ตัว | SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%
+📈 ขึ้นแรง: ${topG||'ไม่มี'}
+📉 ลงแรง: ${topL||'ไม่มี'}
+🎯 ใกล้แนวรับ (โอกาสซื้อ): ${nearS||'ไม่มี'}
+🟢 Indicator bullish ครบ (Supertrend+EMA ribbon): ${bullishInd||'ไม่มี'}
+💹 RSI ต่ำมาก (ถูกเกินจริง): ${oversold||'ไม่มี'}
+${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}
 
-วิเคราะห์ 3 หัวข้อ: 1)ภาพรวมตลาดวันนี้ 2)หุ้นน่าสนใจ 3)หุ้นที่ควรระวัง ตอบภาษาไทยธรรมดา ห้ามใช้ศัพท์เทคนิค`;
-  return callGemini('คุณคือที่ปรึกษาหุ้นที่พูดภาษาไทยแบบชาวบ้านเข้าใจได้ ห้ามใช้ศัพท์อังกฤษ เช่น RSI, bullish, pullback ให้เปลี่ยนเป็นคำไทย ตอบกระชับ', prompt, 600);
+วิเคราะห์ 4 หัวข้อ:
+1) ภาพรวมตลาดวันนี้เป็นยังไง
+2) หุ้นไหนน่าสนใจที่สุดและทำไม
+3) หุ้นไหนควรระวังและทำไม
+4) กลยุทธ์สั้นๆ สำหรับวันนี้
+ตอบภาษาไทยธรรมดา อธิบาย indicator เป็นภาษาชาวบ้าน ใช้ emoji แทน bullet`;
+  return callGemini('คุณคือนักวิเคราะห์หุ้นมืออาชีพที่พูดภาษาไทยแบบชาวบ้านเข้าใจได้ มีข้อมูล indicator ครบทุกตัว อธิบายเป็นภาษาง่ายๆ เช่น "ราคาถูกเกินจริง" แทน oversold ตอบกระชับแต่ครบถ้วน', prompt, 900);
 }
 
 
@@ -4242,7 +4369,7 @@ function renderHeatmapV2(){
       const intensity=Math.min(1,Math.abs(s.c)/10);
       const bg=isUp?`rgba(0,230,118,${0.1+intensity*0.35})`:`rgba(255,77,106,${0.1+intensity*0.35})`;
       const border=isUp?`rgba(0,230,118,${0.2+intensity*0.4})`:`rgba(255,77,106,${0.2+intensity*0.4})`;
-      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${isUp?"var(--green)":"var(--red)"};margin-top:2px">${isUp?"+":""}${s.c}%</div><div style="font-size:9px;color:var(--text3);margin-top:2px">$${s.p.toFixed(0)}</div></div>`;
+      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${isUp?"var(--green)":"var(--red)"};margin-top:2px">${isUp?"+":""}${s.c}%</div><div style="font-size:9px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
     });
     html+="</div></div>";
   });
@@ -4295,7 +4422,7 @@ async function checkBuySignalFull(ticker,price){
   // Threshold: score >= 52 (เหมือนเดิม)
   if(score>=52){
     showSignalPopup(ticker,price,s1,Math.round(score));
-    const tgMsg=`🔔 Buy Signal: ${ticker}\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📊 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}\n${hasCandleData?'✅ Full Analysis':'⚠️ Basic Analysis'}`;
+    const tgMsg=`🔔 Buy Signal: ${ticker}\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📊 S1 ${s1.toFixed(2)} | R1 ${r1.toFixed(2)}\n${hasCandleData?'✅ Full Analysis':'⚠️ Basic Analysis'}`;
     sendTG(tgMsg);
   }
 }
@@ -4306,7 +4433,7 @@ function updateCardLive(s){
   // ใช้ direct getElementById (ไม่ cache เพราะ cards อาจ re-render)
   const priceEl=document.getElementById(`price-v2-${s.t}`);
   const chgEl=document.getElementById(`chg-v2-${s.t}`);
-  if(priceEl) priceEl.textContent='$'+fmt(s.p);
+  if(priceEl) priceEl.textContent=fmt(s.p);
   if(chgEl){
     const chgNum=typeof s.c==='number'?s.c:parseFloat(s.c)||0;
     chgEl.textContent=(chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
