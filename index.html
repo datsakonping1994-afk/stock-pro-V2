@@ -2090,10 +2090,13 @@ function closeSignal(){
 
 // ── Telegram ──
 function saveTG(){
-  const t=document.getElementById('tgToken')?.value?.trim();
-  const c=document.getElementById('tgChatId')?.value?.trim();
-  if(t)localStorage.setItem('tgToken',t);
-  if(c)localStorage.setItem('tgChatId',c);
+  // FIX: ถ้า input ถูก lock/ซ่อน ให้ใช้ค่าจาก localStorage แทน
+  const tEl=document.getElementById('tgToken');
+  const cEl=document.getElementById('tgChatId');
+  const t=(tEl?.style.display!=='none'?tEl?.value?.trim():'')||localStorage.getItem('tgToken')||'';
+  const c=(cEl?.style.display!=='none'?cEl?.value?.trim():'')||localStorage.getItem('tgChatId')||'';
+  if(t) localStorage.setItem('tgToken',t);
+  if(c) localStorage.setItem('tgChatId',c);
   toast('✅ บันทึก Telegram แล้ว');
   if(t&&c) lockSection('tg');
 }
