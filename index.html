@@ -455,7 +455,7 @@ canvas.bigchart{width:100%;height:100%}
       </div>
     </div>
     <div class="topbar-stats">
-      <div class="stat-pill">
+      <div class="stat-pill" id="statusPill" onclick="_manualRefresh()" style="cursor:pointer;user-select:none" title="แตะเพื่อรีเฟรชราคา">
         <div class="live-dot" id="liveDot"></div>
         <span id="statusText" class="val">--</span>
       </div>
@@ -1212,7 +1212,18 @@ function updateDashWatchlist(){
   `).join('');
 }
 
-// ── Toast ──
+// ── Manual refresh (กดที่ status pill) ──
+async function _manualRefresh(){
+  if(_yahooLoading||_pollInFlight) return;
+  _workingProxy=null; // reset proxy cache เพื่อลองใหม่ทั้งหมด
+  toast('🔄 กำลังรีเฟรชราคา...',2000);
+  const statusEl=document.getElementById('statusText');
+  if(statusEl) statusEl.textContent='🔄 รีเฟรช...';
+  await initYahooPrices();
+  renderCards();
+}
+
+// ── Toast (รับ duration) ──
 function toast(msg,dur=2500){
   const el=$id('toastEl');
   if(!el)return;
@@ -2508,67 +2519,74 @@ window.addEventListener('focus',()=>{
 
 // ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
 // ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
-// ── Yahoo Finance: ค้นหา proxy ที่ใช้ได้ก่อน แล้วดึงทุกตัวพร้อมกัน ──
-let _workingProxy=null; // cache proxy ที่ใช้ได้
+// ── Yahoo Finance proxy chain — ลองทุกตัวพร้อมกัน เอาตัวแรกที่สำเร็จ ──
+// เรียงตาม stability: public proxies ที่เชื่อถือได้ก่อน worker ส่วนตัว
+const _YAHOO_PROXIES = [
+  url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url=>`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+  url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
+  url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
+];
 
-// Worker ของเราเอง — route /yahoo/?url=... ส่งต่อไป Yahoo
-const _OWN_WORKER_YAHOO = url =>
-  `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`;
+let _workingProxy=null;
+
+function _parseYahooText(text){
+  let d;
+  try{ d=JSON.parse(text); }catch{ return null; }
+  if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
+  if(d?.body) try{ d=JSON.parse(d.body); }catch{}
+  return d?.chart?.result?.[0] ? d : null;
+}
+
+async function _tryProxy(mkProxy, url, timeout=6000){
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),timeout);
+  try{
+    const r=await fetch(mkProxy(url),{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const text=await r.text();
+    const d=_parseYahooText(text);
+    if(!d) return null;
+    return {data:d, proxy:mkProxy};
+  }catch{ clearTimeout(tid); return null; }
+}
 
 async function _detectWorkingProxy(){
   if(_workingProxy) return _workingProxy;
   const testUrl=`https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d`;
-  const proxies=[
-    // Worker ของเราก่อน — เสถียรที่สุด
-    url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
-    url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
-    url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-    url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  ];
-  // ลองทุกตัวพร้อมกัน เอาตัวแรกที่ได้ข้อมูล
   try{
-    const result=await Promise.any(proxies.map(async mkProxy=>{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch(mkProxy(testUrl),{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(!r.ok) throw new Error('bad');
-      const text=await r.text();
-      // allorigins returns {contents:'...'}
-      let d;
-      try{ d=JSON.parse(text); }catch{ throw new Error('no json'); }
-      if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
-      if(!d?.chart?.result?.[0]) throw new Error('no data');
+    const result=await Promise.any(_YAHOO_PROXIES.map(async mkProxy=>{
+      const r=await _tryProxy(mkProxy, testUrl, 7000);
+      if(!r) throw new Error('fail');
       return mkProxy;
     }));
     _workingProxy=result;
     return result;
-  }catch{ return proxies[0]; } // fallback to our worker anyway
+  }catch{ return _YAHOO_PROXIES[0]; }
 }
 
 async function fetchYahooQuote(ticker){
   const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
-  const mkProxy=_workingProxy||(url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`);
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal});
-    clearTimeout(tid);
-    if(!r.ok) throw new Error('bad');
-    let text=await r.text();
-    let d;
-    try{ d=JSON.parse(text); }catch{ return null; }
-    // allorigins wraps in {contents:'...'}
-    if(d?.contents) try{ d=JSON.parse(d.contents); }catch{}
-    const res=d?.chart?.result?.[0];
-    if(res){
-      const meta=res.meta;
-      const price=meta.regularMarketPrice||meta.previousClose;
-      const prev=meta.chartPreviousClose||meta.previousClose||meta.regularMarketPreviousClose;
-      if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
+  // ถ้ามี working proxy ให้ลองก่อน แล้ว fallback ถ้าไม่ได้
+  const proxiesToTry = _workingProxy
+    ? [_workingProxy, ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy)]
+    : _YAHOO_PROXIES;
+  for(const mkProxy of proxiesToTry){
+    const result=await _tryProxy(mkProxy, yahooUrl, 6000);
+    if(result){
+      _workingProxy=mkProxy; // cache proxy ที่สำเร็จ
+      const res=result.data?.chart?.result?.[0];
+      if(res){
+        const meta=res.meta;
+        const price=meta.regularMarketPrice||meta.previousClose;
+        const prev=meta.chartPreviousClose||meta.regularMarketPreviousClose||meta.previousClose;
+        if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
+      }
     }
-  }catch{}
+  }
   return null;
 }
 
@@ -2593,12 +2611,15 @@ let _yahooLoading=false;
 async function initYahooPrices(){
   if(_yahooLoading) return;
   _yahooLoading=true;
-  let loaded=0;
+  let loaded=0, failed=0;
   const statusEl=document.getElementById('statusText');
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
 
   // ค้นหา proxy ที่ใช้ได้ก่อน (ถ้าไม่มี Finnhub key)
-  if(!hasApiKey()) await _detectWorkingProxy();
+  if(!hasApiKey()){
+    if(statusEl) statusEl.textContent='🔍 ค้นหา proxy...';
+    await _detectWorkingProxy();
+  }
 
   // ดึงทุกตัวพร้อมกัน แบ่งเป็น batch ใหญ่ขึ้น
   const BATCH=12, DELAY=200;
@@ -2615,7 +2636,7 @@ async function initYahooPrices(){
           if(priceEl) priceEl.textContent='$'+fmt(s.p);
           if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c.toFixed(2)+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
           if(statusEl) statusEl.textContent=`⏳ ${loaded}/${stocks.length}`;
-        }
+        } else { failed++; }
       }catch{}
     }));
     if(i+BATCH<stocks.length) await new Promise(r=>setTimeout(r,DELAY));
@@ -2635,7 +2656,12 @@ async function initYahooPrices(){
 
   updateDashboard();
   const src=hasApiKey()?'Finnhub':'Yahoo';
-  if(statusEl) statusEl.textContent=`✅ ${loaded} ตัว (${src})`;
+  if(loaded>0){
+    if(statusEl) statusEl.textContent=`✅ ${loaded} ตัว (${src})`;
+  } else {
+    if(statusEl) statusEl.textContent=`❌ ดึงข้อมูลไม่ได้`;
+    toast('⚠️ ดึงราคาไม่สำเร็จ — ตรวจสอบเน็ตแล้วรีเฟรช', 5000);
+  }
   _yahooLoading=false;
 }
 
@@ -2874,25 +2900,25 @@ async function fetchCandles(ticker, days=60){
   try{
     const range=days<=30?'1mo':days<=90?'3mo':days<=150?'6mo':days<=210?'1y':'2y';
     const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
-    // worker เป็น fallback สุดท้าย
-    const proxies=[
-      `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-      `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(yahooUrl)}`,
-      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(yahooUrl)}`,
-    ];
-    let r=null;
-    for(const p of proxies){
+    // ใช้ proxy chain เดิมที่รู้ว่าใช้ได้ก่อน
+    const proxiesToUse = _workingProxy
+      ? [_workingProxy, ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy)]
+      : _YAHOO_PROXIES;
+    let parsedJson=null;
+    for(const mkProxy of proxiesToUse){
       try{
         const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),5000);
-        r=await fetch(p,{headers:{'x-cors-api-key':'temp_'+Date.now()},signal:ctrl.signal});
+        const tid=setTimeout(()=>ctrl.abort(),6000);
+        const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal});
         clearTimeout(tid);
-        if(r&&r.ok) break;
-      }catch{r=null;}
+        if(!r||!r.ok) continue;
+        const text=await r.text();
+        const d=_parseYahooText(text);
+        if(d?.chart?.result?.[0]){ _workingProxy=mkProxy; parsedJson=d; break; }
+      }catch{}
     }
-    if(r&&r.ok){
-      const d=await r.json();
+    if(parsedJson){
+      const d=parsedJson;
       const res=d?.chart?.result?.[0];
       if(res&&res.timestamp&&res.timestamp.length>=5){
         const q=res.indicators.quote[0];
