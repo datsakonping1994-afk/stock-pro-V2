@@ -909,8 +909,8 @@ let FINNHUB_KEY = (()=>{
     return localStorage.getItem('_fh_key')
       || sessionStorage.getItem('_fh_key')
       || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
-      || '';
-  }catch{return '';}
+      || 'd83veopr01qkm5c9mlmgd83veopr01qkm5c9mln0';
+  }catch{return 'd83veopr01qkm5c9mlmgd83veopr01qkm5c9mln0';}
 })();
 let PORT_SIZE = parseInt(localStorage.getItem('_sp_portsize')||'10000');
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
