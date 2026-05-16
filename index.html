@@ -1860,55 +1860,57 @@ if(hasApiKey()){
 
 // ── Yahoo Quote fallback (ไม่ต้องใช้ key) ──
 // ดึงราคา + % change จาก Yahoo Finance เมื่อไม่มี Finnhub key
-// ── fetchYahooQuote: multi-proxy + multi-endpoint fallback ──
-async function fetchYahooQuote(ticker){
-  // ลอง endpoint หลายตัว + proxy หลายตัว
-  const yahooUrls=[
-    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`,
-    `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`,
-    `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=price`,
-  ];
-  const proxyPrefixes=[
+// ── Yahoo Finance: ค้นหา proxy ที่ใช้ได้ก่อน แล้วดึงทุกตัวพร้อมกัน ──
+let _workingProxy=null; // cache proxy ที่ใช้ได้
+
+async function _detectWorkingProxy(){
+  if(_workingProxy) return _workingProxy;
+  const testUrl=`https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1d&range=1d`;
+  const proxies=[
     url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
     url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
     url=>`https://thingproxy.freeboard.io/fetch/${url}`,
   ];
+  // ลองพร้อมกันทุกตัว เอาตัวแรกที่ตอบกลับได้
+  try{
+    const result=await Promise.any(proxies.map(async mkProxy=>{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const r=await fetch(mkProxy(testUrl),{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(!r.ok) throw new Error('bad');
+      const d=await r.json();
+      if(!d?.chart?.result?.[0]) throw new Error('no data');
+      return mkProxy; // return the working proxy function
+    }));
+    _workingProxy=result;
+    return result;
+  }catch{ return null; }
+}
 
-  for(const yahooUrl of yahooUrls){
-    for(const mkProxy of proxyPrefixes){
-      try{
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),6000);
-        const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal,headers:{'Accept':'application/json'}});
-        clearTimeout(tid);
-        if(!r.ok) continue;
-        let d;
-        try{ d=await r.json(); }catch{ continue; }
-
-        // v8/finance/chart
-        const res=d?.chart?.result?.[0];
-        if(res){
-          const meta=res.meta;
-          const price=meta.regularMarketPrice||meta.previousClose;
-          const prev=meta.chartPreviousClose||meta.previousClose||meta.regularMarketPreviousClose;
-          if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
-        }
-
-        // v10/finance/quoteSummary price module
-        const priceM=d?.quoteSummary?.result?.[0]?.price;
-        if(priceM){
-          const price=priceM.regularMarketPrice?.raw;
-          const chg=priceM.regularMarketChangePercent?.raw;
-          if(price>0) return{p:+price.toFixed(2),c:chg?+(chg*100).toFixed(2):0};
-        }
-      }catch{}
+async function fetchYahooQuote(ticker){
+  const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
+  const mkProxy=_workingProxy||(url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(mkProxy(yahooUrl),{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) throw new Error('bad');
+    const d=await r.json();
+    const res=d?.chart?.result?.[0];
+    if(res){
+      const meta=res.meta;
+      const price=meta.regularMarketPrice||meta.previousClose;
+      const prev=meta.chartPreviousClose||meta.previousClose||meta.regularMarketPreviousClose;
+      if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
     }
-  }
+  }catch{}
   return null;
 }
 
-// ── fetchSingleQuoteFast: ลอง Finnhub ก่อน ถ้าไม่มี key ใช้ Yahoo ──
+// ── fetchSingleQuoteFast: Finnhub ถ้ามี key, Yahoo ถ้าไม่มี ──
 async function fetchSingleQuoteFast(s){
   if(hasApiKey()){
     try{
@@ -1926,7 +1928,6 @@ async function fetchSingleQuoteFast(s){
 }
 
 let _yahooLoading=false;
-// โหลดราคาจาก Yahoo (หรือ Finnhub) สำหรับหุ้นทุกตัวทีละ batch
 async function initYahooPrices(){
   if(_yahooLoading) return;
   _yahooLoading=true;
@@ -1934,7 +1935,11 @@ async function initYahooPrices(){
   const statusEl=document.getElementById('statusText');
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
 
-  const BATCH=4, DELAY=500;
+  // ค้นหา proxy ที่ใช้ได้ก่อน (ถ้าไม่มี Finnhub key)
+  if(!hasApiKey()) await _detectWorkingProxy();
+
+  // ดึงทุกตัวพร้อมกัน แบ่งเป็น batch ใหญ่ขึ้น
+  const BATCH=12, DELAY=200;
   for(let i=0;i<stocks.length;i+=BATCH){
     const batch=stocks.slice(i,i+BATCH);
     await Promise.allSettled(batch.map(async s=>{
@@ -1943,17 +1948,28 @@ async function initYahooPrices(){
         if(q&&q.p>0){
           s.p=q.p; s.c=q.c;
           loaded++;
-          // อัพเดท card โดยไม่ใช้ DOM cache (เพราะ card อาจ re-render)
           const priceEl=document.getElementById(`price-v2-${s.t}`);
           const chgEl=document.getElementById(`chg-v2-${s.t}`);
           if(priceEl) priceEl.textContent='$'+fmt(s.p);
           if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c.toFixed(2)+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
-          if(statusEl) statusEl.textContent=`โหลดแล้ว ${loaded}/${stocks.length}`;
+          if(statusEl) statusEl.textContent=`⏳ ${loaded}/${stocks.length}`;
         }
       }catch{}
     }));
-    await new Promise(r=>setTimeout(r,DELAY));
+    if(i+BATCH<stocks.length) await new Promise(r=>setTimeout(r,DELAY));
   }
+
+  // ดึง SPY/QQQ ด้วย
+  try{
+    for(const sym of['SPY','QQQ']){
+      const q=await fetchYahooQuote(sym);
+      if(q&&q.p>0){
+        marketCtx[sym].price=q.p;
+        marketCtx[sym].change=q.c;
+        marketCtx[sym].trend=q.c>0.5?'bullish':q.c<-0.5?'bearish':'neutral';
+      }
+    }
+  }catch{}
 
   updateDashboard();
   const src=hasApiKey()?'Finnhub':'Yahoo';
@@ -1968,7 +1984,7 @@ setTimeout(()=>{
   if(!_yahooTimer){
     _yahooTimer=setInterval(initYahooPrices, 120000);
   }
-}, 1000);
+}, 500);
 
 // ── DOM Cache — ลด getElementById calls (ไม่ cache card elements ที่ re-render) ──
 const _domCache={};
