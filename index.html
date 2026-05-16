@@ -1640,10 +1640,18 @@ function openDrawer(ticker){
 }
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');}
 
-let _drawerSwipeY=0;
-document.getElementById('drawer').addEventListener('touchstart',e=>{_drawerSwipeY=e.touches[0].clientY;},{passive:true});
+// ── Drawer swipe to close — เฉพาะ handle และ header เท่านั้น ──
+let _drawerSwipeY=0, _drawerSwipeTarget=null;
+document.getElementById('drawer').addEventListener('touchstart',e=>{
+  _drawerSwipeY=e.touches[0].clientY;
+  _drawerSwipeTarget=e.target;
+},{passive:true});
 document.getElementById('drawer').addEventListener('touchend',e=>{
-  if(e.changedTouches[0].clientY-_drawerSwipeY>80) closeDrawer();
+  const dy=e.changedTouches[0].clientY-_drawerSwipeY;
+  // ปัดลงเกิน 100px และ touch เริ่มจาก handle หรือ header เท่านั้น
+  // ไม่ใช่จาก drawer-body (ป้องกัน scroll ปัดทิ้งโดยไม่ตั้งใจ)
+  const fromBody=document.getElementById('drawerBody')?.contains(_drawerSwipeTarget);
+  if(dy>100 && !fromBody) closeDrawer();
 },{passive:true});
 
 function drawerTab(tab, btn){
@@ -1655,7 +1663,9 @@ function drawerTab(tab, btn){
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
   const rsi=rsiData[s.t]||50;
   if(tab==='tech'){
-    const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
+    // FIX: fetch candles ก่อนถ้ายังไม่มี แล้ว re-render indicator
+    const _renderTech=()=>{
+      const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
     const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
     const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
     const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">$${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
@@ -1757,6 +1767,14 @@ function drawerTab(tab, btn){
     };
     // รอ DOM render ก่อน
     requestAnimationFrame(()=>setTimeout(_drawBigChart,50));
+    }; // end _renderTech
+    _renderTech();
+    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator
+    if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
+      if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
+        if(currentDrawerTicker===s.t) _renderTech();
+      }).catch(()=>{});
+    }
   } else if(tab==='ai'){
     const hist=aiHistory[s.t]||[];
     body.innerHTML=`
@@ -2425,9 +2443,30 @@ updateDashWatchlist();
 updateAlertBadge();
 buildTickerSelect();
 
-// Auto-start if key saved
-if(hasApiKey()){
-  startLive();
+// ── Auto-start with retry for iOS PWA ──
+function _tryStartLive(attempt=0){
+  // โหลด key จากทุก storage ทุกครั้ง
+  const k = localStorage.getItem('_fh_key')
+    || sessionStorage.getItem('_fh_key')
+    || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
+    || '';
+  if(k && k.length>10) FINNHUB_KEY=k;
+
+  if(hasApiKey()){
+    if(!isLive) startLive();
+    else httpPoll(); // refresh ราคาทันที
+    return;
+  }
+  // ยังไม่มี key — retry สูงสุด 5 ครั้ง ทุก 500ms (iOS อาจโหลด localStorage ช้า)
+  if(attempt<5){
+    setTimeout(()=>_tryStartLive(attempt+1), 500);
+  }
+}
+
+// เรียกทันที + รอ DOM ready
+_tryStartLive();
+if(document.readyState!=='complete'){
+  window.addEventListener('load',()=>_tryStartLive());
 }
 
 // ── FIX: Restart live เมื่อกลับมาเปิดแอปจาก Home Screen ──
@@ -2451,15 +2490,8 @@ document.addEventListener('visibilitychange',()=>{
 
 // pageshow ครอบคลุม iOS Home Screen PWA
 window.addEventListener('pageshow',(e)=>{
-  if(e.persisted){
-    // หน้าถูก restore จาก bfcache — restart ทุกอย่าง
-    const saved=localStorage.getItem('_fh_key');
-    if(saved && saved.length>10) FINNHUB_KEY=saved;
-    if(hasApiKey()){
-      stopLive();
-      setTimeout(startLive,200);
-    }
-  }
+  // ทั้ง persisted และ fresh load บน iOS PWA
+  setTimeout(()=>_tryStartLive(), 300);
 });
 
 // focus event สำหรับกรณี switch app
