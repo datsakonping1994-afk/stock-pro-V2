@@ -307,9 +307,8 @@ canvas.bigchart{width:100%;height:100%}
 
 /* ── BUY SIGNAL POPUP ── */
 .signal-overlay{
-  position:fixed;inset:0;z-index:1000;
-  background:rgba(0,0,0,0.88);
-  backdrop-filter:blur(12px);
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(0,0,0,0.92);
   display:flex;align-items:flex-end;justify-content:center;
   padding:0 0 env(safe-area-inset-bottom);
   animation:fadeIn 0.2s ease;
@@ -694,10 +693,10 @@ canvas.bigchart{width:100%;height:100%}
   <div class="drawer-body" id="drawerBody"></div>
 </div>
 
-<!-- BUY SIGNAL POPUP -->
+<!-- BUY SIGNAL POPUP (outside #app to fix iOS backdrop) -->
 <div id="signalOverlay" style="display:none"></div>
 
-<!-- TOAST -->
+<!-- TOAST (outside #app) -->
 <div id="toastEl" style="display:none" class="toast"></div>
 
 <script>
@@ -1546,26 +1545,42 @@ function showSignalPopup(ticker,price,s1,score){
 }
 
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),15000);
-    const res=await fetch(WORKER,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',max_tokens:200,
-        system:'คุณคือที่ปรึกษาหุ้น ตอบภาษาไทยสั้นกระชับ 2-3 ประโยค ห้ามใช้ศัพท์เทคนิค',
-        messages:[{role:'user',content:`${ticker} ราคา $${price} ชิดแนวรับ $${s1.toFixed(2)} Score ${score}/100 ควรเข้าไหม? ตอบสั้นๆ`}]
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    const d=await res.json();
-    const txt=d?.content?.[0]?.text||'ไม่ได้รับคำวิเคราะห์';
-    const el=document.getElementById('signalAiText');
-    if(el)el.textContent=txt;
-  }catch(e){
-    const el=document.getElementById('signalAiText');
-    if(el)el.textContent='⚠️ ไม่สามารถวิเคราะห์ได้ในขณะนี้';
+  const el=document.getElementById('signalAiText');
+  if(el) el.textContent='รอสักครู่...';
+  const prompt=`${ticker} ราคา $${price} ชิดแนวรับ $${s1.toFixed(2)} เป้า $${r1.toFixed(2)} Score ${score}/100 ควรเข้าไหม? ตอบสั้นๆ 2-3 ประโยคภาษาไทย`;
+  const sys='คุณคือที่ปรึกษาหุ้น ตอบภาษาไทยสั้นกระชับ 2-3 ประโยค ห้ามใช้ศัพท์เทคนิค';
+
+  // ลอง WORKER ก่อน แล้ว fallback ไป Anthropic โดยตรง
+  const endpoints=[
+    {url:WORKER,headers:{'Content-Type':'application/json'}},
+    {url:'https://api.anthropic.com/v1/messages',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}},
+  ];
+  for(const ep of endpoints){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),15000);
+      const res=await fetch(ep.url,{
+        method:'POST',headers:ep.headers,
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,system:sys,messages:[{role:'user',content:prompt}]}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+      if(!res.ok) continue;
+      const d=await res.json();
+      const txt=d?.content?.[0]?.text;
+      if(txt){
+        const el2=document.getElementById('signalAiText');
+        if(el2) el2.textContent=txt;
+        return;
+      }
+    }catch{}
+  }
+  // fallback: สรุปจาก score เอง
+  const el3=document.getElementById('signalAiText');
+  if(el3){
+    if(score>=70) el3.textContent=`📈 ${ticker} Score ${score}/100 — สัญญาณซื้อแข็งแกร่ง ราคาใกล้แนวรับ ความเสี่ยงต่ำ`;
+    else if(score>=55) el3.textContent=`⚡ ${ticker} Score ${score}/100 — สัญญาณซื้อปานกลาง แนวรับอยู่ที่ $${s1.toFixed(2)} เป้าหมาย $${r1.toFixed(2)}`;
+    else el3.textContent=`⚠️ ${ticker} Score ${score}/100 — สัญญาณอ่อน ควรรอยืนยันแนวรับที่ $${s1.toFixed(2)} ก่อน`;
   }
 }
 
