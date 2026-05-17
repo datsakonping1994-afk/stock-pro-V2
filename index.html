@@ -816,6 +816,17 @@ canvas.bigchart{width:100%;height:100%}
           </div>
         </div>
         <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">🌐 Cohere API Key <span style="font-size:10px;color:var(--text3)">(แปลข่าวภาษาไทย)</span></div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://dashboard.cohere.com/api-keys" target="_blank" style="color:var(--ice);text-decoration:none">dashboard.cohere.com</a> — ใช้แปลข่าวเป็นภาษาไทย (Free tier รองรับ)</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="settings-input" id="cohereKeyInput" type="password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="flex:1">
+              <button class="settings-btn" id="testCohereBtn" onclick="testCohereKey()">🧪 ทดสอบ</button>
+            </div>
+            <div id="cohereKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+          </div>
+        </div>
+        <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
@@ -3810,6 +3821,10 @@ function loadSettings(){
     const pk=localStorage.getItem('polygonKey')||'';
     const pkEl=document.getElementById('polygonKeyInput');
     if(pkEl) pkEl.value=pk;
+    // โหลด Cohere key
+    const ck=localStorage.getItem('cohereKey')||'';
+    const ckEl=document.getElementById('cohereKeyInput');
+    if(ckEl) ckEl.value=ck;
   }catch{}
 }
 function saveSettings(){
@@ -3828,6 +3843,12 @@ function saveSettings(){
     const pk=document.getElementById('polygonKeyInput')?.value?.trim()||'';
     if(pk){ localStorage.setItem('polygonKey',pk); POLYGON_KEY=pk; }
     else localStorage.removeItem('polygonKey');
+  }catch{}
+  // บันทึก Cohere key
+  try{
+    const ck=document.getElementById('cohereKeyInput')?.value?.trim()||'';
+    if(ck){ localStorage.setItem('cohereKey',ck); COHERE_KEY=ck; }
+    else localStorage.removeItem('cohereKey');
   }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
@@ -4893,6 +4914,67 @@ async function testPolygonKey(){
   btn.disabled=false; btn.textContent='🧪 ทดสอบ';
 }
 
+// ── testCohereKey ──
+async function testCohereKey(){
+  const statusEl=document.getElementById('cohereKeyStatus');
+  const btn=document.getElementById('testCohereBtn');
+  const key=document.getElementById('cohereKeyInput')?.value?.trim()||'';
+  if(!statusEl||!btn) return;
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.12)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='❌ กรุณาใส่ API Key ก่อน';
+    return;
+  }
+  btn.disabled=true; btn.textContent='⏳...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(255,255,255,0.05)';
+  statusEl.style.border='1px solid rgba(255,255,255,0.1)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='กำลังทดสอบ...';
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),8000);
+  try{
+    const r=await fetch('https://api.cohere.com/v2/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      try{ localStorage.setItem('cohereKey',key); COHERE_KEY=key; }catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Cohere ใช้งานได้! — command-r-plus พร้อม (บันทึกแล้ว)';
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ dashboard.cohere.com/api-keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Cohere Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Cohere ตอบกลับ '+r.status;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Cohere ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+}
+
 // ── Twelve Data config ──
 const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
 
@@ -4979,16 +5061,16 @@ async function fetchCandles(ticker, days=60){
   if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
   _candleFetching.add(ticker);
   try{
-    // ── 1. ลอง Twelve Data ก่อน (เร็ว ไม่ต้อง proxy ใช้งานได้จริง) ──
-    let candleData=await fetchCandlesTwelve(ticker, days);
-    if(candleData){
-      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
-      return candleData;
-    }
-    // ── 2. Fallback → Polygon.io ──
-    candleData=await fetchCandlesPolygon(ticker, days);
+    // ── 1. ลอง Polygon.io ก่อน (ข้อมูลแม่นยำ ไม่ต้อง proxy) ──
+    let candleData=await fetchCandlesPolygon(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
+      return candleData;
+    }
+    // ── 2. Fallback → Twelve Data ──
+    candleData=await fetchCandlesTwelve(ticker, days);
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
       return candleData;
     }
     // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
@@ -5940,14 +6022,64 @@ async function renderNewsTab(ticker){
   }
 }
 
-// ── translateNewsItems ── (v2: batch 10, Worker → Gemini Direct fallback)
+// ── Google Translate (unofficial, ไม่ต้องใช้ key) ──
+async function _googleTranslate(text){
+  if(!text||!text.trim()) return null;
+  try{
+    const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=th&dt=t&q='+encodeURIComponent(text);
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d=await r.json();
+    const translated=(d&&d[0])?d[0].map(seg=>seg&&seg[0]?seg[0]:'').join(''):'';
+    return translated||null;
+  }catch{ return null; }
+}
+
+// ── Cohere translate (Command R — เก่งภาษาไทย) ──
+let COHERE_KEY='';
+try{COHERE_KEY=localStorage.getItem('cohereKey')||'';}catch{}
+async function _cohereTranslate(items){
+  try{
+    const toTranslate=items.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
+    const prompt=`แปลข่าวการเงินเหล่านี้จากภาษาอังกฤษเป็นภาษาไทยให้เป็นธรรมชาติ
+ตอบเป็น JSON array เท่านั้น รูปแบบ: [{"h":"หัวข้อภาษาไทย","x":"สรุปภาษาไทย"},...]
+ห้ามมีข้อความอื่นนอก array
+ข้อมูล: ${JSON.stringify(toTranslate)}`;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch('https://api.cohere.com/v2/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+COHERE_KEY},
+      body:JSON.stringify({
+        model:'command-r-plus-08-2024',
+        messages:[{role:'user',content:prompt}],
+        max_tokens:2000
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d=await r.json();
+    const raw=d?.message?.content?.[0]?.text||d?.text||'';
+    if(!raw) return null;
+    const clean=raw.replace(/```[\w]*\n?/g,'').replace(/```/g,'').trim();
+    try{ return JSON.parse(clean); }catch{}
+    const m=clean.match(/\[[\s\S]*\]/);
+    if(m) try{ return JSON.parse(m[0]); }catch{}
+    return null;
+  }catch(e){ console.warn('Cohere error:',e.message); return null; }
+}
+
+// ── translateNewsItems ── (v4: Google Translate → Cohere → AI fallback)
 async function translateNewsItems(items){
   if(!items||!items.length) return items;
 
   const BATCH=10;
   const result=[...items];
 
-  // ── helper: parse JSON from AI response ──
   function _parseTranslated(raw){
     if(!raw) return null;
     const clean=raw.replace(/```[\w]*\n?/g,'').replace(/```/g,'').trim();
@@ -5957,7 +6089,6 @@ async function translateNewsItems(items){
     return null;
   }
 
-  // ── helper: merge translated array into result ──
   function _merge(arr, start){
     if(!Array.isArray(arr)) return;
     arr.forEach((t,i)=>{
@@ -5968,24 +6099,44 @@ async function translateNewsItems(items){
     });
   }
 
-  const SYS=`คุณคือนักแปลข่าวการเงิน แปลจากภาษาอังกฤษเป็นภาษาไทยให้เป็นธรรมชาติและเข้าใจง่าย
+  for(let start=0;start<items.length;start+=BATCH){
+    const batch=items.slice(start,start+BATCH);
+    let translated=null;
+
+    // ── 1. Google Translate (เร็ว ฟรี ไม่ต้อง key) ──
+    try{
+      const gtResults=await Promise.all(batch.map(async n=>{
+        const h=await _googleTranslate((n.h||'').slice(0,200));
+        const x=n.x?(await _googleTranslate((n.x||'').slice(0,150))):null;
+        return{h:h||n.h,x:x||n.x||''};
+      }));
+      const anyChanged=gtResults.some((t,i)=>t.h&&t.h!==batch[i]?.h);
+      if(anyChanged) translated=gtResults;
+    }catch(e){ console.warn('Google Translate error:',e.message); }
+
+    // ── 2. Cohere (ถ้า Google Translate ล้ม) ──
+    if(!translated){
+      try{
+        const cohereResult=await _cohereTranslate(batch);
+        if(cohereResult&&Array.isArray(cohereResult)&&cohereResult.length) translated=cohereResult;
+      }catch(e){ console.warn('Cohere translate error:',e.message); }
+    }
+
+    // ── 3. AI fallback (Gemini/Claude/Groq/Pollinations) ──
+    if(!translated){
+      const SYS=`คุณคือนักแปลข่าวการเงิน แปลจากภาษาอังกฤษเป็นภาษาไทยให้เป็นธรรมชาติและเข้าใจง่าย
 กฎเหล็ก:
 1. ตอบเป็น JSON array เท่านั้น เช่น [{"h":"...","x":"..."},...]
 2. ห้ามมี markdown, backtick, หรือข้อความนอก array
 3. รักษาจำนวน element ให้เท่ากับ input เสมอ
 4. ถ้า x ว่างเปล่าให้ส่งกลับเป็น "" เหมือนเดิม`;
-
-  for(let start=0;start<items.length;start+=BATCH){
-    const batch=items.slice(start,start+BATCH);
-    const toTranslate=batch.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
-    const userMsg=`แปลข่าวเหล่านี้เป็นภาษาไทย: ${JSON.stringify(toTranslate)}`;
-    let translated=null;
-
-    // ลอง translate ด้วย callGemini (ใช้ key ผู้ใช้ หรือ Pollinations free)
-    try{
-      const raw = await callGemini(SYS, userMsg, 3000);
-      if(raw) translated = _parseTranslated(raw);
-    }catch(e){console.warn('translate error:',e.message);}
+      const toTranslate=batch.map(n=>({h:(n.h||'').slice(0,200),x:(n.x||'').slice(0,150)}));
+      const userMsg=`แปลข่าวเหล่านี้เป็นภาษาไทย: ${JSON.stringify(toTranslate)}`;
+      try{
+        const raw=await callGemini(SYS,userMsg,3000);
+        if(raw) translated=_parseTranslated(raw);
+      }catch(e){ console.warn('AI translate error:',e.message); }
+    }
 
     if(translated) _merge(translated, start);
   }
