@@ -5584,13 +5584,25 @@ const _econQueries={
   asia:'Asia China Japan economy trade',
 };
 let _econNewsCache={};
+let _econNewsCacheTime={};
+const _ECON_NEWS_TTL=5*60*1000;
+
+setInterval(()=>{
+  const activeCat=document.querySelector('#newsCatRow .sector-btn.active');
+  const page=document.getElementById('page-news');
+  if(!page?.classList.contains('active')) return;
+  const catMap={'🌍 ตลาดรวม':'market','🏦 Fed':'fed','📊 เศรษฐกิจ':'economy','💻 เทค':'tech','₿ Crypto':'crypto','🌏 เอเชีย':'asia'};
+  const catKey=catMap[activeCat?.textContent?.trim()]||'market';
+  delete _econNewsCache[catKey];
+  loadEconNews(catKey, activeCat);
+}, 5*60*1000);
 
 async function loadEconNews(cat, btn){
   document.querySelectorAll('#newsCatRow .sector-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH){
+  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH&&(Date.now()-(_econNewsCacheTime[cat]||0)<_ECON_NEWS_TTL)){
     renderEconNews(_econNewsCache[cat], body);
     return;
   }
@@ -5600,6 +5612,7 @@ async function loadEconNews(cat, btn){
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
   const translated=await _translateNewsGemini(items);
   _econNewsCache[cat]=translated;
+  _econNewsCacheTime[cat]=Date.now();
   renderEconNews(translated, body);
 }
 
