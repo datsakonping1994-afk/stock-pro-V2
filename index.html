@@ -3814,68 +3814,6 @@ async function testGeminiKey(){
   btn.disabled=false;
   btn.textContent='🧪 ทดสอบ Gemini';
 }
-  btn.disabled=true;
-  btn.textContent='⏳ กำลังตรวจสอบ...';
-  statusEl.style.display='block';
-  statusEl.style.background='rgba(100,210,255,0.08)';
-  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
-  statusEl.style.color='var(--text2)';
-  statusEl.textContent='⏳ กำลังเชื่อมต่อ Gemini...';
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),10000);
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:'Reply with the single word: ok'}]}],generationConfig:{maxOutputTokens:10}}),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.status===401||r.status===403){
-      statusEl.style.background='rgba(255,77,106,0.12)';
-      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-      statusEl.style.color='var(--red)';
-      statusEl.textContent='❌ API Key ไม่ถูกต้องหรือถูกปิดใช้งาน — กรุณาตรวจสอบอีกครั้ง';
-    } else if(r.status===400){
-      // FIX: 400 = Bad Request จริงๆ ไม่ใช่หลักฐานว่า key ใช้ได้
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent='⚠️ API ตอบกลับ 400 — ลองกด "ทดสอบ" อีกครั้ง หรือตรวจสอบ Key';
-    } else if(r.status===429){
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent='⚠️ Key ใช้ได้ แต่โควต้าหมด (Rate Limit) — ลองใหม่ภายหลัง';
-    } else if(r.ok){
-      const d=await r.json();
-      const reply=d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-      statusEl.style.background='rgba(0,230,118,0.1)';
-      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
-      statusEl.style.color='var(--green)';
-      statusEl.textContent=`✅ Gemini API Key ใช้ได้! — โมเดล gemini-2.0-flash พร้อมใช้งาน`;
-    } else {
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent=`⚠️ เซิร์ฟเวอร์ตอบกลับ: ${r.status} — ลองใหม่อีกครั้ง`;
-    }
-  }catch(e){
-    if(e.name==='AbortError'){
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent='⏱️ หมดเวลาเชื่อมต่อ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
-    } else {
-      statusEl.style.background='rgba(255,77,106,0.12)';
-      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-      statusEl.style.color='var(--red)';
-      statusEl.textContent='❌ เชื่อมต่อล้มเหลว — ตรวจสอบอินเทอร์เน็ตหรือ Key อีกครั้ง';
-    }
-  }
-  btn.disabled=false;
-  btn.textContent='🧪 ทดสอบ Gemini Key';
-}
 
 function addStock(){
   const raw=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
@@ -4413,7 +4351,7 @@ setTimeout(()=>{
 // ═══════════════════════════════════════
 
 const _thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
-earningsData=[
+var earningsData=[
   {t:'NVDA',n:'Nvidia',d:'28 พ.ค. 2026',st:'soon',eps:'$0.89',rev:'$44.1B'},
   {t:'CRWD',n:'CrowdStrike',d:'ปลาย พ.ค. 2026',st:'soon',eps:'$0.66',rev:'$1.1B'},
   {t:'HIMS',n:'Hims & Hers',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.06',rev:'$586M'},
