@@ -268,7 +268,7 @@ canvas.bigchart{width:100%;height:100%}
 .ai-msg.user{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);color:var(--text);margin-left:20px}
 .ai-msg.bot{background:var(--bg2);border:1px solid var(--border);color:var(--text2);margin-right:20px}
 .ai-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)}
-.ai-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none}
+.ai-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);font-family:'Inter',sans-serif;outline:none}
 .ai-input:focus{border-color:var(--gold)}
 .ai-send{background:var(--gold);border:none;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:#000;flex-shrink:0}
 
@@ -826,7 +826,7 @@ canvas.bigchart{width:100%;height:100%}
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px" aria-label="เพิ่ม/ลบ Watchlist">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()" aria-label="ปิด">✕</div></div>
+    <div class="drawer-close" onclick="closeDrawer()" aria-label="ปิด">✕</div>
   </div>
   <div class="drawer-tabs">
     <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
@@ -2137,23 +2137,71 @@ function drawerTab(tab, btn){
           <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>
           <div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>
         </div>
+        ${(()=>{
+          // หา earnings data ของหุ้นนี้
+          const eData = earningsData.find(e=>e.t===s.t);
+          const epsVal = eData?.eps || 'N/A';
+          const revVal = eData?.rev || 'N/A';
+          // คำนวณ 52W High/Low จาก candle หรือประมาณ
+          const candles = candleCache[s.t]?.data;
+          let high52='N/A', low52='N/A';
+          if(candles?.h?.length){
+            high52 = '$'+Math.max(...candles.h).toFixed(2);
+            low52  = '$'+Math.min(...candles.l).toFixed(2);
+          }
+          // Buy Score
+          const sig2 = (candles && !candles._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
+          const buyScore = sig2?.score!=null ? Math.round(sig2.score)+'/100' : 'N/A';
+          const buyScoreCls = sig2?.score>=60?'bull':sig2?.score>=40?'neut':'bear';
+          // Supertrend
+          const stBull = sig2?.supertrendBull;
+          const stVal  = sig2?.supertrendVal!=null?('$'+sig2.supertrendVal.toFixed(2)):'';
+          const stTxt  = stVal?(stBull?'🟢 Bullish '+stVal:'🔴 Bearish '+stVal):'N/A';
+          const stCls  = stBull!=null?(stBull?'bull':'bear'):'neut';
+          // MACD
+          const macdCls = sig2?.macdBull!=null?(sig2.macdBull?'bull':'bear'):'neut';
+          const macdTxt = sig2?.macdBull!=null?(sig2.macdBull?'✅ Bullish':'⚠️ Bearish'):'N/A';
+          // S2/R2
+          const s2v = getS2(s.t,s.p).toFixed(2);
+          const r2v = getR2(s.t,s.p).toFixed(2);
+          // Price vs open (change today)
+          const chgCls = s.c>=0?'bull':'bear';
+          const chgTxt = (s.c>=0?'+':'')+s.c+'%';
+          return `
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📋 ข้อมูลพื้นฐาน</div>
         <div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">${s.t}</span></div>
         <div class="ind-row"><span class="ind-name">Company</span><span class="ind-val">${s.n}</span></div>
         <div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val">${sector}</span></div>
         <div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">${s.mktcap||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val">${s.pe||'N/A'}</span></div>
+        <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val ${s.pe?'neut':'bear'}">${s.pe||'N/A'}</span></div>
+        <div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val ${epsVal!=='N/A'&&!epsVal.startsWith('-')?'bull':'bear'}">${epsVal}</span></div>
+        <div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val neut">${revVal}</span></div>
         <div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val ${parseFloat(s.rev||0)>0?'bull':'bear'}">${s.rev||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val ${s.pe?'bull':'bear'}">${s.pe?'มีกำไร':'ยังขาดทุน'}</span></div>
-        <div class="ind-row"><span class="ind-name">RSI ปัจจุบัน</span><span class="ind-val ${rsiNow<=35?'bull':rsiNow>=70?'bear':'neut'}">${rsiNow}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">ห่างแนวรับ</span><span class="ind-val ${parseFloat(distS1)<=3?'bull':'neut'}">${distS1}%</span></div>
+        <div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val ${s.pe?'bull':'bear'}">${s.pe?'✅ มีกำไร':'❌ ยังขาดทุน'}</span></div>
         ${s.earn?`<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">${s.earn}</span></div>`:''}
+        ${eData?.res?`<div class="ind-row"><span class="ind-name">ผล Earnings</span><span class="ind-val">${eData.res}</span></div>`:''}
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📈 ราคา & Technical</div>
+        <div class="ind-row"><span class="ind-name">ราคาปัจจุบัน</span><span class="ind-val ${chgCls}">$${s.p.toFixed(2)} (${chgTxt})</span></div>
+        <div class="ind-row"><span class="ind-name">52W High</span><span class="ind-val bull">${high52}</span></div>
+        <div class="ind-row"><span class="ind-name">52W Low</span><span class="ind-val bear">${low52}</span></div>
+        <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsiNow<=35?'bull':rsiNow>=70?'bear':'neut'}">${rsiNow}${rsiNow<=35?' 🟢 Oversold':rsiNow>=70?' 🔴 Overbought':''}</span></div>
+        <div class="ind-row"><span class="ind-name">MACD</span><span class="ind-val ${macdCls}">${macdTxt}</span></div>
+        <div class="ind-row"><span class="ind-name">Supertrend</span><span class="ind-val ${stCls}">${stTxt}</span></div>
+        <div class="ind-row"><span class="ind-name">Buy Score</span><span class="ind-val ${buyScoreCls}">${buyScore}</span></div>
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">🎯 แนวรับ / แนวต้าน</div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S2</span><span class="ind-val bear" style="opacity:0.75">$${s2v}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">$${r2v}</span></div>
+        <div class="ind-row"><span class="ind-name">ห่างแนวรับ S1</span><span class="ind-val ${parseFloat(distS1)<=3?'bull':'neut'}">${distS1}%</span></div>`;
+        })()}
       </div>`;
     // AI สรุป — ใช้ callGemini แบบ fire-and-forget ไม่ block
     callGemini(
       'คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
-      'สรุปหุ้น '+s.t+' ('+s.n+') ให้คนทั่วไปเข้าใจใน 3 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ขาดทุน')+' RevGrowth='+s.rev+' RSI='+rsiNow+' ห่างแนวรับ='+distS1+'% บอกว่าทำอะไร โตไวไหม กำไรหรือขาดทุน เหมาะกับใคร',
+      'สรุปหุ้น '+s.t+' ('+s.n+') ให้นักลงทุนเข้าใจใน 4-5 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ขาดทุน')+' RevGrowth='+s.rev+' RSI='+rsiNow+' ห่างแนวรับ S1='+distS1+'% S1=$'+s1.toFixed(2)+' R1=$'+r1.toFixed(2)+' บอกว่าทำอะไร โตไวไหม กำไรหรือขาดทุน สถานะ Technical ตอนนี้เป็นอย่างไร เหมาะกับใคร',
       300
     ).then(result=>{
       const el=document.getElementById('fundAIText');
