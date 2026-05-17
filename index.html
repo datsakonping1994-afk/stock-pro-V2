@@ -783,11 +783,13 @@ canvas.bigchart{width:100%;height:100%}
         <div id="apiKeyStatus" style="display:none;margin:0 16px 14px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
         <div class="settings-row">
           <div style="width:100%">
-            <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
-            <div class="settings-sublabel">ไม่มี key ก็ใช้ได้ — AI จะใช้ Claude Haiku (ฟรี) แทน · <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--gold)">สร้าง key ฟรี</a></div>
-            <input class="settings-input full" id="geminiKeyInput" type="text" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
-            <div style="margin-top:8px;display:flex;justify-content:flex-end">
-              <button class="settings-btn" id="testGeminiBtn" onclick="testGeminiKey()">🧪 ทดสอบ Gemini Key</button>
+            <div class="settings-label">🔒 Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
+            <div class="settings-sublabel">Key เก็บอยู่ใน Cloudflare Worker secret อย่างปลอดภัย</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <div style="flex:1;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text3)">
+                <span style="color:var(--green)">●</span> Managed by Worker — <code style="font-size:11px;color:var(--text2)">wrangler secret put GEMINI_KEY</code>
+              </div>
+              <button class="settings-btn" id="testGeminiBtn" onclick="testGeminiKey()">🧪 ทดสอบ</button>
             </div>
           </div>
           <div id="geminiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
@@ -3028,22 +3030,21 @@ function mdToHtml(text){
 
 // ── AI Engine — ใช้ Gemini ผ่าน key ที่ผู้ใช้ตั้ง หรือ fallback OpenRouter free ──
 // ผู้ใช้สามารถใส่ Gemini key ของตัวเองใน Settings → บันทึก
-function _getGeminiKey(){ try{ return localStorage.getItem('_gemini_key')||''; }catch{ return ''; } }
-function _getGeminiUrl(key){
-  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
-}
+// FIX: Gemini key ย้ายไปเก็บใน Worker secret GEMINI_KEY แล้ว
+// ฟังก์ชันนี้เรียกผ่าน Worker /api/gemini แทน
+function _getGeminiKey(){ return 'worker'; } // sentinel — key อยู่ที่ Worker
+function _getGeminiUrl(key){ return `${WORKER}/api/gemini`; }
 
-// ── Gemini Direct — ใช้ key ของผู้ใช้ ──
+// ── Gemini via Worker — key ซ่อนอยู่ใน Worker secret ──
 async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
-  const key=_getGeminiKey();
-  if(!key||key.length<10){ console.warn('No Gemini key'); return null; }
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(_getGeminiUrl(key),{
+    const r=await fetch(`${WORKER}/api/gemini`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
+        model:'gemini-2.0-flash',
         system_instruction:{parts:[{text:systemPrompt}]},
         contents:[{parts:[{text:userPrompt}]}],
         generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
@@ -3055,8 +3056,8 @@ async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
       const d=await r.json();
       return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
     }
-    console.warn('Gemini direct error:', r.status);
-  }catch(e){console.warn('Gemini direct error:',e.message);}
+    console.warn('Gemini Worker error:', r.status);
+  }catch(e){console.warn('Gemini Worker error:',e.message);}
   return null;
 }
 
@@ -3691,10 +3692,8 @@ function applyLockState(){}
 
 // ── Settings ──
 function loadSettings(){
-  // FIX: apiKeyInput ถูกลบออกแล้ว — Finnhub key อยู่ใน Worker secret
+  // FIX: ทั้ง Finnhub และ Gemini key อยู่ใน Worker secret — ไม่โหลดจาก localStorage
   document.getElementById('portSizeInput').value=PORT_SIZE;
-  const geminiInput=document.getElementById('geminiKeyInput');
-  if(geminiInput) geminiInput.value=_getGeminiKey();
   try{
     document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
     document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
@@ -3702,17 +3701,10 @@ function loadSettings(){
   }catch{}
 }
 function saveSettings(){
-  // FIX: ไม่มี Finnhub key ให้บันทึกอีกต่อไป — key อยู่ใน Worker secret
+  // FIX: ทั้ง Finnhub และ Gemini key อยู่ใน Worker secret แล้ว — ไม่บันทึกที่นี่
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
-  const geminiKey=document.getElementById('geminiKeyInput')?.value?.trim();
-  if(geminiKey && geminiKey.length>10){
-    try{localStorage.setItem('_gemini_key',geminiKey);}catch{}
-  } else if(geminiKey===''){
-    try{localStorage.removeItem('_gemini_key');}catch{}
-  }
   PORT_SIZE=port;
   try{localStorage.setItem('_sp_portsize',port);}catch{}
-  // restart live เพื่อ re-fetch ราคา
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
 }
@@ -3770,15 +3762,58 @@ async function testApiKey(){
 async function testGeminiKey(){
   const btn=document.getElementById('testGeminiBtn');
   const statusEl=document.getElementById('geminiKeyStatus');
-  const key=document.getElementById('geminiKeyInput')?.value?.trim();
-  if(!key||key.length<10){
-    statusEl.style.display='block';
-    statusEl.style.background='rgba(255,77,106,0.12)';
-    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-    statusEl.style.color='var(--red)';
-    statusEl.textContent='⚠️ กรุณาใส่ Gemini API Key ก่อนทดสอบ';
-    return;
+  if(!statusEl) return;
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Gemini ผ่าน Worker...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`${WORKER}/api/gemini`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'gemini-2.0-flash',
+        contents:[{parts:[{text:'Reply with the single word: ok'}]}],
+        generationConfig:{maxOutputTokens:10}
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.status===500){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ GEMINI_KEY ยังไม่ได้ตั้งค่าใน Worker — ดูขั้นตอนด้านล่าง';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Gemini Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else if(r.ok){
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Gemini ผ่าน Worker ใช้งานได้! — gemini-2.0-flash พร้อม';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Worker ตอบกลับ ${r.status} — ตรวจสอบ GEMINI_KEY secret`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Worker ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
   }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ Gemini';
+}
   btn.disabled=true;
   btn.textContent='⏳ กำลังตรวจสอบ...';
   statusEl.style.display='block';
@@ -4015,8 +4050,9 @@ function checkAllBuySignals(){
 
 // ── Init ──
 (()=>{
-  // FIX: ล้าง _fh_key เก่าที่อาจค้างใน localStorage/cookie จากเวอร์ชันก่อน
+  // FIX: ล้าง key เก่าทั้งหมดที่อาจค้างใน localStorage จากเวอร์ชันก่อน
   try{ localStorage.removeItem('_fh_key'); }catch{}
+  try{ localStorage.removeItem('_gemini_key'); }catch{}
   try{ document.cookie='_fh_key=;max-age=0;path=/'; }catch{}
 })();
 buildSectorRow();
