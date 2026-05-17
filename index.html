@@ -679,8 +679,15 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row" id="apiKeyRow">
           <div style="width:100%">
             <div class="settings-label">Finnhub API Key</div>
-            <div class="settings-sublabel">ใส่ key เพื่อดึงราคา real-time</div>
+            <div class="settings-sublabel">ใส่ key เพื่อดึงราคา real-time · <a href="https://finnhub.io" target="_blank" style="color:var(--gold)">finnhub.io</a></div>
             <input class="settings-input full" id="apiKeyInput" type="text" placeholder="ใส่ API Key..." autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
+            <div class="settings-sublabel">ไม่มี key ก็ใช้ได้ — AI จะใช้ Pollinations (ฟรี) แทน · <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--gold)">สร้าง key ฟรี</a></div>
+            <input class="settings-input full" id="geminiKeyInput" type="text" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
           </div>
         </div>
         <div class="settings-row">
@@ -2119,16 +2126,42 @@ function drawerTab(tab, btn){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
     renderNewsTab(s.t).catch(()=>{body.innerHTML='<div style="color:var(--text3)">ไม่พบข่าว</div>';});
   } else {
+    const sector=Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    const s1=getS1(s.t,s.p);
+    const r1=getR1(s.t,s.p);
+    const distS1=s1>0?((s.p-s1)/s1*100).toFixed(2):'-';
+    const rsiNow=rsiData[s.t]||'-';
     body.innerHTML=`
       <div class="ind-table">
+        <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">
+          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>
+          <div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>
+        </div>
         <div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">${s.t}</span></div>
         <div class="ind-row"><span class="ind-name">Company</span><span class="ind-val">${s.n}</span></div>
+        <div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val">${sector}</span></div>
         <div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">${s.mktcap||'N/A'}</span></div>
         <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val">${s.pe||'N/A'}</span></div>
         <div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val ${parseFloat(s.rev||0)>0?'bull':'bear'}">${s.rev||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val">${Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ'}</span></div>
+        <div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val ${s.pe?'bull':'bear'}">${s.pe?'มีกำไร':'ยังขาดทุน'}</span></div>
+        <div class="ind-row"><span class="ind-name">RSI ปัจจุบัน</span><span class="ind-val ${rsiNow<=35?'bull':rsiNow>=70?'bear':'neut'}">${rsiNow}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">ห่างแนวรับ</span><span class="ind-val ${parseFloat(distS1)<=3?'bull':'neut'}">${distS1}%</span></div>
         ${s.earn?`<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">${s.earn}</span></div>`:''}
       </div>`;
+    // AI สรุป — ใช้ callGemini แบบ fire-and-forget ไม่ block
+    callGemini(
+      'คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค',
+      'สรุปหุ้น '+s.t+' ('+s.n+') ให้คนทั่วไปเข้าใจใน 3 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ขาดทุน')+' RevGrowth='+s.rev+' RSI='+rsiNow+' ห่างแนวรับ='+distS1+'% บอกว่าทำอะไร โตไวไหม กำไรหรือขาดทุน เหมาะกับใคร',
+      300
+    ).then(result=>{
+      const el=document.getElementById('fundAIText');
+      if(el) el.innerHTML=result?result.replace(/\n/g,'<br>'):'ไม่สามารถวิเคราะห์ได้';
+    }).catch(()=>{
+      const el=document.getElementById('fundAIText');
+      if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
+    });
   }
 }
 
@@ -2155,16 +2188,21 @@ function mdToHtml(text){
     .trim();
 }
 
-// ── callGemini: Claude Haiku → Gemini fallback (เหมือนเวอร์ชันเก่า) ──
-const GEMINI_KEY='AIzaSyCfrII66ndKAblLq1eVEDcprjldA-iFTXk';
-const GEMINI_URL=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+// ── AI Engine — ใช้ Gemini ผ่าน key ที่ผู้ใช้ตั้ง หรือ fallback OpenRouter free ──
+// ผู้ใช้สามารถใส่ Gemini key ของตัวเองใน Settings → บันทึก
+function _getGeminiKey(){ return localStorage.getItem('_gemini_key')||''; }
+function _getGeminiUrl(key){
+  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+}
 
-// ── Gemini Direct — เรียกตรงไม่ผ่าน Worker ──
+// ── Gemini Direct — ใช้ key ของผู้ใช้ ──
 async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
+  const key=_getGeminiKey();
+  if(!key||key.length<10){ console.warn('No Gemini key'); return null; }
   try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),30000);
-    const r=await fetch(GEMINI_URL,{
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch(_getGeminiUrl(key),{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -2179,15 +2217,52 @@ async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
       const d=await r.json();
       return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
     }
-  }catch(e){console.warn('Gemini direct error:',e);}
+    console.warn('Gemini direct error:', r.status);
+  }catch(e){console.warn('Gemini direct error:',e.message);}
+  return null;
+}
+
+// ── Pollinations AI — ฟรี 100% ไม่ต้องใช้ key ──
+async function _callPollinationsAI(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),25000);
+    const r=await fetch('https://text.pollinations.ai/openai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'openai-large',
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:userPrompt}
+        ],
+        max_tokens:maxTokens,
+        temperature:0.7
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.choices?.[0]?.message?.content||null;
+    }
+  }catch(e){console.warn('Pollinations error:',e.message);}
   return null;
 }
 
 async function callGemini(systemPrompt, userPrompt, maxTokens=800){
-  // 1. ลอง Claude Haiku ผ่าน Worker
+  // 1. ลอง Gemini Direct ถ้าผู้ใช้ใส่ key ไว้
+  const geminiResult = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(geminiResult) return geminiResult;
+
+  // 2. Pollinations AI — ฟรี ไม่ต้อง key (primary free fallback)
+  const pollinationsResult = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(pollinationsResult) return pollinationsResult;
+
+  // 3. Last resort: Worker
   try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),30000);
+    const tid=setTimeout(()=>ctrl.abort(),15000);
     const r=await fetch(WORKER,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -2206,33 +2281,8 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
         return d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
       }
     }
-  }catch(e){console.warn('Claude Worker error:',e);}
-
-  // 2. Fallback: Gemini Flash ผ่าน Worker
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r2=await fetch(WORKER+'/gemini/',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        system_instruction:{parts:[{text:systemPrompt}]},
-        contents:[{parts:[{text:userPrompt}]}],
-        generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r2.ok){
-      const d2=await r2.json();
-      const txt=d2?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if(txt) return txt;
-    }
-  }catch(e){console.warn('Gemini Worker error:',e);}
-
-  // 3. Last resort: Gemini Direct (ไม่ผ่าน Worker)
-  console.warn('Worker ล้มเหลว — ใช้ Gemini Direct');
-  return _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  }catch(e){console.warn('Worker fallback error:',e.message);}
+  return null;
 }
 
 // ── buildFullIndicatorContext — รวม indicator ทุกตัวเป็น string ──
@@ -2691,6 +2741,8 @@ function applyLockState(){}
 function loadSettings(){
   document.getElementById('apiKeyInput').value=FINNHUB_KEY||'';
   document.getElementById('portSizeInput').value=PORT_SIZE;
+  const geminiInput=document.getElementById('geminiKeyInput');
+  if(geminiInput) geminiInput.value=_getGeminiKey();
   document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
   document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
   if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
@@ -2698,6 +2750,12 @@ function loadSettings(){
 function saveSettings(){
   const key=document.getElementById('apiKeyInput')?.value?.trim();
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
+  const geminiKey=document.getElementById('geminiKeyInput')?.value?.trim();
+  if(geminiKey && geminiKey.length>10){
+    try{localStorage.setItem('_gemini_key',geminiKey);}catch{}
+  } else if(geminiKey===''){ 
+    try{localStorage.removeItem('_gemini_key');}catch{}
+  }
   if(key && key.length>10){
     FINNHUB_KEY=key;
     try{localStorage.setItem('_fh_key',key);}catch{}
@@ -2919,6 +2977,16 @@ function checkAllBuySignals(){
 }
 
 // ── Init ──
+// ใส่ Finnhub key ถ้ายังไม่มีใน storage
+(()=>{
+  const saved=localStorage.getItem('_fh_key');
+  if(!saved||saved.length<10){
+    const defaultKey='d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';
+    try{localStorage.setItem('_fh_key',defaultKey);}catch{}
+    try{sessionStorage.setItem('_fh_key',defaultKey);}catch{}
+    FINNHUB_KEY=defaultKey;
+  }
+})();
 buildSectorRow();
 updateDashboard();
 loadSettings();
@@ -2929,11 +2997,11 @@ buildTickerSelect();
 
 // ── Auto-start with retry for iOS PWA ──
 function _tryStartLive(attempt=0){
-  // โหลด key จากทุก storage — ถ้าไม่มีให้ใช้ค่าที่ hardcode ไว้
+  // โหลด key จากทุก storage
   const k = localStorage.getItem('_fh_key')
     || sessionStorage.getItem('_fh_key')
     || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
-    || FINNHUB_KEY; // ← ใช้ hardcoded key เป็น fallback
+    || FINNHUB_KEY;
   if(k && k.length>10) FINNHUB_KEY=k;
 
   if(hasApiKey()){
@@ -2941,8 +3009,14 @@ function _tryStartLive(attempt=0){
     else httpPoll();
     return;
   }
+  // ไม่มี API key — ใช้ Yahoo fallback ได้เลย (ไม่ต้องรอ retry)
+  if(attempt===0){
+    initYahooPrices();
+    // แสดง toast แนะนำ (ครั้งเดียว)
+    setTimeout(()=>toast('💡 ใส่ Finnhub API Key ใน Settings เพื่อรับราคา Real-time', 5000), 2000);
+  }
   if(attempt<3){
-    setTimeout(()=>_tryStartLive(attempt+1), 500);
+    setTimeout(()=>_tryStartLive(attempt+1), 800);
   }
 }
 
@@ -4408,45 +4482,11 @@ async function translateNewsItems(items){
     const userMsg=`แปลข่าวเหล่านี้เป็นภาษาไทย: ${JSON.stringify(toTranslate)}`;
     let translated=null;
 
-    // Gemini Direct — ใช้ทันทีไม่ผ่าน Worker
+    // ลอง translate ด้วย callGemini (ใช้ key ผู้ใช้ หรือ Pollinations free)
     try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),25000);
-      const res=await fetch(GEMINI_URL,{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          system_instruction:{parts:[{text:SYS}]},
-          contents:[{parts:[{text:userMsg}]}],
-          generationConfig:{maxOutputTokens:3000,temperature:0.3}
-        }),
-        signal:ctrl.signal
-      });
-      clearTimeout(tid);
-      if(res.ok){
-        const d=await res.json();
-        const raw=d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-        translated=_parseTranslated(raw);
-      }
-    }catch(e){console.warn('translate Gemini direct error:',e);}
-
-    // Fallback: Claude Worker ถ้า Gemini ล้มเหลว
-    if(!translated){
-      try{
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),25000);
-        const res=await fetch(WORKER,{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,system:SYS,messages:[{role:'user',content:userMsg}]}),
-          signal:ctrl.signal
-        });
-        clearTimeout(tid);
-        if(res.ok){
-          const d=await res.json();
-          const raw=d?.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'';
-          translated=_parseTranslated(raw);
-        }
-      }catch(e){console.warn('translate Worker fallback error:',e);}
-    }
+      const raw = await callGemini(SYS, userMsg, 3000);
+      if(raw) translated = _parseTranslated(raw);
+    }catch(e){console.warn('translate error:',e.message);}
 
     if(translated) _merge(translated, start);
   }
@@ -4723,32 +4763,37 @@ async function loadEconNews(cat, btn){
 async function _fetchEconNews(query){
   const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const proxies=[
-    `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
     `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`,
+    `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
   ];
-  for(const url of proxies){
-    try{
+  // ลองพร้อมกันทุก proxy เอาตัวแรกที่สำเร็จ
+  try{
+    const items = await Promise.any(proxies.map(async url=>{
       const ctrl=new AbortController();
       const tid=setTimeout(()=>ctrl.abort(),8000);
-      const r=await fetch(url,{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(!r.ok) continue;
-      let text=await r.text();
-      if(text.includes('"contents"')){try{text=JSON.parse(text).contents;}catch{}}
-      const parser=new DOMParser();
-      const doc=parser.parseFromString(text,'text/xml');
-      const items=Array.from(doc.querySelectorAll('item')).slice(0,20).map(item=>({
-        title:item.querySelector('title')?.textContent||'',
-        link:item.querySelector('link')?.textContent||'#',
-        pubDate:item.querySelector('pubDate')?.textContent||'',
-        source:item.querySelector('source')?.textContent||'',
-      })).filter(i=>i.title);
-      if(items.length>0) return items;
-    }catch{}
-  }
+      try{
+        const r=await fetch(url,{signal:ctrl.signal});
+        clearTimeout(tid);
+        if(!r.ok) throw new Error('not ok');
+        let text=await r.text();
+        if(text.includes('"contents"')){try{text=JSON.parse(text).contents;}catch{}}
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(text,'text/xml');
+        const list=Array.from(doc.querySelectorAll('item')).slice(0,20).map(item=>({
+          title:item.querySelector('title')?.textContent||'',
+          link:item.querySelector('link')?.textContent||'#',
+          pubDate:item.querySelector('pubDate')?.textContent||'',
+          source:item.querySelector('source')?.textContent||'',
+        })).filter(i=>i.title);
+        if(list.length>0) return list;
+        throw new Error('empty');
+      }catch(e){clearTimeout(tid);throw e;}
+    }));
+    return items;
+  }catch{}
   return [];
 }
 
