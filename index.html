@@ -795,6 +795,17 @@ canvas.bigchart{width:100%;height:100%}
           <div id="geminiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
         </div>
         <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">⚡ Groq API Key <span style="font-size:10px;color:var(--text3)">(AI Fallback — ฟรี)</span></div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://console.groq.com/keys" target="_blank" style="color:var(--ice);text-decoration:none">console.groq.com</a> — ใช้เมื่อ Gemini ไม่ตอบสนอง</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="settings-input full" id="groqKeyInput" type="password" placeholder="gsk_...">
+              <button class="settings-btn" id="testGroqBtn" onclick="testGroqKey()">🧪 ทดสอบ</button>
+            </div>
+            <div id="groqKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+          </div>
+        </div>
+        <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
@@ -3089,6 +3100,41 @@ async function _callPollinationsAI(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
+// ── Groq AI — ฟรี เร็วมาก รองรับ llama-3.3-70b ──
+async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    let groqKey='';
+    try{groqKey=localStorage.getItem('groqKey')||'';}catch{}
+    if(!groqKey) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${groqKey}`
+      },
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:userPrompt}
+        ],
+        max_tokens:maxTokens,
+        temperature:0.7
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.choices?.[0]?.message?.content||null;
+    }
+    console.warn('Groq error:', r.status);
+  }catch(e){console.warn('Groq error:',e.message);}
+  return null;
+}
+
 async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   // 1. Claude Haiku — อันดับหนึ่ง
   try{
@@ -3114,11 +3160,15 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
     }
   }catch(e){console.warn('Claude Haiku error:',e.message);}
 
-  // 2. Gemini Direct — ถ้าผู้ใช้ใส่ key ไว้
+  // 2. Gemini Direct — Worker secret
   const geminiResult = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(geminiResult) return geminiResult;
 
-  // 3. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
+  // 3. Groq — ถ้าผู้ใช้ใส่ key ไว้ใน Settings
+  const groqResult = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(groqResult) return groqResult;
+
+  // 4. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
   const pollinationsResult = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(pollinationsResult) return pollinationsResult;
 
@@ -3698,6 +3748,9 @@ function loadSettings(){
     document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
     document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
     if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
+    // โหลด Groq key (แสดงเป็น masked)
+    const gk=localStorage.getItem('groqKey')||'';
+    if(gk) document.getElementById('groqKeyInput').value=gk;
   }catch{}
 }
 function saveSettings(){
@@ -3705,8 +3758,81 @@ function saveSettings(){
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
   PORT_SIZE=port;
   try{localStorage.setItem('_sp_portsize',port);}catch{}
+  // บันทึก Groq key
+  try{
+    const gk=document.getElementById('groqKeyInput')?.value?.trim()||'';
+    if(gk) localStorage.setItem('groqKey',gk);
+    else localStorage.removeItem('groqKey');
+  }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
+}
+
+async function testGroqKey(){
+  const btn=document.getElementById('testGroqBtn');
+  const statusEl=document.getElementById('groqKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('groqKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Groq API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Groq...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[{role:'user',content:'Reply with the single word: ok'}],
+        max_tokens:5
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      // บันทึก key ทันทีเมื่อทดสอบผ่าน
+      try{localStorage.setItem('groqKey',key);}catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Groq ใช้งานได้! — llama-3.3-70b-versatile พร้อม (บันทึกแล้ว)';
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ console.groq.com/keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Groq Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Groq ตอบกลับ ${r.status}`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Groq ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
 }
 
 async function testApiKey(){
