@@ -1792,8 +1792,6 @@ function makeCard(s){
       </div>
     </div>
   `;
-  // Load logo — throttled queue
-  _loadLogoNow(s.t, 'logo-'+s.t, 44);
   return div;
 }
 
@@ -1983,6 +1981,8 @@ function renderCards(){
       fragment.appendChild(makeCard(list[i]));
     }
     grid.appendChild(fragment);
+    // โหลดโลโก้หลัง DOM append แล้ว
+    list.slice(Math.max(0,i-10),i).forEach(s=>_loadLogoNow(s.t,'logo-'+s.t,44));
     if(i<list.length){
       requestAnimationFrame(renderChunk);
     } else {
