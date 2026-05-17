@@ -577,14 +577,25 @@ canvas.bigchart{width:100%;height:100%}
             <div class="mood-num-lbl">◦ ทั้งหมด</div>
           </div>
         </div>
+        <!-- Market Breadth Bar -->
+        <div style="margin-top:12px">
+          <div style="height:6px;border-radius:3px;background:rgba(255,77,106,0.3);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.3) inset">
+            <div id="breadthBar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),rgba(0,230,118,0.6));width:50%;transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px">
+            <span style="color:var(--green)">BULL</span>
+            <span id="breadthPct" style="color:var(--text2)">50%</span>
+            <span style="color:var(--red)">BEAR</span>
+          </div>
+        </div>
       </div>
 
 
       <!-- Quick Actions -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button onclick="const m=document.getElementById('heatmapModal');m.style.display='flex';m.style.flexDirection='column';renderHeatmapV2()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🌡️ Heatmap</button>
-        <button onclick="const m=document.getElementById('earningsModal');m.style.display='flex';m.style.flexDirection='column';fetchAndRenderEarnings()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">📅 Earnings</button>
-        <button onclick="const m=document.getElementById('aiSummaryModal');m.style.display='flex';m.style.flexDirection='column'" style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:10px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🤖 AI Summary</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button onclick="const m=document.getElementById('heatmapModal');m.style.display='flex';m.style.flexDirection='column';renderHeatmapV2()" style="flex:1;background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;transition:all 0.15s;letter-spacing:0.3px">🌡️ Heatmap</button>
+        <button onclick="const m=document.getElementById('earningsModal');m.style.display='flex';m.style.flexDirection='column';fetchAndRenderEarnings()" style="flex:1;background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;transition:all 0.15s;letter-spacing:0.3px">📅 Earnings</button>
+        <button onclick="const m=document.getElementById('aiSummaryModal');m.style.display='flex';m.style.flexDirection='column'" style="flex:1;background:linear-gradient(145deg,rgba(201,168,76,0.12),rgba(150,120,40,0.08));border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 8px rgba(201,168,76,0.1);transition:all 0.15s;letter-spacing:0.3px">🤖 AI Summary</button>
       </div>
       <!-- Fear & Greed + SPY/QQQ -->
       <div id="fngCard" style="background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:14px 16px;margin-bottom:12px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(255,255,255,0.05) inset" onclick="fetchFearGreed()">
@@ -610,14 +621,18 @@ canvas.bigchart{width:100%;height:100%}
             <div id="fngPrev" style="font-size:10px;color:var(--text3);margin-top:4px">เมื่อวาน: --</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--border);padding-top:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:10px;padding:8px 12px">
-            <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2)">SPY</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;border-top:1px solid rgba(255,255,255,0.05);padding-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 10px">
+            <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text2)">SPY</div>
             <div class="index-chg" id="spyChg">--</div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:10px;padding:8px 12px">
-            <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2)">QQQ</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 10px">
+            <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text2)">QQQ</div>
             <div class="index-chg" id="qqqChg">--</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 10px">
+            <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text2)">VIX</div>
+            <div id="vixVal" style="font-size:12px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">--</div>
           </div>
         </div>
       </div>
@@ -625,9 +640,9 @@ canvas.bigchart{width:100%;height:100%}
       <!-- Portfolio -->
       <div class="section-title">Portfolio Stats</div>
       <div class="port-card">
-        <div class="port-stat">
+        <div class="port-stat" onclick="_editPortSize()" style="cursor:pointer" title="แตะเพื่อแก้ไข">
           <div class="port-stat-val gold" id="portSize">10,000</div>
-          <div class="port-stat-lbl">Port Size</div>
+          <div class="port-stat-lbl">Port Size ✎</div>
         </div>
         <div class="port-stat">
           <div class="port-stat-val green" id="dashWinRate">--</div>
@@ -2247,12 +2262,42 @@ function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
   `;
   return {div, logoId};
 }
+// ── Port Size Editor ──
+function _editPortSize(){
+  const cur=PORT_SIZE.toLocaleString();
+  const val=prompt('กรอกขนาดพอร์ต ($):',PORT_SIZE);
+  if(!val) return;
+  const n=parseFloat(val.replace(/,/g,''));
+  if(isNaN(n)||n<=0) return;
+  PORT_SIZE=n;
+  try{localStorage.setItem('_sp_portsize',n);}catch{}
+  updateDashboard();
+  toast('✅ อัพเดทพอร์ตเป็น $'+n.toLocaleString(),2000);
+}
+
 function updateDashboard(){
   const up=stocks.filter(s=>s.c>0).length;
   const dn=stocks.filter(s=>s.c<0).length;
   document.getElementById('dashUp').textContent=up;
   document.getElementById('dashDn').textContent=dn;
   document.getElementById('dashTotal').textContent=stocks.length;
+
+  // Market Breadth Bar
+  const total=up+dn||1;
+  const bullPct=Math.round(up/total*100);
+  const breadthBar=document.getElementById('breadthBar');
+  const breadthPct=document.getElementById('breadthPct');
+  if(breadthBar) breadthBar.style.width=bullPct+'%';
+  if(breadthPct) breadthPct.textContent=bullPct+'%';
+
+  // VIX
+  const vixStock=stocks.find(s=>s.t==='VIX');
+  const vixEl=document.getElementById('vixVal');
+  if(vixEl&&vixStock&&vixStock.p>0){
+    vixEl.textContent=vixStock.p.toFixed(1);
+    vixEl.style.color=vixStock.p>30?'var(--red)':vixStock.p>20?'var(--gold)':'var(--green)';
+  }
+
   // Mood
   const mood=up>dn*1.3?'BULLISH 🟢':dn>up*1.3?'BEARISH 🔴':'NEUTRAL 🟡';
   const moodEl=document.getElementById('moodBadge');
@@ -2328,6 +2373,7 @@ function openDrawer(ticker){
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
   loadLogo(ticker,'drawerLogo',40);
   // render tech tab ครั้งเดียวตอนเปิด
+  _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
   drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
   document.getElementById('drawer').classList.add('open');
   // snapshot ticker ณ เวลานี้ เพื่อกัน race condition
@@ -2352,6 +2398,7 @@ function closeDrawer(){document.getElementById('drawer').classList.remove('open'
 
 // ── Drawer swipe to close — เฉพาะ handle และ header เท่านั้น ──
 let _drawerSwipeY=0, _drawerSwipeTarget=null;
+let _currentChartDays=30; // default 1M
 document.getElementById('drawer').addEventListener('touchstart',e=>{
   _drawerSwipeY=e.touches[0].clientY;
   _drawerSwipeTarget=e.target;
@@ -2614,7 +2661,7 @@ function drawerTab(tab, btn){
     const rocTxt=sig?.roc!=null?`<span class="ind-val ${sig.roc>0?'bull':'bear'}">${sig.roc>0?'+':''}${sig.roc}%</span>`:'<span class="ind-val">--</span>';
     body.innerHTML=`
       <div class="chart-timeframes">
-        <button class="tf-btn active" onclick="_switchTF(this,30)">1M</button>
+        <button class="tf-btn" onclick="_switchTF(this,30)">1M</button>
         <button class="tf-btn" onclick="_switchTF(this,90)">3M</button>
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
@@ -2669,25 +2716,37 @@ function drawerTab(tab, btn){
       const H=200;
       c.style.width=W+'px'; c.style.height=H+'px';
       const hasCandleData=candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
-      const prices=hasCandleData?candleCache[s.t].data.c:(()=>{
+      const days=_currentChartDays||30;
+      const allPrices=hasCandleData?candleCache[s.t].data.c:null;
+      const prices=allPrices?allPrices.slice(-days):(()=>{
         const mock=[];let p=s.p*0.88;
-        for(let i=0;i<60;i++){p+=p*(Math.random()-0.47)*0.025;mock.push(Math.max(p,s.p*0.5));}
+        for(let i=0;i<days;i++){p+=p*(Math.random()-0.47)*0.025;mock.push(Math.max(p,s.p*0.5));}
         mock[mock.length-1]=s.p; return mock;
       })();
-      const timestamps=candleCache[s.t]?.data?.t||null;
+      const allTs=candleCache[s.t]?.data?.t||null;
+      const timestamps=allTs?allTs.slice(-days):null;
       drawBigChartWithAxes(c,prices,timestamps,s.c>=0);
       if(!hasCandleData&&hasApiKey()){
-        fetchCandles(s.t,60).then(()=>{
+        fetchCandles(s.t,days).then(()=>{
           const c2=document.getElementById('bigChartCanvas');
           if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock){
-            drawBigChartWithAxes(c2,candleCache[s.t].data.c,candleCache[s.t].data.t||null,s.c>=0);
+            const ap=candleCache[s.t].data.c;
+            const at=candleCache[s.t].data.t||null;
+            drawBigChartWithAxes(c2,ap.slice(-days),at?at.slice(-days):null,s.c>=0);
           }
         }).catch(()=>{});
       }
     };
     // รอ DOM render ก่อน — เช็คว่ายังอยู่ tech tab ก่อนวาด
     requestAnimationFrame(()=>setTimeout(()=>{
-      if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _drawBigChart();
+      if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
+        _drawBigChart();
+        // sync active tf-btn กับ _currentChartDays
+        const dayMap={30:0,90:1,180:2,365:3};
+        const idx=dayMap[_currentChartDays]??0;
+        const btns=document.querySelectorAll('.tf-btn');
+        btns.forEach((b,i)=>b.classList.toggle('active',i===idx));
+      }
     },50));
     }; // end _renderTech
     _renderTech();
@@ -4171,11 +4230,23 @@ async function _switchTF(btn, days){
     btn.classList.add('active');
     const ticker=currentDrawerTicker;
     if(!ticker) return;
-    if(candleCache[ticker]) candleCache[ticker].days=0;
+    _currentChartDays=days; // บันทึก period ที่เลือก
+    if(candleCache[ticker]) candleCache[ticker].days=0; // force re-fetch
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
+    // วาด chart โดยตรงด้วย days ที่ถูกต้อง
+    const c=document.getElementById('bigChartCanvas');
+    if(c&&candleCache[ticker]?.data?.c){
+      const s=stocks.find(x=>x.t===ticker);
+      // slice ข้อมูลตาม days ที่เลือก
+      const allPrices=candleCache[ticker].data.c;
+      const allTs=candleCache[ticker].data.t||null;
+      const prices=allPrices.slice(-days);
+      const timestamps=allTs?allTs.slice(-days):null;
+      drawBigChartWithAxes(c,prices,timestamps,s?.c>=0);
+    }
     if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
-  }catch(e){console.warn('switchTF error',e);}
+  }catch(e){}
 }
 
 // ── fetchCandles — rate limit guard ──
