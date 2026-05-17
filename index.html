@@ -235,7 +235,7 @@ canvas.spark{width:100%;height:48px;display:block}
 }
 #drawer.open{transform:translateY(0)}
 .drawer-handle{width:36px;height:4px;border-radius:2px;background:var(--bg4);margin:10px auto 0}
-.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:14px 80px 10px 16px}
 .drawer-ticker{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text)}
 .drawer-name{font-size:11px;color:var(--text3)}
 .drawer-price{text-align:right}
@@ -247,11 +247,11 @@ canvas.spark{width:100%;height:48px;display:block}
 .drawer-body{flex:1;overflow-y:auto;padding:16px}
 
 /* Chart area */
-.big-chart{height:200px;background:var(--bg2);border-radius:12px;overflow:hidden;position:relative;margin-bottom:16px}
+.big-chart{height:220px;background:var(--bg2);border-radius:16px;overflow:hidden;position:relative;margin-bottom:16px;border:1px solid var(--border)}
 canvas.bigchart{width:100%;height:100%}
-.chart-timeframes{display:flex;gap:6px;margin-bottom:12px}
-.tf-btn{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s}
-.tf-btn.active{background:rgba(201,168,76,0.15);border-color:var(--gold);color:var(--gold)}
+.chart-timeframes{display:flex;gap:6px;margin-bottom:12px;background:var(--bg3);border-radius:12px;padding:4px}
+.tf-btn{flex:1;background:transparent;border:none;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;transition:all 0.2s;text-align:center}
+.tf-btn.active{background:var(--bg2);color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 
 /* Indicator table */
 .ind-table{display:flex;flex-direction:column;gap:8px}
@@ -806,7 +806,7 @@ canvas.bigchart{width:100%;height:100%}
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px" aria-label="เพิ่ม/ลบ Watchlist">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()" aria-label="ปิด">✕</div></div>
+    <div style="display:flex;align-items:center;gap:8px;position:absolute;top:14px;right:16px"><div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="font-size:16px" aria-label="เพิ่ม/ลบ Watchlist">☆</div><div class="drawer-close" style="position:static" onclick="closeDrawer()" aria-label="ปิด">✕</div></div>
   </div>
   <div class="drawer-tabs">
     <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
@@ -823,6 +823,29 @@ canvas.bigchart{width:100%;height:100%}
 <!-- TOAST (outside #app) -->
 <div id="toastEl" style="display:none" class="toast"></div>
 
+<script>
+// Promise.any polyfill สำหรับ Safari เวอร์ชันเก่า
+if(!Promise.any){
+  Promise.any=function(promises){
+    return new Promise((resolve,reject)=>{
+      let errors=[];
+      let pending=promises.length;
+      if(!pending) reject(new AggregateError([],'All promises were rejected'));
+      promises.forEach((p,i)=>{
+        Promise.resolve(p).then(resolve).catch(err=>{
+          errors[i]=err;
+          if(--pending===0) reject(new AggregateError(errors,'All promises were rejected'));
+        });
+      });
+    });
+  };
+}
+if(typeof AggregateError==='undefined'){
+  window.AggregateError=class AggregateError extends Error{
+    constructor(errors,msg){super(msg);this.errors=errors;}
+  };
+}
+</script>
 <script>
 // ═══════════════════════════════════════
 // STOCK PRO v2 — Dark Premium Terminal
@@ -1273,6 +1296,90 @@ function toast(msg,dur=2500){
 }
 
 // ── Sparkline ──
+function drawBigChartWithAxes(canvas, prices, timestamps, isUp){
+  if(!canvas||!prices||prices.length<2) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||canvas.parentElement?.offsetWidth||360;
+  const H=canvas.offsetHeight||canvas.parentElement?.offsetHeight||220;
+  if(W<=0||H<=0) return;
+  canvas.width=W*2; canvas.height=H*2; ctx.scale(2,2);
+  ctx.clearRect(0,0,W,H);
+
+  const PAD_LEFT=8, PAD_RIGHT=52, PAD_TOP=10, PAD_BOTTOM=28;
+  const chartW=W-PAD_LEFT-PAD_RIGHT;
+  const chartH=H-PAD_TOP-PAD_BOTTOM;
+
+  const mn=Math.min(...prices), mx=Math.max(...prices);
+  const mid=(mn+mx)/2;
+  const halfRng=Math.max((mx-mn)*0.65, mx*0.005); // padding บนล่างสมมาตร
+  const lo=mid-halfRng, hi=mid+halfRng;
+  const rng=hi-lo;
+  const toX=i=>PAD_LEFT+(i/(prices.length-1))*chartW;
+  const toY=p=>PAD_TOP+chartH-((p-lo)/rng)*chartH;
+  const color=isUp?'#00e676':'#ff4d6a';
+
+  // Grid lines Y
+  for(let i=0;i<=4;i++){
+    const y=PAD_TOP+i*(chartH/4);
+    ctx.beginPath(); ctx.moveTo(PAD_LEFT,y); ctx.lineTo(W-PAD_RIGHT,y);
+    ctx.strokeStyle=i===0||i===4?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.05)';
+    ctx.lineWidth=0.5; ctx.stroke();
+  }
+
+  // Gradient fill
+  const grad=ctx.createLinearGradient(0,PAD_TOP,0,PAD_TOP+chartH);
+  grad.addColorStop(0,isUp?'rgba(0,230,118,0.2)':'rgba(255,77,106,0.18)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.moveTo(toX(0),toY(prices[0]));
+  prices.forEach((p,i)=>{ if(i>0) ctx.lineTo(toX(i),toY(p)); });
+  ctx.lineTo(toX(prices.length-1),PAD_TOP+chartH);
+  ctx.lineTo(PAD_LEFT,PAD_TOP+chartH);
+  ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(toX(0),toY(prices[0]));
+  prices.forEach((p,i)=>{ if(i>0) ctx.lineTo(toX(i),toY(p)); });
+  ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
+
+  // Last dot
+  const lx=toX(prices.length-1), ly=toY(prices[prices.length-1]);
+  ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx,ly,5,0,Math.PI*2);
+  ctx.strokeStyle=color+'66'; ctx.lineWidth=1; ctx.stroke();
+
+  // Y axis labels (ราคา) — ขวา
+  ctx.fillStyle='rgba(139,153,181,0.9)';
+  ctx.font='500 10px Inter,sans-serif';
+  ctx.textAlign='left';
+  for(let i=0;i<=4;i++){
+    const val=lo+(rng*(4-i)/4);
+    const y=PAD_TOP+i*(chartH/4);
+    const label=val>=1000?val.toFixed(0):val>=100?val.toFixed(1):val.toFixed(2);
+    ctx.fillText(label, W-PAD_RIGHT+4, y+3.5);
+  }
+
+  // X axis labels (วันที่)
+  ctx.textAlign='center';
+  const numLabels=4;
+  // สร้าง timestamps จากวันนี้ย้อนหลัง ถ้าไม่มีข้อมูลจริง
+  const now=Date.now()/1000;
+  const daySec=86400;
+  const fakeTimes=prices.map((_,i)=>now-(prices.length-1-i)*daySec);
+  const ts=timestamps||fakeTimes;
+  for(let i=0;i<=numLabels;i++){
+    const idx=Math.round(i*(prices.length-1)/numLabels);
+    const x=toX(idx);
+    const d=new Date(ts[idx]*1000);
+    const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const label=`${d.getDate()} ${months[d.getMonth()]}`;
+    ctx.fillStyle='rgba(139,153,181,0.7)';
+    ctx.fillText(label, x, H-8);
+  }
+}
+
 function drawSpark(canvas,prices,isUp){
   if(!canvas||!prices||prices.length<2) return;
   const ctx=canvas.getContext('2d');
@@ -1766,14 +1873,13 @@ function _renderFNG(d){
 function updateDashboard(){
   const up=stocks.filter(s=>s.c>0).length;
   const dn=stocks.filter(s=>s.c<0).length;
-  document.getElementById('dashUp').textContent=up;
-  document.getElementById('dashDn').textContent=dn;
-  document.getElementById('dashTotal').textContent=stocks.length;
+  const _up=document.getElementById('dashUp'); if(_up) _up.textContent=up;
+  const _dn=document.getElementById('dashDn'); if(_dn) _dn.textContent=dn;
+  const _tot=document.getElementById('dashTotal'); if(_tot) _tot.textContent=stocks.length;
   // Mood
   const mood=up>dn*1.3?'BULLISH 🟢':dn>up*1.3?'BEARISH 🔴':'NEUTRAL 🟡';
   const moodEl=document.getElementById('moodBadge');
-  moodEl.textContent=mood;
-  moodEl.className='mood-badge'+(up>dn*1.3?' ':dn>up*1.3?' bear':' neutral');
+  if(moodEl){ moodEl.textContent=mood; moodEl.className='mood-badge'+(up>dn*1.3?' ':dn>up*1.3?' bear':' neutral'); }
   // SPY/QQQ
   const spyEl=document.getElementById('spyChg');
   const qqqEl=document.getElementById('qqqChg');
@@ -1894,7 +2000,7 @@ document.getElementById('drawer').addEventListener('touchend',e=>{
   if(dy>100 && !fromBody) closeDrawer();
 },{passive:true});
 
-function drawerTab(tab, btn){
+async function drawerTab(tab, btn){
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   const s=stocks.find(x=>x.t===currentDrawerTicker);
@@ -1906,6 +2012,15 @@ function drawerTab(tab, btn){
     // FIX: fetch candles ก่อนถ้ายังไม่มี แล้ว re-render indicator
     const _renderTech=()=>{
       const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
+    // Basic score จาก RSI ระหว่างรอ candle
+    const basicScore = !sig ? (()=>{
+      const rsi=rsiData[s.t]||50;
+      const pctFromS1=((s.p-s1)/s1*100);
+      let sc=0;
+      sc+=(pctFromS1<=0.5?30:pctFromS1<=1.5?20:pctFromS1<=3?10:0);
+      sc+=(rsi<=30?25:rsi<=40?15:rsi<=50?8:rsi<=60?3:0);
+      return Math.min(sc,55);
+    })() : null;
     const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
     const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
     const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
@@ -1915,7 +2030,17 @@ function drawerTab(tab, btn){
     const bbTxt=sig?.bbPct!=null?`<span class="ind-val ${sig.bbPct<=10?'bull':sig.bbPct>=90?'bear':'neut'}">${sig.bbPct}% ${sig.bbPct<=10?'Near Lower':''}${sig.bbPct>=90?'Near Upper':''}</span>`:'<span class="ind-val">--</span>';
     const vwapTxt=sig?.vwap!=null?`<span class="ind-val ${s.p<=sig.vwap?'bull':'neut'}">${sig.vwap} ${s.p<=sig.vwap?'↓ below':'↑ above'}</span>`:'<span class="ind-val">--</span>';
     const wRTxt=sig?.williamsR!=null?`<span class="ind-val ${sig.williamsR<=-80?'bull':sig.williamsR>=-20?'bear':'neut'}">${sig.williamsR}</span>`:'<span class="ind-val">--</span>';
-    const scoreTxt=sig?`<span class="ind-val ${sig.score>=60?'bull':sig.score>=40?'neut':'bear'}">${sig.score}/100</span>`:'<span class="ind-val">--</span>';
+    const _sc = sig?.score ?? basicScore;
+    const scoreColor = _sc!=null ? (_sc>=60?'var(--green)':_sc>=40?'var(--gold)':'var(--red)') : 'var(--text3)';
+    const scoreLabel = sig ? `${_sc}/100` : `~${_sc}/100 (basic)`;
+    const scoreCls = _sc!=null ? (_sc>=60?'bull':_sc>=40?'neut':'bear') : '';
+    const scoreTxt = _sc!=null ? `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;max-width:80px">
+          <div style="height:100%;width:${_sc}%;background:${scoreColor};border-radius:3px;transition:width 0.6s ease"></div>
+        </div>
+        <span class="ind-val ${scoreCls}" style="font-size:13px;font-weight:700">${scoreLabel}</span>
+      </div>` : '<span class="ind-val">--</span>';
     // Chikou Span
     const chikouTxt=sig?.chikouSignal!=null?`<span class="ind-val ${sig.chikouSignal==='bull'?'bull':'bear'}">${sig.chikouSignal==='bull'?'↑ เหนือราคาเก่า ✅':'↓ ต่ำกว่าราคาเก่า ⚠️'}</span>`:'<span class="ind-val">--</span>';
     // Supertrend
@@ -1936,10 +2061,10 @@ function drawerTab(tab, btn){
     const rocTxt=sig?.roc!=null?`<span class="ind-val ${sig.roc>0?'bull':'bear'}">${sig.roc>0?'+':''}${sig.roc}%</span>`:'<span class="ind-val">--</span>';
     body.innerHTML=`
       <div class="chart-timeframes">
-        <button class="tf-btn active">1M</button>
-        <button class="tf-btn">3M</button>
-        <button class="tf-btn">6M</button>
-        <button class="tf-btn">1Y</button>
+        <button class="tf-btn active" onclick="_switchTF(this,30)">1M</button>
+        <button class="tf-btn" onclick="_switchTF(this,90)">3M</button>
+        <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
+        <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
       <div class="big-chart"><canvas id="bigChartCanvas"></canvas></div>
       <div class="ind-table">
@@ -1985,29 +2110,25 @@ function drawerTab(tab, btn){
     const _drawBigChart = ()=>{
       const c=document.getElementById('bigChartCanvas');
       if(!c) return;
-      // Set canvas size explicitly
       const container=c.parentElement;
       const W=container?.offsetWidth||360;
-      const H=200;
+      const H=220;
       c.style.width=W+'px'; c.style.height=H+'px';
-      if(candleCache[s.t]?.data?.c && !candleCache[s.t]?.data?._mock){
-        drawSpark(c,candleCache[s.t].data.c,s.c>=0);
-      } else {
-        // Mock data จากราคาจริง
-        const mock=[];let p=s.p*0.88;
-        for(let i=0;i<60;i++){p+=p*(Math.random()-0.47)*0.025;mock.push(Math.max(p,s.p*0.5));}
-        mock[mock.length-1]=s.p;
-        drawSpark(c,mock,s.c>=0);
-        // พยายามดึง candle จริงในพื้นหลัง
-        if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
-          const c2=document.getElementById('bigChartCanvas');
-          if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock){
-            drawSpark(c2,candleCache[s.t].data.c,s.c>=0);
-          }
-        }).catch(()=>{});
-      }
+      const prices = candleCache[s.t]?.data?.c && !candleCache[s.t]?.data?._mock
+        ? candleCache[s.t].data.c
+        : (()=>{
+            const mock=[];let p=s.p*0.88;
+            for(let i=0;i<60;i++){p+=p*(Math.random()-0.47)*0.025;mock.push(Math.max(p,s.p*0.5));}
+            mock[mock.length-1]=s.p;
+            if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
+              const c2=document.getElementById('bigChartCanvas');
+              if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock) _drawBigChart();
+            }).catch(()=>{});
+            return mock;
+          })();
+      const dates = candleCache[s.t]?.data?.t || candleCache[s.t]?.data?.timestamp || null;
+      drawBigChartWithAxes(c, prices, dates, s.c>=0);
     };
-    // รอ DOM render ก่อน
     requestAnimationFrame(()=>setTimeout(_drawBigChart,50));
     }; // end _renderTech
     _renderTech();
@@ -2032,16 +2153,115 @@ function drawerTab(tab, btn){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
     renderNewsTab(s.t).catch(()=>{body.innerHTML='<div style="color:var(--text3)">ไม่พบข่าว</div>';});
   } else {
+    // ดึงข้อมูล Finnhub เพิ่มเติม
+    const sector = Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    body.innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลดข้อมูล...</div>`;
+
+    // ดึง profile + metric จาก Finnhub
+    let profile={}, metric={};
+    if(hasApiKey()){
+      try{
+        const [pr, me] = await Promise.allSettled([
+          fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${s.t}&token=${FINNHUB_KEY}`).then(r=>r.json()),
+          fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${s.t}&metric=all&token=${FINNHUB_KEY}`).then(r=>r.json())
+        ]);
+        if(pr.status==='fulfilled') profile=pr.value||{};
+        if(me.status==='fulfilled') metric=me.value?.metric||{};
+      }catch{}
+    }
+
+    const fmt2=(v,suf='')=>v!=null&&v!==''?`${typeof v==='number'?v.toLocaleString('en-US',{maximumFractionDigits:2}):v}${suf}`:'N/A';
+    const fmtPct=(v)=>v!=null?`${v>0?'+':''}${(+v).toFixed(1)}%`:'N/A';
+    const fmtB=(v)=>v!=null?(v>=1000?`$${(v/1000).toFixed(2)}T`:v>=1?`$${v.toFixed(2)}B`:`$${(v*1000).toFixed(0)}M`):'N/A';
+
+    const hi52 = metric['52WeekHigh'];
+    const lo52 = metric['52WeekLow'];
+    const beta = metric['beta'];
+    const eps  = metric['epsAnnual'] ?? metric['epsTTM'];
+    const div  = metric['dividendYieldIndicatedAnnual'];
+    const npm  = metric['netProfitMarginAnnual'] ?? metric['netProfitMarginTTM'];
+    const roe  = metric['roeTTM'] ?? metric['roeAnnual'];
+    const de   = metric['totalDebt/totalEquityAnnual'];
+    const vol10= metric['10DayAverageTradingVolume'];
+    const ps   = metric['psTTM'];
+    const pb   = metric['pbAnnual'];
+
+    const row=(label,val,cls='')=>`
+      <div class="ind-row">
+        <span class="ind-name">${label}</span>
+        <span class="ind-val ${cls}">${val}</span>
+      </div>`;
+
+    // AI สรุปก่อน แล้วค่อยโชว์ข้อมูล
+    const aiSumEl = `<div id="fundAISummary" style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 สรุปสำหรับนักลงทุนทั่วไป</div>
+      <div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>
+    </div>`;
+
     body.innerHTML=`
       <div class="ind-table">
-        <div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">${s.t}</span></div>
-        <div class="ind-row"><span class="ind-name">Company</span><span class="ind-val">${s.n}</span></div>
-        <div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">${s.mktcap||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val">${s.pe||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val ${parseFloat(s.rev||0)>0?'bull':'bear'}">${s.rev||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val">${Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ'}</span></div>
-        ${s.earn?`<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">${s.earn}</span></div>`:''}
+        ${aiSumEl}
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:4px 0 8px">📋 บริษัท</div>
+        ${row('Ticker', s.t)}
+        ${row('Company', profile.name||s.n)}
+        ${row('Sector', profile.finnhubIndustry||sector)}
+        ${row('Exchange', profile.exchange||'NASDAQ')}
+        ${row('IPO Date', profile.ipo||'N/A')}
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 8px">📊 Valuation</div>
+        ${row('Market Cap', profile.marketCapitalization?fmtB(profile.marketCapitalization):s.mktcap||'N/A')}
+        ${row('P/E Ratio', fmt2(metric['peBasicExclExtraTTM']??metric['peNormalizedAnnual']??s.pe))}
+        ${row('P/S Ratio', fmt2(ps))}
+        ${row('P/B Ratio', fmt2(pb))}
+        ${row('EPS (TTM)', fmt2(eps,'$'))}
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 8px">📈 การเติบโต</div>
+        ${row('Revenue Growth', s.rev||'N/A', parseFloat(s.rev||0)>0?'bull':'bear')}
+        ${row('Net Profit Margin', npm!=null?fmtPct(npm):s.pe?'มีกำไร':'ขาดทุน', npm>0?'bull':npm<0?'bear':'')}
+        ${row('ROE', roe!=null?fmtPct(roe):'N/A', roe>15?'bull':roe<0?'bear':'')}
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 8px">📉 ราคา & ความเสี่ยง</div>
+        ${row('52W High', hi52!=null?'$'+hi52.toFixed(2):'N/A')}
+        ${row('52W Low', lo52!=null?'$'+lo52.toFixed(2):'N/A')}
+        ${row('Beta', beta!=null?beta.toFixed(2):'N/A', beta>1.5?'bear':beta<0.8?'bull':'')}
+        ${row('Avg Volume (10d)', vol10!=null?(vol10*1e6/1e6).toFixed(2)+'M':'N/A')}
+        ${row('Debt/Equity', de!=null?de.toFixed(2):'N/A', de>2?'bear':de<0.5?'bull':'')}
+        ${div?row('Dividend Yield', fmtPct(div), 'bull'):''}
+
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 8px">📅 Earnings</div>
+        ${s.earn?row('Earnings Date', s.earn, 'neut'):''}
+        ${row('Revenue Growth YoY', s.rev||'N/A', parseFloat(s.rev||0)>0?'bull':'bear')}
       </div>`;
+
+    // เรียก AI สรุปหลัง DOM render
+    setTimeout(async ()=>{
+      const aiEl = document.getElementById('fundAIText');
+      if(!aiEl) return;
+      try{
+        const hi52 = metric['52WeekHigh'];
+        const lo52 = metric['52WeekLow'];
+        const beta = metric['beta'];
+        const eps  = metric['epsAnnual'] ?? metric['epsTTM'];
+        const npm  = metric['netProfitMarginAnnual'] ?? metric['netProfitMarginTTM'];
+        const prompt = `วิเคราะห์หุ้น ${s.t} (${s.n}) ให้คนที่ไม่รู้เรื่องการเงินเข้าใจง่าย:
+- ราคาปัจจุบัน: $${s.p} (${s.c>=0?'+':''}${s.c}%)
+- Market Cap: ${s.mktcap}
+- P/E: ${s.pe||'ยังขาดทุน'}
+- Revenue Growth: ${s.rev}
+- EPS: ${eps!=null?'$'+eps.toFixed(2):'N/A'}
+- Net Margin: ${npm!=null?npm.toFixed(1)+'%':'N/A'}
+- Beta: ${beta!=null?beta.toFixed(2):'N/A'}
+- 52W High: ${hi52!=null?'$'+hi52.toFixed(2):'N/A'} | Low: ${lo52!=null?'$'+lo52.toFixed(2):'N/A'}
+- Sector: ${profile.finnhubIndustry||sector}
+
+สรุปเป็นภาษาไทยพูดง่าย 3-4 ประโยค บอกว่า: บริษัทนี้ทำอะไร โตไวไหม กำไรหรือขาดทุน ราคาแพงหรือถูก และเหมาะกับนักลงทุนแบบไหน ห้ามใช้ศัพท์เทคนิค`;
+        const result = await callGemini('คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจ ใช้ภาษาไทยง่ายๆ เหมือนอธิบายให้เพื่อนฟัง ไม่ใช้ศัพท์เทคนิค', prompt, 400);
+        if(aiEl) aiEl.innerHTML = result ? result.replace(/
+/g,'<br>') : 'ไม่สามารถวิเคราะห์ได้ในขณะนี้';
+      } catch(e){
+        if(aiEl) aiEl.textContent = 'ไม่สามารถวิเคราะห์ได้ในขณะนี้';
+      }
+    }, 100);
   }
 }
 
@@ -3328,6 +3548,20 @@ function _genMockCandles(ticker, currentPrice, days=60){
   // ปรับจุดสุดท้ายให้ตรงกับราคาปัจจุบัน
   c[c.length-1]=currentPrice;
   return{c,h,l,o,v,t,_mock:true};
+}
+
+
+// ── Timeframe switcher ──
+async function _switchTF(btn, days){
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const ticker = currentDrawerTicker;
+  if(!ticker) return;
+  // clear cache เพื่อบังคับโหลดใหม่ตาม timeframe
+  if(candleCache[ticker]) candleCache[ticker].days = 0;
+  await fetchCandles(ticker, days);
+  await updateRSIFromCandles(ticker);
+  drawerTab('tech', document.querySelector('.drawer-tab'));
 }
 
 // ── fetchCandles — rate limit guard ──
