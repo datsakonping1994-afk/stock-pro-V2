@@ -3215,18 +3215,41 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   const geminiResult = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(geminiResult) return geminiResult;
 
-  // 4. Groq — ถ้าผู้ใช้ใส่ key ไว้ใน Settings
+  // 4. OpenRouter — ผ่าน Worker secret (ไม่ต้องใส่ key เอง)
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch(`${WORKER}/api/openrouter`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'meta-llama/llama-3.3-70b-instruct:free',
+        max_tokens:maxTokens,
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:userPrompt}
+        ]
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      const text=d?.choices?.[0]?.message?.content||null;
+      if(text) return text;
+    }
+  }catch(e){console.warn('OpenRouter error:',e.message);}
+
+  // 5. Groq — ถ้าผู้ใช้ใส่ key ไว้ใน Settings
   const groqResult = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(groqResult) return groqResult;
 
-  // 5. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
+  // 6. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
   const pollinationsResult = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(pollinationsResult) return pollinationsResult;
 
   return null;
 }
-
-// ── buildFullIndicatorContext — รวม indicator ทุกตัวเป็น string ──
 function buildFullIndicatorContext(ticker, price){
   const s=stocks.find(x=>x.t===ticker);
   if(!s) return '';
