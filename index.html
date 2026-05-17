@@ -327,11 +327,11 @@ canvas.bigchart{width:100%;height:100%}
 .ind-val.neut{color:var(--gold)}
 
 /* AI Tab */
-.ai-chat{display:flex;flex-direction:column;gap:10px;height:calc(100% - 60px)}
+.ai-chat{display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto;min-height:0}
 .ai-msg{padding:12px;border-radius:12px;font-size:12px;line-height:1.6}
 .ai-msg.user{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);color:var(--text);margin-left:20px}
 .ai-msg.bot{background:var(--bg2);border:1px solid var(--border);color:var(--text2);margin-right:20px}
-.ai-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)}
+.ai-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);flex-shrink:0}
 .ai-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);font-family:'Inter',sans-serif;outline:none}
 .ai-input:focus{border-color:var(--gold)}
 .ai-send{background:var(--gold);border:none;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:#000;flex-shrink:0}
@@ -2854,6 +2854,7 @@ function drawerTab(tab, btn){
   } else if(tab==='ai'){
     const hist=aiHistory[s.t]||[];
     body.innerHTML=`
+      <div style="display:flex;flex-direction:column;height:100%;min-height:0">
       <div class="ai-chat" id="aiChat">
         ${hist.length?hist.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join(''):
           `<div class="ai-msg bot">👋 สวัสดีครับ! ถามเกี่ยวกับ ${s.t} ได้เลย เช่น "วิเคราะห์หุ้นตัวนี้ให้หน่อย" หรือ "ควรซื้อตอนนี้ไหม"</div>`}
@@ -2861,7 +2862,7 @@ function drawerTab(tab, btn){
       <div class="ai-input-row">
         <input class="ai-input" id="aiInput" placeholder="ถามเกี่ยวกับ ${s.t}..." onkeydown="if(event.key==='Enter')sendAI('${s.t}')">
         <button class="ai-send" onclick="sendAI('${s.t}')">↑</button>
-      </div>`;
+      </div></div>`;
   } else if(tab==='news'){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
     renderNewsTab(s.t).catch(()=>{body.innerHTML='<div style="color:var(--text3)">ไม่พบข่าว</div>';});
@@ -3194,7 +3195,7 @@ async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   if(r2) return r2;
   const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  return await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  return null;
 }
 
 // 💬 Chat โต้ตอบผู้ใช้ → Claude Haiku
@@ -3233,8 +3234,10 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
   _setLoadingLabel('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  _setLoadingLabel('🦙 Pollinations กำลังวิเคราะห์...');
-  return await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  _setLoadingLabel('⚡ Groq กำลังวิเคราะห์...');
+  const r4 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
+  return null;
 }
 
 // ⚡ Quick Signal + Risk/Reward → Gemini 2.0 Flash
@@ -3243,7 +3246,7 @@ async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
   if(r1) return r1;
   const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  return await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  return null;
 }
 
 // ☀️ Morning Brief → OpenRouter Llama (ฟรี ไม่เปลืองโควต้า)
@@ -3273,7 +3276,9 @@ async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
   }catch(e){console.warn('OpenRouter error:',e.message);}
   const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  return await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  return null;
 }
 
 // 🔄 callGemini — fallback รวม (ใช้เมื่อไม่ระบุ AI เฉพาะ)
@@ -3329,7 +3334,7 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   }catch(e){console.warn('OpenRouter error:',e.message);}
   const r5 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r5) return r5;
-  return await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  return null;
 }
 function buildFullIndicatorContext(ticker, price){
   const s=stocks.find(x=>x.t===ticker);
