@@ -64,6 +64,9 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .stat-pill .val{color:var(--text);font-weight:500}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite}
 @keyframes pulse-dot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,0.4)}50%{opacity:0.8;box-shadow:0 0 0 4px rgba(0,230,118,0)}}
+.live-dot.closed{background:var(--text3);animation:none;opacity:0.6}
+.live-dot.stale{background:var(--gold);animation:pulse-dot-gold 2s infinite}
+@keyframes pulse-dot-gold{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(201,168,76,0.4)}50%{opacity:0.8;box-shadow:0 0 0 4px rgba(201,168,76,0)}}
 .status-bar{margin-top:8px;display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text3)}
 .status-bar .live-ind{display:flex;align-items:center;gap:4px;color:var(--text2)}
 
@@ -1085,18 +1088,18 @@ const stocks=[
   {t:"ASML",n:"ASML Holding",p:725.0,c:0,pe:38.4,mktcap:"285B",rev:"22%",earn:"ก.ค. 2026",div:"1.0%",beta:1.3,short:"0.6%",target:900.0},
   {t:"CRWD",n:"CrowdStrike",p:450.0,c:0,pe:null,mktcap:"107B",rev:"25%",earn:"มิ.ย. 2026",div:null,beta:1.4,short:"1.2%",target:520.0},
   {t:"AVGO",n:"Broadcom",p:225.0,c:0,pe:31.2,mktcap:"1.0T",rev:"25%",earn:"ก.ย. 2026",div:"1.3%",beta:1.2,short:"0.8%",target:260.0},
-  {t:"IONQ",n:"IonQ",p:54.0,c:0,pe:null,mktcap:"10.2B",rev:"755%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"16.3%",target:45.0},
+  {t:"IONQ",n:"IonQ",p:54.0,c:0,pe:null,mktcap:"10.2B",rev:"755%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"16.3%",target:75.0},
   {t:"AAPL",n:"Apple",p:198.0,c:0,pe:31.4,mktcap:"3.0T",rev:"5%",earn:"ก.ค. 2026",div:"0.5%",beta:1.2,short:"0.6%",target:240.0},
   {t:"NVDA",n:"Nvidia",p:131.0,c:0,pe:38.2,mktcap:"3.2T",rev:"78%",earn:"28 พ.ค. 2026",div:"0.03%",beta:1.7,short:"1.0%",target:175.0},
   {t:"KTOS",n:"Kratos Defense",p:33.0,c:0,pe:null,mktcap:"5.5B",rev:"18%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"5.8%",target:42.0},
   {t:"RBRK",n:"Rubrik",p:82.0,c:0,pe:null,mktcap:"16.8B",rev:"38%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.4%",target:105.0},
   {t:"HOOD",n:"Robinhood",p:61.0,c:0,pe:null,mktcap:"53.3B",rev:"50%",earn:"ก.ค. 2026",div:null,beta:2.2,short:"4.8%",target:75.0},
-  {t:"OKLO",n:"Oklo",p:42.0,c:0,pe:null,mktcap:"8.9B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"19.5%",target:35.0},
+  {t:"OKLO",n:"Oklo",p:42.0,c:0,pe:null,mktcap:"8.9B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"19.5%",target:55.0},
   {t:"TEM",n:"Tempus AI",p:55.0,c:0,pe:null,mktcap:"10.6B",rev:"75%",earn:"ส.ค. 2026",div:null,beta:2.3,short:"8.7%",target:70.0},
   {t:"GOOGL",n:"Alphabet",p:175.0,c:0,pe:19.8,mktcap:"2.1T",rev:"12%",earn:"ก.ค. 2026",div:"0.5%",beta:1.1,short:"0.5%",target:215.0},
   {t:"NVO",n:"Novo-Nordisk",p:71.0,c:0,pe:21.3,mktcap:"313B",rev:"22%",earn:"ส.ค. 2026",div:"1.8%",beta:0.7,short:"1.2%",target:100.0},
   {t:"AMZN",n:"Amazon",p:220.0,c:0,pe:34.2,mktcap:"2.3T",rev:"9%",earn:"ก.ค. 2026",div:null,beta:1.3,short:"0.6%",target:275.0},
-  {t:"PLTR",n:"Palantir",p:125.0,c:0,pe:null,mktcap:"269B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:2.5,short:"4.2%",target:95.0},
+  {t:"PLTR",n:"Palantir",p:125.0,c:0,pe:null,mktcap:"269B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:2.5,short:"4.2%",target:145.0},
   {t:"CRDO",n:"Credo Technology",p:78.0,c:0,pe:null,mktcap:"4.7B",rev:"65%",earn:"ส.ค. 2026",div:null,beta:2.0,short:"7.3%",target:95.0},
   {t:"ANET",n:"Arista Networks",p:95.0,c:0,pe:44.8,mktcap:"119B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.4,short:"1.1%",target:120.0},
   {t:"VRT",n:"Vertiv Holdings",p:105.0,c:0,pe:null,mktcap:"40.5B",rev:"20%",earn:"ก.ค. 2026",div:"0.1%",beta:1.8,short:"2.6%",target:135.0},
@@ -1232,7 +1235,7 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:22.50,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:55.00,HOOD:52.00,OKLO:55.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:92.00,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,RIVN:10.50,LCID:2.20,V:308.0,MA:475.0,PYPL:58.00,KO:64.00,PEP:118.0,NKE:52.00,MCD:275.0,WMT:88.00,JNJ:148.0,PG:155.0};
+const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,RIVN:10.50,LCID:2.20,V:308.0,MA:475.0,PYPL:58.00,KO:64.00,PEP:118.0,NKE:52.00,MCD:275.0,WMT:88.00,JNJ:148.0,PG:155.0};
 
 const sectorMap={'ETF':['IWM','SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
@@ -1352,8 +1355,8 @@ var FINNHUB_KEY = (function(){
     return localStorage.getItem('_fh_key')
       || sessionStorage.getItem('_fh_key')
       || document.cookie.match(/_fh_key=([^;]+)/)?.[1]
-      || 'd83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';
-  }catch{return 'd83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';}
+      || '';
+  }catch{return '';}
 })();
 let PORT_SIZE = parseInt(localStorage.getItem('_sp_portsize')||'10000');
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
@@ -1380,6 +1383,8 @@ window._clockTimer=setInterval(()=>{
   const now=new Date();
   const el=document.getElementById('timeDisplay');
   if(el)el.textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  // อัพเดท market status badge ทุกนาที
+  if(now.getSeconds()===0) _updateMarketStatusBadge(true);
 },1000);
 
 // ── Navigation ──
@@ -2030,8 +2035,8 @@ function getLogoUrl(t){
     IONQ:'ionq.com', OKLO:'oklo.com', TEM:'tempus.com', CRDO:'credotechnology.com',
     SPGI:'spglobal.com', MP:'mpmaterials.com', NBIS:'nebius.com', TMDX:'transmedics.com',
     CRWV:'coreweave.com', MELI:'mercadolibre.com', RIVN:'rivian.com', LCID:'lucidmotors.com',
-    KTOS:'kratosdefense.com', RBRK:'rubrik.com', AXON:'axon.com', EOSE:'eosenergy.com',
-    SLNH:'solunaholdings.com', NVTS:'navitassemi.com', ARM:'arm.com',
+    KTOS:'kratosdefense.com', RBRK:'rubrik.com', EOSE:'eosenergy.com',
+    SLNH:'solunaholdings.com', NVTS:'navitassemi.com',
   };
   return m[t]||(t.toLowerCase()+'.com');
 }
@@ -2789,6 +2794,9 @@ function drawerTab(tab, btn){
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
     const epsVal = eData?.eps || 'N/A';
     const revVal = eData?.rev || 'N/A';
+    // ── Earnings Preview (ถ้าอยู่ใน 14 วัน) ──
+    const _daysToEarn = s.earn ? _getEarningsDaysLeft(s.earn) : null;
+    const _showEarnPreview = _daysToEarn !== null && _daysToEarn >= 0 && _daysToEarn <= 14;
     const candles = candleCache[s.t]?.data;
     let high52='N/A', low52='N/A', pctHiRow='', pctLoRow='';
     if(candles?.h?.length && candles?.l?.length){
@@ -2816,6 +2824,16 @@ function drawerTab(tab, btn){
 
     body.innerHTML =
       '<div class="ind-table">' +
+      // ── Earnings Preview Card (แสดงเฉพาะถ้า earnings ใน 14 วัน) ──
+      (_showEarnPreview ? (
+        '<div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(14,20,32,0.99));border:1px solid rgba(255,215,0,0.3);border-radius:14px;padding:14px;margin-bottom:14px">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+            '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow)">📅 EARNINGS PREVIEW — อีก '+_daysToEarn+'d ('+s.earn+')</div>' +
+            '<button onclick="runEarningsPreview(\''+s.t+'\')" id="earnPreviewBtn_'+s.t+'" style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.35);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--yellow);cursor:pointer;font-family:\'Syne\',sans-serif">⚡ AI Preview</button>' +
+          '</div>' +
+          '<div id="earnPreviewText_'+s.t+'" style="font-size:12px;color:var(--text3);line-height:1.7">กด "AI Preview" เพื่อให้ AI สรุปว่า earnings รอบนี้น่าจะออกมาดีหรือแย่</div>' +
+        '</div>'
+      ) : '') +
       '<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">' +
         '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
         '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>' +
@@ -2875,10 +2893,49 @@ function drawerTab(tab, btn){
       '</div>';
 
     // AI สรุปเฉพาะ Fundamental — fire-and-forget
+    const fe=fundExtra[s.t]||{};
+    const upside=s.target&&s.p>0?((s.target-s.p)/s.p*100).toFixed(1)+'%':null;
+    const fs=calcFundScore(s);
+    const fr=getFundRating(fs);
+    // 52W High/Low
+    let hi52txt='N/A', lo52txt='N/A', pctFromHi52='N/A', pctFromLo52='N/A';
+    if(candles?.h?.length&&candles?.l?.length){
+      const hi=Math.max(...candles.h), lo=Math.min(...candles.l);
+      hi52txt='$'+hi.toFixed(2); lo52txt='$'+lo.toFixed(2);
+      pctFromHi52=((s.p-hi)/hi*100).toFixed(1)+'%';
+      pctFromLo52=('+'+((s.p-lo)/lo*100).toFixed(1)+'%');
+    }
+    // Peer data
+    const peers=(peerGroups[s.t]||[]).slice(0,3);
+    const peerStocksData=peers.map(t=>stocks.find(x=>x.t===t)).filter(Boolean);
+    const peerSummary=peerStocksData.length
+      ? peerStocksData.map(p=>`${p.t}(PE:${p.pe||'N/A'} RevG:${p.rev||'N/A'} MCap:${p.mktcap||'N/A'})`).join(', ')
+      : 'N/A';
+    const fundPrompt=
+      'บริษัท: '+s.t+' ('+s.n+')\n'+
+      'Sector: '+sector+'\n'+
+      'Market Cap: '+s.mktcap+'\n'+
+      'P/E Ratio: '+(s.pe||'ยังขาดทุน')+'\n'+
+      'EPS: '+epsVal+'\n'+
+      'Revenue: '+revVal+'\n'+
+      'Revenue Growth: '+s.rev+'\n'+
+      'ผล Earnings ล่าสุด: '+(eData?.res||'N/A')+'\n'+
+      'Earnings Date: '+(s.earn||'N/A')+'\n'+
+      '52W High: '+hi52txt+' (ห่าง '+pctFromHi52+')\n'+
+      '52W Low: '+lo52txt+' (ห่าง '+pctFromLo52+')\n'+
+      'Beta: '+(s.beta!=null?s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)'):'N/A')+'\n'+
+      'Dividend Yield: '+(s.div||'ไม่มีปันผล')+'\n'+
+      'Short Float: '+(s.short||'N/A')+(s.short&&parseFloat(s.short)>15?' ⚠️ Squeeze Risk':'')+'\n'+
+      'Analyst Target: '+(s.target?'$'+s.target+' (upside '+upside+')':'N/A')+'\n'+
+      'D/E Ratio: '+(fe.de!=null?fe.de:'N/A')+'\n'+
+      'Free Cash Flow: '+(fe.fcf||'N/A')+'\n'+
+      'Fundamental Score: '+fs+'/100 ('+fr.label+')\n'+
+      'Peer Comparison: '+peerSummary+'\n'+
+      '\nวิเคราะห์ให้ครอบคลุม: ธุรกิจทำอะไร รายได้มาจากไหน กำไร/ขาดทุน อัตราการโต ความเสี่ยง (beta/short/หนี้) ปันผล เป้าราคานักวิเคราะห์ เปรียบกับ peer และเหมาะกับนักลงทุนแบบไหน ตอบ 6-7 ประโยคภาษาไทยเหมือนคุยกับเพื่อน';
     callGemini(
       'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น ห้ามพูดถึงราคา แนวรับ แนวต้าน หรือ indicator ทางเทคนิคใดๆ',
-      'สรุปบริษัท '+s.t+' ('+s.n+') ให้นักลงทุนเข้าใจใน 4-5 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ยังขาดทุน')+' EPS='+epsVal+' Revenue='+revVal+' RevGrowth='+s.rev+' บอกว่าบริษัทนี้ทำธุรกิจอะไร รายได้มาจากไหน กำไรหรือขาดทุน โตเร็วแค่ไหน และเหมาะกับนักลงทุนแบบไหน',
-      300
+      fundPrompt,
+      500
     ).then(function(result){
       var el=document.getElementById('fundAIText');
       if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
@@ -3038,7 +3095,7 @@ function buildFullIndicatorContext(ticker, price){
   if(ind){
     // ── Momentum ──
     ctx+=`\n\n📈 Momentum
-RSI(14): ${ind.rsi??'N/A'} ${ind.rsi<=30?'(Oversold🟢)':ind.rsi>=70?'(Overbought🔴)':'(Normal)'}
+RSI(14): ${ind.rsi??'N/A'} ${ind.rsi!=null?(ind.rsi<=30?'(Oversold🟢)':ind.rsi>=70?'(Overbought🔴)':'(Normal)'):''}
 MACD: ${ind.macdLine!=null?ind.macdLine.toFixed(4):'N/A'} | Signal: ${ind.macdSignal!=null?ind.macdSignal.toFixed(4):'N/A'} | Hist: ${ind.macdHist!=null?ind.macdHist.toFixed(4):'N/A'}
 Stoch %K: ${ind.stochK??'N/A'} | %D: ${ind.stochD??'N/A'}
 Williams %R: ${ind.williamsR!=null?ind.williamsR.toFixed(1):'N/A'}
@@ -3113,7 +3170,7 @@ async function sendAI(ticker){
   aiHistory[ticker].push({role:'user',content:msg});
   const chat=document.getElementById('aiChat');
   if(chat){
-    chat.innerHTML+=`<div class="ai-msg user">${msg}</div><div class="ai-msg bot" id="aiLoading">⏳ กำลังวิเคราะห์...</div>`;
+    chat.innerHTML+=`<div class="ai-msg user">${_escHtml(msg)}</div><div class="ai-msg bot" id="aiLoading">⏳ กำลังวิเคราะห์...</div>`;
     chat.scrollTop=chat.scrollHeight;
   }
   // โหลด candle ถ้ายังไม่มี เพื่อให้ indicator ครบ
@@ -3360,6 +3417,10 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
         </div>
         <div id="signalAiText">รอสักครู่...</div>
       </div>
+      <div class="signal-ai" style="margin-top:0;border-top:1px solid rgba(255,255,255,0.06)">
+        <div class="signal-ai-header">⚖️ Risk/Reward Analysis</div>
+        <div id="signalRRText" style="font-size:12px;color:var(--text2)">⏳ กำลังประเมิน...</div>
+      </div>
     </div>`;
   // Load signal logo
   loadLogo(ticker, 'sig-logo-'+ticker, 48);
@@ -3368,6 +3429,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   logTrade(ticker,price,score);
   // AI analysis
   _analyzeSignalAI(ticker,price,s1,r1,score);
+  _analyzeRiskReward(ticker,price,s1,r1,score);
 }
 
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
@@ -3405,6 +3467,64 @@ Buy Score: ${score}/100
     else if(score>=55) el2.textContent=`⚡ Score ${score}/100 — สัญญาณปานกลาง แนวรับ S1 ${s1.toFixed(2)} / S2 ${s2.toFixed(2)} เป้า R1 ${r1.toFixed(2)}`;
     else el2.textContent=`⚠️ Score ${score}/100 — สัญญาณอ่อน รอยืนยันแนวรับ S1 ${s1.toFixed(2)} ก่อนเข้า`;
   }
+}
+
+async function _analyzeRiskReward(ticker,price,s1,r1,score){
+  const el=document.getElementById('signalRRText');
+  if(!el) return;
+
+  const s2=getS2(ticker,price);
+  const r2=getR2(ticker,price);
+  const s=stocks.find(x=>x.t===ticker)||{};
+  const ind=candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock
+    ?_calcBuyScore(ticker,price,s1,r1):null;
+
+  // คำนวณ risk/reward ตัวเลข
+  const stopLoss=ind?.atrStopLoss||s1; // ใช้ ATR stop loss ถ้ามี ไม่งั้นใช้ S1
+  const risk=((price-stopLoss)/price*100); // % ที่อาจเสีย
+  const rewardR1=((r1-price)/price*100);   // % ถ้าถึง R1
+  const rewardR2=((r2-price)/price*100);   // % ถ้าถึง R2
+  const rrRatio=(rewardR1/Math.max(risk,0.01)).toFixed(2); // R:R ratio
+  const beta=s.beta||1;
+  const shortFloat=s.short?parseFloat(s.short):0;
+
+  // แสดงตัวเลข risk/reward ทันทีก่อน AI ตอบ
+  const rrColor=parseFloat(rrRatio)>=2?'var(--green)':parseFloat(rrRatio)>=1?'var(--gold)':'var(--red)';
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--red2)">-${risk.toFixed(2)}%</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:2px">MAX RISK</div>
+        <div style="font-size:9px;color:var(--text3)">SL $${stopLoss.toFixed(2)}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--green2)">+${rewardR1.toFixed(2)}%</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:2px">TARGET R1</div>
+        <div style="font-size:9px;color:var(--text3)">$${r1.toFixed(2)}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:${rrColor}">${rrRatio}:1</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:2px">R:R RATIO</div>
+        <div style="font-size:9px;color:${rrColor}">${parseFloat(rrRatio)>=2?'✅ ดี':parseFloat(rrRatio)>=1?'⚠️ พอได้':'❌ ไม่คุ้ม'}</div>
+      </div>
+    </div>
+    <div id="signalRRAI" style="font-size:12px;color:var(--text2);line-height:1.7">⏳ AI กำลังประเมิน...</div>`;
+
+  // ให้ AI วิเคราะห์เพิ่มเติม
+  const prompt=`หุ้น: ${ticker} ราคา: $${price.toFixed(2)}
+Stop Loss: $${stopLoss.toFixed(2)} (เสียหายสูงสุด -${risk.toFixed(2)}%)
+Target R1: $${r1.toFixed(2)} (+${rewardR1.toFixed(2)}%) | R2: $${r2.toFixed(2)} (+${rewardR2.toFixed(2)}%)
+R:R Ratio: ${rrRatio}:1
+Beta: ${beta} | Short Float: ${shortFloat}% | Buy Score: ${score}/100
+${ind?.atr?`ATR: $${ind.atr.toFixed(2)} (${ind.atrPct?.toFixed(2)}% ต่อวัน)`:''}
+${shortFloat>15?'⚠️ Short Float สูง มีโอกาส Short Squeeze':''}
+
+ประเมิน risk/reward ว่าคุ้มไหมที่จะเข้า ตอบ 2-3 ประโยคภาษาไทย บอกชัดว่า "ควรเข้า / ยังไม่ควรเข้า / เสี่ยงสูง" พร้อมเหตุผล`;
+
+  const sys='คุณคือนักวิเคราะห์ความเสี่ยงหุ้น ประเมิน risk/reward อย่างตรงไปตรงมา ห้ามกลางๆ ต้องบอกชัดว่าคุ้มหรือไม่คุ้ม ตอบภาษาไทยสั้นกระชับ';
+  const reply=await callGemini(sys,prompt,250);
+  const aiEl=document.getElementById('signalRRAI');
+  if(aiEl) aiEl.innerHTML=reply?mdToHtml(reply):(parseFloat(rrRatio)>=2?'✅ R:R ดี ความเสี่ยงคุ้มค่า เหมาะเข้าซื้อ':parseFloat(rrRatio)>=1?'⚠️ R:R พอได้ ควรใช้ position size เล็ก':'❌ R:R ไม่คุ้ม ควรรอจังหวะที่ดีกว่า');
 }
 
 function closeSignal(){
@@ -3803,15 +3923,10 @@ function checkAllBuySignals(){
 }
 
 // ── Init ──
-// ใส่ Finnhub key ถ้ายังไม่มีใน storage
 (()=>{
+  // ถ้ายังไม่มี key ใน storage ไม่ต้องตั้งค่า default — ให้ user ใส่เองใน Settings
   const saved=localStorage.getItem('_fh_key');
-  if(!saved||saved.length<10){
-    const defaultKey='d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';
-    try{localStorage.setItem('_fh_key',defaultKey);}catch{}
-    try{sessionStorage.setItem('_fh_key',defaultKey);}catch{}
-    FINNHUB_KEY=defaultKey;
-  }
+  if(saved&&saved.length>10) FINNHUB_KEY=saved;
 })();
 buildSectorRow();
 updateDashboard();
@@ -3820,6 +3935,8 @@ updateWlCount();
 updateDashWatchlist();
 updateAlertBadge();
 buildTickerSelect();
+// แสดงสถานะตลาดทันทีที่เปิดแอป
+_updateMarketStatusBadge(false);
 
 // ── Auto-start with retry for iOS PWA ──
 function _tryStartLive(attempt=0){
@@ -4088,9 +4205,15 @@ async function initYahooPrices(){
   updateDashboard();
   const src=hasApiKey()?'Finnhub':'Yahoo';
   if(loaded>0){
-    if(statusEl) statusEl.textContent=`✅ ${loaded} ตัว (${src})`;
+    const open=_isMarketOpen();
+    const pre=_isPreMarket();
+    const after=_isAfterHours();
+    const mktLabel=open?'':pre?' · Pre-Market':after?' · After-Hours':' · ตลาดปิด';
+    if(statusEl) statusEl.textContent=`✅ ${loaded} ตัว (${src})${mktLabel}`;
+    _updateMarketStatusBadge(true);
   } else {
     if(statusEl) statusEl.textContent=`❌ ดึงข้อมูลไม่ได้`;
+    _updateMarketStatusBadge(false);
     toast('⚠️ ดึงราคาไม่สำเร็จ — ตรวจสอบเน็ตแล้วรีเฟรช', 5000);
   }
   _yahooLoading=false;
@@ -4098,6 +4221,75 @@ async function initYahooPrices(){
 
 // อัพเดทราคาทุก 2 นาที
 let _yahooTimer=null;
+
+// ── ตรวจสอบสถานะตลาด US (NYSE/NASDAQ) ──
+function _isMarketOpen(){
+  const now=new Date();
+  // แปลงเป็นเวลา ET (UTC-4 DST หรือ UTC-5 ปกติ)
+  const etOffset=_isEDT(now)?-4:-5;
+  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
+  const et=new Date(etMs);
+  const day=et.getDay(); // 0=Sun, 6=Sat
+  const h=et.getHours(), m=et.getMinutes();
+  const timeMin=h*60+m;
+  if(day===0||day===6) return false; // weekend
+  return timeMin>=570&&timeMin<960; // 9:30–16:00 ET
+}
+function _isEDT(d){
+  // EDT: 2nd Sun Mar → 1st Sun Nov
+  const y=d.getFullYear();
+  const march=new Date(y,2,1); const nov=new Date(y,10,1);
+  const dstStart=new Date(y,2,(14-march.getDay())%7+8);
+  const dstEnd=new Date(y,10,(7-nov.getDay())%7+1);
+  return d>=dstStart&&d<dstEnd;
+}
+function _isPreMarket(){
+  const now=new Date();
+  const etOffset=_isEDT(now)?-4:-5;
+  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
+  const et=new Date(etMs);
+  const day=et.getDay();
+  if(day===0||day===6) return false;
+  const timeMin=et.getHours()*60+et.getMinutes();
+  return timeMin>=390&&timeMin<570; // 6:30–9:30 ET
+}
+function _isAfterHours(){
+  const now=new Date();
+  const etOffset=_isEDT(now)?-4:-5;
+  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
+  const et=new Date(etMs);
+  const day=et.getDay();
+  if(day===0||day===6) return false;
+  const timeMin=et.getHours()*60+et.getMinutes();
+  return timeMin>=960&&timeMin<1200; // 16:00–20:00 ET
+}
+
+function _updateMarketStatusBadge(hasData){
+  const dot=document.getElementById('liveDot');
+  const pill=document.getElementById('statusPill');
+  if(!dot) return;
+  const open=_isMarketOpen();
+  const pre=_isPreMarket();
+  const after=_isAfterHours();
+  dot.className='live-dot';
+  if(open){
+    // ตลาดเปิด — dot เขียวกะพริบ
+    dot.classList.remove('closed','stale');
+  } else if(pre||after){
+    // Pre/After-hours — dot ทอง
+    dot.classList.add('stale');
+    dot.classList.remove('closed');
+  } else {
+    // ตลาดปิด (weekend/night) — dot เทา
+    dot.classList.add('closed');
+    dot.classList.remove('stale');
+  }
+  // ถ้าดึงราคาไม่ได้เลย แสดง stale warning
+  if(!hasData&&!open){
+    const statusEl=document.getElementById('statusText');
+    if(statusEl) statusEl.textContent=pre?'Pre-Market':after?'After-Hours':'ตลาดปิด';
+  }
+}
 setTimeout(()=>{
   try{
     initYahooPrices();
@@ -5645,41 +5837,88 @@ async function loadEconNews(cat, btn){
   renderEconNews(translated, body);
 }
 
+// ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
+function _stripNewsSource(title){
+  if(!title) return title;
+  // ตัด " - Reuters", " | Bloomberg", " – CNBC" ฯลฯ
+  return title.replace(/\s[-–|]\s[A-Za-z0-9 &'.]+$/, '').trim();
+}
+
+// ── Escape HTML เพื่อป้องกัน XSS ──
+function _escHtml(str){
+  if(!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Parse JSON จาก AI response อย่างปลอดภัย ──
+function _parseNewsJson(raw){
+  if(!raw) return [];
+  try{
+    let clean=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    if(clean.startsWith('[')) return JSON.parse(clean);
+    const m=clean.match(/\[[\s\S]*\]/);
+    if(m) return JSON.parse(m[0]);
+  }catch{}
+  return [];
+}
+
 // ── แปลหัวข้อข่าวเป็นไทยด้วย Gemini Flash ──
 async function _translateNewsGemini(items){
   if(!items||!items.length) return items;
-  try{
-    const texts=items.map(it=>it.title);
-    const r=await fetch('https://gemini-proxy.datsakonping1994.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({texts})
-    });
-    if(!r.ok) throw new Error('proxy '+r.status);
-    const data=await r.json();
-    const raw=data.translated||'[]';
-    // parse JSON array จาก Groq
-    let parsed=[];
-    try{
-      // ลบ markdown code block และ whitespace
-      let clean=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-      // ถ้า Groq ส่งมาเป็น array ตรงๆ
-      if(clean.startsWith('[')) parsed=JSON.parse(clean);
-      // ถ้ามี text นำหน้า ให้หา [ ... ]
-      else {
-        const m=clean.match(/\[[\s\S]*\]/);
-        if(m) parsed=JSON.parse(m[0]);
-      }
-    }catch(e){}
+
+  // ตัด " - Source" ออกก่อนส่งแปล
+  const texts=items.map(it=>_stripNewsSource(it.title));
+
+  // ── map ผลลัพธ์กลับ พร้อม index guard + escape ──
+  function _mapResult(parsed){
     return items.map((it,i)=>({
       ...it,
-      titleTH: parsed[i]?.title||it.title,
-      summaryTH: parsed[i]?.summary||'',
+      titleTH: _escHtml(parsed[i]?.title || _stripNewsSource(it.title)),
+      summaryTH: _escHtml(parsed[i]?.summary || ''),
       titleOrig: it.title,
     }));
-  }catch(e){
-    return items.map(it=>({...it,titleTH:it.title,summaryTH:'',titleOrig:it.title}));
   }
+
+  // helper: ยิง proxy ครั้งเดียวพร้อม timeout
+  async function _tryProxy(){
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    try{
+      const r=await fetch('https://gemini-proxy.datsakonping1994.workers.dev',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({texts}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+      if(!r.ok) throw new Error('proxy '+r.status);
+      const data=await r.json();
+      const parsed=_parseNewsJson(data.translated||'[]');
+      if(parsed.length) return parsed;
+      throw new Error('empty parse');
+    }catch(e){clearTimeout(tid);throw e;}
+  }
+
+  // ลอง proxy 2 ครั้ง ก่อน fallback
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const parsed=await _tryProxy();
+      return _mapResult(parsed);
+    }catch(e){
+      if(attempt===0) await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+
+  // fallback: Claude Haiku / Gemini direct
+  try{
+    const prompt=`แปลหัวข้อข่าวต่อไปนี้เป็นภาษาไทยให้ครบทุกข้อ ตอบเป็น JSON array เท่านั้น รูปแบบ: [{"title":"...","summary":"..."},...]\n\n${texts.map((t,i)=>`${i+1}. ${t}`).join('\n')}`;
+    const raw=await callGemini('คุณคือนักแปลข่าวการเงิน แปลเป็นภาษาไทยที่อ่านง่าย กระชับ ตอบเป็น JSON array เท่านั้น ห้ามมี text อื่น',prompt,2000);
+    const parsed=_parseNewsJson(raw||'');
+    if(parsed.length) return _mapResult(parsed);
+  }catch{}
+
+  // last resort: แสดงชื่อภาษาอังกฤษ (ตัด source แล้ว) + escape
+  return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
 async function _fetchEconNews(query){
@@ -5726,12 +5965,16 @@ function renderEconNews(items, body){
   }
   body.innerHTML=items.map(item=>{
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
-    return`<a href="${item.link}" target="_blank" style="text-decoration:none">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block" onclick="">
-        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
+    // titleTH และ summaryTH ผ่าน _escHtml แล้ว — ปลอดภัยใช้ innerHTML
+    const titleDisplay=item.titleTH||_escHtml(_stripNewsSource(item.title));
+    const showOrig=(item.titleOrig&&item.titleTH&&item.titleTH!==_escHtml(item.titleOrig));
+    return`<a href="${_escHtml(item.link||'#')}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block">
+        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${titleDisplay}</div>
         ${item.summaryTH?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px">${item.summaryTH}</div>`:''}
+        ${showOrig?`<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-style:italic">${_escHtml(_stripNewsSource(item.titleOrig))}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:10px;color:var(--text3)">${item.source||'News'}</div>
+          <div style="font-size:10px;color:var(--text3)">${_escHtml(item.source||'News')}</div>
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
         </div>
       </div>
@@ -5877,14 +6120,16 @@ function renderPortfolio(){
     const pnlColor = isUp?'var(--green)':'var(--red)';
     totalCost += cost;
     totalVal += val;
+    const safeTicker = _escHtml(pos.t);
+    const safeName = _escHtml(stockData?.n||'');
     html+=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;position:relative">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text)">${pos.t}</div>
-          <div style="font-size:11px;color:var(--text3)">${stockData?.n||''}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text)">${safeTicker}</div>
+          <div style="font-size:11px;color:var(--text3)">${safeName}</div>
         </div>
-        <button onclick="removePortPosition('${pos.t}')" style="background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer">ลบ</button>
+        <button onclick="removePortPosition('${safeTicker}')" style="background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer">ลบ</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div>
@@ -6067,6 +6312,181 @@ setInterval(()=>{try{_smartPreloadCandles();}catch{}}, 1800000);
 setTimeout(()=>{try{fetchFearGreed();}catch{}}, 1500);
 // รีเฟรชทุก 1 ชั่วโมง
 setInterval(()=>{try{fetchFearGreed();}catch{}}, 3600000);
+
+// ════════════════════════════════════════════
+// ── FEATURE: Earnings Preview (AI) ──
+// ════════════════════════════════════════════
+async function runEarningsPreview(ticker){
+  const btn=document.getElementById('earnPreviewBtn_'+ticker);
+  const el=document.getElementById('earnPreviewText_'+ticker);
+  if(!el) return;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังวิเคราะห์...'; }
+  el.innerHTML='<span style="color:var(--yellow)">🤖 AI กำลังสรุป Earnings Preview...</span>';
+
+  const s=stocks.find(x=>x.t===ticker);
+  if(!s){ el.textContent='ไม่พบข้อมูลหุ้น'; if(btn){btn.disabled=false;btn.textContent='⚡ AI Preview';} return; }
+
+  const eData=(window.earningsData||[]).find(e=>e.t===ticker);
+  const fe=fundExtra[ticker]||{};
+  const daysLeft=_getEarningsDaysLeft(s.earn);
+  const rsi=rsiData[ticker]||50;
+  const fs=calcFundScore(s);
+
+  // ดึงข้อมูล historical earnings ย้อนหลัง 4 ไตรมาส
+  const histEarnings=(window.earningsData||[]).filter(e=>e.t===ticker&&e.res);
+  const histStr=histEarnings.length
+    ? histEarnings.slice(-4).map(e=>`${e.eps!=null?'EPS '+e.eps:''} ${e.res||''}`).join(' | ')
+    : 'ไม่มีข้อมูล';
+
+  // ดึง consensus จาก earningsData ที่ตรงกัน
+  const upcoming=(window.earningsData||[]).find(e=>e.t===ticker&&_getEarningsDaysLeft(s.earn)!==null&&(_getEarningsDaysLeft(s.earn)||99)<=14);
+  const consensusEPS=upcoming?.eps||'N/A';
+  const consensusRev=upcoming?.rev||'N/A';
+
+  const inPort=(() => {
+    let p=[];
+    try{p=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{}
+    return p.some(x=>x.t===ticker);
+  })();
+
+  const prompt=`หุ้น: ${ticker} (${s.n})
+📅 Earnings Date: ${s.earn} (อีก ${daysLeft} วัน)
+💰 Consensus EPS Estimate: ${consensusEPS}
+📊 Consensus Revenue Estimate: ${consensusRev}
+📈 Revenue Growth: ${s.rev} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcap}
+📉 RSI: ${rsi} | Beta: ${s.beta||'N/A'} | Short Float: ${s.short||'N/A'}
+🔄 Earnings ล่าสุด 4 ไตรมาส: ${histStr}
+💵 Free Cash Flow: ${fe.fcf||'N/A'} | D/E: ${fe.de!=null?fe.de:'N/A'}
+🏆 Fundamental Score: ${fs}/100
+📊 SPY: ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ: ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%
+${inPort?'💼 หุ้นนี้อยู่ในพอร์ตของคุณ':''}
+
+วิเคราะห์ 4 ประเด็น:
+1) 🔮 คาดการณ์ว่า earnings รอบนี้จะออกมาดีหรือแย่ พร้อมเหตุผล
+2) 📈 ถ้า Beat — ราคาน่าจะวิ่งขึ้นแค่ไหน
+3) 📉 ถ้า Miss — ความเสี่ยงที่ราคาจะร่วง
+4) 🎯 แนะนำ: ควรถือไว้ / ขายบางส่วนก่อน / ซื้อเพิ่มก่อน earnings
+ตอบภาษาไทยกระชับชัดเจน ใช้ emoji แทน bullet บอกชัดว่า "ควร/ไม่ควร"`;
+
+  const sys='คุณคือนักวิเคราะห์ Earnings มืออาชีพ ประเมินจาก pattern เดิมและ consensus บอกตรงๆ ไม่กลางๆ ห้ามบอกว่าต้องรอดูก่อน ตอบภาษาไทยเป็นประโยคธรรมดา';
+  const reply=await callGemini(sys,prompt,500);
+  if(btn){ btn.disabled=false; btn.textContent='🔄 วิเคราะห์ใหม่'; }
+  if(reply){
+    el.innerHTML=mdToHtml(reply);
+  } else {
+    // fallback
+    const beatCount=histEarnings.filter(e=>(e.res||'').includes('Beat')).length;
+    const total=histEarnings.length||1;
+    const beatRate=Math.round(beatCount/total*100);
+    el.innerHTML=mdToHtml(`📊 ประวัติ Beat Rate: ${beatRate}% (${beatCount}/${total} ไตรมาส)\n${beatRate>=75?'🟢 มีแนวโน้ม Beat earnings บ่อย — ความเสี่ยงต่ำ':beatRate>=50?'🟡 Beat/Miss ใกล้เคียงกัน — ระวังความผันผวน':'🔴 Miss บ่อย — ควรระวังหรือขายบางส่วนก่อน'}`);
+  }
+}
+
+// ════════════════════════════════════════════
+// ── FEATURE: Morning Brief (ตี 8 ทุกวัน) ──
+// ════════════════════════════════════════════
+const _MB_KEY='_morning_brief_sent';
+
+function _shouldSendMorningBrief(){
+  const now=new Date();
+  const h=now.getHours(), m=now.getMinutes();
+  // ช่วง 07:30–08:30
+  const inWindow=(h===7&&m>=30)||(h===8&&m<=30);
+  if(!inWindow) return false;
+  // เช็คว่าส่งวันนี้แล้วหรือยัง
+  const today=now.toDateString();
+  try{
+    const last=localStorage.getItem(_MB_KEY);
+    if(last===today) return false;
+  }catch{}
+  return true;
+}
+
+async function runMorningBrief(){
+  if(!_shouldSendMorningBrief()) return;
+  // Mark ว่าส่งแล้ววันนี้
+  try{localStorage.setItem(_MB_KEY,new Date().toDateString());}catch{}
+
+  toast('☀️ กำลังสรุป Morning Brief...', 4000);
+
+  // รอให้ราคาโหลดก่อน
+  await new Promise(r=>setTimeout(r,3000));
+
+  // ดึงข้อมูลพอร์ต
+  let portfolio=[];
+  try{portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{}
+
+  // สรุปภาพรวมตลาด
+  const up=stocks.filter(s=>s.c>0).length;
+  const dn=stocks.filter(s=>s.c<0).length;
+  const topG=stocks.filter(s=>s.c>3).sort((a,b)=>b.c-a.c).slice(0,3).map(s=>`${s.t}+${s.c}%`).join(', ');
+  const topL=stocks.filter(s=>s.c<-3).sort((a,b)=>a.c-b.c).slice(0,3).map(s=>`${s.t}${s.c}%`).join(', ');
+
+  // สรุปพอร์ต
+  let portSummary='ไม่มีหุ้นในพอร์ต';
+  if(portfolio.length){
+    const portDetails=portfolio.map(pos=>{
+      const s=stocks.find(x=>x.t===pos.t);
+      if(!s) return null;
+      const pnlPct=pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
+      const rsi=rsiData[pos.t]||50;
+      return `${pos.t}: P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}% | RSI ${rsi}${rsi<=35?' (Oversold)':rsi>=70?' (Overbought)':''}`;
+    }).filter(Boolean);
+    portSummary=portDetails.join('\n');
+  }
+
+  // Earnings วันนี้–3 วัน
+  const portTickers=new Set(portfolio.map(p=>p.t));
+  const wlTickers=watchlist;
+  const earnSoon=[...new Set([...portTickers,...wlTickers])]
+    .map(t=>stocks.find(s=>s.t===t))
+    .filter(s=>s&&s.earn)
+    .filter(s=>{const d=_getEarningsDaysLeft(s.earn);return d!==null&&d>=0&&d<=3;})
+    .map(s=>`${s.t}(อีก ${_getEarningsDaysLeft(s.earn)}d)`);
+
+  const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const fng=window._fngForAI;
+
+  const prompt=`สรุป Morning Brief ${todayStr}
+
+🌎 ภาพรวมตลาด
+SPY: ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ: ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%
+ขึ้น ${up} / ลง ${dn} ตัว
+${fng?`Fear & Greed: ${fng.value}/100 (${fng.text})`:''}
+${topG?`📈 ขึ้นแรง: ${topG}`:''}
+${topL?`📉 ลงแรง: ${topL}`:''}
+
+💼 พอร์ตของคุณ
+${portSummary}
+
+📅 Earnings ใกล้ (0-3 วัน)
+${earnSoon.length?earnSoon.join(', '):'ไม่มี'}
+
+สรุป 3 ข้อสั้นๆ:
+1) ตลาดวันนี้ควรระวังอะไร
+2) หุ้นในพอร์ตตัวไหนน่าสนใจหรือน่าเป็นห่วง
+3) กลยุทธ์วันนี้ในประโยคเดียว
+ตอบภาษาไทยสั้นกระชับ ใช้ emoji`;
+
+  const sys='คุณคือที่ปรึกษาการลงทุนส่วนตัว สรุป Morning Brief แบบกระชับตรงประเด็น ภาษาไทยธรรมดา';
+  const reply=await callGemini(sys,prompt,400);
+
+  const tgMsg=`☀️ Morning Brief — ${todayStr}\n\n📊 SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%\n${fng?`😱 Fear & Greed: ${fng.value}/100 (${fng.text})\n`:''}\n${reply||'ไม่สามารถสรุปได้'}\n\n${earnSoon.length?'📅 Earnings วันนี้/พรุ่งนี้: '+earnSoon.join(', '):''}`;
+
+  sendTG(tgMsg);
+  toast('☀️ ส่ง Morning Brief ทาง Telegram แล้ว!', 4000);
+}
+
+// เช็ค Morning Brief ทุก 5 นาที
+setInterval(()=>{try{runMorningBrief();}catch{}}, 300000);
+// เช็คทันทีตอนเปิดแอป (เผื่อเปิดตอนตี 8 พอดี)
+setTimeout(()=>{try{runMorningBrief();}catch{}}, 5000);
+// เช็คอีกครั้งเมื่อกลับมาเปิดแอป
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    setTimeout(()=>{try{runMorningBrief();}catch{}}, 3000);
+  }
+});
 
 </script>
 </body>
