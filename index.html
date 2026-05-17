@@ -713,12 +713,11 @@ canvas.bigchart{width:100%;height:100%}
         </div>
       </div>
       <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;margin-bottom:10px" id="newsCatRow">
-        <button class="sector-btn active" onclick="loadEconNews('market',this)">🌍 ตลาดรวม</button>
+        <button class="sector-btn active" onclick="loadEconNews('top',this)">⭐ ข่าวเด่น</button>
+        <button class="sector-btn" onclick="loadEconNews('market',this)">🌍 ตลาด</button>
         <button class="sector-btn" onclick="loadEconNews('fed',this)">🏦 Fed</button>
-        <button class="sector-btn" onclick="loadEconNews('economy',this)">📊 เศรษฐกิจ</button>
         <button class="sector-btn" onclick="loadEconNews('tech',this)">💻 เทค</button>
         <button class="sector-btn" onclick="loadEconNews('crypto',this)">₿ Crypto</button>
-        <button class="sector-btn" onclick="loadEconNews('asia',this)">🌏 เอเชีย</button>
       </div>
       <div id="econNewsBody" style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
         <div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>
@@ -1429,7 +1428,7 @@ function navTo(page, el){
     else if(page==='dash') updateDashboard();
     else if(page==='settings') loadSettings();
     else if(page==='port') renderPortfolio();
-    else if(page==='news') loadEconNews('market', document.querySelector('#newsCatRow .sector-btn'));
+    else if(page==='news') loadEconNews('top', document.querySelector('#newsCatRow .sector-btn'));
   });
 }
 
@@ -3307,10 +3306,14 @@ async function sendAI(ticker){
   }
   const context=buildFullIndicatorContext(ticker, s.p);
   try{
-    const systemPrompt=`คุณคือนักวิเคราะห์หุ้นมืออาชีพที่มีข้อมูล indicator ครบทุกตัว
-ตอบภาษาไทยเข้าใจง่าย ใช้ emoji แทน bullet point
-อธิบาย indicator เป็นภาษาชาวบ้าน เช่น "RSI ต่ำ = ราคาถูกเกินไปแล้ว" แทนที่จะพูดศัพท์เทคนิค
-ตอบกระชับ ตรงประเด็น ห้ามใช้ Markdown เช่น ## ** ---`;
+    const systemPrompt=`คุณคือนักเทรดมืออาชีพที่มีประสบการณ์ 20 ปี วิเคราะห์จาก indicator ครบทุกตัวที่ให้มา
+กฎเหล็ก:
+- ตัดสินใจให้ชัดเสมอ ห้ามพูดกลางๆ หรือ "ขึ้นอยู่กับ..."
+- ทุกคำตอบต้องมี: สรุปชัด + เหตุผล + entry/SL/TP ถ้าถามเรื่องซื้อขาย
+- ให้น้ำหนัก indicator: RSI, MACD, Supertrend, Volume สำคัญที่สุด
+- อธิบายเป็นภาษาชาวบ้าน เช่น "โมเมนตัมกำลังดี" แทน "MACD bullish crossover"
+- ใช้ emoji แทน bullet ห้ามใช้ ## ** --- ห้ามใช้ศัพท์อังกฤษ
+- ถ้าหุ้นน่าซื้อ บอกตรงๆ ถ้าไม่น่าซื้อ บอกตรงๆ พร้อมเหตุผล`;
     const userPrompt=`${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
     const reply=await callGemini(systemPrompt, userPrompt, 800);
     const replyText=reply||'❌ ไม่ได้รับคำตอบ กรุณาลองใหม่';
@@ -3592,18 +3595,29 @@ async function _analyzeSignalAI(ticker,price,s1,r1,score){
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
   const indCtx=buildFullIndicatorContext(ticker,price);
+  const rrPct=+((r1-price)/price*100).toFixed(2);
+  const slPct=+((price-s1)/price*100).toFixed(2);
+  const riskReward=(rrPct/slPct).toFixed(1);
   const prompt=`${indCtx}
 
 Buy Score: ${score}/100
-แนวรับ: S1 ${s1.toFixed(2)} | S2 ${s2.toFixed(2)}
-แนวต้าน: R1 ${r1.toFixed(2)} | R2 ${r2.toFixed(2)}
-ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}% | เป้า R1: +${((r1-price)/price*100).toFixed(2)}%
+แนวรับ: S1 $${s1.toFixed(2)} | S2 $${getS2(ticker,price).toFixed(2)}
+แนวต้าน: R1 $${r1.toFixed(2)} | R2 $${getR2(ticker,price).toFixed(2)}
+ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}% | เป้า R1: +${rrPct}% | Risk/Reward: ${riskReward}x
 
-วิเคราะห์ว่าควรเข้าซื้อตอนนี้ไหม? ตอบ 4-5 ประโยคภาษาไทย ครอบคลุม:
-1) สัญญาณที่เห็นชัดที่สุด
-2) ความเสี่ยงที่ต้องระวัง
-3) แนะนำ entry / stop loss`;
-  const sys='คุณคือนักวิเคราะห์หุ้นมืออาชีพ วิเคราะห์จาก indicator ที่ให้มาครบทุกตัว ตอบภาษาไทยชาวบ้านเข้าใจได้ ใช้ emoji แทน bullet ห้ามใช้ศัพท์เทคนิคภาษาอังกฤษ';
+ตัดสินใจ: ควรเข้าซื้อตอนนี้ไหม?
+ตอบเป็นรูปแบบนี้เท่านั้น (5-6 บรรทัด):
+🎯 คำตัดสินใจ: [ซื้อได้เลย / รอก่อน / ไม่แนะนำ] — เหตุผลหลัก 1 ประโยค
+📊 สัญญาณเด่น: indicator ที่ส่งสัญญาณชัดที่สุด 2-3 ตัว
+⚠️ ความเสี่ยง: สิ่งที่ต้องระวังที่สุด
+💰 Entry: $${price.toFixed(2)} | Stop Loss: $${s1.toFixed(2)} (-${slPct}%) | เป้า: $${r1.toFixed(2)} (+${rrPct}%)
+🔥 ความมั่นใจ: [สูง/กลาง/ต่ำ] — บอกว่าทำไม`;
+  const sys=`คุณคือนักเทรดมืออาชีพที่ตัดสินใจเด็ดขาด ไม่พูดกลางๆ ไม่บอกว่า "ขึ้นอยู่กับความเสี่ยงของคุณ"
+วิเคราะห์จาก indicator ครบทุกตัวที่ให้มา ให้น้ำหนัก: RSI+MACD+Supertrend+Volume มากกว่าตัวอื่น
+ถ้า Score>=70 AND RSI<=50 AND Supertrend Bullish → ซื้อได้เลย
+ถ้า Score 50-69 → รอก่อน ระบุเงื่อนไขที่ต้องรอ
+ถ้า Score<50 OR Supertrend Bearish → ไม่แนะนำ
+ตอบภาษาไทยชาวบ้าน ใช้ emoji แทน bullet ห้ามใช้ศัพท์อังกฤษ`;
 
   // แสดง model ที่กำลังใช้
   const modelLabel = _getGeminiKey() ? 'Gemini 2.0 Flash' : 'Claude Haiku';
@@ -4169,6 +4183,32 @@ _tryStartLive();
 if(document.readyState!=='complete'){
   window.addEventListener('load',()=>_tryStartLive());
 }
+// เริ่ม preload candles หลัง live เริ่มแล้ว 4 วินาที (ไม่แย่ง bandwidth)
+setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
+
+// ── Preload candles สำหรับหุ้นยอดนิยม (background, ไม่บล็อก UI) ──
+async function _preloadCandles(){
+  // เรียงตาม watchlist ก่อน แล้วตาม portfolio แล้วค่อยทำทั้งหมด
+  let portTickers=[];
+  try{ portTickers=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]').map(p=>p.t); }catch{}
+  const wlSet=new Set([...watchlist,...portTickers]);
+  // หุ้น top 10 ที่ volume สูงสุด (เป็น proxy สำหรับ "สำคัญ")
+  const topStocks=['AAPL','NVDA','MSFT','TSLA','AMZN','META','GOOGL','AMD','SPY','QQQ'];
+  const priority=[...wlSet,...topStocks.filter(t=>!wlSet.has(t))];
+  const allTickers=[...priority,...stocks.map(s=>s.t).filter(t=>!priority.includes(t))];
+  // โหลดทีละ 3 ตัว ไม่ให้หนักเกิน
+  for(let i=0;i<allTickers.length;i+=3){
+    const batch=allTickers.slice(i,i+3);
+    await Promise.allSettled(batch.map(async t=>{
+      if(candleCache[t]?.data&&!candleCache[t]?.data?._mock) return; // มีแล้วข้ามไป
+      try{
+        const data=await fetchCandles(t,60);
+        if(data) await updateRSIFromCandles(t);
+      }catch{}
+    }));
+    await new Promise(r=>setTimeout(r,800)); // stagger 800ms ต่อ batch
+  }
+}
 
 // ── Restart live เมื่อกลับมาเปิดแอปจาก Home Screen ──
 document.addEventListener('visibilitychange',()=>{
@@ -4729,6 +4769,87 @@ async function _switchTF(btn, days){
   }catch(e){}
 }
 
+// ── Polygon.io config ──
+const POLYGON_KEY = 'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY';
+
+// ── Twelve Data config ──
+const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
+
+// ── fetchCandlesTwelve — ดึง candle จาก Twelve Data (ไม่ต้อง proxy) ──
+async function fetchCandlesTwelve(ticker, days=60){
+  try{
+    const outputsize=Math.min(days+10, 500);
+    const url=`https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=${outputsize}&apikey=${TWELVE_KEY}`;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(d.status==='error'||!d.values||d.values.length<5) return null;
+    // Twelve Data คืนข้อมูลจากใหม่→เก่า ต้อง reverse
+    const vals=[...d.values].reverse().slice(-days);
+    const c=[],h=[],l=[],o=[],v=[],t=[];
+    for(const bar of vals){
+      c.push(parseFloat(bar.close));
+      h.push(parseFloat(bar.high));
+      l.push(parseFloat(bar.low));
+      o.push(parseFloat(bar.open));
+      v.push(parseFloat(bar.volume)||0);
+      t.push(Math.floor(new Date(bar.datetime).getTime()/1000));
+    }
+    return c.length>=5?{c,h,l,o,v,t}:null;
+  }catch{ return null; }
+}
+
+// ── fetchCandlesPolygon — ดึง candle จาก Polygon.io แทน Yahoo ──
+// ── Proxy failure tracker — หลีกเลี่ยง proxy ที่เพิ่งล้มเหลว ──
+const _proxyFailCount={};
+const _PROXY_FAIL_COOLDOWN=120000; // 2 นาที
+const _proxyLastFail={};
+
+function _isProxyCoolingDown(mkProxy){
+  const key=mkProxy.toString().slice(0,60);
+  if(!_proxyLastFail[key]) return false;
+  return Date.now()-_proxyLastFail[key] < _PROXY_FAIL_COOLDOWN;
+}
+function _markProxyFailed(mkProxy){
+  const key=mkProxy.toString().slice(0,60);
+  _proxyLastFail[key]=Date.now();
+}
+function _markProxySuccess(mkProxy){
+  const key=mkProxy.toString().slice(0,60);
+  delete _proxyLastFail[key];
+}
+
+async function fetchCandlesPolygon(ticker, days=60){
+  try{
+    const to=new Date();
+    const from=new Date();
+    from.setDate(from.getDate()-Math.ceil(days*1.5)); // เผื่อวันหยุด
+    const fmt=d=>d.toISOString().slice(0,10);
+    const url=`https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${fmt(from)}/${fmt(to)}?adjusted=true&sort=asc&limit=300&apiKey=${POLYGON_KEY}`;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(d.status==='ERROR'||!d.results||d.results.length<5) return null;
+    const results=d.results.slice(-days); // เอาแค่ days ล่าสุด
+    const c=[],h=[],l=[],o=[],v=[],t=[];
+    for(const bar of results){
+      c.push(bar.c);
+      h.push(bar.h);
+      l.push(bar.l);
+      o.push(bar.o);
+      v.push(bar.v||0);
+      t.push(Math.floor(bar.t/1000)); // ms → sec
+    }
+    return c.length>=5?{c,h,l,o,v,t}:null;
+  }catch{ return null; }
+}
+
 // ── fetchCandles — rate limit guard ──
 const _candleFetching=new Set(); // ป้องกัน concurrent fetch ตัวเดียวกัน
 async function fetchCandles(ticker, days=60){
@@ -4737,26 +4858,39 @@ async function fetchCandles(ticker, days=60){
   if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
   _candleFetching.add(ticker);
   try{
+    // ── 1. ลอง Twelve Data ก่อน (เร็ว ไม่ต้อง proxy ใช้งานได้จริง) ──
+    let candleData=await fetchCandlesTwelve(ticker, days);
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
+      return candleData;
+    }
+    // ── 2. Fallback → Polygon.io ──
+    candleData=await fetchCandlesPolygon(ticker, days);
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
+      return candleData;
+    }
+    // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
     const range=days<=30?'1mo':days<=90?'3mo':days<=150?'6mo':days<=210?'1y':'2y';
     const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
-    // ใช้ proxy chain เดิมที่รู้ว่าใช้ได้ก่อน
-    const proxiesToUse = _workingProxy
-      ? [_workingProxy, ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy)]
-      : _YAHOO_PROXIES;
-    let candleData=null;
-    // ลองทุก proxy พร้อมกัน เอาตัวแรกที่ได้ candle
+    // ใช้ working proxy ก่อน แล้วกรอง proxy ที่กำลัง cooldown ออก
+    const proxiesToUse = [
+      ...(_workingProxy ? [_workingProxy] : []),
+      ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy && !_isProxyCoolingDown(p))
+    ];
     try{
       candleData=await Promise.any(proxiesToUse.map(async mkProxy=>{
-        const r=await _tryProxy(mkProxy, yahooUrl, 7000);
-        if(!r) throw new Error('fail');
+        const r=await _tryProxy(mkProxy, yahooUrl, 6000);
+        if(!r){ _markProxyFailed(mkProxy); throw new Error('fail'); }
         const c=_extractCandleFromParsed(r.parsed);
-        if(!c) throw new Error('no candle');
+        if(!c){ _markProxyFailed(mkProxy); throw new Error('no candle'); }
         _workingProxy=mkProxy;
+        _markProxySuccess(mkProxy);
         return c;
       }));
     }catch{}
     if(candleData){
-      candleCache[ticker]={data:candleData,ts:Date.now(),days};
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'yahoo'};
       return candleData;
     }
   }catch(e){}
@@ -5977,18 +6111,19 @@ async function runAIMarketSummaryV2(){
 📅 Earnings เร็วๆ นี้: ${upcomingEarn||'ไม่มี'}
 ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}
 
-วิเคราะห์ 4 หัวข้อ:
-1) ภาพรวมตลาดวันนี้เป็นยังไง
-2) หุ้นไหนน่าสนใจที่สุดและทำไม
-3) หุ้นไหนควรระวังและทำไม
-4) กลยุทธ์สั้นๆ สำหรับวันนี้
-ตอบภาษาไทยธรรมดา อธิบาย indicator เป็นภาษาชาวบ้าน ใช้ emoji แทน bullet`;
-  return callGemini('คุณคือนักวิเคราะห์หุ้นมืออาชีพที่พูดภาษาไทยแบบชาวบ้านเข้าใจได้ มีข้อมูล indicator ครบทุกตัว อธิบายเป็นภาษาง่ายๆ เช่น "ราคาถูกเกินจริง" แทน oversold ตอบกระชับแต่ครบถ้วน', prompt, 900);
+วิเคราะห์ 4 หัวข้อ (ตัดสินใจชัด ไม่กลางๆ):
+1) 🌎 ตลาดวันนี้: บรรยากาศโดยรวม Risk-On หรือ Risk-Off? ทำไม?
+2) 🎯 หุ้นน่าซื้อวันนี้: ระบุชื่อหุ้นชัดๆ พร้อม entry/เป้าหมาย/SL
+3) ⚠️ หุ้นที่ต้องระวัง: ระบุชื่อชัดๆ ว่าเสี่ยงเรื่องอะไร
+4) 📋 สรุปกลยุทธ์: ประโยคเดียว ชัดเจน actionable
+ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet ห้ามพูดกลางๆ`;
+  return callGemini('คุณคือนักเทรดมืออาชีพ ตัดสินใจชัดเจนเสมอ ระบุชื่อหุ้นและตัวเลขจริงๆ ไม่พูดว่า "ขึ้นอยู่กับความเสี่ยง" ตอบภาษาไทยชาวบ้านเข้าใจ', prompt, 900);
 }
 
 
 // ── Economic News ──
 const _econQueries={
+  top:'stock market S&P500 breaking news economy Fed earnings',
   market:'stock market S&P500 Nasdaq economy',
   fed:'Federal Reserve interest rate Fed Powell',
   economy:'GDP inflation CPI employment economic data',
@@ -5996,6 +6131,8 @@ const _econQueries={
   crypto:'bitcoin cryptocurrency crypto market',
   asia:'Asia China Japan economy trade',
 };
+// จำนวนข่าวต่อหมวด
+const _econNewsLimit={top:8, market:5, fed:5, tech:5, crypto:5, economy:5, asia:5};
 let _econNewsCache={};
 let _econNewsCacheTime={};
 const _ECON_NEWS_TTL=5*60*1000;
@@ -6024,7 +6161,9 @@ async function refreshNewsManual(){
   if(btn){btn.textContent='🔄';btn.disabled=false;}
 }
 
+let _currentNewsCat='top';
 async function loadEconNews(cat, btn){
+  _currentNewsCat=cat;
   document.querySelectorAll('#newsCatRow .sector-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const body=document.getElementById('econNewsBody');
@@ -6151,12 +6290,20 @@ async function _fetchEconNews(query){
         if(text.includes('"contents"')){try{text=JSON.parse(text).contents;}catch{}}
         const parser=new DOMParser();
         const doc=parser.parseFromString(text,'text/xml');
+        const limit=_econNewsLimit[_currentNewsCat]||5;
         const list=Array.from(doc.querySelectorAll('item')).slice(0,20).map(item=>({
           title:item.querySelector('title')?.textContent||'',
           link:item.querySelector('link')?.textContent||'#',
           pubDate:item.querySelector('pubDate')?.textContent||'',
           source:item.querySelector('source')?.textContent||'',
-        })).filter(i=>i.title);
+        })).filter(i=>i.title)
+        // คัดข่าวเด่น: ให้ priority แหล่งข่าวใหญ่ก่อน
+        .sort((a,b)=>{
+          const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
+          const aScore=topSrc.findIndex(s=>a.source?.includes(s))>=0?1:0;
+          const bScore=topSrc.findIndex(s=>b.source?.includes(s))>=0?1:0;
+          return bScore-aScore;
+        }).slice(0,limit);
         if(list.length>0) return list;
         throw new Error('empty');
       }catch(e){clearTimeout(tid);throw e;}
@@ -6171,18 +6318,20 @@ function renderEconNews(items, body){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าว ลองใหม่อีกครั้ง</div>';
     return;
   }
+  const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch'];
   body.innerHTML=items.map(item=>{
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
-    // titleTH และ summaryTH ผ่าน _escHtml แล้ว — ปลอดภัยใช้ innerHTML
     const titleDisplay=item.titleTH||_escHtml(_stripNewsSource(item.title));
-    const showOrig=(item.titleOrig&&item.titleTH&&item.titleTH!==_escHtml(item.titleOrig));
+    const isTop=topSrc.some(s=>item.source?.includes(s));
+    const srcBadge=isTop
+      ?`<span style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:1px 7px;font-size:9px;color:var(--gold);font-weight:700">${_escHtml(item.source)}</span>`
+      :`<span style="font-size:10px;color:var(--text3)">${_escHtml(item.source||'News')}</span>`;
     return`<a href="${_escHtml(item.link||'#')}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block">
-        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${titleDisplay}</div>
-        ${item.summaryTH?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px">${item.summaryTH}</div>`:''}
-        ${showOrig?`<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-style:italic">${_escHtml(_stripNewsSource(item.titleOrig))}</div>`:''}
+      <div style="background:var(--bg2);border:1px solid ${isTop?'rgba(201,168,76,0.2)':'var(--border)'};border-radius:14px;padding:14px;transition:all 0.15s">
+        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px">${titleDisplay}</div>
+        ${item.summaryTH?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px">${item.summaryTH}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:10px;color:var(--text3)">${_escHtml(item.source||'News')}</div>
+          ${srcBadge}
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
         </div>
       </div>
@@ -6583,14 +6732,14 @@ async function runEarningsPreview(ticker){
 📊 SPY: ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ: ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%
 ${inPort?'💼 หุ้นนี้อยู่ในพอร์ตของคุณ':''}
 
-วิเคราะห์ 4 ประเด็น:
-1) 🔮 คาดการณ์ว่า earnings รอบนี้จะออกมาดีหรือแย่ พร้อมเหตุผล
-2) 📈 ถ้า Beat — ราคาน่าจะวิ่งขึ้นแค่ไหน
-3) 📉 ถ้า Miss — ความเสี่ยงที่ราคาจะร่วง
-4) 🎯 แนะนำ: ควรถือไว้ / ขายบางส่วนก่อน / ซื้อเพิ่มก่อน earnings
-ตอบภาษาไทยกระชับชัดเจน ใช้ emoji แทน bullet บอกชัดว่า "ควร/ไม่ควร"`;
+วิเคราะห์ 4 ประเด็น (ตัดสินใจชัด มีตัวเลขจริง):
+1) 🔮 คาดการณ์: Beat หรือ Miss? ความน่าจะเป็น % และเหตุผลหลัก
+2) 📈 ถ้า Beat: ราคาน่าจะขึ้น +X% ใน 1-3 วัน (อ้างอิง pattern เดิม)
+3) 📉 ถ้า Miss: ราคาน่าจะลง -X% (อ้างอิง pattern เดิม)
+4) 🎯 คำแนะนำชัดๆ: [ถือ/ขายบางส่วน/ซื้อเพิ่ม] พร้อมบอก % ที่ควรขาย/ซื้อ
+ตอบภาษาไทย ใช้ emoji แทน bullet ระบุตัวเลขให้ครบ`;
 
-  const sys='คุณคือนักวิเคราะห์ Earnings มืออาชีพ ประเมินจาก pattern เดิมและ consensus บอกตรงๆ ไม่กลางๆ ห้ามบอกว่าต้องรอดูก่อน ตอบภาษาไทยเป็นประโยคธรรมดา';
+  const sys='คุณคือนักวิเคราะห์ Earnings มืออาชีพ ให้น้ำหนัก Beat Rate ย้อนหลัง + Revenue Trend + ภาวะตลาด ระบุตัวเลขจริงทุกครั้ง ห้ามพูดกลางๆ ห้ามบอกว่าต้องรอดูก่อน ตอบภาษาไทย';
   const reply=await callGemini(sys,prompt,500);
   if(btn){ btn.disabled=false; btn.textContent='🔄 วิเคราะห์ใหม่'; }
   if(reply){
