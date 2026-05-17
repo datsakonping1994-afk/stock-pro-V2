@@ -5492,7 +5492,8 @@ async function loadEconNews(cat, btn){
   if(btn) btn.classList.add('active');
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  if(_econNewsCache[cat]){
+  // ถ้า cache มีอยู่แล้วและแปลแล้ว (มี titleTH) ใช้ได้เลย
+  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH){
     renderEconNews(_econNewsCache[cat], body);
     return;
   }
