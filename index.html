@@ -1833,8 +1833,8 @@ function _loadLogoNow(ticker, elId, size){
   // Google HD favicon เป็น secondary
   // Clearbit เป็น tertiary (อาจ block บนมือถือ)
   const sources = [
-    `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://logo.clearbit.com/${domain}`,
+    `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
   ];
 
@@ -1845,7 +1845,7 @@ function _loadLogoNow(ticker, elId, size){
     const img = new Image();
     
     img.onload = () => {
-      if(img.naturalWidth < 32 || img.naturalHeight < 32){ tryNext(); return; } // reject tiny/broken
+      if(img.naturalWidth < 16 || img.naturalHeight < 16){ tryNext(); return; } // reject tiny/broken
       _logoCache[ticker] = src; // cache URL ที่สำเร็จ
       _applyLogoImg(el, src, size);
     };
