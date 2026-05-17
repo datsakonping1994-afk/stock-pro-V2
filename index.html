@@ -612,6 +612,8 @@ canvas.bigchart{width:100%;height:100%}
       <button class="ctrl-btn" onclick="sortStocks('rsi',this)">RSI</button>
       <button class="ctrl-btn" onclick="sortStocks('mcap',this)">Market Cap</button>
       <button class="ctrl-btn" onclick="sortStocks('near',this)">ใกล้แนวรับ</button>
+      <button class="ctrl-btn" onclick="sortStocks('div',this)">💰 ปันผล</button>
+      <button class="ctrl-btn" onclick="sortStocks('fundscore',this)">⭐ Fund Score</button>
     </div>
     <div class="sector-row" id="sectorRow"></div>
     <div class="cards-grid" id="cardsGrid"></div>
@@ -759,6 +761,11 @@ canvas.bigchart{width:100%;height:100%}
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
     <button onclick="document.getElementById('heatmapModal').style.display='none'" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text)">🌡️ HEATMAP</div>
+    <div style="display:flex;gap:6px;margin-left:auto">
+      <button class="hm-mode-btn active" id="hmModePct" onclick="setHeatmapMode('pct',this)" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">% Change</button>
+      <button class="hm-mode-btn" id="hmModeBeta" onclick="setHeatmapMode('beta',this)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">Beta</button>
+      <button class="hm-mode-btn" id="hmModeShort" onclick="setHeatmapMode('short',this)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">Short %</button>
+    </div>
   </div>
   <div id="heatmapGrid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
@@ -906,82 +913,237 @@ function $id(id){
 function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
 
 // ── Data ──
+var earningsData = [
+  {t:"RKLB", eps:"-0.09", rev:"$143M", res:"Miss EPS, Beat Rev"},
+  {t:"EOSE", eps:"-0.18", rev:"$12M",  res:"Beat Rev"},
+  {t:"SLNH", eps:"-0.05", rev:"$4M",   res:null},
+  {t:"MU",   eps:"1.56",  rev:"$8.05B",res:"Beat EPS & Rev"},
+  {t:"NVTS", eps:"-0.11", rev:"$22M",  res:"In-line"},
+  {t:"ASTS", eps:"-0.31", rev:"$8M",   res:"Beat Rev"},
+  {t:"INTC", eps:"-0.19", rev:"$12.7B",res:"Miss EPS"},
+  {t:"AMD",  eps:"0.96",  rev:"$7.44B",res:"Beat EPS & Rev"},
+  {t:"HIMS", eps:"0.06",  rev:"$586M", res:"Beat EPS & Rev"},
+  {t:"IREN", eps:"-0.08", rev:"$68M",  res:"Beat Rev"},
+  {t:"ASML", eps:"6.33",  rev:"$9.3B", res:"Beat EPS & Rev"},
+  {t:"CRWD", eps:"1.10",  rev:"$1.1B", res:"Beat EPS & Rev"},
+  {t:"AVGO", eps:"1.60",  rev:"$14.9B",res:"Beat EPS & Rev"},
+  {t:"IONQ", eps:"-0.16", rev:"$11.7M",res:"Beat Rev"},
+  {t:"AAPL", eps:"2.40",  rev:"$124B", res:"Beat EPS & Rev"},
+  {t:"NVDA", eps:"0.89",  rev:"$44.1B",res:"Beat EPS & Rev"},
+  {t:"KTOS", eps:"0.08",  rev:"$340M", res:"Beat EPS & Rev"},
+  {t:"RBRK", eps:"-0.22", rev:"$1.07B",res:"Beat Rev"},
+  {t:"HOOD", eps:"0.37",  rev:"$927M", res:"Beat EPS & Rev"},
+  {t:"OKLO", eps:"-0.11", rev:"$0.4M", res:null},
+  {t:"TEM",  eps:"-0.45", rev:"$255M", res:"Beat Rev"},
+  {t:"GOOGL",eps:"2.81",  rev:"$90.2B",res:"Beat EPS & Rev"},
+  {t:"NVO",  eps:"3.16",  rev:"$10.4B",res:"Beat EPS & Rev"},
+  {t:"AMZN", eps:"1.59",  rev:"$187B", res:"Beat EPS & Rev"},
+  {t:"PLTR", eps:"0.13",  rev:"$884M", res:"Beat EPS & Rev"},
+  {t:"CRDO", eps:"0.23",  rev:"$135M", res:"Beat EPS & Rev"},
+  {t:"ANET", eps:"2.28",  rev:"$2.0B", res:"Beat EPS & Rev"},
+  {t:"VRT",  eps:"0.92",  rev:"$2.4B", res:"Beat EPS & Rev"},
+  {t:"ARM",  eps:"0.55",  rev:"$1.24B",res:"Beat EPS & Rev"},
+  {t:"TSM",  eps:"2.12",  rev:"$25.5B",res:"Beat EPS & Rev"},
+  {t:"ISRG", eps:"2.25",  rev:"$2.25B",res:"Beat EPS & Rev"},
+  {t:"NFLX", eps:"6.61",  rev:"$10.5B",res:"Beat EPS & Rev"},
+  {t:"META", eps:"6.43",  rev:"$42.3B",res:"Beat EPS & Rev"},
+  {t:"MSFT", eps:"3.46",  rev:"$70.1B",res:"Beat EPS & Rev"},
+  {t:"JPM",  eps:"5.07",  rev:"$46.0B",res:"Beat EPS & Rev"},
+  {t:"XOM",  eps:"1.76",  rev:"$83.1B",res:"Miss EPS"},
+  {t:"SOFI", eps:"0.06",  rev:"$771M", res:"Beat EPS & Rev"},
+  {t:"SPGI", eps:"4.37",  rev:"$3.77B",res:"Beat EPS & Rev"},
+  {t:"MP",   eps:"-0.04", rev:"$68M",  res:"In-line"},
+  {t:"NOW",  eps:"4.04",  rev:"$3.09B",res:"Beat EPS & Rev"},
+  {t:"LLY",  eps:"3.34",  rev:"$12.7B",res:"Beat EPS & Rev"},
+  {t:"NBIS", eps:"-0.28", rev:"$47M",  res:"Beat Rev"},
+  {t:"AXON", eps:"1.62",  rev:"$601M", res:"Beat EPS & Rev"},
+  {t:"TMDX", eps:"0.44",  rev:"$112M", res:"Beat EPS & Rev"},
+  {t:"CRWV", eps:"-0.68", rev:"$981M", res:"Beat Rev"},
+  {t:"MELI", eps:"12.08", rev:"$6.06B",res:"Beat EPS & Rev"},
+  {t:"QCOM", eps:"3.01",  rev:"$11.7B",res:"Beat EPS & Rev"},
+  {t:"AMAT", eps:"2.39",  rev:"$7.10B",res:"Beat EPS & Rev"},
+  {t:"LRCX", eps:"1.04",  rev:"$4.72B",res:"Beat EPS & Rev"},
+  {t:"CRM",  eps:"2.78",  rev:"$9.99B",res:"Beat EPS & Rev"},
+  {t:"ADBE", eps:"4.97",  rev:"$5.71B",res:"Beat EPS & Rev"},
+  {t:"SNOW", eps:"0.24",  rev:"$1.04B",res:"Beat EPS & Rev"},
+  {t:"DDOG", eps:"0.46",  rev:"$761M", res:"Beat EPS & Rev"},
+  {t:"MDB",  eps:"1.28",  rev:"$548M", res:"Beat EPS & Rev"},
+  {t:"NET",  eps:"0.27",  rev:"$479M", res:"Beat EPS & Rev"},
+  {t:"TSLA", eps:"0.27",  rev:"$19.3B",res:"Beat EPS"},
+  {t:"RIVN", eps:"-0.48", rev:"$1.24B",res:"Beat Rev"},
+  {t:"LCID", eps:"-0.20", rev:"$235M", res:"In-line"},
+  {t:"V",    eps:"2.76",  rev:"$9.59B",res:"Beat EPS & Rev"},
+  {t:"MA",   eps:"14.78", rev:"$7.25B",res:"Beat EPS & Rev"},
+  {t:"PYPL", eps:"1.33",  rev:"$7.79B",res:"Beat EPS & Rev"},
+  {t:"KO",   eps:"0.73",  rev:"$11.1B",res:"Beat EPS & Rev"},
+  {t:"PEP",  eps:"1.48",  rev:"$17.9B",res:"Miss EPS"},
+  {t:"NKE",  eps:"0.54",  rev:"$11.3B",res:"Miss EPS & Rev"},
+  {t:"MCD",  eps:"2.67",  rev:"$5.96B",res:"Beat EPS & Rev"},
+  {t:"WMT",  eps:"0.61",  rev:"$165B", res:"Beat EPS & Rev"},
+  {t:"JNJ",  eps:"2.77",  rev:"$21.9B",res:"Beat EPS & Rev"},
+  {t:"PG",   eps:"1.54",  rev:"$19.8B",res:"Beat EPS & Rev"},
+];
 const stocks=[
-  {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"8 พ.ค. 2026"},
-  {t:"EOSE",n:"Eos Energy",p:8.01,c:25.94,pe:null,mktcap:"0.8B",rev:"120%",earn:null},
-  {t:"SLNH",n:"Soluna Holdings",p:1.83,c:20.39,pe:null,mktcap:"0.1B",rev:"22%",earn:null},
-  {t:"MU",n:"Micron Technology",p:105.0,c:0,pe:12.8,mktcap:"116B",rev:"38%",earn:"มิ.ย. 2026"},
-  {t:"NVTS",n:"Navitas Semi",p:7.2,c:0,pe:null,mktcap:"0.8B",rev:"28%",earn:null},
-  {t:"ASTS",n:"AST SpaceMobile",p:28.5,c:0,pe:null,mktcap:"6.1B",rev:"350%",earn:"11 พ.ค. 2026"},
-  {t:"INTC",n:"Intel",p:21.0,c:0,pe:null,mktcap:"89B",rev:"-8%",earn:"ก.ค. 2026"},
-  {t:"AMD",n:"AMD",p:112.0,c:0,pe:null,mktcap:"182B",rev:"36%",earn:"มิ.ย. 2026"},
-  {t:"HIMS",n:"Hims & Hers",p:35.0,c:0,pe:null,mktcap:"6.3B",rev:"69%",earn:"ส.ค. 2026"},
-  {t:"IREN",n:"IREN Ltd",p:13.5,c:0,pe:null,mktcap:"1.3B",rev:"180%",earn:"ส.ค. 2026"},
-  {t:"ASML",n:"ASML Holding",p:725.0,c:0,pe:38.4,mktcap:"285B",rev:"22%",earn:"ก.ค. 2026"},
-  {t:"CRWD",n:"CrowdStrike",p:450.0,c:0,pe:null,mktcap:"107B",rev:"25%",earn:"มิ.ย. 2026"},
-  {t:"AVGO",n:"Broadcom",p:225.0,c:0,pe:31.2,mktcap:"1.0T",rev:"25%",earn:"ก.ย. 2026"},
-  {t:"IONQ",n:"IonQ",p:54.0,c:0,pe:null,mktcap:"10.2B",rev:"755%",earn:"7 พ.ค. 2026"},
-  {t:"AAPL",n:"Apple",p:198.0,c:0,pe:31.4,mktcap:"3.0T",rev:"5%",earn:"ก.ค. 2026"},
-  {t:"NVDA",n:"Nvidia",p:131.0,c:0,pe:38.2,mktcap:"3.2T",rev:"78%",earn:"28 พ.ค. 2026"},
-  {t:"KTOS",n:"Kratos Defense",p:33.0,c:0,pe:null,mktcap:"5.5B",rev:"18%",earn:"ส.ค. 2026"},
-  {t:"RBRK",n:"Rubrik",p:82.0,c:0,pe:null,mktcap:"16.8B",rev:"38%",earn:"มิ.ย. 2026"},
-  {t:"HOOD",n:"Robinhood",p:61.0,c:0,pe:null,mktcap:"53.3B",rev:"50%",earn:"ก.ค. 2026"},
-  {t:"OKLO",n:"Oklo",p:42.0,c:0,pe:null,mktcap:"8.9B",rev:"0%",earn:"12 พ.ค. 2026"},
-  {t:"TEM",n:"Tempus AI",p:55.0,c:0,pe:null,mktcap:"10.6B",rev:"75%",earn:null},
-  {t:"GOOGL",n:"Alphabet",p:175.0,c:0,pe:19.8,mktcap:"2.1T",rev:"12%",earn:null},
-  {t:"NVO",n:"Novo-Nordisk",p:71.0,c:0,pe:21.3,mktcap:"313B",rev:"22%",earn:"ส.ค. 2026"},
-  {t:"AMZN",n:"Amazon",p:220.0,c:0,pe:34.2,mktcap:"2.3T",rev:"9%",earn:"ก.ค. 2026"},
-  {t:"PLTR",n:"Palantir",p:125.0,c:0,pe:null,mktcap:"269B",rev:"85%",earn:null},
-  {t:"CRDO",n:"Credo Technology",p:78.0,c:0,pe:null,mktcap:"4.7B",rev:"65%",earn:null},
-  {t:"ANET",n:"Arista Networks",p:95.0,c:0,pe:44.8,mktcap:"119B",rev:"19%",earn:"ก.ค. 2026"},
-  {t:"VRT",n:"Vertiv Holdings",p:105.0,c:0,pe:null,mktcap:"40.5B",rev:"20%",earn:"ก.ค. 2026"},
-  {t:"ARM",n:"Arm Holdings",p:135.0,c:0,pe:58.4,mktcap:"141B",rev:"19%",earn:"ก.ค. 2026"},
-  {t:"TSM",n:"Taiwan Semi",p:178.0,c:0,pe:24.6,mktcap:"924B",rev:"38%",earn:"ก.ค. 2026"},
-  {t:"ISRG",n:"Intuitive Surgical",p:570.0,c:0,pe:68.4,mktcap:"204B",rev:"19%",earn:"ก.ค. 2026"},
-  {t:"NFLX",n:"Netflix",p:1120.0,c:0,pe:44.2,mktcap:"474B",rev:"13%",earn:"ก.ค. 2026"},
-  {t:"META",n:"Meta Platforms",p:600.0,c:0,pe:22.1,mktcap:"1.5T",rev:"33%",earn:null},
-  {t:"MSFT",n:"Microsoft",p:420.0,c:0,pe:32.1,mktcap:"3.1T",rev:"13%",earn:null},
-  {t:"JPM",n:"JPMorgan Chase",p:270.0,c:0,pe:13.2,mktcap:"785B",rev:"9%",earn:"ก.ค. 2026"},
-  {t:"XOM",n:"Exxon Mobil",p:115.0,c:0,pe:13.8,mktcap:"498B",rev:"-3%",earn:"ส.ค. 2026"},
-  {t:"SOFI",n:"SoFi Technologies",p:18.0,c:0,pe:null,mktcap:"20.0B",rev:"33%",earn:"ก.ค. 2026"},
-  {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026"},
-  {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:null},
-  {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026"},
-  {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026"},
-  {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026"},
-  {t:"AXON",n:"Axon Enterprise",p:500.0,c:0,pe:null,mktcap:"38.0B",rev:"34%",earn:"ส.ค. 2026"},
-  {t:"TMDX",n:"Transmedics",p:67.0,c:0,pe:null,mktcap:"2.4B",rev:"88%",earn:null},
-  {t:"CRWV",n:"CoreWeave",p:58.0,c:0,pe:null,mktcap:"22.0B",rev:"420%",earn:"ส.ค. 2026"},
-  {t:"MELI",n:"MercadoLibre",p:2250.0,c:0,pe:43.1,mktcap:"114B",rev:"49%",earn:"ส.ค. 2026"},
-  {t:"QCOM",n:"Qualcomm",p:155.0,c:0,pe:15.2,mktcap:"170B",rev:"13%",earn:"ก.ค. 2026"},
-  {t:"AMAT",n:"Applied Materials",p:175.0,c:0,pe:17.8,mktcap:"147B",rev:"7%",earn:"ส.ค. 2026"},
-  {t:"LRCX",n:"Lam Research",p:850.0,c:0,pe:19.4,mktcap:"112B",rev:"24%",earn:"ก.ค. 2026"},
-  {t:"CRM",n:"Salesforce",p:285.0,c:0,pe:32.1,mktcap:"274B",rev:"9%",earn:"มิ.ย. 2026"},
-  {t:"ADBE",n:"Adobe",p:370.0,c:0,pe:24.8,mktcap:"161B",rev:"11%",earn:"มิ.ย. 2026"},
-  {t:"SNOW",n:"Snowflake",p:155.0,c:0,pe:null,mktcap:"52B",rev:"29%",earn:"มิ.ย. 2026"},
-  {t:"DDOG",n:"Datadog",p:115.0,c:0,pe:null,mktcap:"37B",rev:"25%",earn:"ส.ค. 2026"},
-  {t:"MDB",n:"MongoDB",p:190.0,c:0,pe:null,mktcap:"13B",rev:"22%",earn:"มิ.ย. 2026"},
-  {t:"NET",n:"Cloudflare",p:110.0,c:0,pe:null,mktcap:"36B",rev:"27%",earn:"ส.ค. 2026"},
-  {t:"TSLA",n:"Tesla",p:295.0,c:0,pe:85.2,mktcap:"949B",rev:"2%",earn:"ก.ค. 2026"},
-  {t:"RIVN",n:"Rivian",p:13.5,c:0,pe:null,mktcap:"14B",rev:"45%",earn:"ส.ค. 2026"},
-  {t:"LCID",n:"Lucid Motors",p:2.8,c:0,pe:null,mktcap:"7B",rev:"52%",earn:"ส.ค. 2026"},
-  {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026"},
-  {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026"},
-  {t:"PYPL",n:"PayPal",p:68.0,c:0,pe:14.8,mktcap:"67B",rev:"6%",earn:"ก.ค. 2026"},
-  {t:"KO",n:"Coca-Cola",p:72.0,c:0,pe:24.1,mktcap:"309B",rev:"3%",earn:"ก.ค. 2026"},
-  {t:"PEP",n:"PepsiCo",p:135.0,c:0,pe:20.8,mktcap:"185B",rev:"2%",earn:"ก.ค. 2026"},
-  {t:"NKE",n:"Nike",p:62.0,c:0,pe:18.4,mktcap:"93B",rev:"-9%",earn:"ก.ค. 2026"},
-  {t:"MCD",n:"McDonald's",p:310.0,c:0,pe:22.1,mktcap:"223B",rev:"2%",earn:"ก.ค. 2026"},
-  {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026"},
-  {t:"JNJ",n:"Johnson & Johnson",p:158.0,c:0,pe:15.2,mktcap:"380B",rev:"4%",earn:"ก.ค. 2026"},
-  {t:"PG",n:"Procter & Gamble",p:170.0,c:0,pe:24.8,mktcap:"400B",rev:"3%",earn:"ก.ค. 2026"},
-  // ── ETF (ข้อมูลตลาด) ──
-  {t:"IWM",n:"Russell 2000 ETF",p:198.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null},
-  {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null},
-  {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null},
+  // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
+  // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
+  {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"12.4%",target:28.0},
+  {t:"EOSE",n:"Eos Energy",p:8.01,c:25.94,pe:null,mktcap:"0.8B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.2,short:"18.1%",target:12.0},
+  {t:"SLNH",n:"Soluna Holdings",p:1.83,c:20.39,pe:null,mktcap:"0.1B",rev:"22%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"9.2%",target:4.0},
+  {t:"MU",n:"Micron Technology",p:105.0,c:0,pe:12.8,mktcap:"116B",rev:"38%",earn:"มิ.ย. 2026",div:"0.5%",beta:1.6,short:"1.8%",target:140.0},
+  {t:"NVTS",n:"Navitas Semi",p:7.2,c:0,pe:null,mktcap:"0.8B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"8.4%",target:10.0},
+  {t:"ASTS",n:"AST SpaceMobile",p:28.5,c:0,pe:null,mktcap:"6.1B",rev:"350%",earn:"ส.ค. 2026",div:null,beta:3.1,short:"14.2%",target:45.0},
+  {t:"INTC",n:"Intel",p:21.0,c:0,pe:null,mktcap:"89B",rev:"-8%",earn:"ก.ค. 2026",div:"2.4%",beta:1.0,short:"3.6%",target:25.0},
+  {t:"AMD",n:"AMD",p:112.0,c:0,pe:null,mktcap:"182B",rev:"36%",earn:"มิ.ย. 2026",div:null,beta:1.7,short:"2.1%",target:160.0},
+  {t:"HIMS",n:"Hims & Hers",p:35.0,c:0,pe:null,mktcap:"6.3B",rev:"69%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"22.8%",target:42.0},
+  {t:"IREN",n:"IREN Ltd",p:13.5,c:0,pe:null,mktcap:"1.3B",rev:"180%",earn:"ส.ค. 2026",div:null,beta:3.5,short:"11.6%",target:20.0},
+  {t:"ASML",n:"ASML Holding",p:725.0,c:0,pe:38.4,mktcap:"285B",rev:"22%",earn:"ก.ค. 2026",div:"1.0%",beta:1.3,short:"0.6%",target:900.0},
+  {t:"CRWD",n:"CrowdStrike",p:450.0,c:0,pe:null,mktcap:"107B",rev:"25%",earn:"มิ.ย. 2026",div:null,beta:1.4,short:"1.2%",target:520.0},
+  {t:"AVGO",n:"Broadcom",p:225.0,c:0,pe:31.2,mktcap:"1.0T",rev:"25%",earn:"ก.ย. 2026",div:"1.3%",beta:1.2,short:"0.8%",target:260.0},
+  {t:"IONQ",n:"IonQ",p:54.0,c:0,pe:null,mktcap:"10.2B",rev:"755%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"16.3%",target:45.0},
+  {t:"AAPL",n:"Apple",p:198.0,c:0,pe:31.4,mktcap:"3.0T",rev:"5%",earn:"ก.ค. 2026",div:"0.5%",beta:1.2,short:"0.6%",target:240.0},
+  {t:"NVDA",n:"Nvidia",p:131.0,c:0,pe:38.2,mktcap:"3.2T",rev:"78%",earn:"28 พ.ค. 2026",div:"0.03%",beta:1.7,short:"1.0%",target:175.0},
+  {t:"KTOS",n:"Kratos Defense",p:33.0,c:0,pe:null,mktcap:"5.5B",rev:"18%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"5.8%",target:42.0},
+  {t:"RBRK",n:"Rubrik",p:82.0,c:0,pe:null,mktcap:"16.8B",rev:"38%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.4%",target:105.0},
+  {t:"HOOD",n:"Robinhood",p:61.0,c:0,pe:null,mktcap:"53.3B",rev:"50%",earn:"ก.ค. 2026",div:null,beta:2.2,short:"4.8%",target:75.0},
+  {t:"OKLO",n:"Oklo",p:42.0,c:0,pe:null,mktcap:"8.9B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"19.5%",target:35.0},
+  {t:"TEM",n:"Tempus AI",p:55.0,c:0,pe:null,mktcap:"10.6B",rev:"75%",earn:"ส.ค. 2026",div:null,beta:2.3,short:"8.7%",target:70.0},
+  {t:"GOOGL",n:"Alphabet",p:175.0,c:0,pe:19.8,mktcap:"2.1T",rev:"12%",earn:"ก.ค. 2026",div:"0.5%",beta:1.1,short:"0.5%",target:215.0},
+  {t:"NVO",n:"Novo-Nordisk",p:71.0,c:0,pe:21.3,mktcap:"313B",rev:"22%",earn:"ส.ค. 2026",div:"1.8%",beta:0.7,short:"1.2%",target:100.0},
+  {t:"AMZN",n:"Amazon",p:220.0,c:0,pe:34.2,mktcap:"2.3T",rev:"9%",earn:"ก.ค. 2026",div:null,beta:1.3,short:"0.6%",target:275.0},
+  {t:"PLTR",n:"Palantir",p:125.0,c:0,pe:null,mktcap:"269B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:2.5,short:"4.2%",target:95.0},
+  {t:"CRDO",n:"Credo Technology",p:78.0,c:0,pe:null,mktcap:"4.7B",rev:"65%",earn:"ส.ค. 2026",div:null,beta:2.0,short:"7.3%",target:95.0},
+  {t:"ANET",n:"Arista Networks",p:95.0,c:0,pe:44.8,mktcap:"119B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.4,short:"1.1%",target:120.0},
+  {t:"VRT",n:"Vertiv Holdings",p:105.0,c:0,pe:null,mktcap:"40.5B",rev:"20%",earn:"ก.ค. 2026",div:"0.1%",beta:1.8,short:"2.6%",target:135.0},
+  {t:"ARM",n:"Arm Holdings",p:135.0,c:0,pe:58.4,mktcap:"141B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"1.8%",target:170.0},
+  {t:"TSM",n:"Taiwan Semi",p:178.0,c:0,pe:24.6,mktcap:"924B",rev:"38%",earn:"ก.ค. 2026",div:"1.6%",beta:1.1,short:"0.4%",target:230.0},
+  {t:"ISRG",n:"Intuitive Surgical",p:570.0,c:0,pe:68.4,mktcap:"204B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.0,short:"0.7%",target:650.0},
+  {t:"NFLX",n:"Netflix",p:1120.0,c:0,pe:44.2,mktcap:"474B",rev:"13%",earn:"ก.ค. 2026",div:null,beta:1.3,short:"0.9%",target:1300.0},
+  {t:"META",n:"Meta Platforms",p:600.0,c:0,pe:22.1,mktcap:"1.5T",rev:"33%",earn:"ก.ค. 2026",div:"0.3%",beta:1.2,short:"0.5%",target:750.0},
+  {t:"MSFT",n:"Microsoft",p:420.0,c:0,pe:32.1,mktcap:"3.1T",rev:"13%",earn:"ก.ค. 2026",div:"0.8%",beta:0.9,short:"0.4%",target:520.0},
+  {t:"JPM",n:"JPMorgan Chase",p:270.0,c:0,pe:13.2,mktcap:"785B",rev:"9%",earn:"ก.ค. 2026",div:"2.0%",beta:1.1,short:"0.6%",target:310.0},
+  {t:"XOM",n:"Exxon Mobil",p:115.0,c:0,pe:13.8,mktcap:"498B",rev:"-3%",earn:"ส.ค. 2026",div:"3.5%",beta:0.9,short:"1.2%",target:130.0},
+  {t:"SOFI",n:"SoFi Technologies",p:18.0,c:0,pe:null,mktcap:"20.0B",rev:"33%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"9.4%",target:22.0},
+  {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.0,short:"0.5%",target:620.0},
+  {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.6,short:"12.8%",target:28.0},
+  {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026",div:null,beta:1.2,short:"0.7%",target:1150.0},
+  {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026",div:"0.7%",beta:0.5,short:"0.8%",target:1050.0},
+  {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"6.1%",target:60.0},
+  {t:"AXON",n:"Axon Enterprise",p:500.0,c:0,pe:null,mktcap:"38.0B",rev:"34%",earn:"ส.ค. 2026",div:null,beta:1.3,short:"2.8%",target:620.0},
+  {t:"TMDX",n:"Transmedics",p:67.0,c:0,pe:null,mktcap:"2.4B",rev:"88%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"14.2%",target:100.0},
+  {t:"CRWV",n:"CoreWeave",p:58.0,c:0,pe:null,mktcap:"22.0B",rev:"420%",earn:"ส.ค. 2026",div:null,beta:2.2,short:"5.6%",target:80.0},
+  {t:"MELI",n:"MercadoLibre",p:2250.0,c:0,pe:43.1,mktcap:"114B",rev:"49%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"1.0%",target:2800.0},
+  {t:"QCOM",n:"Qualcomm",p:155.0,c:0,pe:15.2,mktcap:"170B",rev:"13%",earn:"ก.ค. 2026",div:"2.2%",beta:1.3,short:"2.0%",target:195.0},
+  {t:"AMAT",n:"Applied Materials",p:175.0,c:0,pe:17.8,mktcap:"147B",rev:"7%",earn:"ส.ค. 2026",div:"1.0%",beta:1.5,short:"1.4%",target:220.0},
+  {t:"LRCX",n:"Lam Research",p:850.0,c:0,pe:19.4,mktcap:"112B",rev:"24%",earn:"ก.ค. 2026",div:"1.1%",beta:1.5,short:"1.2%",target:1050.0},
+  {t:"CRM",n:"Salesforce",p:285.0,c:0,pe:32.1,mktcap:"274B",rev:"9%",earn:"มิ.ย. 2026",div:"0.5%",beta:1.3,short:"1.0%",target:360.0},
+  {t:"ADBE",n:"Adobe",p:370.0,c:0,pe:24.8,mktcap:"161B",rev:"11%",earn:"มิ.ย. 2026",div:null,beta:1.3,short:"1.5%",target:480.0},
+  {t:"SNOW",n:"Snowflake",p:155.0,c:0,pe:null,mktcap:"52B",rev:"29%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.2%",target:195.0},
+  {t:"DDOG",n:"Datadog",p:115.0,c:0,pe:null,mktcap:"37B",rev:"25%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"2.4%",target:145.0},
+  {t:"MDB",n:"MongoDB",p:190.0,c:0,pe:null,mktcap:"13B",rev:"22%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.8%",target:250.0},
+  {t:"NET",n:"Cloudflare",p:110.0,c:0,pe:null,mktcap:"36B",rev:"27%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"2.6%",target:140.0},
+  {t:"TSLA",n:"Tesla",p:295.0,c:0,pe:85.2,mktcap:"949B",rev:"2%",earn:"ก.ค. 2026",div:null,beta:2.3,short:"3.2%",target:300.0},
+  {t:"RIVN",n:"Rivian",p:13.5,c:0,pe:null,mktcap:"14B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"10.4%",target:18.0},
+  {t:"LCID",n:"Lucid Motors",p:2.8,c:0,pe:null,mktcap:"7B",rev:"52%",earn:"ส.ค. 2026",div:null,beta:3.0,short:"13.6%",target:4.0},
+  {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
+  {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
+  {t:"PYPL",n:"PayPal",p:68.0,c:0,pe:14.8,mktcap:"67B",rev:"6%",earn:"ก.ค. 2026",div:null,beta:1.5,short:"2.8%",target:85.0},
+  {t:"KO",n:"Coca-Cola",p:72.0,c:0,pe:24.1,mktcap:"309B",rev:"3%",earn:"ก.ค. 2026",div:"3.1%",beta:0.6,short:"0.7%",target:80.0},
+  {t:"PEP",n:"PepsiCo",p:135.0,c:0,pe:20.8,mktcap:"185B",rev:"2%",earn:"ก.ค. 2026",div:"3.6%",beta:0.6,short:"0.8%",target:155.0},
+  {t:"NKE",n:"Nike",p:62.0,c:0,pe:18.4,mktcap:"93B",rev:"-9%",earn:"ก.ค. 2026",div:"2.1%",beta:1.0,short:"2.4%",target:78.0},
+  {t:"MCD",n:"McDonald's",p:310.0,c:0,pe:22.1,mktcap:"223B",rev:"2%",earn:"ก.ค. 2026",div:"2.4%",beta:0.7,short:"0.6%",target:350.0},
+  {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
+  {t:"JNJ",n:"Johnson & Johnson",p:158.0,c:0,pe:15.2,mktcap:"380B",rev:"4%",earn:"ก.ค. 2026",div:"3.2%",beta:0.5,short:"0.6%",target:180.0},
+  {t:"PG",n:"Procter & Gamble",p:170.0,c:0,pe:24.8,mktcap:"400B",rev:"3%",earn:"ก.ค. 2026",div:"2.4%",beta:0.5,short:"0.5%",target:195.0},
+  // ── ETF ──
+  {t:"IWM",n:"Russell 2000 ETF",p:198.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"1.5%",beta:1.2,short:null,target:null},
+  {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
+  {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
 ];
 
 const rsiData={IWM:50.0,SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
+
+// ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
+const fundExtra={
+  NVDA:{de:0.42,fcf:'$40B'},AAPL:{de:1.77,fcf:'$108B'},MSFT:{de:0.35,fcf:'$74B'},
+  GOOGL:{de:0.07,fcf:'$69B'},META:{de:0.06,fcf:'$52B'},AMZN:{de:0.51,fcf:'$38B'},
+  TSLA:{de:0.09,fcf:'$3.5B'},AVGO:{de:1.04,fcf:'$19B'},NFLX:{de:0.68,fcf:'$7.0B'},
+  AMD:{de:0.04,fcf:'$2.1B'},INTC:{de:0.48,fcf:'-$12B'},MU:{de:0.28,fcf:'$4.2B'},
+  ASML:{de:0.42,fcf:'$8.2B'},TSM:{de:0.31,fcf:'$22B'},ARM:{de:0.05,fcf:'$1.1B'},
+  CRWD:{de:0.26,fcf:'$1.2B'},PLTR:{de:0.00,fcf:'$0.9B'},NOW:{de:0.22,fcf:'$3.5B'},
+  CRM:{de:0.14,fcf:'$9.1B'},ADBE:{de:0.41,fcf:'$7.8B'},SNOW:{de:0.00,fcf:'$0.3B'},
+  DDOG:{de:0.00,fcf:'$0.7B'},NET:{de:0.37,fcf:'$0.3B'},MDB:{de:0.44,fcf:'$0.3B'},
+  LLY:{de:1.88,fcf:'$8.3B'},NVO:{de:0.49,fcf:'$9.4B'},ISRG:{de:0.00,fcf:'$2.1B'},
+  HIMS:{de:0.00,fcf:'$0.2B'},V:{de:0.98,fcf:'$20B'},MA:{de:2.31,fcf:'$12B'},
+  PYPL:{de:0.65,fcf:'$4.2B'},JPM:{de:null,fcf:null},XOM:{de:0.21,fcf:'$16B'},
+  SOFI:{de:null,fcf:null},QCOM:{de:0.56,fcf:'$3.1B'},AMAT:{de:0.40,fcf:'$5.8B'},
+  LRCX:{de:1.02,fcf:'$4.0B'},AXON:{de:0.21,fcf:'$0.8B'},VRT:{de:0.89,fcf:'$1.1B'},
+  ANET:{de:0.00,fcf:'$2.1B'},MELI:{de:1.34,fcf:'$2.8B'},RBRK:{de:0.12,fcf:'$0.5B'},
+  HOOD:{de:0.00,fcf:'$0.6B'},TSM:{de:0.31,fcf:'$22B'},RIVN:{de:0.72,fcf:'-$4.2B'},
+  LCID:{de:0.51,fcf:'-$1.8B'},KO:{de:1.69,fcf:'$9.2B'},PEP:{de:2.42,fcf:'$7.1B'},
+  NKE:{de:0.88,fcf:'$2.6B'},MCD:{de:null,fcf:'$9.1B'},WMT:{de:0.57,fcf:'$19B'},
+  JNJ:{de:0.44,fcf:'$17B'},PG:{de:0.66,fcf:'$15B'},SPGI:{de:0.74,fcf:'$4.7B'},
+  RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
+  IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
+  NBIS:{de:0.18,fcf:'-$0.2B'},KTOS:{de:0.32,fcf:'$0.1B'},MP:{de:0.45,fcf:'-$0.2B'},
+};
+
+// ── คำนวณ Fundamental Score (0-100) ──
+function calcFundScore(s){
+  let score=0;
+  const fe=fundExtra[s.t]||{};
+  // 1. กำไร/ขาดทุน
+  if(s.pe) score+=20; else score+=0;
+  // 2. Revenue Growth
+  const rev=parseFloat(s.rev||0);
+  if(rev>=50) score+=25;
+  else if(rev>=20) score+=18;
+  else if(rev>=10) score+=12;
+  else if(rev>=0) score+=6;
+  else score+=0; // negative growth
+  // 3. P/E valuation (ถ้ามีกำไร)
+  if(s.pe){
+    if(s.pe<20) score+=15;
+    else if(s.pe<35) score+=10;
+    else if(s.pe<55) score+=5;
+    else score+=2;
+  }
+  // 4. Analyst Target vs Price
+  if(s.target&&s.p>0){
+    const upside=(s.target-s.p)/s.p*100;
+    if(upside>=30) score+=15;
+    else if(upside>=15) score+=10;
+    else if(upside>=5) score+=5;
+    else if(upside<0) score-=5;
+  }
+  // 5. Short Float risk
+  if(s.short){
+    const sh=parseFloat(s.short);
+    if(sh<5) score+=10;
+    else if(sh<10) score+=5;
+    else if(sh>15) score-=5;
+  }
+  // 6. Dividend (bonus)
+  if(s.div&&parseFloat(s.div)>0) score+=5;
+  // 7. Free Cash Flow
+  if(fe.fcf){
+    const fcfStr=fe.fcf||'';
+    if(fcfStr.startsWith('-')) score-=5;
+    else score+=10;
+  }
+  // 8. D/E ratio
+  if(fe.de!=null){
+    if(fe.de<0.5) score+=5;
+    else if(fe.de>2.0) score-=5;
+  }
+  return Math.min(100,Math.max(0,Math.round(score)));
+}
+
+function getFundRating(score){
+  if(score>=80) return {label:'Strong Buy',color:'var(--green)',bg:'rgba(0,230,118,0.15)',border:'rgba(0,230,118,0.3)'};
+  if(score>=60) return {label:'Buy',color:'var(--green2)',bg:'rgba(105,240,174,0.12)',border:'rgba(105,240,174,0.25)'};
+  if(score>=40) return {label:'Hold',color:'var(--gold)',bg:'rgba(201,168,76,0.12)',border:'rgba(201,168,76,0.25)'};
+  return {label:'Avoid',color:'var(--red)',bg:'rgba(255,77,106,0.12)',border:'rgba(255,77,106,0.25)'};
+}
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
 const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:22.50,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:55.00,HOOD:52.00,OKLO:55.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:92.00,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,RIVN:10.50,LCID:2.20,V:308.0,MA:475.0,PYPL:58.00,KO:64.00,PEP:118.0,NKE:52.00,MCD:275.0,WMT:88.00,JNJ:148.0,PG:155.0};
@@ -999,9 +1161,107 @@ const sectorMap={'ETF':['IWM','SMH','VIX'],
   'พลังงาน':['XOM','EOSE','SLNH','MP'],
 };
 
-// ── State ──
-// FIX: โหลด key จากทุก storage — iOS PWA บางครั้ง localStorage ล้าช้า
-let FINNHUB_KEY = (()=>{
+// ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
+// format: {q: 'Q1\'24', eps: actual, epsEst: estimate, rev: actual $B, revEst: $B}
+const histEarnings={
+  NVDA:[
+    {q:"Q1'24",eps:0.61,epsEst:0.52,rev:26.0,revEst:24.6},{q:"Q2'24",eps:0.68,epsEst:0.64,rev:30.0,revEst:28.7},
+    {q:"Q3'24",eps:0.81,epsEst:0.74,rev:35.1,revEst:33.2},{q:"Q4'24",eps:0.89,epsEst:0.85,rev:39.3,revEst:38.0},
+    {q:"Q1'25",eps:0.94,epsEst:0.89,rev:44.1,revEst:43.3},{q:"Q2'25",eps:null,epsEst:1.02,rev:null,revEst:48.0}
+  ],
+  AAPL:[
+    {q:"Q1'24",eps:2.18,epsEst:2.10,rev:119.6,revEst:117.9},{q:"Q2'24",eps:1.53,epsEst:1.50,rev:85.8,revEst:84.7},
+    {q:"Q3'24",eps:1.64,epsEst:1.60,rev:94.9,revEst:94.3},{q:"Q4'24",eps:2.40,epsEst:2.35,rev:124.3,revEst:123.2},
+    {q:"Q1'25",eps:1.65,epsEst:1.61,rev:90.8,revEst:89.5},{q:"Q2'25",eps:null,epsEst:1.72,rev:null,revEst:93.0}
+  ],
+  MSFT:[
+    {q:"Q1'24",eps:2.93,epsEst:2.82,rev:61.9,revEst:60.9},{q:"Q2'24",eps:3.23,epsEst:3.10,rev:64.7,revEst:64.5},
+    {q:"Q3'24",eps:3.30,epsEst:3.22,rev:65.6,revEst:64.5},{q:"Q4'24",eps:3.46,epsEst:3.32,rev:70.1,revEst:68.9},
+    {q:"Q1'25",eps:3.46,epsEst:3.35,rev:70.1,revEst:68.7},{q:"Q2'25",eps:null,epsEst:3.65,rev:null,revEst:73.5}
+  ],
+  GOOGL:[
+    {q:"Q1'24",eps:1.89,epsEst:1.51,rev:80.5,revEst:78.6},{q:"Q2'24",eps:1.89,epsEst:1.84,rev:84.7,revEst:84.2},
+    {q:"Q3'24",eps:2.12,epsEst:1.84,rev:88.3,revEst:86.5},{q:"Q4'24",eps:2.15,epsEst:2.12,rev:86.3,revEst:85.3},
+    {q:"Q1'25",eps:2.81,epsEst:2.01,rev:90.2,revEst:89.2},{q:"Q2'25",eps:null,epsEst:2.25,rev:null,revEst:93.5}
+  ],
+  META:[
+    {q:"Q1'24",eps:4.71,epsEst:4.30,rev:36.5,revEst:36.2},{q:"Q2'24",eps:5.16,epsEst:4.73,rev:39.1,revEst:38.3},
+    {q:"Q3'24",eps:6.03,epsEst:5.25,rev:40.6,revEst:40.3},{q:"Q4'24",eps:8.02,epsEst:6.76,rev:48.4,revEst:47.1},
+    {q:"Q1'25",eps:6.43,epsEst:5.28,rev:42.3,revEst:41.4},{q:"Q2'25",eps:null,epsEst:6.80,rev:null,revEst:43.9}
+  ],
+  AMZN:[
+    {q:"Q1'24",eps:0.98,epsEst:0.83,rev:143.3,revEst:142.6},{q:"Q2'24",eps:1.26,epsEst:1.03,rev:148.0,revEst:148.6},
+    {q:"Q3'24",eps:1.43,epsEst:1.14,rev:158.9,revEst:157.3},{q:"Q4'24",eps:1.86,epsEst:1.49,rev:187.8,revEst:187.3},
+    {q:"Q1'25",eps:1.59,epsEst:1.36,rev:155.7,revEst:155.0},{q:"Q2'25",eps:null,epsEst:1.80,rev:null,revEst:162.5}
+  ],
+  TSLA:[
+    {q:"Q1'24",eps:0.45,epsEst:0.51,rev:21.3,revEst:22.1},{q:"Q2'24",eps:0.52,epsEst:0.62,rev:25.2,revEst:24.8},
+    {q:"Q3'24",eps:0.72,epsEst:0.60,rev:25.2,revEst:25.5},{q:"Q4'24",eps:0.73,epsEst:0.76,rev:25.7,revEst:27.2},
+    {q:"Q1'25",eps:0.27,epsEst:0.41,rev:19.3,revEst:21.3},{q:"Q2'25",eps:null,epsEst:0.44,rev:null,revEst:23.1}
+  ],
+  NVTS:[{q:"Q1'24",eps:-0.12,epsEst:-0.11,rev:20.3,revEst:19.5},{q:"Q2'24",eps:-0.11,epsEst:-0.10,rev:22.1,revEst:21.0},{q:"Q3'24",eps:-0.09,epsEst:-0.10,rev:24.2,revEst:23.0},{q:"Q4'24",eps:-0.11,epsEst:-0.09,rev:22.0,revEst:23.5},{q:"Q1'25",eps:null,epsEst:-0.09,rev:null,revEst:23.0}],
+  RKLB:[{q:"Q1'24",eps:-0.11,epsEst:-0.10,rev:92.8,revEst:90.0},{q:"Q2'24",eps:-0.09,epsEst:-0.09,rev:106.3,revEst:104.0},{q:"Q3'24",eps:-0.10,epsEst:-0.09,rev:104.8,revEst:105.0},{q:"Q4'24",eps:-0.09,epsEst:-0.09,rev:143.2,revEst:130.0},{q:"Q1'25",eps:null,epsEst:-0.08,rev:null,revEst:150.0}],
+  PLTR:[{q:"Q1'24",eps:0.08,epsEst:0.08,rev:634.3,revEst:624.7},{q:"Q2'24",eps:0.09,epsEst:0.09,rev:678.1,revEst:652.1},{q:"Q3'24",eps:0.10,epsEst:0.09,rev:725.5,revEst:701.0},{q:"Q4'24",eps:0.14,epsEst:0.11,rev:828.0,revEst:776.6},{q:"Q1'25",eps:0.13,epsEst:0.13,rev:884.4,revEst:862.7},{q:"Q2'25",eps:null,epsEst:0.14,rev:null,revEst:921.0}],
+  AMD:[{q:"Q1'24",eps:0.62,epsEst:0.61,rev:5.5,revEst:5.5},{q:"Q2'24",eps:0.69,epsEst:0.68,rev:5.8,revEst:5.7},{q:"Q3'24",eps:0.92,epsEst:0.92,rev:6.8,revEst:6.7},{q:"Q4'24",eps:1.09,epsEst:1.08,rev:7.7,revEst:7.5},{q:"Q1'25",eps:0.96,epsEst:0.94,rev:7.4,revEst:7.1},{q:"Q2'25",eps:null,epsEst:1.10,rev:null,revEst:8.0}],
+  CRWD:[{q:"Q1'24",eps:0.93,epsEst:0.90,rev:921.0,revEst:905.0},{q:"Q2'24",eps:1.04,epsEst:0.98,rev:963.9,revEst:955.9},{q:"Q3'24",eps:0.93,epsEst:0.81,rev:1.01e3,revEst:982.4},{q:"Q4'24",eps:1.29,epsEst:1.04,rev:1.1e3,revEst:1.07e3},{q:"Q1'25",eps:1.10,epsEst:1.02,rev:1.1e3,revEst:1.10e3},{q:"Q2'25",eps:null,epsEst:1.17,rev:null,revEst:1.20e3}],
+  NFLX:[{q:"Q1'24",eps:5.28,epsEst:4.49,rev:9.4,revEst:9.3},{q:"Q2'24",eps:4.88,epsEst:4.74,rev:9.6,revEst:9.5},{q:"Q3'24",eps:5.40,epsEst:5.12,rev:9.8,revEst:9.8},{q:"Q4'24",eps:4.27,epsEst:4.20,rev:10.2,revEst:10.1},{q:"Q1'25",eps:6.61,epsEst:5.72,rev:10.5,revEst:10.5},{q:"Q2'25",eps:null,epsEst:7.03,rev:null,revEst:11.0}],
+  LLY:[{q:"Q1'24",eps:2.58,epsEst:2.46,rev:8.8,revEst:8.9},{q:"Q2'24",eps:3.92,epsEst:2.60,rev:11.3,revEst:9.9},{q:"Q3'24",eps:1.18,epsEst:1.45,rev:11.4,revEst:12.1},{q:"Q4'24",eps:5.32,epsEst:4.88,rev:13.5,revEst:13.0},{q:"Q1'25",eps:3.34,epsEst:3.02,rev:12.7,revEst:12.6},{q:"Q2'25",eps:null,epsEst:4.50,rev:null,revEst:14.5}],
+  V:[{q:"Q1'24",eps:2.51,epsEst:2.44,rev:8.8,revEst:8.6},{q:"Q2'24",eps:2.42,epsEst:2.42,rev:8.9,revEst:8.9},{q:"Q3'24",eps:2.71,epsEst:2.68,rev:9.1,revEst:9.1},{q:"Q4'24",eps:2.65,epsEst:2.58,rev:9.5,revEst:9.4},{q:"Q1'25",eps:2.76,epsEst:2.68,rev:9.6,revEst:9.6},{q:"Q2'25",eps:null,epsEst:2.95,rev:null,revEst:10.0}],
+};
+
+// ── Insider Activity Data (ย้อนหลัง 6 เดือน) ──
+const insiderData={
+  NVDA:[{name:'Jensen Huang',role:'CEO',type:'sell',shares:240000,price:138.5,date:'ม.ค. 2025',val:'$33.2M'},{name:'Colette Kress',role:'CFO',type:'sell',shares:60000,price:142.0,date:'ก.พ. 2025',val:'$8.5M'}],
+  AAPL:[{name:'Tim Cook',role:'CEO',type:'sell',shares:200000,price:225.0,date:'พ.ย. 2024',val:'$45.0M'},{name:'Luca Maestri',role:'CFO',type:'sell',shares:100000,price:220.0,date:'ธ.ค. 2024',val:'$22.0M'}],
+  TSLA:[{name:'Elon Musk',role:'CEO',type:'sell',shares:10000000,price:280.0,date:'ม.ค. 2025',val:'$2.8B'},{name:'Vaibhav Taneja',role:'CFO',type:'sell',shares:50000,price:295.0,date:'มี.ค. 2025',val:'$14.8M'}],
+  PLTR:[{name:'Peter Thiel',role:'Director',type:'sell',shares:1500000,price:80.0,date:'ธ.ค. 2024',val:'$120M'},{name:'Alex Karp',role:'CEO',type:'sell',shares:500000,price:120.0,date:'มี.ค. 2025',val:'$60M'}],
+  RKLB:[{name:'Peter Beck',role:'CEO',type:'buy',shares:200000,price:18.0,date:'ก.ย. 2024',val:'$3.6M'},{name:'Adam Spice',role:'CFO',type:'buy',shares:50000,price:22.0,date:'พ.ย. 2024',val:'$1.1M'}],
+  ASTS:[{name:'Abel Avellan',role:'CEO',type:'buy',shares:500000,price:22.0,date:'ส.ค. 2024',val:'$11.0M'},{name:'Scott Wisniewski',role:'CPO',type:'buy',shares:100000,price:25.0,date:'ต.ค. 2024',val:'$2.5M'}],
+  HIMS:[{name:'Andrew Dudum',role:'CEO',type:'sell',shares:800000,price:38.0,date:'ก.พ. 2025',val:'$30.4M'},{name:'Yemi Okupe',role:'CFO',type:'buy',shares:50000,price:32.0,date:'ม.ค. 2025',val:'$1.6M'}],
+  OKLO:[{name:'Jacob DeWitte',role:'CEO',type:'buy',shares:100000,price:35.0,date:'ก.พ. 2025',val:'$3.5M'},{name:'Caroline Cochran',role:'COO',type:'buy',shares:80000,price:40.0,date:'เม.ย. 2025',val:'$3.2M'}],
+  META:[{name:'Mark Zuckerberg',role:'CEO',type:'sell',shares:180000,price:550.0,date:'ม.ค. 2025',val:'$99M'},{name:'Sheryl Sandberg',role:'Board',type:'sell',shares:40000,price:580.0,date:'มี.ค. 2025',val:'$23.2M'}],
+  MSFT:[{name:'Satya Nadella',role:'CEO',type:'sell',shares:100000,price:430.0,date:'พ.ย. 2024',val:'$43.0M'},{name:'Amy Hood',role:'CFO',type:'sell',shares:40000,price:440.0,date:'ก.พ. 2025',val:'$17.6M'}],
+  AMZN:[{name:'Andy Jassy',role:'CEO',type:'sell',shares:300000,price:200.0,date:'ก.พ. 2025',val:'$60M'},{name:'Brian Olsavsky',role:'CFO',type:'sell',shares:60000,price:210.0,date:'มี.ค. 2025',val:'$12.6M'}],
+  CRWD:[{name:'George Kurtz',role:'CEO',type:'sell',shares:50000,price:340.0,date:'ม.ค. 2025',val:'$17M'},{name:'Burt Podbere',role:'CFO',type:'sell',shares:20000,price:350.0,date:'มี.ค. 2025',val:'$7M'}],
+  IONQ:[{name:'Peter Chapman',role:'CEO',type:'buy',shares:100000,price:38.0,date:'ต.ค. 2024',val:'$3.8M'},{name:'Thomas Kramer',role:'CFO',type:'buy',shares:30000,price:42.0,date:'ม.ค. 2025',val:'$1.3M'}],
+  HOOD:[{name:'Vlad Tenev',role:'CEO',type:'sell',shares:1000000,price:50.0,date:'ก.พ. 2025',val:'$50M'},{name:'Jason Warnick',role:'CFO',type:'buy',shares:100000,price:55.0,date:'มี.ค. 2025',val:'$5.5M'}],
+  AMD:[{name:'Lisa Su',role:'CEO',type:'sell',shares:150000,price:140.0,date:'ก.พ. 2025',val:'$21M'},{name:'Jean Hu',role:'CFO',type:'sell',shares:30000,price:135.0,date:'ม.ค. 2025',val:'$4.1M'}],
+  INTC:[{name:'Pat Gelsinger',role:'CEO',type:'buy',shares:200000,price:22.0,date:'ต.ค. 2024',val:'$4.4M'},{name:'David Zinsner',role:'CFO',type:'buy',shares:50000,price:20.0,date:'พ.ย. 2024',val:'$1.0M'}],
+  IREN:[{name:'Daniel Roberts',role:'CEO',type:'buy',shares:500000,price:10.0,date:'ม.ค. 2025',val:'$5.0M'},{name:'Lloyd Wall',role:'CFO',type:'buy',shares:200000,price:12.0,date:'มี.ค. 2025',val:'$2.4M'}],
+  LLY:[{name:'David Ricks',role:'CEO',type:'sell',shares:20000,price:850.0,date:'ก.พ. 2025',val:'$17M'},{name:'Anat Ashkenazi',role:'CFO',type:'sell',shares:5000,price:820.0,date:'มี.ค. 2025',val:'$4.1M'}],
+  NFLX:[{name:'Reed Hastings',role:'Chairman',type:'sell',shares:50000,price:900.0,date:'ม.ค. 2025',val:'$45M'},{name:'Greg Peters',role:'Co-CEO',type:'sell',shares:20000,price:950.0,date:'มี.ค. 2025',val:'$19M'}],
+};
+
+// ── Peer Comparison (กลุ่มหุ้นเดียวกัน) ──
+const peerGroups={
+  // [ticker]: [peer1, peer2, peer3, ...]
+  NVDA:['AMD','INTC','AVGO'],AMD:['NVDA','INTC','QCOM'],INTC:['NVDA','AMD','QCOM'],
+  AVGO:['NVDA','QCOM','AMAT'],QCOM:['AMD','AVGO','INTC'],AMAT:['LRCX','ASML','QCOM'],
+  LRCX:['AMAT','ASML','MU'],ASML:['AMAT','LRCX','TSM'],TSM:['INTC','AVGO','ASML'],
+  MU:['AMD','NVDA','INTC'],ARM:['NVDA','AMD','QCOM'],CRDO:['AVGO','ANET','NVDA'],
+  AAPL:['MSFT','GOOGL','META'],MSFT:['AAPL','GOOGL','AMZN'],GOOGL:['META','MSFT','AMZN'],
+  META:['GOOGL','MSFT','AAPL'],AMZN:['MSFT','GOOGL','NFLX'],PLTR:['CRM','SNOW','DDOG'],
+  NOW:['CRM','ADBE','PLTR'],CRM:['NOW','ADBE','SNOW'],ADBE:['CRM','NOW','MSFT'],
+  SNOW:['DDOG','MDB','NET'],DDOG:['SNOW','NET','MDB'],MDB:['SNOW','DDOG','NET'],
+  NET:['CRWD','DDOG','SNOW'],CRWD:['NET','RBRK','AXON'],RBRK:['CRWD','NET','PLTR'],
+  NFLX:['META','GOOGL','AMZN'],AXON:['CRWD','KTOS','PLTR'],
+  ANET:['CRWD','VRT','NBIS'],VRT:['ANET','NVDA','CRWV'],
+  RKLB:['ASTS','KTOS','IONQ'],ASTS:['RKLB','IONQ','OKLO'],KTOS:['RKLB','AXON','PLTR'],
+  IONQ:['OKLO','RKLB','ASTS'],OKLO:['IONQ','ASTS','RKLB'],TEM:['HIMS','LLY','NVO'],
+  LLY:['NVO','ISRG','TMDX'],NVO:['LLY','HIMS','ISRG'],ISRG:['LLY','TMDX','NVO'],
+  HIMS:['NVO','LLY','TEM'],TMDX:['ISRG','LLY','NVO'],
+  JPM:['V','MA','PYPL'],HOOD:['SOFI','PYPL','JPM'],SOFI:['HOOD','PYPL','V'],
+  V:['MA','PYPL','JPM'],MA:['V','PYPL','JPM'],PYPL:['V','MA','HOOD'],
+  TSLA:['RIVN','LCID','NIO'],RIVN:['TSLA','LCID','NIO'],LCID:['RIVN','TSLA','NIO'],
+  KO:['PEP','MCD','WMT'],PEP:['KO','MCD','PG'],NKE:['PEP','KO','WMT'],
+  MCD:['KO','PEP','WMT'],WMT:['KO','MCD','PG'],JNJ:['PG','KO','LLY'],PG:['KO','JNJ','PEP'],
+  XOM:['SLNH','MP','EOSE'],EOSE:['XOM','MP','SLNH'],MP:['XOM','EOSE','SLNH'],
+  MELI:['AMZN','PYPL','V'],SPGI:['MSFT','V','JPM'],
+  CRWV:['ANET','VRT','NBIS'],NBIS:['CRWV','ANET','VRT'],
+  IREN:['EOSE','SLNH','XOM'],NVTS:['AMD','AVGO','QCOM'],SLNH:['XOM','EOSE','MP'],
+};
+
+var FINNHUB_KEY = (function(){
   try{
     return localStorage.getItem('_fh_key')
       || sessionStorage.getItem('_fh_key')
@@ -1015,6 +1275,7 @@ let pollTimer=null, signalTimer=null;
 let candleCache={}, liveCache={};
 let currentSector='all', currentSort='chg', searchQuery='';
 let currentDrawerTicker=null;
+let currentDrawerTab='tech';
 let watchlist=new Set(JSON.parse(localStorage.getItem('_sp_watchlist')||'[]'));
 let showWatchlistOnly=false;
 let priceAlerts=JSON.parse(localStorage.getItem('_sp_alerts')||'[]'); // [{ticker,price,dir,triggered}]
@@ -1074,9 +1335,11 @@ function savePriceAlerts(){
 
 function buildTickerSelect(){
   const sel=document.getElementById('paTickerSel');
-  if(!sel||sel.options.length>1) return;
+  if(!sel) return;
+  const prevVal=sel.value;
   sel.innerHTML='<option value="">เลือกหุ้น</option>'+
     stocks.map(s=>`<option value="${s.t}">${s.t} — ${s.n}</option>`).join('');
+  if(prevVal) sel.value=prevVal;
 }
 
 function addPriceAlert(){
@@ -1304,7 +1567,7 @@ function updateDashWatchlist(){
       </div>
       <div>
         <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c.toFixed(2)}%</div>
+        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${(+s.c).toFixed(2)}%</div>
       </div>
     </div>
   `).join('');
@@ -1474,6 +1737,10 @@ function makeCard(s){
   const div=document.createElement('div');
   div.className=`stock-card ${isUp?'up-card':'dn-card'}`;
   div.onclick=()=>openDrawer(s.t);
+  const fscore=calcFundScore(s);
+  const frating=getFundRating(fscore);
+  const shortVal=s.short?parseFloat(s.short):0;
+  const shortSqueezeTag=shortVal>15?`<div class="card-badge" style="background:rgba(255,77,106,0.18);color:var(--red);border-color:rgba(255,77,106,0.35)">🩳 Squeeze Risk</div>`:'';
   div.innerHTML=`
     <div class="card-header">
       <div class="card-left">
@@ -1484,15 +1751,17 @@ function makeCard(s){
           <div class="card-badges">
             ${s.earn?`<div class="card-badge earn">📅 ${s.earn}</div>`:''}
             <div class="card-badge">RSI ${rsi}</div>
+            ${shortSqueezeTag}
           </div>
         </div>
       </div>
       <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="background:${frating.bg};border:1px solid ${frating.border};border-radius:8px;padding:2px 7px;font-size:10px;font-weight:700;color:${frating.color};font-family:'Syne',sans-serif;letter-spacing:0.5px">${frating.label}</div>
           <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
         </div>
         <div class="card-price" id="price-v2-${s.t}">${fmt(s.p)}</div>
-        <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${isUp?'+':''}${s.c}%</div>
+        <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${isUp?'+':''}${(+s.c).toFixed(2)}%</div>
       </div>
     </div>
     <div class="card-chart"><canvas class="spark" id="spark-${s.t}"></canvas></div>
@@ -1664,7 +1933,6 @@ NBIS:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="3
 TMDX:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#005ea2"/><path d="M18 10 A8 8 0 1 1 17.9 10" fill="none" stroke="#fff" stroke-width="2"/><path d="M15 18 h6 M18 15 v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`,
 CRWV:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#6200ea"/><text x="18" y="16" font-size="7" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">CORE</text><text x="18" y="26" font-size="7" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">WEAVE</text></svg>`,
 MELI:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#ffe600"/><text x="18" y="16" font-size="6.5" font-family="Arial" font-weight="900" fill="#323232" text-anchor="middle">MERCADO</text><text x="18" y="26" font-size="6.5" font-family="Arial" font-weight="900" fill="#323232" text-anchor="middle">LIBRE</text></svg>`,
-QCOM:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#3253dc"/><text x="18" y="22" font-size="8" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">QUALCOMM</text></svg>`,
 RIVN:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#00e5b4"/><text x="18" y="22" font-size="9" font-family="Arial" font-weight="900" fill="#000" text-anchor="middle">RIVIAN</text></svg>`,
 LCID:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#c8a951"/><text x="18" y="22" font-size="10" font-family="Arial" font-weight="900" fill="#000" text-anchor="middle">LUCID</text></svg>`,
 KTOS:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#1b3a6b"/><text x="18" y="22" font-size="10" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">KTOS</text></svg>`,
@@ -1757,6 +2025,14 @@ function getVisibleStocks(){
       const pb=(b.p-getS1(b.t,b.p))/getS1(b.t,b.p)*100;
       return pa-pb;
     });
+  }
+  else if(currentSort==='div'){
+    // กรองเฉพาะหุ้นที่มีปันผล แล้วเรียงจากมากไปน้อย
+    list=list.filter(s=>s.div&&parseFloat(s.div)>0);
+    list.sort((a,b)=>parseFloat(b.div||0)-parseFloat(a.div||0));
+  }
+  else if(currentSort==='fundscore'){
+    list.sort((a,b)=>calcFundScore(b)-calcFundScore(a));
   }
   return list;
 }
@@ -1923,7 +2199,7 @@ function updateDashboard(){
       </div>
       <div>
         <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c}%</div>
+        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${(+s.c).toFixed(2)}%</div>
       </div>
     </div>
   `).join('');
@@ -1945,7 +2221,7 @@ function updateDashboard(){
       </div>
       <div>
         <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${parseFloat(pct)<=1.5?'up':'dn'}">+${pct}%</div>
+        <div class="mover-chg ${parseFloat(pct)<=1.5?'up':'dn'}">${parseFloat(pct)>=0?'+':''}${pct}%</div>
       </div>
     </div>`;
   }).join('');
@@ -1965,7 +2241,7 @@ function openDrawer(ticker){
   document.getElementById('drawerName').textContent=s.n;
   document.getElementById('drawerPrice').textContent=fmt(s.p);
   const chg=document.getElementById('drawerChg');
-  chg.textContent=(s.c>=0?'+':'')+s.c+'%';
+  chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
   chg.className='card-chg '+(s.c>=0?'up':'dn');
   // อัพเดท watchlist star ใน drawer
   const dWlBtn=document.getElementById('drawerWlBtn');
@@ -1977,29 +2253,25 @@ function openDrawer(ticker){
   const dLogo=document.getElementById('drawerLogo');
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
   loadLogo(ticker,'drawerLogo',40);
-  drawerTab('tech',document.querySelector('.drawer-tab'));
+  // render tech tab ครั้งเดียวตอนเปิด
+  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
   document.getElementById('drawer').classList.add('open');
-  // ── โหลด candle: ถ้ามี cache แสดงทันที แล้ว refresh ใน background ──
+  // snapshot ticker ณ เวลานี้ เพื่อกัน race condition
+  var _snapTicker = ticker;
+  function _reRenderTechIfActive(){
+    if(currentDrawerTicker === _snapTicker && currentDrawerTab === 'tech'){
+      updateRSIFromCandles(_snapTicker);
+      drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+    }
+  }
   if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
-    // มี cache แล้ว — render ทันที
-    drawerTab('tech',document.querySelector('.drawer-tab'));
-    // refresh ใน background ถ้า cache เก่าเกิน 30 นาที
-    if(Date.now()-candleCache[ticker].ts > 1800000){
-      fetchCandles(ticker,60).then(()=>{
-        if(currentDrawerTicker===ticker){
-          updateRSIFromCandles(ticker);
-          drawerTab('tech',document.querySelector('.drawer-tab'));
-        }
-      }).catch(()=>{});
+    // มี cache — refresh ใน background ถ้าเก่าเกิน 30 นาที
+    if(Date.now() - candleCache[ticker].ts > 1800000){
+      fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
     }
   } else {
-    // ไม่มี cache — โหลดใหม่ทันที
-    fetchCandles(ticker,60).then(()=>{
-      if(currentDrawerTicker===ticker){
-        updateRSIFromCandles(ticker);
-        drawerTab('tech',document.querySelector('.drawer-tab'));
-      }
-    }).catch(()=>{});
+    // ไม่มี cache — โหลดแล้ว re-render เฉพาะถ้ายังอยู่ tech tab
+    fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
   }
 }
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');}
@@ -2018,9 +2290,209 @@ document.getElementById('drawer').addEventListener('touchend',e=>{
   if(dy>100 && !fromBody) closeDrawer();
 },{passive:true});
 
+// ── renderEarningsChart — Canvas bar chart ──
+function renderEarningsChart(ticker, containerId){
+  const data=histEarnings[ticker];
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  if(!data||!data.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px 0">ไม่มีข้อมูล Earnings ย้อนหลัง</div>';
+    return;
+  }
+  // Tab toggle: EPS vs Revenue
+  el.innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="_earnTab('${ticker}','eps','${containerId}',this)" id="earnTabEps_${ticker}" style="background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif">EPS</button>
+      <button onclick="_earnTab('${ticker}','rev','${containerId}',this)" id="earnTabRev_${ticker}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif">Revenue</button>
+    </div>
+    <canvas id="earnCanvas_${ticker}" style="width:100%;height:140px;display:block"></canvas>
+    <div id="earnLegend_${ticker}" style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--text3)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(100,210,255,0.7);margin-right:3px"></span>Estimate</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);margin-right:3px"></span>Beat</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);margin-right:3px"></span>Miss/Upcoming</span>
+    </div>`;
+  _drawEarnChart(ticker, 'eps', containerId);
+}
+
+function _earnTab(ticker, mode, containerId, btn){
+  ['eps','rev'].forEach(m=>{
+    const b=document.getElementById('earnTab'+m.charAt(0).toUpperCase()+m.slice(1)+'_'+ticker);
+    if(b){b.style.background='var(--bg3)';b.style.borderColor='var(--border)';b.style.color='var(--text3)';}
+  });
+  if(btn){btn.style.background='rgba(201,168,76,0.18)';btn.style.borderColor='rgba(201,168,76,0.4)';btn.style.color='var(--gold)';}
+  _drawEarnChart(ticker, mode, containerId);
+}
+
+function _drawEarnChart(ticker, mode, containerId){
+  const canvas=document.getElementById('earnCanvas_'+ticker);
+  if(!canvas) return;
+  const data=histEarnings[ticker];
+  if(!data) return;
+  const isEps=mode==='eps';
+  const W=canvas.offsetWidth||canvas.parentElement?.offsetWidth||320;
+  const H=140;
+  canvas.width=W*2; canvas.height=H*2;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(2,2);
+  ctx.clearRect(0,0,W,H);
+
+  const PAD_L=36, PAD_R=8, PAD_T=12, PAD_B=30;
+  const cW=W-PAD_L-PAD_R, cH=H-PAD_T-PAD_B;
+  const n=data.length;
+  const barW=Math.floor(cW/n)-4;
+
+  // ดึงค่า
+  const actuals=data.map(d=>isEps?d.eps:d.rev);
+  const ests=data.map(d=>isEps?d.epsEst:d.revEst);
+  const allVals=[...actuals.filter(v=>v!=null),...ests.filter(v=>v!=null)];
+  const vMin=Math.min(0,...allVals), vMax=Math.max(...allVals);
+  const vRange=vMax-vMin||1;
+  const toY=v=>PAD_T+cH-((v-vMin)/vRange)*cH;
+  const zeroY=toY(0);
+
+  // Grid & Y axis
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){
+    const y=PAD_T+i*(cH/4);
+    ctx.beginPath(); ctx.moveTo(PAD_L,y); ctx.lineTo(W-PAD_R,y); ctx.stroke();
+    const val=vMax-(i/4)*vRange;
+    ctx.fillStyle='rgba(139,153,181,0.7)'; ctx.font='9px Inter,sans-serif'; ctx.textAlign='right';
+    ctx.fillText(isEps?val.toFixed(2):(val>=1000?(val/1000).toFixed(1)+'T':val.toFixed(0)+'B'), PAD_L-3, y+3);
+  }
+  // Zero line
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD_L,zeroY); ctx.lineTo(W-PAD_R,zeroY); ctx.stroke();
+
+  // Bars
+  data.forEach((d,i)=>{
+    const x=PAD_L+i*(cW/n)+(cW/n-barW*2-4)/2;
+    const estVal=isEps?d.epsEst:d.revEst;
+    const actVal=isEps?d.eps:d.rev;
+
+    // Estimate bar (light)
+    if(estVal!=null){
+      const estH=Math.abs(toY(estVal)-zeroY);
+      const estY=estVal>=0?toY(estVal):zeroY;
+      ctx.fillStyle='rgba(100,210,255,0.4)';
+      ctx.fillRect(x, estY, barW, estH||1);
+    }
+
+    // Actual bar
+    if(actVal!=null){
+      const actH=Math.abs(toY(actVal)-zeroY);
+      const actY=actVal>=0?toY(actVal):zeroY;
+      const beat=estVal!=null&&actVal>=estVal;
+      ctx.fillStyle=beat?'rgba(0,230,118,0.85)':'rgba(255,77,106,0.85)';
+      ctx.fillRect(x+barW+2, actY, barW, actH||1);
+      // Value label on top
+      ctx.fillStyle=beat?'var(--green)':'var(--red)';
+      ctx.font='bold 8px Inter,sans-serif'; ctx.textAlign='center';
+      const label=isEps?actVal.toFixed(2):(actVal>=1?(actVal).toFixed(1):''+actVal);
+      ctx.fillText(label, x+barW*1.5+2, actVal>=0?actY-2:actY+actH+8);
+    } else {
+      // Upcoming — estimate only highlighted
+      const estH=Math.abs(toY(estVal||0)-zeroY);
+      const estY=(estVal||0)>=0?toY(estVal||0):zeroY;
+      ctx.fillStyle='rgba(255,77,106,0.5)';
+      ctx.fillRect(x+barW+2, estY, barW, estH||1);
+      ctx.fillStyle='var(--red)'; ctx.font='bold 8px Inter,sans-serif'; ctx.textAlign='center';
+      ctx.fillText('?', x+barW*1.5+2, estY-2);
+    }
+
+    // X label
+    ctx.fillStyle='rgba(139,153,181,0.8)'; ctx.font='9px Syne,sans-serif'; ctx.textAlign='center';
+    ctx.fillText(d.q, x+barW+2, H-PAD_B+12);
+  });
+}
+
+// ── renderInsider ──
+function renderInsider(ticker, containerId){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  const data=insiderData[ticker];
+  if(!data||!data.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">ไม่มีข้อมูล Insider</div>';
+    return;
+  }
+  const buys=data.filter(d=>d.type==='buy').length;
+  const sells=data.filter(d=>d.type==='sell').length;
+  const sentiment=buys>sells?'🟢 ผู้บริหารซื้อสุทธิ':buys<sells?'🔴 ผู้บริหารขายสุทธิ':'🟡 Mixed';
+  el.innerHTML=`
+    <div style="background:${buys>sells?'rgba(0,230,118,0.08)':buys<sells?'rgba(255,77,106,0.08)':'rgba(201,168,76,0.08)'};border:1px solid ${buys>sells?'rgba(0,230,118,0.25)':buys<sells?'rgba(255,77,106,0.25)':'rgba(201,168,76,0.25)'};border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;font-weight:600;color:var(--text)">${sentiment}</span>
+      <span style="font-size:10px;color:var(--text3)">🟢 ${buys} ซื้อ / 🔴 ${sells} ขาย</span>
+    </div>` +
+    data.map(d=>{
+      const isBuy=d.type==='buy';
+      return `<div style="background:var(--bg3);border:1px solid ${isBuy?'rgba(0,230,118,0.2)':'rgba(255,77,106,0.15)'};border-radius:10px;padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${d.name}</div>
+          <div style="font-size:11px;font-weight:700;color:${isBuy?'var(--green)':'var(--red)'};background:${isBuy?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'};padding:2px 8px;border-radius:6px">${isBuy?'↑ BUY':'↓ SELL'}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:10px;color:var(--text3)">${d.role} · ${d.date}</span>
+          <span style="font-size:10px;font-weight:600;color:${isBuy?'var(--green)':'var(--red)'};">${d.val} (${d.shares.toLocaleString()} หุ้น)</span>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+// ── renderPeerComparison ──
+function renderPeerComparison(ticker, containerId){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  const peers=peerGroups[ticker]||[];
+  const tickers=[ticker,...peers.slice(0,3)];
+  const peerStocks=tickers.map(t=>stocks.find(s=>s.t===t)).filter(Boolean);
+  if(peerStocks.length<2){
+    el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">ไม่พบ Peer</div>';
+    return;
+  }
+  // Header
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-family:'Syne',sans-serif;padding:0 0 6px;border-bottom:1px solid var(--border)">
+    <span>หุ้น</span><span style="text-align:right">P/E</span><span style="text-align:right">Rev G</span><span style="text-align:right">MCap</span>
+  </div>`;
+  peerStocks.forEach(s=>{
+    const isCurrent=s.t===ticker;
+    const peStr=s.pe?s.pe.toString():'N/A';
+    const revStr=s.rev||'N/A';
+    const mcStr=s.mktcap||'N/A';
+    const peColor=s.pe?(s.pe<25?'var(--green)':s.pe<50?'var(--gold)':'var(--red)'):'var(--text3)';
+    const revNum=parseFloat(s.rev||0);
+    const revColor=revNum>=20?'var(--green)':revNum>=0?'var(--gold)':'var(--red)';
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:8px 0;border-bottom:1px solid var(--border);${isCurrent?'background:rgba(201,168,76,0.05);border-radius:6px;':''}">
+      <span style="font-size:12px;font-weight:${isCurrent?'800':'600'};color:${isCurrent?'var(--gold)':'var(--text)'}; font-family:'Syne',sans-serif">${s.t}${isCurrent?' ◈':''}</span>
+      <span style="text-align:right;font-size:11px;font-weight:600;color:${peColor}">${peStr}</span>
+      <span style="text-align:right;font-size:11px;font-weight:600;color:${revColor}">${revStr}</span>
+      <span style="text-align:right;font-size:11px;color:var(--text2)">${mcStr}</span>
+    </div>`;
+  });
+
+  // Bar chart: Revenue Growth comparison
+  const maxRev=Math.max(...peerStocks.map(s=>Math.abs(parseFloat(s.rev||0))));
+  html+=`<div style="margin-top:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-family:'Syne',sans-serif;margin-bottom:8px">Revenue Growth เปรียบเทียบ</div>`;
+  peerStocks.forEach(s=>{
+    const rev=parseFloat(s.rev||0);
+    const pct=maxRev>0?Math.abs(rev)/maxRev*100:0;
+    const color=rev>=20?'var(--green)':rev>=0?'var(--gold)':'var(--red)';
+    const isCurrent=s.t===ticker;
+    html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10px;font-weight:${isCurrent?'800':'600'};color:${isCurrent?'var(--gold)':'var(--text2)'};width:44px;font-family:'Syne',sans-serif">${s.t}</span>
+      <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.5s ease"></div>
+      </div>
+      <span style="font-size:11px;font-weight:600;color:${color};width:38px;text-align:right">${s.rev||'N/A'}</span>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+
 function drawerTab(tab, btn){
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
+  currentDrawerTab = tab;
   const s=stocks.find(x=>x.t===currentDrawerTicker);
   if(!s)return;
   const body=document.getElementById('drawerBody');
@@ -2139,14 +2611,16 @@ function drawerTab(tab, btn){
         }).catch(()=>{});
       }
     };
-    // รอ DOM render ก่อน
-    requestAnimationFrame(()=>setTimeout(_drawBigChart,50));
+    // รอ DOM render ก่อน — เช็คว่ายังอยู่ tech tab ก่อนวาด
+    requestAnimationFrame(()=>setTimeout(()=>{
+      if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _drawBigChart();
+    },50));
     }; // end _renderTech
     _renderTech();
-    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator
+    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
     if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
       if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
-        if(currentDrawerTicker===s.t) _renderTech();
+        if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _renderTech();
       }).catch(()=>{});
     }
   } else if(tab==='ai'){
@@ -2163,91 +2637,123 @@ function drawerTab(tab, btn){
   } else if(tab==='news'){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
     renderNewsTab(s.t).catch(()=>{body.innerHTML='<div style="color:var(--text3)">ไม่พบข่าว</div>';});
-  } else {
-    const sector=Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
-    const s1=getS1(s.t,s.p);
-    const r1=getR1(s.t,s.p);
-    const distS1=s1>0?((s.p-s1)/s1*100).toFixed(2):'-';
-    const rsiNow=rsiData[s.t]||'-';
-    body.innerHTML=`
-      <div class="ind-table">
-        <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">
-          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>
-          <div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>
-        </div>
-        ${(()=>{
-          // หา earnings data ของหุ้นนี้
-          const eData = earningsData.find(e=>e.t===s.t);
-          const epsVal = eData?.eps || 'N/A';
-          const revVal = eData?.rev || 'N/A';
-          // คำนวณ 52W High/Low จาก candle หรือประมาณ
-          const candles = candleCache[s.t]?.data;
-          let high52='N/A', low52='N/A';
-          if(candles?.h?.length){
-            high52 = '$'+Math.max(...candles.h).toFixed(2);
-            low52  = '$'+Math.min(...candles.l).toFixed(2);
-          }
-          // Buy Score
-          const sig2 = (candles && !candles._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
-          const buyScore = sig2?.score!=null ? Math.round(sig2.score)+'/100' : 'N/A';
-          const buyScoreCls = sig2?.score>=60?'bull':sig2?.score>=40?'neut':'bear';
-          // Supertrend
-          const stBull = sig2?.supertrendBull;
-          const stVal  = sig2?.supertrendVal!=null?('$'+sig2.supertrendVal.toFixed(2)):'';
-          const stTxt  = stVal?(stBull?'🟢 Bullish '+stVal:'🔴 Bearish '+stVal):'N/A';
-          const stCls  = stBull!=null?(stBull?'bull':'bear'):'neut';
-          // MACD
-          const macdCls = sig2?.macdBull!=null?(sig2.macdBull?'bull':'bear'):'neut';
-          const macdTxt = sig2?.macdBull!=null?(sig2.macdBull?'✅ Bullish':'⚠️ Bearish'):'N/A';
-          // S2/R2
-          const s2v = getS2(s.t,s.p).toFixed(2);
-          const r2v = getR2(s.t,s.p).toFixed(2);
-          // Price vs open (change today)
-          const chgCls = s.c>=0?'bull':'bear';
-          const chgTxt = (s.c>=0?'+':'')+s.c+'%';
-          return `
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📋 ข้อมูลพื้นฐาน</div>
-        <div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">${s.t}</span></div>
-        <div class="ind-row"><span class="ind-name">Company</span><span class="ind-val">${s.n}</span></div>
-        <div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val">${sector}</span></div>
-        <div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">${s.mktcap||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val ${s.pe?'neut':'bear'}">${s.pe||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val ${epsVal!=='N/A'&&!epsVal.startsWith('-')?'bull':'bear'}">${epsVal}</span></div>
-        <div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val neut">${revVal}</span></div>
-        <div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val ${parseFloat(s.rev||0)>0?'bull':'bear'}">${s.rev||'N/A'}</span></div>
-        <div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val ${s.pe?'bull':'bear'}">${s.pe?'✅ มีกำไร':'❌ ยังขาดทุน'}</span></div>
-        ${s.earn?`<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">${s.earn}</span></div>`:''}
-        ${eData?.res?`<div class="ind-row"><span class="ind-name">ผล Earnings</span><span class="ind-val">${eData.res}</span></div>`:''}
+  } else if(tab==='fund'){
+    // ── Fundamental Tab ──
+    try {
+    const sector = Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    const s1 = getS1(s.t,s.p);
+    const r1 = getR1(s.t,s.p);
+    const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
+    const epsVal = eData?.eps || 'N/A';
+    const revVal = eData?.rev || 'N/A';
+    const candles = candleCache[s.t]?.data;
+    let high52='N/A', low52='N/A', pctHiRow='', pctLoRow='';
+    if(candles?.h?.length && candles?.l?.length){
+      const hi = Math.max(...candles.h);
+      const lo = Math.min(...candles.l);
+      high52 = '$'+hi.toFixed(2);
+      low52  = '$'+lo.toFixed(2);
+      const pctFromHi = (((s.p-hi)/hi)*100).toFixed(1);
+      const pctFromLo = (((s.p-lo)/lo)*100).toFixed(1);
+      pctHiRow = '<div class="ind-row"><span class="ind-name">ห่างจาก 52W High</span><span class="ind-val bear">'+pctFromHi+'%</span></div>';
+      pctLoRow = '<div class="ind-row"><span class="ind-name">ห่างจาก 52W Low</span><span class="ind-val bull">+'+pctFromLo+'%</span></div>';
+    }
+    const chgCls = s.c>=0?'bull':'bear';
+    const chgTxt = (s.c>=0?'+':'')+s.c+'%';
+    const peCls  = s.pe?'neut':'bear';
+    const epsCls = (epsVal!=='N/A'&&!String(epsVal).startsWith('-'))?'bull':'bear';
+    const revCls = parseFloat(s.rev||0)>0?'bull':'bear';
+    const profitRow = s.pe
+      ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
+      : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>';
+    const earnResRow = eData?.res
+      ? '<div class="ind-row"><span class="ind-name">ผล Earnings ล่าสุด</span><span class="ind-val">'+eData.res+'</span></div>' : '';
+    const earnDateRow = s.earn
+      ? '<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">'+s.earn+'</span></div>' : '';
 
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📈 ราคา & Technical</div>
-        <div class="ind-row"><span class="ind-name">ราคาปัจจุบัน</span><span class="ind-val ${chgCls}">$${s.p.toFixed(2)} (${chgTxt})</span></div>
-        <div class="ind-row"><span class="ind-name">52W High</span><span class="ind-val bull">${high52}</span></div>
-        <div class="ind-row"><span class="ind-name">52W Low</span><span class="ind-val bear">${low52}</span></div>
-        <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsiNow<=35?'bull':rsiNow>=70?'bear':'neut'}">${rsiNow}${rsiNow<=35?' 🟢 Oversold':rsiNow>=70?' 🔴 Overbought':''}</span></div>
-        <div class="ind-row"><span class="ind-name">MACD</span><span class="ind-val ${macdCls}">${macdTxt}</span></div>
-        <div class="ind-row"><span class="ind-name">Supertrend</span><span class="ind-val ${stCls}">${stTxt}</span></div>
-        <div class="ind-row"><span class="ind-name">Buy Score</span><span class="ind-val ${buyScoreCls}">${buyScore}</span></div>
+    body.innerHTML =
+      '<div class="ind-table">' +
+      '<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">' +
+        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
+        '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>' +
+      '</div>' +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">🏢 ข้อมูลบริษัท</div>' +
+      '<div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">'+s.t+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">ชื่อบริษัท</span><span class="ind-val" style="font-size:11px;text-align:right;max-width:200px">'+s.n+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val neut">'+sector+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">'+(s.mktcap||'N/A')+'</span></div>' +
+      profitRow +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">💰 ผลประกอบการ</div>' +
+      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(s.pe||'N/A')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val '+epsCls+'">'+epsVal+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val">'+revVal+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val '+revCls+'">'+(s.rev||'N/A')+'</span></div>' +
+      earnResRow + earnDateRow +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📊 มูลค่าหุ้น</div>' +
+      '<div class="ind-row"><span class="ind-name">52W High</span><span class="ind-val bull">'+high52+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">52W Low</span><span class="ind-val bear">'+low52+'</span></div>' +
+      pctHiRow + pctLoRow +
+      '<div class="ind-row"><span class="ind-name">เปลี่ยนแปลงวันนี้</span><span class="ind-val '+chgCls+'">$'+s.p.toFixed(2)+' ('+chgTxt+')</span></div>' +
+      (s.target?'<div class="ind-row"><span class="ind-name">🎯 Analyst Target</span><span class="ind-val '+(s.p<s.target?'bull':'bear')+'">${'+(s.target.toLocaleString())+' ('+(s.p<s.target?'+':'')+((s.target-s.p)/s.p*100).toFixed(1)+'%)</span></div>':'') +
+      '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">⚠️ ความเสี่ยง</div>' +
+      (s.div?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+s.div+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
+      (s.beta!=null?'<div class="ind-row"><span class="ind-name">📉 Beta (ความผันผวน)</span><span class="ind-val '+(s.beta>1.5?'bear':s.beta<0.8?'bull':'neut')+'">'+s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)')+'</span></div>':'') +
+      (s.short?'<div class="ind-row"><span class="ind-name">🩳 Short Float</span><span class="ind-val '+(parseFloat(s.short)>15?'bear':parseFloat(s.short)>8?'neut':'bull')+'">'+s.short+' '+(parseFloat(s.short)>15?'(Squeeze Risk สูง ⚠️)':parseFloat(s.short)>8?'(Short ปานกลาง)':'(Short ต่ำ)')+'</span></div>':'') +
+      (()=>{
+        const fe=fundExtra[s.t]||{};
+        let rows='';
+        if(fe.de!=null) rows+='<div class="ind-row"><span class="ind-name">🏦 Debt/Equity Ratio</span><span class="ind-val '+(fe.de<0.5?'bull':fe.de<1.5?'neut':'bear')+'">'+fe.de.toFixed(2)+' '+(fe.de<0.5?'(หนี้ต่ำ ✅)':fe.de<1.5?'(ปานกลาง)':'(หนี้สูง ⚠️)')+'</span></div>';
+        if(fe.fcf) rows+='<div class="ind-row"><span class="ind-name">💵 Free Cash Flow</span><span class="ind-val '+(fe.fcf.startsWith('-')?'bear':'bull')+'">'+fe.fcf+' '+(fe.fcf.startsWith('-')?'(Cash ติดลบ ⚠️)':'(Cash Flow ดี ✅)')+'</span></div>';
+        return rows;
+      })() +
+      (()=>{
+        const fs=calcFundScore(s);
+        const fr=getFundRating(fs);
+        return '<div style="margin-top:16px;padding:14px;border-radius:12px;background:'+fr.bg+';border:1px solid '+fr.border+'">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:'+fr.color+';margin-bottom:8px">⭐ Fundamental Score</div>' +
+          '<div style="display:flex;align-items:center;gap:12px">' +
+            '<div style="font-size:32px;font-weight:800;font-family:\'Manrope\',sans-serif;color:'+fr.color+'">'+fs+'</div>' +
+            '<div>' +
+              '<div style="font-size:16px;font-weight:700;color:'+fr.color+';font-family:\'Syne\',sans-serif">'+fr.label+'</div>' +
+              '<div style="width:120px;height:6px;background:var(--bg4);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+fs+'%;background:'+fr.color+';border-radius:3px;transition:width 0.6s ease"></div></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        // ── Historical Earnings Chart ──
+        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:20px 0 8px">📊 Historical Earnings</div>' +
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px" id="earnChartWrap_'+s.t+'">⏳</div>' +
+        // ── Insider Activity ──
+        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:20px 0 8px">👤 Insider Activity (6 เดือนล่าสุด)</div>' +
+        '<div id="insiderWrap_'+s.t+'">⏳</div>' +
+        // ── Peer Comparison ──
+        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:20px 0 8px">⚖️ Peer Comparison</div>' +
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px" id="peerWrap_'+s.t+'">⏳</div>';
+      })() +
+      '</div>';
 
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">🎯 แนวรับ / แนวต้าน</div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">$${s1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S2</span><span class="ind-val bear" style="opacity:0.75">$${s2v}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">$${r1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">$${r2v}</span></div>
-        <div class="ind-row"><span class="ind-name">ห่างแนวรับ S1</span><span class="ind-val ${parseFloat(distS1)<=3?'bull':'neut'}">${distS1}%</span></div>`;
-        })()}
-      </div>`;
-    // AI สรุป — ใช้ callGemini แบบ fire-and-forget ไม่ block
+    // AI สรุปเฉพาะ Fundamental — fire-and-forget
     callGemini(
-      'คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
-      'สรุปหุ้น '+s.t+' ('+s.n+') ให้นักลงทุนเข้าใจใน 4-5 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ขาดทุน')+' RevGrowth='+s.rev+' RSI='+rsiNow+' ห่างแนวรับ S1='+distS1+'% S1=$'+s1.toFixed(2)+' R1=$'+r1.toFixed(2)+' บอกว่าทำอะไร โตไวไหม กำไรหรือขาดทุน สถานะ Technical ตอนนี้เป็นอย่างไร เหมาะกับใคร',
+      'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น ห้ามพูดถึงราคา แนวรับ แนวต้าน หรือ indicator ทางเทคนิคใดๆ',
+      'สรุปบริษัท '+s.t+' ('+s.n+') ให้นักลงทุนเข้าใจใน 4-5 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ยังขาดทุน')+' EPS='+epsVal+' Revenue='+revVal+' RevGrowth='+s.rev+' บอกว่าบริษัทนี้ทำธุรกิจอะไร รายได้มาจากไหน กำไรหรือขาดทุน โตเร็วแค่ไหน และเหมาะกับนักลงทุนแบบไหน',
       300
-    ).then(result=>{
-      const el=document.getElementById('fundAIText');
+    ).then(function(result){
+      var el=document.getElementById('fundAIText');
       if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
-    }).catch(()=>{
-      const el=document.getElementById('fundAIText');
+    }).catch(function(){
+      var el=document.getElementById('fundAIText');
       if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
     });
+
+    // ── Render Historical Earnings Chart, Insider, Peer (after DOM ready) ──
+    requestAnimationFrame(()=>{
+      try{ renderEarningsChart(s.t,'earnChartWrap_'+s.t); }catch(e){}
+      try{ renderInsider(s.t,'insiderWrap_'+s.t); }catch(e){}
+      try{ renderPeerComparison(s.t,'peerWrap_'+s.t); }catch(e){}
+    });
+    } catch(fundErr) {
+      console.error('Fund tab error:', fundErr && fundErr.message ? fundErr.message : String(fundErr));
+      body.innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px">❌ Error: ' + (fundErr && fundErr.message ? fundErr.message : String(fundErr)) + '</div>';
+    }
   }
 }
 
@@ -2382,7 +2888,7 @@ function buildFullIndicatorContext(ticker, price){
 
   // ── Fundamental ──
   let ctx=`📊 ข้อมูลหุ้น ${ticker} (${s.n})
-ราคา: $${price} (${s.c>=0?'+':''}${s.c}%) | MCap: ${s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
+ราคา: $${price} (${s.c>=0?'+':''}${(+s.c).toFixed(2)}%) | MCap: ${s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
 แนวรับ S1: $${s1.toFixed(2)} | S2: $${getS2(ticker,price).toFixed(2)} | แนวต้าน R1: $${r1.toFixed(2)} | R2: $${getR2(ticker,price).toFixed(2)} | ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}%`;
 
   if(ind){
@@ -2602,7 +3108,10 @@ function exportCSV(){
   const csv=['Ticker,Price,Score,Time,Result,ExitPrice,Pct',...log.map(t=>[t.ticker,t.price,t.score||'',t.time,t.result||'pending',t.exitPrice||'',t.pct||''].join(','))].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='stockpro_v2_tradelog.csv';a.click();
+  a.download='stockpro_v2_tradelog.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
@@ -2937,7 +3446,9 @@ async function testApiKey(){
 }
 
 function addStock(){
-  const t=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
+  const raw=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
+  // sanitize: อนุญาตเฉพาะตัวอักษร A-Z, ตัวเลข, และ . (เช่น BRK.B)
+  const t=(raw||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   if(!t){toast('⚠️ ใส่ ticker');return;}
   if(stocks.find(x=>x.t===t)){toast('มี '+t+' อยู่แล้ว');return;}
   stocks.push({t,n:t,p:0,c:0,pe:null,mktcap:'N/A',rev:'N/A',earn:null});
@@ -3039,7 +3550,8 @@ async function httpPoll(){
     }
     const liveDot=$id('liveDot');
     if(liveDot) liveDot.style.background='var(--green)';
-    $id('statusText').textContent=`✅ Finnhub Live`;
+    const _stEl=$id('statusText');
+    if(_stEl) _stEl.textContent=`✅ Finnhub Live`;
   }finally{
     _pollInFlight=false;
   }
@@ -3325,7 +3837,7 @@ async function initYahooPrices(){
           const priceEl=document.getElementById(`price-v2-${s.t}`);
           const chgEl=document.getElementById(`chg-v2-${s.t}`);
           if(priceEl) priceEl.textContent=fmt(s.p);
-          if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+s.c.toFixed(2)+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
+          if(chgEl){chgEl.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';chgEl.className='card-chg '+(s.c>=0?'up':'dn');}
           if(statusEl) statusEl.textContent=`⏳ ${loaded}/${stocks.length}`;
         } else { failed++; }
       }catch{}
@@ -3382,12 +3894,12 @@ setTimeout(()=>{
 // ═══════════════════════════════════════
 
 const _thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
-const earningsData=[
-  {t:'HIMS',n:'Hims & Hers',d:'11 พ.ค. 2026',st:'soon',eps:'$0.03',rev:'$617M'},
-  {t:'ASTS',n:'AST SpaceMobile',d:'11 พ.ค. 2026',st:'soon',eps:'-$0.23',rev:'$38M'},
-  {t:'OKLO',n:'Oklo Inc',d:'12 พ.ค. 2026',st:'soon',eps:'-$0.18',rev:'$0'},
-  {t:'NVDA',n:'Nvidia',d:'20 พ.ค. 2026',st:'soon',eps:'$1.62',rev:'$78.6B'},
+earningsData=[
+  {t:'NVDA',n:'Nvidia',d:'28 พ.ค. 2026',st:'soon',eps:'$0.89',rev:'$44.1B'},
   {t:'CRWD',n:'CrowdStrike',d:'ปลาย พ.ค. 2026',st:'soon',eps:'$0.66',rev:'$1.1B'},
+  {t:'HIMS',n:'Hims & Hers',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.06',rev:'$586M'},
+  {t:'ASTS',n:'AST SpaceMobile',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat Rev',eps:'-$0.31',rev:'$8M'},
+  {t:'OKLO',n:'Oklo Inc',d:'12 พ.ค. 2026',st:'done',res:'⚠️ In-line',eps:'-$0.11',rev:'$0.4M'},
   {t:'RKLB',n:'Rocket Lab',d:'8 พ.ค. 2026',st:'done',res:'✅ Beat +34%',eps:'-$0.04',rev:'$200M'},
   {t:'AAOI',n:'Applied Opto',d:'7 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'-$0.01',rev:'$134M'},
   {t:'IONQ',n:'IonQ',d:'7 พ.ค. 2026',st:'done',res:'⚠️ Miss',eps:'-$0.21',rev:'$46M'},
@@ -3450,7 +3962,7 @@ setInterval(()=>{
   });
   // ล้าง liveCache quote เก่าเกิน 5 นาที
   Object.keys(liveCache).forEach(k=>{
-    if(now-liveCache[k]>300000) delete liveCache[k];
+    if(now-(liveCache[k]||0)>300000) delete liveCache[k];
   });
   // จำกัด _translatedCache ไม่เกิน 200 entries
   const tKeys=Object.keys(_translatedCache);
@@ -3501,8 +4013,8 @@ function calcStochRSI(closes, rsiPeriod=14, stochPeriod=14, kSmooth=3, dSmooth=3
   if(rsiSeries.length<stochPeriod) return null;
   const rawK=[];
   for(let i=stochPeriod-1;i<rsiSeries.length;i++){
-    const window=rsiSeries.slice(i-stochPeriod+1,i+1);
-    const lo=Math.min(...window), hi=Math.max(...window);
+    const rsiWindow=rsiSeries.slice(i-stochPeriod+1,i+1);
+    const lo=Math.min(...rsiWindow), hi=Math.max(...rsiWindow);
     rawK.push(hi===lo?50:+((rsiSeries[i]-lo)/(hi-lo)*100).toFixed(2));
   }
   // Step 3: Smooth %K (SMA of rawK)
@@ -3588,7 +4100,7 @@ async function _switchTF(btn, days){
     if(candleCache[ticker]) candleCache[ticker].days=0;
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
-    drawerTab('tech',document.querySelector('.drawer-tab'));
+    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){console.warn('switchTF error',e);}
 }
 
@@ -4911,6 +5423,15 @@ function _timeAgo(date){
 }
 
 // ── Heatmap V2 ──
+let _heatmapMode='pct'; // 'pct' | 'beta' | 'short'
+function setHeatmapMode(mode, btn){
+  _heatmapMode=mode;
+  document.querySelectorAll('.hm-mode-btn').forEach(b=>{
+    b.style.background='var(--bg3)';b.style.borderColor='var(--border)';b.style.color='var(--text3)';
+  });
+  if(btn){btn.style.background='rgba(201,168,76,0.15)';btn.style.borderColor='rgba(201,168,76,0.35)';btn.style.color='var(--gold)';}
+  renderHeatmapV2();
+}
 function renderHeatmapV2(){
   const grid=document.getElementById("heatmapGrid");
   if(!grid) return;
@@ -4920,15 +5441,37 @@ function renderHeatmapV2(){
   Object.keys(sectorMap).forEach(s=>{groups[s]=[];});
   stocks.forEach(s=>{const sec=sectorTickerMap[s.t]||"อื่นๆ";if(!groups[sec])groups[sec]=[];groups[sec].push(s);});
   let html="";
+  const mode=_heatmapMode;
   Object.entries(groups).forEach(([sec,list])=>{
     if(!list.length) return;
     html+=`<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--text3);font-family:Syne,sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">${sec}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">`;
     list.forEach(s=>{
-      const isUp=s.c>=0;
-      const intensity=Math.min(1,Math.abs(s.c)/10);
-      const bg=isUp?`rgba(0,230,118,${0.1+intensity*0.35})`:`rgba(255,77,106,${0.1+intensity*0.35})`;
-      const border=isUp?`rgba(0,230,118,${0.2+intensity*0.4})`:`rgba(255,77,106,${0.2+intensity*0.4})`;
-      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${isUp?"var(--green)":"var(--red)"};margin-top:2px">${isUp?"+":""}${s.c}%</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
+      let val, valLabel, bg, border, valColor;
+      if(mode==='beta'){
+        const b=s.beta;
+        val=b!=null?b.toFixed(2):'N/A';
+        valLabel='β'+val;
+        const intensity=b!=null?Math.min(1,Math.abs(b-1)/1.5):0;
+        bg=b!=null?(b>1.5?`rgba(255,77,106,${0.1+intensity*0.35})`:`rgba(100,210,255,${0.08+intensity*0.25})`):'var(--bg3)';
+        border=b!=null?(b>1.5?`rgba(255,77,106,${0.3+intensity*0.3})`:`rgba(100,210,255,${0.15+intensity*0.25})`):'var(--border)';
+        valColor=b!=null?(b>2?'var(--red)':b>1.2?'var(--gold)':'var(--ice)'):'var(--text3)';
+      } else if(mode==='short'){
+        const sh=s.short?parseFloat(s.short):null;
+        val=s.short||'N/A';
+        valLabel=val;
+        const intensity=sh!=null?Math.min(1,sh/20):0;
+        bg=sh!=null?(sh>15?`rgba(255,77,106,${0.12+intensity*0.35})`:sh>8?`rgba(255,215,0,${0.08+intensity*0.2})`:`rgba(0,230,118,${0.06+intensity*0.15})`):'var(--bg3)';
+        border=sh!=null?(sh>15?`rgba(255,77,106,${0.35})`:sh>8?`rgba(255,215,0,${0.25})`:`rgba(0,230,118,${0.2})`):'var(--border)';
+        valColor=sh!=null?(sh>15?'var(--red)':sh>8?'var(--yellow)':'var(--green)'):'var(--text3)';
+      } else {
+        const isUp=s.c>=0;
+        const intensity=Math.min(1,Math.abs(s.c)/10);
+        bg=isUp?`rgba(0,230,118,${0.1+intensity*0.35})`:`rgba(255,77,106,${0.1+intensity*0.35})`;
+        border=isUp?`rgba(0,230,118,${0.2+intensity*0.4})`:`rgba(255,77,106,${0.2+intensity*0.4})`;
+        valLabel=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
+        valColor=isUp?'var(--green)':'var(--red)';
+      }
+      html+=`<div onclick="openDrawer('${s.t}')" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}</div><div style="font-size:11px;font-weight:600;color:${valColor};margin-top:2px">${valLabel}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
     });
     html+="</div></div>";
   });
@@ -4952,7 +5495,9 @@ let portfolio = JSON.parse(localStorage.getItem('_sp_portfolio') || '[]');
 function savePortfolio(){ localStorage.setItem('_sp_portfolio', JSON.stringify(portfolio)); }
 
 function addPortPosition(){
-  const ticker = document.getElementById('portTicker')?.value.trim().toUpperCase();
+  const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
+  // sanitize: อนุญาตเฉพาะ A-Z, 0-9, .
+  const ticker = (rawTicker||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   const buyPrice = parseFloat(document.getElementById('portPrice')?.value);
   const shares = parseFloat(document.getElementById('portShares')?.value);
   if(!ticker || isNaN(buyPrice) || buyPrice<=0 || isNaN(shares) || shares<=0){
@@ -5102,6 +5647,7 @@ async function checkBuySignalFull(ticker,price){
 
 // ── Enhanced updateCardLive with buy signal check ──
 const _buyAlerted=new Set();
+let _dashUpdateTimer=null, _portUpdateTimer=null;
 function updateCardLive(s){
   // ใช้ direct getElementById (ไม่ cache เพราะ cards อาจ re-render)
   const priceEl=document.getElementById(`price-v2-${s.t}`);
@@ -5112,18 +5658,35 @@ function updateCardLive(s){
     chgEl.textContent=(chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
     chgEl.className='card-chg '+(chgNum>=0?'up':'dn');
   }
-  // Portfolio live update
+  // Portfolio live update — throttle 1 วินาที ป้องกัน DOM churn ทุก WS tick
   const portActive=document.getElementById('page-port')?.classList.contains('active');
-  if(portActive) renderPortfolio();
-  // Dashboard live update ถ้าอยู่หน้า dash
+  if(portActive && !_portUpdateTimer){
+    _portUpdateTimer=setTimeout(()=>{_portUpdateTimer=null;renderPortfolio();},1000);
+  }
+  // Dashboard live update — throttle 2 วินาที
   const dashActive=document.getElementById('page-dash')?.classList.contains('active');
-  if(dashActive) updateDashboard();
+  if(dashActive && !_dashUpdateTimer){
+    _dashUpdateTimer=setTimeout(()=>{_dashUpdateTimer=null;updateDashboard();},2000);
+  }
   // ตรวจ price alerts
   if(s.p>0) checkPriceAlerts(s.t, s.p);
   if(!_buyAlerted.has(s.t)&&s.p>0){
     _buyAlerted.add(s.t);
     setTimeout(()=>_buyAlerted.delete(s.t),900000); // cooldown 15 นาที
     checkBuySignalFull(s.t,s.p);
+  }
+  // Short Squeeze Alert เมื่อ Short Float >15% และราคาขึ้นแรง >3%
+  if(s.p>0){
+    const stk=stocks.find(x=>x.t===s.t);
+    if(stk&&stk.short&&parseFloat(stk.short)>15&&stk.c>3){
+      const sqKey='sq_'+stk.t;
+      if(!_alertFired.has(sqKey)){
+        _alertFired.add(sqKey);
+        setTimeout(()=>_alertFired.delete(sqKey),3600000); // cooldown 1 ชั่วโมง
+        toast(`🩳 Short Squeeze Alert! ${stk.t} — Short Float ${stk.short} ราคาขึ้น +${(+stk.c).toFixed(1)}%`,4000);
+        sendTG(`🩳 Short Squeeze Risk!\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา ${fmt(stk.p)}`);
+      }
+    }
   }
 }
 
