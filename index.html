@@ -1820,6 +1820,13 @@ function _loadLogoNow(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
 
+  // ถ้ามี SVG brand logo ใน _LOGOS ให้ใช้เลย — แม่นยำ 100% ไม่ต้องโหลดจากเน็ต
+  if(_LOGOS[ticker]){
+    const r = size<=36?10:12;
+    el.innerHTML = `<div style="width:100%;height:100%;border-radius:${r}px;overflow:hidden">${_LOGOS[ticker]}</div>`;
+    return;
+  }
+
   // ถ้าเคยโหลดสำเร็จแล้ว ใช้ URL เดิมได้เลย
   if(_logoCache[ticker]){
     _applyLogoImg(el, _logoCache[ticker], size);
