@@ -805,6 +805,17 @@ canvas.bigchart{width:100%;height:100%}
           </div>
         </div>
         <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">📐 Polygon.io API Key <span style="font-size:10px;color:var(--text3)">(Real-time Quote fallback)</span></div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://polygon.io/dashboard/api-keys" target="_blank" style="color:var(--ice);text-decoration:none">polygon.io</a> — ใช้ดึงราคา Real-time เมื่อ Finnhub ไม่ตอบสนอง (Free tier รองรับ)</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="settings-input" id="polygonKeyInput" type="password" placeholder="H4aN... (มี key เริ่มต้นแล้ว)" style="flex:1">
+              <button class="settings-btn" id="testPolygonBtn" onclick="testPolygonKey()">🧪 ทดสอบ</button>
+            </div>
+            <div id="polygonKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+          </div>
+        </div>
+        <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
@@ -3792,9 +3803,13 @@ function loadSettings(){
     document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
     document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
     if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
-    // โหลด Groq key (แสดงเป็น masked)
+    // โหลด Groq key
     const gk=localStorage.getItem('groqKey')||'';
     if(gk) document.getElementById('groqKeyInput').value=gk;
+    // โหลด Polygon key
+    const pk=localStorage.getItem('polygonKey')||'';
+    const pkEl=document.getElementById('polygonKeyInput');
+    if(pkEl) pkEl.value=pk;
   }catch{}
 }
 function saveSettings(){
@@ -3807,6 +3822,12 @@ function saveSettings(){
     const gk=document.getElementById('groqKeyInput')?.value?.trim()||'';
     if(gk) localStorage.setItem('groqKey',gk);
     else localStorage.removeItem('groqKey');
+  }catch{}
+  // บันทึก Polygon key
+  try{
+    const pk=document.getElementById('polygonKeyInput')?.value?.trim()||'';
+    if(pk){ localStorage.setItem('polygonKey',pk); POLYGON_KEY=pk; }
+    else localStorage.removeItem('polygonKey');
   }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
@@ -4370,7 +4391,7 @@ async function fetchYahooQuote(ticker){
   }catch{ return null; }
 }
 
-// ── fetchSingleQuoteFast: Finnhub ถ้ามี key, Yahoo ถ้าไม่มี ──
+// ── fetchSingleQuoteFast: Finnhub ถ้ามี key, Polygon fallback, Yahoo ถ้าไม่มี ──
 async function fetchSingleQuoteFast(s){
   if(hasApiKey()){
     try{
@@ -4383,6 +4404,12 @@ async function fetchSingleQuoteFast(s){
         if(d.c>0) return{p:d.c,c:d.dp||0};
       }
     }catch{}
+  }
+  // Polygon fallback
+  const polyKey=(()=>{ try{ return localStorage.getItem('polygonKey')||POLYGON_KEY; }catch{ return POLYGON_KEY; } })();
+  if(polyKey){
+    const pq=await fetchPolygonQuote(s.t);
+    if(pq&&pq.p>0) return pq;
   }
   return fetchYahooQuote(s.t);
 }
@@ -4433,7 +4460,7 @@ async function initYahooPrices(){
   }catch{}
 
   updateDashboard();
-  const src='Worker/Finnhub';
+  const src=hasApiKey()?'Finnhub':((()=>{ try{ return localStorage.getItem('polygonKey')||POLYGON_KEY; }catch{ return POLYGON_KEY; } })()&&loaded>0)?'Polygon':'Yahoo';
   if(loaded>0){
     const open=_isMarketOpen();
     const pre=_isPreMarket();
@@ -4770,7 +4797,101 @@ async function _switchTF(btn, days){
 }
 
 // ── Polygon.io config ──
-const POLYGON_KEY = 'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY';
+let POLYGON_KEY = (()=>{ try{ return localStorage.getItem('polygonKey')||'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; }catch{ return 'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; } })();
+
+// ── fetchPolygonQuote — ดึงราคา Real-time จาก Polygon.io ──
+async function fetchPolygonQuote(ticker){
+  try{
+    const key=(()=>{ try{ return localStorage.getItem('polygonKey')||POLYGON_KEY; }catch{ return POLYGON_KEY; } })();
+    if(!key) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`https://api.polygon.io/v2/last/trade/${encodeURIComponent(ticker)}?apiKey=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const d=await r.json();
+    const price=d?.results?.p||d?.last?.price;
+    if(!price||price<=0) return null;
+    // ดึง prev close เพื่อคำนวณ % change
+    try{
+      const ctrl2=new AbortController();
+      const tid2=setTimeout(()=>ctrl2.abort(),5000);
+      const r2=await fetch(`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=true&apiKey=${key}`,{signal:ctrl2.signal});
+      clearTimeout(tid2);
+      if(r2.ok){
+        const d2=await r2.json();
+        const prev=d2?.results?.[0]?.c;
+        if(prev&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
+      }
+    }catch{}
+    return{p:+price.toFixed(2),c:0};
+  }catch{ return null; }
+}
+
+// ── testPolygonKey ──
+async function testPolygonKey(){
+  const btn=document.getElementById('testPolygonBtn');
+  const statusEl=document.getElementById('polygonKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('polygonKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Polygon API Key ก่อน';
+    return;
+  }
+  btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Polygon...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`https://api.polygon.io/v2/aggs/ticker/AAPL/prev?adjusted=true&apiKey=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      const price=d?.results?.[0]?.c;
+      if(price){
+        try{ localStorage.setItem('polygonKey',key); POLYGON_KEY=key; }catch{}
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='✅ Polygon ใช้งานได้! — AAPL prev close $'+price.toFixed(2)+' (บันทึกแล้ว)';
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Polygon ตอบกลับแต่ไม่มีข้อมูล';
+      }
+    } else if(r.status===403||r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ polygon.io/dashboard/api-keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Polygon Key ใช้ได้ แต่ Rate Limit — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Polygon ตอบกลับ '+r.status;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Polygon ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+}
 
 // ── Twelve Data config ──
 const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
