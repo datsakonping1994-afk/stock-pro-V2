@@ -5478,12 +5478,12 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 
 // ── Economic News ──
 const _econQueries={
-  market:'stock market S&P500 Nasdaq economy',
-  fed:'Federal Reserve interest rate Fed Powell',
-  economy:'GDP inflation CPI employment economic data',
-  tech:'technology AI semiconductor earnings',
-  crypto:'bitcoin cryptocurrency crypto market',
-  asia:'Asia China Japan economy trade',
+  market:'ตลาดหุ้น S&P500 Nasdaq ดัชนีหุ้น',
+  fed:'เฟด Fed ดอกเบี้ย นโยบายการเงิน',
+  economy:'เศรษฐกิจ GDP เงินเฟ้อ การจ้างงาน',
+  tech:'เทคโนโลยี AI เซมิคอนดักเตอร์ หุ้นเทค',
+  crypto:'bitcoin คริปโต cryptocurrency',
+  asia:'เอเชีย จีน ญี่ปุ่น เศรษฐกิจเอเชีย',
 };
 let _econNewsCache={};
 
@@ -5492,49 +5492,18 @@ async function loadEconNews(cat, btn){
   if(btn) btn.classList.add('active');
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  // ถ้า cache มีอยู่แล้วและแปลแล้ว (มี titleTH) ใช้ได้เลย
-  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH){
+  if(_econNewsCache[cat]){
     renderEconNews(_econNewsCache[cat], body);
     return;
   }
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
   const query=_econQueries[cat]||cat;
   const items=await _fetchEconNews(query);
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
-  const translated = await _translateNewsGemini(items);
-  _econNewsCache[cat]=translated;
-  renderEconNews(translated, body);
+  _econNewsCache[cat]=items;
+  renderEconNews(items, body);
 }
 
 // ── แปลหัวข้อข่าวเป็นไทยด้วย Gemini Flash ──
-async function _translateNewsGemini(items){
-  if(!items||!items.length) return items;
-  try{
-    const titles=items.map((it,i)=>`${i+1}. ${it.title}`).join('\n');
-    const prompt=`แปลหัวข้อข่าวการเงินต่อไปนี้เป็นภาษาไทย ให้กระชับและเป็นธรรมชาติ ตอบเฉพาะหัวข้อที่แปลแล้วเรียงตามลำดับหมายเลขเดิม ห้ามอธิบายเพิ่มเติม:\n\n${titles}`;
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:2000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    if(!r.ok) throw new Error('api '+r.status);
-    const data=await r.json();
-    const text=data?.content?.[0]?.text||'';
-    const lines=text.split('\n').map(l=>l.replace(/^\d+\.\s*/,'').trim()).filter(l=>l.length>0);
-    return items.map((it,i)=>({
-      ...it,
-      titleTH: lines[i]||it.title,
-      titleOrig: it.title,
-    }));
-  }catch(e){
-    return items.map(it=>({...it,titleTH:it.title,titleOrig:it.title}));
-  }
-}
-
 async function _fetchEconNews(query){
   const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const proxies=[
@@ -5581,8 +5550,7 @@ function renderEconNews(items, body){
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
     return`<a href="${item.link}" target="_blank" style="text-decoration:none">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block" onclick="">
-        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
-        ${item.titleOrig&&item.titleOrig!==item.titleTH?`<div style="font-size:10px;color:var(--text3);line-height:1.4;margin-bottom:6px;opacity:0.6">${item.titleOrig}</div>`:''}
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px">${item.title}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:10px;color:var(--text3)">${item.source||'News'}</div>
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
