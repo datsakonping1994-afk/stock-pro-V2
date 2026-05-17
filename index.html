@@ -3072,6 +3072,32 @@ async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
+// ── Gemini 1.5 Pro via Worker — ฉลาดกว่า Flash แต่ quota น้อยกว่า ──
+async function _callGemini15Pro(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),25000);
+    const r=await fetch(`${WORKER}/api/gemini`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'gemini-1.5-pro',
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents:[{parts:[{text:userPrompt}]}],
+        generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
+    }
+    console.warn('Gemini 1.5 Pro error:', r.status);
+  }catch(e){console.warn('Gemini 1.5 Pro error:',e.message);}
+  return null;
+}
+
 // ── Pollinations AI — ฟรี 100% ไม่ต้องใช้ key ──
 async function _callPollinationsAI(systemPrompt, userPrompt, maxTokens=800){
   try{
@@ -3136,7 +3162,11 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 }
 
 async function callGemini(systemPrompt, userPrompt, maxTokens=800){
-  // 1. Claude Haiku — อันดับหนึ่ง
+  // 1. Gemini 1.5 Pro — ฉลาดสุด
+  const gemini15Result = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  if(gemini15Result) return gemini15Result;
+
+  // 2. Claude Haiku — ฉลาดรองลงมา
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),15000);
@@ -3160,15 +3190,15 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
     }
   }catch(e){console.warn('Claude Haiku error:',e.message);}
 
-  // 2. Gemini Direct — Worker secret
+  // 3. Gemini 2.0 Flash
   const geminiResult = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(geminiResult) return geminiResult;
 
-  // 3. Groq — ถ้าผู้ใช้ใส่ key ไว้ใน Settings
+  // 4. Groq — ถ้าผู้ใช้ใส่ key ไว้ใน Settings
   const groqResult = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(groqResult) return groqResult;
 
-  // 4. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
+  // 5. Pollinations AI — ฟรี ไม่ต้อง key (last resort)
   const pollinationsResult = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(pollinationsResult) return pollinationsResult;
 
