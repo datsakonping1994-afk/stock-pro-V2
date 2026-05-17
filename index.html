@@ -5478,12 +5478,12 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 
 // ── Economic News ──
 const _econQueries={
-  market:'ตลาดหุ้น S&P500 Nasdaq ดัชนีหุ้น',
-  fed:'เฟด Fed ดอกเบี้ย นโยบายการเงิน',
-  economy:'เศรษฐกิจ GDP เงินเฟ้อ การจ้างงาน',
-  tech:'เทคโนโลยี AI เซมิคอนดักเตอร์ หุ้นเทค',
-  crypto:'bitcoin คริปโต cryptocurrency',
-  asia:'เอเชีย จีน ญี่ปุ่น เศรษฐกิจเอเชีย',
+  market:'stock market S&P500 Nasdaq economy',
+  fed:'Federal Reserve interest rate Fed Powell',
+  economy:'GDP inflation CPI employment economic data',
+  tech:'technology AI semiconductor earnings',
+  crypto:'bitcoin cryptocurrency crypto market',
+  asia:'Asia China Japan economy trade',
 };
 let _econNewsCache={};
 
@@ -5492,18 +5492,46 @@ async function loadEconNews(cat, btn){
   if(btn) btn.classList.add('active');
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  if(_econNewsCache[cat]){
+  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH){
     renderEconNews(_econNewsCache[cat], body);
     return;
   }
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
   const query=_econQueries[cat]||cat;
   const items=await _fetchEconNews(query);
-  _econNewsCache[cat]=items;
-  renderEconNews(items, body);
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
+  const translated=await _translateNewsGemini(items);
+  _econNewsCache[cat]=translated;
+  renderEconNews(translated, body);
 }
 
 // ── แปลหัวข้อข่าวเป็นไทยด้วย Gemini Flash ──
+async function _translateNewsGemini(items){
+  if(!items||!items.length) return items;
+  try{
+    const texts=items.map(it=>it.title);
+    const r=await fetch('https://gemini-proxy.datsakonping1994.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        texts,
+        apiKey:'AIzaSyCG4tpTF9rjxBViD-GICyC_piYj6M0VXxU'
+      })
+    });
+    if(!r.ok) throw new Error('proxy '+r.status);
+    const data=await r.json();
+    const translated=data.translated||'';
+    const lines=translated.split('\n').map(l=>l.replace(/^\d+\.\s*/,'').trim()).filter(l=>l.length>0);
+    return items.map((it,i)=>({
+      ...it,
+      titleTH: lines[i]||it.title,
+      titleOrig: it.title,
+    }));
+  }catch(e){
+    return items.map(it=>({...it,titleTH:it.title,titleOrig:it.title}));
+  }
+}
+
 async function _fetchEconNews(query){
   const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const proxies=[
@@ -5550,7 +5578,8 @@ function renderEconNews(items, body){
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
     return`<a href="${item.link}" target="_blank" style="text-decoration:none">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block" onclick="">
-        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px">${item.title}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
+        ${item.titleOrig&&item.titleOrig!==item.titleTH?`<div style="font-size:10px;color:var(--text3);line-height:1.4;margin-bottom:6px;opacity:0.5">${item.titleOrig}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:10px;color:var(--text3)">${item.source||'News'}</div>
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
