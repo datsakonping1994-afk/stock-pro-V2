@@ -5521,9 +5521,16 @@ async function _translateNewsGemini(items){
     // parse JSON array จาก Groq
     let parsed=[];
     try{
-      const clean=raw.replace(/```json|```/g,'').trim();
-      parsed=JSON.parse(clean);
-    }catch{}
+      // ลบ markdown code block และ whitespace
+      let clean=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      // ถ้า Groq ส่งมาเป็น array ตรงๆ
+      if(clean.startsWith('[')) parsed=JSON.parse(clean);
+      // ถ้ามี text นำหน้า ให้หา [ ... ]
+      else {
+        const m=clean.match(/\[[\s\S]*\]/);
+        if(m) parsed=JSON.parse(m[0]);
+      }
+    }catch(e){}
     return items.map((it,i)=>({
       ...it,
       titleTH: parsed[i]?.title||it.title,
