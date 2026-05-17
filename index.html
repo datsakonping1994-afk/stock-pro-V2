@@ -48,7 +48,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── LAYOUT ── */
 #app{flex:1;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
 #topbar{flex-shrink:0;z-index:100}
-#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:65px}
 #bottomnav{flex-shrink:0;position:fixed;bottom:0;left:0;right:0;z-index:200}
 
 /* ── TOP BAR ── */
@@ -80,7 +80,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 #bottomnav{
   background:linear-gradient(0deg,rgba(5,7,11,1.0) 0%,rgba(9,12,19,0.97) 100%);
   border-top:1px solid rgba(255,255,255,0.06);
-  padding:8px 0 env(safe-area-inset-bottom);
+  padding:8px 0 max(env(safe-area-inset-bottom), 4px);
   display:flex;
   backdrop-filter:blur(30px) saturate(1.5);
   -webkit-backdrop-filter:blur(30px) saturate(1.5);
