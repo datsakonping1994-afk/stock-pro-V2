@@ -2152,12 +2152,12 @@ function drawerTab(tab, btn){
       </div>`;
     // AI สรุป — ใช้ callGemini แบบ fire-and-forget ไม่ block
     callGemini(
-      'คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค',
+      'คุณคือที่ปรึกษาการเงินที่อธิบายหุ้นให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
       'สรุปหุ้น '+s.t+' ('+s.n+') ให้คนทั่วไปเข้าใจใน 3 ประโยค: Sector='+sector+' MCap='+s.mktcap+' PE='+(s.pe||'ขาดทุน')+' RevGrowth='+s.rev+' RSI='+rsiNow+' ห่างแนวรับ='+distS1+'% บอกว่าทำอะไร โตไวไหม กำไรหรือขาดทุน เหมาะกับใคร',
       300
     ).then(result=>{
       const el=document.getElementById('fundAIText');
-      if(el) el.innerHTML=result?result.replace(/\n/g,'<br>'):'ไม่สามารถวิเคราะห์ได้';
+      if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
     }).catch(()=>{
       const el=document.getElementById('fundAIText');
       if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
