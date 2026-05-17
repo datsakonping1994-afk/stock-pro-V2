@@ -499,8 +499,8 @@ canvas.bigchart{width:100%;height:100%}
 
 /* ── SEARCH ── */
 .search-bar{padding:0 14px 10px;display:flex;gap:8px}
-.search-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:9px 14px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none}
-.search-input:focus{border-color:var(--ice)}
+.search-input{flex:1;background:linear-gradient(145deg,rgba(18,24,36,0.95),rgba(12,16,26,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:10px 16px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;transition:border-color 0.2s,box-shadow 0.2s}
+.search-input:focus{border-color:rgba(201,168,76,0.4);box-shadow:0 0 0 3px rgba(201,168,76,0.08),0 2px 10px rgba(0,0,0,0.3)}
 .search-input::placeholder{color:var(--text3)}
 
 /* ── RESPONSIVE — Tablet (≥600px) ── */
@@ -587,7 +587,7 @@ canvas.bigchart{width:100%;height:100%}
         <button onclick="const m=document.getElementById('aiSummaryModal');m.style.display='flex';m.style.flexDirection='column'" style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:10px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">🤖 AI Summary</button>
       </div>
       <!-- Fear & Greed + SPY/QQQ -->
-      <div id="fngCard" style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="fetchFearGreed()">
+      <div id="fngCard" style="background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:14px 16px;margin-bottom:12px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(255,255,255,0.05) inset" onclick="fetchFearGreed()">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div>
             <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Fear & Greed Index</div>
@@ -1200,10 +1200,10 @@ function calcFundScore(s){
 }
 
 function getFundRating(score){
-  if(score>=80) return {label:'Strong Buy',color:'var(--green)',bg:'rgba(0,230,118,0.15)',border:'rgba(0,230,118,0.3)'};
-  if(score>=60) return {label:'Buy',color:'var(--green2)',bg:'rgba(105,240,174,0.12)',border:'rgba(105,240,174,0.25)'};
-  if(score>=40) return {label:'Hold',color:'var(--gold)',bg:'rgba(201,168,76,0.12)',border:'rgba(201,168,76,0.25)'};
-  return {label:'Avoid',color:'var(--red)',bg:'rgba(255,77,106,0.12)',border:'rgba(255,77,106,0.25)'};
+  if(score>=80) return {label:'Strong Buy',color:'#00e676',bg:'rgba(0,230,118,0.15)',border:'rgba(0,230,118,0.4)',shadow:'0 0 10px rgba(0,230,118,0.3)'};
+  if(score>=60) return {label:'Buy',color:'#69f0ae',bg:'rgba(105,240,174,0.12)',border:'rgba(105,240,174,0.35)',shadow:'0 0 8px rgba(0,230,118,0.2)'};
+  if(score>=40) return {label:'Hold',color:'var(--gold)',bg:'rgba(201,168,76,0.15)',border:'rgba(201,168,76,0.4)',shadow:'0 0 8px rgba(201,168,76,0.2)'};
+  return {label:'Avoid',color:'#ff4d6a',bg:'rgba(255,77,106,0.15)',border:'rgba(255,77,106,0.4)',shadow:'0 0 8px rgba(255,77,106,0.25)'};
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
@@ -1687,10 +1687,19 @@ function drawBigChartWithAxes(canvas, prices, timestamps, isUp){
   ctx.beginPath();
   ctx.moveTo(toX(0),toY(prices[0]));
   prices.forEach((p,i)=>{if(i>0)ctx.lineTo(toX(i),toY(p));});
-  ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
+  // Glow line
+  ctx.strokeStyle=isUp?'rgba(0,230,118,0.2)':'rgba(255,77,106,0.2)'; ctx.lineWidth=5; ctx.lineJoin='round'; ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(toX(0),toY(prices[0]));
+  prices.forEach((p,i)=>{if(i>0)ctx.lineTo(toX(i),toY(p));});
+  ctx.strokeStyle=color; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.stroke();
   // Last dot
   const lx=toX(prices.length-1), ly=toY(prices[prices.length-1]);
+  // Last dot glow
+  ctx.beginPath(); ctx.arc(lx,ly,6,0,Math.PI*2);
+  ctx.fillStyle=isUp?'rgba(0,230,118,0.2)':'rgba(255,77,106,0.2)'; ctx.fill();
   ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx,ly,1.2,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
   // Y axis ขวา
   ctx.fillStyle='rgba(139,153,181,0.85)'; ctx.font='500 10px Inter,sans-serif'; ctx.textAlign='left';
   for(let i=0;i<=4;i++){
@@ -1716,37 +1725,54 @@ function drawBigChartWithAxes(canvas, prices, timestamps, isUp){
 function drawSpark(canvas,prices,isUp){
   if(!canvas||!prices||prices.length<2) return;
   const ctx=canvas.getContext('2d');
-  // FIX: ถ้า offsetWidth=0 ให้ใช้ parentElement หรือ default
   const W=canvas.offsetWidth||canvas.parentElement?.offsetWidth||360;
-  const H=canvas.offsetHeight||canvas.parentElement?.offsetHeight||48;
+  const H=canvas.offsetHeight||canvas.parentElement?.offsetHeight||52;
   if(W<=0||H<=0) return;
   canvas.width=W*2;canvas.height=H*2;ctx.scale(2,2);
   ctx.clearRect(0,0,W,H);
-  if(!prices||prices.length<2)return;
   const mn=Math.min(...prices),mx=Math.max(...prices);
   const rng=mx-mn||1;
   const toX=i=>(i/(prices.length-1))*W;
-  const toY=p=>H-4-((p-mn)/rng)*(H-8);
+  const toY=p=>H-6-((p-mn)/rng)*(H-12);
   const color=isUp?'#00e676':'#ff4d6a';
-  // Gradient fill
+  const colorAlpha=isUp?'rgba(0,230,118,':'rgba(255,77,106,';
+
+  // Smooth curve using bezier
+  const smooth=(pts)=>{
+    ctx.moveTo(toX(0),toY(pts[0]));
+    for(let i=1;i<pts.length-1;i++){
+      const mx=(toX(i)+toX(i+1))/2;
+      const my=(toY(pts[i])+toY(pts[i+1]))/2;
+      ctx.quadraticCurveTo(toX(i),toY(pts[i]),mx,my);
+    }
+    ctx.lineTo(toX(pts.length-1),toY(pts[pts.length-1]));
+  };
+
+  // Gradient fill — 3 stops สวยขึ้น
   const grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,isUp?'rgba(0,230,118,0.25)':'rgba(255,77,106,0.2)');
-  grad.addColorStop(1,'rgba(0,0,0,0)');
+  grad.addColorStop(0,colorAlpha+'0.3)');
+  grad.addColorStop(0.5,colorAlpha+'0.08)');
+  grad.addColorStop(1,colorAlpha+'0)');
   ctx.beginPath();
-  ctx.moveTo(toX(0),toY(prices[0]));
-  prices.forEach((p,i)=>{if(i>0)ctx.lineTo(toX(i),toY(p));});
+  smooth(prices);
   ctx.lineTo(toX(prices.length-1),H);
   ctx.lineTo(0,H);ctx.closePath();
   ctx.fillStyle=grad;ctx.fill();
-  // Line
-  ctx.beginPath();
-  ctx.moveTo(toX(0),toY(prices[0]));
-  prices.forEach((p,i)=>{if(i>0)ctx.lineTo(toX(i),toY(p));});
-  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
-  // Last dot
+
+  // Glow line — วาด 2 ครั้ง (glow + sharp)
+  ctx.beginPath();smooth(prices);
+  ctx.strokeStyle=colorAlpha+'0.3)';ctx.lineWidth=4;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();smooth(prices);
+  ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+
+  // Last dot — glow + solid
   const lx=toX(prices.length-1),ly=toY(prices[prices.length-1]);
+  ctx.beginPath();ctx.arc(lx,ly,5,0,Math.PI*2);
+  ctx.fillStyle=colorAlpha+'0.25)';ctx.fill();
   ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);
   ctx.fillStyle=color;ctx.fill();
+  ctx.beginPath();ctx.arc(lx,ly,1.2,0,Math.PI*2);
+  ctx.fillStyle='#fff';ctx.fill();
 }
 
 // ── Levels (simplified pivot) ──
@@ -1812,7 +1838,7 @@ function makeCard(s){
       </div>
       <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="background:${frating.bg};border:1px solid ${frating.border};border-radius:8px;padding:2px 7px;font-size:10px;font-weight:700;color:${frating.color};font-family:'Syne',sans-serif;letter-spacing:0.5px">${frating.label}</div>
+          <div style="background:${frating.bg};border:1px solid ${frating.border};border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;color:${frating.color};font-family:'Syne',sans-serif;letter-spacing:0.5px;box-shadow:${frating.shadow||'none'}">${frating.label}</div>
           <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
         </div>
         <div class="card-price" id="price-v2-${s.t}">${fmt(s.p)}</div>
@@ -1872,6 +1898,15 @@ async function _processLogoQueue(){
 function _loadLogoNow(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
+
+  // ถ้ามี SVG ใน _LOGOS ใช้เลย — แม่นยำ 100%
+  if(_LOGOS[ticker]){
+    const r = size<=36?10:12;
+    el.innerHTML = `<div style="width:100%;height:100%;border-radius:${r}px;overflow:hidden">${_LOGOS[ticker]}</div>`;
+    delete _logoCache[ticker];
+    _logoLoading.delete(ticker);
+    return;
+  }
 
   // ถ้ามี cache และยังไม่หมดอายุ ใช้เลย
   const cached = _logoCache[ticker];
@@ -1940,7 +1975,9 @@ function _applyLogoImg(el, src, size){
 
 
 
-const _LOGOS={};
+const _LOGOS={
+XOM:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#da291c"/><text x="18" y="14" font-size="7" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">Exxon</text><rect x="6" y="16" width="24" height="1" fill="rgba(255,255,255,0.4)"/><text x="18" y="25" font-size="7" font-family="Arial" font-weight="900" fill="#fff" text-anchor="middle">Mobil</text></svg>`,
+};
 
 function buildLogoFallback(t){
   // gradient fallback — แสดงระหว่างรอโหลดโลโก้จริง
@@ -2111,6 +2148,27 @@ async function fetchFearGreed(){
             prevRating:d.fear_and_greed.previous_1_week?Math.round(d.fear_and_greed.previous_1_week):null,
           };
           break;
+        }
+      }
+    }catch{}
+  }
+
+  // fallback: alternative.me crypto fear & greed (ใกล้เคียง CNN)
+  if(!data){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const r=await fetch('https://api.alternative.me/fng/?limit=2',{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d?.data?.[0]?.value){
+          data={
+            value:parseInt(d.data[0].value),
+            rating:d.data[0].value_classification||'',
+            prev:d.data[1]?parseInt(d.data[1].value):null,
+            prevRating:null,
+          };
         }
       }
     }catch{}
@@ -2725,7 +2783,7 @@ function drawerTab(tab, btn){
       (()=>{
         const fs=calcFundScore(s);
         const fr=getFundRating(fs);
-        return '<div style="margin-top:16px;padding:14px;border-radius:12px;background:'+fr.bg+';border:1px solid '+fr.border+'">' +
+        return '<div style="margin-top:16px;padding:14px;border-radius:12px;background:'+fr.bg+';border:1px solid '+fr.border+';box-shadow:'+(fr.shadow||'none')+'">' +
           '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:'+fr.color+';margin-bottom:8px">⭐ Fundamental Score</div>' +
           '<div style="display:flex;align-items:center;gap:12px">' +
             '<div style="font-size:32px;font-weight:800;font-family:\'Manrope\',sans-serif;color:'+fr.color+'">'+fs+'</div>' +
