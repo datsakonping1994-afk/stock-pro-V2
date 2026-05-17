@@ -5513,22 +5513,25 @@ async function _translateNewsGemini(items){
     const r=await fetch('https://gemini-proxy.datsakonping1994.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        texts,
-        apiKey:'AIzaSyCG4tpTF9rjxBViD-GICyC_piYj6M0VXxU'
-      })
+      body:JSON.stringify({texts})
     });
     if(!r.ok) throw new Error('proxy '+r.status);
     const data=await r.json();
-    const translated=data.translated||'';
-    const lines=translated.split('\n').map(l=>l.replace(/^\d+\.\s*/,'').trim()).filter(l=>l.length>0);
+    const raw=data.translated||'[]';
+    // parse JSON array จาก Groq
+    let parsed=[];
+    try{
+      const clean=raw.replace(/```json|```/g,'').trim();
+      parsed=JSON.parse(clean);
+    }catch{}
     return items.map((it,i)=>({
       ...it,
-      titleTH: lines[i]||it.title,
+      titleTH: parsed[i]?.title||it.title,
+      summaryTH: parsed[i]?.summary||'',
       titleOrig: it.title,
     }));
   }catch(e){
-    return items.map(it=>({...it,titleTH:it.title,titleOrig:it.title}));
+    return items.map(it=>({...it,titleTH:it.title,summaryTH:'',titleOrig:it.title}));
   }
 }
 
@@ -5578,8 +5581,8 @@ function renderEconNews(items, body){
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
     return`<a href="${item.link}" target="_blank" style="text-decoration:none">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block" onclick="">
-        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
-        ${item.titleOrig&&item.titleOrig!==item.titleTH?`<div style="font-size:10px;color:var(--text3);line-height:1.4;margin-bottom:6px;opacity:0.5">${item.titleOrig}</div>`:''}
+        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
+        ${item.summaryTH?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px">${item.summaryTH}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:10px;color:var(--text3)">${item.source||'News'}</div>
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
