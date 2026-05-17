@@ -1808,12 +1808,10 @@ function loadLogo(ticker, elId, size, delay=0){
 }
 async function _processLogoQueue(){
   _logoRunning=true;
-  while(_logoQueue.length){
-    const {ticker,elId,size,delay}=_logoQueue.shift();
-    if(delay>0) await new Promise(r=>setTimeout(r,delay));
-    _loadLogoNow(ticker,elId,size);
-    await new Promise(r=>setTimeout(r,30)); // throttle: max ~33 logos/sec
-  }
+  // โหลดทุกตัวพร้อมกันเลย ไม่ throttle
+  const all=[..._logoQueue];
+  _logoQueue=[];
+  all.forEach(({ticker,elId,size})=>_loadLogoNow(ticker,elId,size));
   _logoRunning=false;
 }
 function _loadLogoNow(ticker, elId, size){
