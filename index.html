@@ -698,7 +698,13 @@ canvas.bigchart{width:100%;height:100%}
   <!-- ALERTS PAGE -->
   <div class="page" id="page-news" style="background:var(--bg0);min-height:100%">
     <div style="padding:12px 14px 0">
-      <div class="section-title" style="margin-bottom:10px">📰 ข่าวเศรษฐกิจ</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-title" style="margin-bottom:0">📰 ข่าวเศรษฐกิจ</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="newsLastUpdated" style="font-size:10px;color:var(--text3)"></span>
+          <button id="newsRefreshBtn" onclick="refreshNewsManual()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;transition:all 0.15s">🔄</button>
+        </div>
+      </div>
       <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;margin-bottom:10px" id="newsCatRow">
         <button class="sector-btn active" onclick="loadEconNews('market',this)">🌍 ตลาดรวม</button>
         <button class="sector-btn" onclick="loadEconNews('fed',this)">🏦 Fed</button>
@@ -3297,6 +3303,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   const overlay=document.getElementById('signalOverlay');
   overlay.className='signal-overlay';
   overlay.style.display='flex';
+  overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
   const indicatorBadge=hasCandleData
     ?`<span style="font-size:10px;background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);color:var(--green);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">✅ FULL INDICATOR</span>`
     :`<span style="font-size:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);color:var(--yellow);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">⚠️ BASIC ONLY</span>`;
@@ -3347,7 +3354,10 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
         </div>
       </div>
       <div class="signal-ai">
-        <div class="signal-ai-header">🤖 AI กำลังวิเคราะห์...</div>
+        <div class="signal-ai-header" style="display:flex;justify-content:space-between;align-items:center">
+          <span>🤖 AI กำลังวิเคราะห์...</span>
+          <span id="signalAiModel" style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace"></span>
+        </div>
         <div id="signalAiText">รอสักครู่...</div>
       </div>
     </div>`;
@@ -3378,6 +3388,11 @@ Buy Score: ${score}/100
 2) ความเสี่ยงที่ต้องระวัง
 3) แนะนำ entry / stop loss`;
   const sys='คุณคือนักวิเคราะห์หุ้นมืออาชีพ วิเคราะห์จาก indicator ที่ให้มาครบทุกตัว ตอบภาษาไทยชาวบ้านเข้าใจได้ ใช้ emoji แทน bullet ห้ามใช้ศัพท์เทคนิคภาษาอังกฤษ';
+
+  // แสดง model ที่กำลังใช้
+  const modelLabel = _getGeminiKey() ? 'Gemini 2.0 Flash' : 'Claude Haiku';
+  const el2pre = document.getElementById('signalAiModel');
+  if(el2pre) el2pre.textContent = `🤖 ${modelLabel}`;
 
   const reply=await callGemini(sys, prompt, 400);
   const el2=document.getElementById('signalAiText');
@@ -5597,6 +5612,18 @@ setInterval(()=>{
   loadEconNews(catKey, activeCat);
 }, 5*60*1000);
 
+async function refreshNewsManual(){
+  const btn=document.getElementById('newsRefreshBtn');
+  const activeCat=document.querySelector('#newsCatRow .sector-btn.active');
+  const catMap={'🌍 ตลาดรวม':'market','🏦 Fed':'fed','📊 เศรษฐกิจ':'economy','💻 เทค':'tech','₿ Crypto':'crypto','🌏 เอเชีย':'asia'};
+  const catKey=catMap[activeCat?.textContent?.trim()]||'market';
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  delete _econNewsCache[catKey];
+  delete _econNewsCacheTime[catKey];
+  await loadEconNews(catKey, activeCat);
+  if(btn){btn.textContent='🔄';btn.disabled=false;}
+}
+
 async function loadEconNews(cat, btn){
   document.querySelectorAll('#newsCatRow .sector-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
@@ -5613,6 +5640,8 @@ async function loadEconNews(cat, btn){
   const translated=await _translateNewsGemini(items);
   _econNewsCache[cat]=translated;
   _econNewsCacheTime[cat]=Date.now();
+  const tsEl=document.getElementById('newsLastUpdated');
+  if(tsEl){const d=new Date();tsEl.textContent=`อัพเดท ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
   renderEconNews(translated, body);
 }
 
