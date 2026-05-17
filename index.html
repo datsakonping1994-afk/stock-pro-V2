@@ -1559,18 +1559,12 @@ function updateDashWatchlist(){
   section.style.display='block';
   if(countEl) countEl.textContent=watchlist.size+' ตัว';
   const wlStocks=stocks.filter(s=>watchlist.has(s.t));
-  list.innerHTML=wlStocks.map(s=>`
-    <div class="mover-row" onclick="openDrawer('${s.t}')">
-      <div class="mover-left">
-        <div class="mover-ticker">${s.t}</div>
-        <div class="mover-name">${s.n}</div>
-      </div>
-      <div>
-        <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${(+s.c).toFixed(2)}%</div>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML='';
+  wlStocks.forEach(s=>{
+    const {div,logoId}=makeMoverRow(s,null,'wl');
+    list.appendChild(div);
+    _loadLogoNow(s.t,logoId,32);
+  });
 }
 
 // ── Manual refresh (กดที่ status pill) ──
@@ -1796,7 +1790,9 @@ function makeCard(s){
 }
 
 const LOGO_MAP = {};
-const _logoCache = {}; // cache URL ที่สำเร็จแล้ว ไม่ต้อง retry
+const _logoCache = {}; // {url, ts} cache โลโก้ที่โหลดสำเร็จ
+const _logoLoading = new Set(); // ป้องกัน duplicate requests
+const _LOGO_CACHE_TTL = 3600000; // 1 ชั่วโมง
 
 let _logoQueue=[];
 let _logoRunning=false;
@@ -1816,11 +1812,22 @@ function _loadLogoNow(ticker, elId, size){
   const el = document.getElementById(elId);
   if(!el) return;
 
-  // ถ้าเคยโหลดสำเร็จแล้ว ใช้ URL เดิมได้เลย
-  if(_logoCache[ticker]){
-    _applyLogoImg(el, _logoCache[ticker], size);
+  // ถ้ามี cache และยังไม่หมดอายุ ใช้เลย
+  const cached = _logoCache[ticker];
+  if(cached && (Date.now()-cached.ts) < _LOGO_CACHE_TTL){
+    _applyLogoImg(el, cached.url, size);
     return;
   }
+
+  // ป้องกัน duplicate — ถ้ากำลังโหลดอยู่แล้ว รอ cache แทน
+  if(_logoLoading.has(ticker)){
+    setTimeout(()=>{
+      const c=_logoCache[ticker];
+      if(c) _applyLogoImg(el, c.url, size);
+    }, 1500);
+    return;
+  }
+  _logoLoading.add(ticker);
 
   const domain = getLogoUrl(ticker);
 
@@ -1834,19 +1841,24 @@ function _loadLogoNow(ticker, elId, size){
   let idx = 0;
   const img = document.createElement('img');
   img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;';
-  img.onerror = () => {
-    if(idx < sources.length){ img.src = sources[idx++]; }
-    else { el.innerHTML = buildLogoFallback(ticker); }
-  };
   img.onload = () => {
     if(img.naturalWidth < 10){ img.onerror(); return; }
-    // เช็คว่า el ยังอยู่ใน DOM อยู่ (ป้องกัน re-render race condition)
-    if(!document.getElementById(elId)) return;
-    _logoCache[ticker] = img.src;
-    el.innerHTML = '';
-    el.style.background = 'transparent';
-    el.style.padding = '0';
-    el.appendChild(img);
+    _logoLoading.delete(ticker);
+    _logoCache[ticker] = {url: img.src, ts: Date.now()};
+    const target = document.getElementById(elId);
+    if(!target) return;
+    target.innerHTML = '';
+    target.style.background = 'transparent';
+    target.style.padding = '0';
+    target.appendChild(img);
+  };
+  img.onerror = () => {
+    if(idx < sources.length){ img.src = sources[idx++]; }
+    else {
+      _logoLoading.delete(ticker);
+      const t=document.getElementById(elId);
+      if(t) t.innerHTML = buildLogoFallback(ticker);
+    }
   };
   img.src = sources[idx++];
 }
@@ -1855,11 +1867,13 @@ function _applyLogoImg(el, src, size){
   const img = document.createElement('img');
   img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;';
   img.onload = () => {
+    if(!el.isConnected) return; // ป้องกัน el ถูก remove ไปแล้ว
     el.innerHTML = '';
     el.style.background = 'transparent';
     el.style.padding = '0';
     el.appendChild(img);
   };
+  img.onerror = () => { el.innerHTML = buildLogoFallback(el.id?.replace(/^(logo|mlogo|tm|ns|wl|sig-logo)-/,'')||''); };
   img.src = src;
 }
 
@@ -2091,6 +2105,29 @@ function _renderFNG(d){
 }
 
 // ── Dashboard ──
+
+// ── Mover row with logo ──
+function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
+  const isUp=s.c>=0;
+  const logoId=`${idPrefix}-${s.t}`;
+  const div=document.createElement('div');
+  div.className='mover-row';
+  div.onclick=()=>openDrawer(s.t);
+  div.innerHTML=`
+    <div class="mover-left">
+      <div class="mover-logo" id="${logoId}" style="width:32px;height:32px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--text2);font-family:'Syne',sans-serif;flex-shrink:0;overflow:hidden">${buildLogoFallback(s.t)}</div>
+      <div>
+        <div class="mover-ticker">${s.t}</div>
+        <div class="mover-name">${subLabel||s.n}</div>
+      </div>
+    </div>
+    <div>
+      <div class="mover-price">${fmt(s.p)}</div>
+      <div class="mover-chg ${isUp?'up':'dn'}">${isUp?'+':''}${(+s.c).toFixed(2)}%</div>
+    </div>
+  `;
+  return {div, logoId};
+}
 function updateDashboard(){
   const up=stocks.filter(s=>s.c>0).length;
   const dn=stocks.filter(s=>s.c<0).length;
@@ -2119,18 +2156,13 @@ function updateDashboard(){
   document.getElementById('dashAvgPct').textContent=stats?(stats.avgPct>=0?'+':'')+stats.avgPct+'%':'--';
   // Top movers
   const movers=[...stocks].sort((a,b)=>Math.abs(b.c)-Math.abs(a.c)).slice(0,5);
-  document.getElementById('topMovers').innerHTML=movers.map(s=>`
-    <div class="mover-row" onclick="openDrawer('${s.t}')">
-      <div class="mover-left">
-        <div class="mover-ticker">${s.t}</div>
-        <div class="mover-name">${s.n}</div>
-      </div>
-      <div>
-        <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${(+s.c).toFixed(2)}%</div>
-      </div>
-    </div>
-  `).join('');
+  const topMoversEl=document.getElementById('topMovers');
+  topMoversEl.innerHTML='';
+  movers.forEach(s=>{
+    const {div,logoId}=makeMoverRow(s,null,'tm');
+    topMoversEl.appendChild(div);
+    _loadLogoNow(s.t,logoId,32);
+  });
   // Watchlist section on dashboard
   updateDashWatchlist();
   // Near support
@@ -2139,20 +2171,15 @@ function updateDashboard(){
     const pb=(b.p-getS1(b.t,b.p))/getS1(b.t,b.p)*100;
     return pa-pb;
   }).slice(0,4);
-  document.getElementById('nearSupport').innerHTML=near.map(s=>{
+  const nearSupportEl=document.getElementById('nearSupport');
+  nearSupportEl.innerHTML='';
+  near.forEach(s=>{
     const s1=getS1(s.t,s.p);
     const pct=((s.p-s1)/s1*100).toFixed(1);
-    return`<div class="mover-row" onclick="openDrawer('${s.t}')">
-      <div class="mover-left">
-        <div class="mover-ticker">${s.t}</div>
-        <div class="mover-name">S1 ${s1.toFixed(2)}</div>
-      </div>
-      <div>
-        <div class="mover-price">${fmt(s.p)}</div>
-        <div class="mover-chg ${parseFloat(pct)<=1.5?'up':'dn'}">${parseFloat(pct)>=0?'+':''}${pct}%</div>
-      </div>
-    </div>`;
-  }).join('');
+    const {div,logoId}=makeMoverRow(s,'S1 '+s1.toFixed(2),'ns');
+    nearSupportEl.appendChild(div);
+    _loadLogoNow(s.t,logoId,32);
+  });
 }
 
 // ── Drawer ──
@@ -3559,7 +3586,7 @@ document.addEventListener('visibilitychange',()=>{
     const saved=localStorage.getItem('_fh_key');
     if(saved && saved.length>10) FINNHUB_KEY=saved;
     if(hasApiKey()&&!isLive){
-      console.log('App resumed — restarting live...');
+      // App resumed — restarting live
       startLive();
     } else if(hasApiKey()&&isLive){
       // WS อาจตายไป — reconnect
