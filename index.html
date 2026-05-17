@@ -1823,44 +1823,44 @@ function _loadLogoNow(ticker, elId, size){
   }
 
   const domain = getLogoUrl(ticker);
-  const r = size<=36?10:12;
 
-  // logo.dev เป็น primary — รองรับ CORS, ฟรี, ไม่ต้อง key, ไม่มี rate limit
-  // Google HD favicon เป็น secondary
-  // Clearbit เป็น tertiary (อาจ block บนมือถือ)
   const sources = [
     `https://logo.clearbit.com/${domain}`,
     `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
   ];
 
+  // ใช้ img tag ใน DOM โดยตรง — browser จัดการ CORS เอง ไม่ต้อง preflight
   let idx = 0;
-  const tryNext = () => {
-    if(idx >= sources.length){ el.innerHTML = buildLogoFallback(ticker); return; }
-    const src = sources[idx++];
-    const img = new Image();
-    
-    img.onload = () => {
-      if(img.naturalWidth < 16 || img.naturalHeight < 16){ tryNext(); return; } // reject tiny/broken
-      _logoCache[ticker] = src; // cache URL ที่สำเร็จ
-      _applyLogoImg(el, src, size);
-    };
-    img.onerror = () => tryNext();
-    img.src = src;
+  const img = document.createElement('img');
+  img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;';
+  img.onerror = () => {
+    if(idx < sources.length){ img.src = sources[idx++]; }
+    else { el.innerHTML = buildLogoFallback(ticker); }
   };
-  tryNext();
+  img.onload = () => {
+    if(img.naturalWidth < 10){ img.onerror(); return; }
+    // เช็คว่า el ยังอยู่ใน DOM อยู่ (ป้องกัน re-render race condition)
+    if(!document.getElementById(elId)) return;
+    _logoCache[ticker] = img.src;
+    el.innerHTML = '';
+    el.style.background = 'transparent';
+    el.style.padding = '0';
+    el.appendChild(img);
+  };
+  img.src = sources[idx++];
 }
 
 function _applyLogoImg(el, src, size){
-  const r = size<=36?10:12;
-  const img = new Image();
-  
+  const img = document.createElement('img');
+  img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;';
+  img.onload = () => {
+    el.innerHTML = '';
+    el.style.background = 'transparent';
+    el.style.padding = '0';
+    el.appendChild(img);
+  };
   img.src = src;
-  img.style.cssText = `width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;`;
-  el.innerHTML = '';
-  el.style.background = 'transparent';
-  el.style.padding = '0';
-  el.appendChild(img);
 }
 
 
@@ -1974,15 +1974,17 @@ function renderCards(){
   // render ทีละ 10 ตัว ไม่ block UI
   const CHUNK=10;
   let i=0;
-  const fragment=document.createDocumentFragment();
   function renderChunk(){
     const end=Math.min(i+CHUNK,list.length);
+    const fragment=document.createDocumentFragment(); // สร้างใหม่ทุก chunk
+    const chunkList=[];
     for(;i<end;i++){
       fragment.appendChild(makeCard(list[i]));
+      chunkList.push(list[i]);
     }
     grid.appendChild(fragment);
-    // โหลดโลโก้หลัง DOM append แล้ว
-    list.slice(Math.max(0,i-10),i).forEach(s=>_loadLogoNow(s.t,'logo-'+s.t,44));
+    // โหลดโลโก้หลัง DOM append แล้ว — ใช้ chunkList ของ chunk นี้
+    chunkList.forEach(s=>_loadLogoNow(s.t,'logo-'+s.t,44));
     if(i<list.length){
       requestAnimationFrame(renderChunk);
     } else {
