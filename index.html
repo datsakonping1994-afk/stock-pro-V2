@@ -5499,8 +5499,40 @@ async function loadEconNews(cat, btn){
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
   const query=_econQueries[cat]||cat;
   const items=await _fetchEconNews(query);
-  _econNewsCache[cat]=items;
-  renderEconNews(items, body);
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
+  const translated = await _translateNewsGemini(items);
+  _econNewsCache[cat]=translated;
+  renderEconNews(translated, body);
+}
+
+// ── แปลหัวข้อข่าวเป็นไทยด้วย Gemini Flash ──
+async function _translateNewsGemini(items){
+  if(!items||!items.length) return items;
+  try{
+    const GEMINI_KEY='AIzaSyCfrII66ndKAblLq1eVEDcprjldA-iFTXk';
+    const titles=items.map((it,i)=>`${i+1}. ${it.title}`).join('\n');
+    const prompt=`แปลหัวข้อข่าวการเงินต่อไปนี้เป็นภาษาไทย ให้กระชับและเป็นธรรมชาติ ตอบเฉพาะหัวข้อที่แปลแล้วเรียงตามลำดับหมายเลขเดิม ห้ามอธิบายเพิ่ม:\n\n${titles}`;
+    const r=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]}),
+      }
+    );
+    if(!r.ok) throw new Error('gemini error');
+    const data=await r.json();
+    const text=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const lines=text.split('\n').map(l=>l.replace(/^\d+\.\s*/,'').trim()).filter(l=>l.length>0);
+    return items.map((it,i)=>({
+      ...it,
+      titleTH: lines[i]||it.title,
+      titleOrig: it.title,
+    }));
+  }catch(e){
+    // ถ้าแปลไม่ได้ใช้ title เดิม
+    return items.map(it=>({...it,titleTH:it.title,titleOrig:it.title}));
+  }
 }
 
 async function _fetchEconNews(query){
@@ -5549,7 +5581,8 @@ function renderEconNews(items, body){
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
     return`<a href="${item.link}" target="_blank" style="text-decoration:none">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;display:block" onclick="">
-        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px">${item.title}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">${item.titleTH||item.title}</div>
+        ${item.titleOrig&&item.titleOrig!==item.titleTH?`<div style="font-size:10px;color:var(--text3);line-height:1.4;margin-bottom:6px;opacity:0.6">${item.titleOrig}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:10px;color:var(--text3)">${item.source||'News'}</div>
           <div style="font-size:10px;color:var(--text3)">${ago}</div>
