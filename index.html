@@ -1438,13 +1438,12 @@ function _loadLogoNow(ticker, elId, size){
   const domain = getLogoUrl(ticker);
   const r = size<=36?10:12;
 
-  // logo.dev เป็น primary — รองรับ CORS, ฟรี, ไม่ต้อง key, ไม่มี rate limit
-  // Google HD favicon เป็น secondary
-  // Clearbit เป็น tertiary (อาจ block บนมือถือ)
+  // Priority: FMP (คมชัด เฉพาะหุ้น) → logo.dev → Clearbit → Google favicon
   const sources = [
+    `https://financialmodelingprep.com/image-stock/${ticker}.png`,
     `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
     `https://logo.clearbit.com/${domain}`,
+    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
   ];
 
   let idx = 0;
