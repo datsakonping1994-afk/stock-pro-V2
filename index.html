@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stock Pro">
+<meta name="theme-color" content="#080a0f">
+<link rel="manifest" href="manifest.json">
 <title>STOCK PRO ◈</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -7336,6 +7342,14 @@ document.addEventListener('visibilitychange',()=>{
   }, {passive:true});
 })();
 
+// ── PWA Service Worker ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/stock-pro-V2/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.warn('SW error:', e));
+  });
+}
 </script>
 </body>
 </html>
