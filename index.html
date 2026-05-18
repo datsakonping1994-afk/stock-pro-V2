@@ -1348,9 +1348,9 @@ let PORT_SIZE = (()=>{ try{ return parseInt(localStorage.getItem('_sp_portsize')
 // ── Named constants (ป้องกัน magic numbers กระจัดกระจาย) ──
 const BUY_SIGNAL_THRESHOLD = 52;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
 const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
-const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
-const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
-const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
+const POLL_STAGGER_MS      = 50;   // หน่วง ms ระหว่าง HTTP request (ลดจาก 120)
+const PRELOAD_PARALLEL     = 6;    // โหลด candle พร้อมกันสูงสุด N ตัว (เพิ่มจาก 3)
+const PRELOAD_STAGGER_MS   = 80;   // หน่วง ms ระหว่าง batch ของ preload (ลดจาก 150)
 const BUY_SIGNAL_COOLDOWN  = 900000; // 15 นาที cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
@@ -4545,8 +4545,26 @@ function startLive(){
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
   if(liveDot) liveDot.style.background='var(--gold)';
 
-  // httpPoll ครั้งแรกเพื่อดึง prevClose ก่อน WS
+  // โหลดราคา cache จาก localStorage ก่อนเลย แสดงผลได้ทันทีโดยไม่ต้องรอ network
+  const cacheMaxAge = 5 * 60 * 1000; // 5 นาที
+  let cachedCount = 0;
+  stocks.forEach(s => {
+    try {
+      const raw = localStorage.getItem('_sp_px_' + s.t);
+      if (!raw) return;
+      const px = JSON.parse(raw);
+      if (px && px.p > 0 && (Date.now() - px.t) < cacheMaxAge) {
+        s.p = px.p; s.c = px.c || 0;
+        liveCache[s.t] = px.t; // ป้องกัน httpPoll ดึงซ้ำถ้า cache ยังใหม่
+        cachedCount++;
+      }
+    } catch {}
+  });
+  if (cachedCount > 0) { renderCards(); }
+
+  // httpPoll ครั้งแรกทันที + เปิด poll สำรองก่อน WS เชื่อมต่อ
   httpPoll();
+  if(!pollTimer) pollTimer=setInterval(httpPoll, 8000);
   wsConnect();
   signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
 }
@@ -4628,7 +4646,7 @@ async function wsConnect() {
     _wsToken = null;
     // WS ล่ม — fallback ไป httpPoll ทันที
     if(isLive && !pollTimer){
-      pollTimer = setInterval(httpPoll, 15000);
+      pollTimer = setInterval(httpPoll, 8000);
       httpPoll();
       const statusEl = $id('statusText');
       const liveDot = $id('liveDot');
@@ -4651,16 +4669,16 @@ async function httpPoll(){
   _pollInFlight=true;
   try{
     // กรองเฉพาะที่ cache หมดอายุ และ stagger เพื่อไม่โดน rate limit
-    const stale=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000);
-    const batch=stale.slice(0,20);
-    // ดึงพร้อมกัน 4 ตัว แทนทีละตัว
-    const chunkSize=4;
+    const stale=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>12000);
+    const batch=stale.slice(0,30);
+    // ดึงพร้อมกัน 8 ตัว (เพิ่มจาก 4)
+    const chunkSize=8;
     for(let i=0;i<batch.length;i+=chunkSize){
       const chunk=batch.slice(i,i+chunkSize);
       await Promise.allSettled(chunk.map(async s=>{
         try{
           const ctrl=new AbortController();
-          const tid=setTimeout(()=>ctrl.abort(),5000);
+          const tid=setTimeout(()=>ctrl.abort(),8000);
           const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
           clearTimeout(tid);
           if(!r.ok) return;
@@ -5172,7 +5190,7 @@ setInterval(()=>{
   });
   // ล้าง liveCache quote เก่าเกิน 5 นาที
   Object.keys(liveCache).forEach(k=>{
-    if(now-(liveCache[k]||0)>300000) delete liveCache[k];
+    if(now-(liveCache[k]||0)>600000) delete liveCache[k]; // expire 10 นาที
   });
   // จำกัด _translatedCache ไม่เกิน 200 entries
   const tKeys=Object.keys(_translatedCache);
