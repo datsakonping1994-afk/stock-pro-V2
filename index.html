@@ -2719,6 +2719,26 @@ async function fetchAnalystData(ticker){
   }catch(e){ console.warn('fetchAnalystData error',e); }
 }
 
+
+// ── Fund AI — เรียกเมื่อกดปุ่ม ──
+function triggerFundAI(ticker){
+  const btn = document.getElementById('fundAIBtn');
+  const el = document.getElementById('fundAIText');
+  if(!el || !window._fundPrompt) return;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังวิเคราะห์...'; }
+  el.innerHTML='<span style="opacity:0.6;font-size:11px">✨ Gemini กำลังวิเคราะห์...</span>';
+  callAI_Analyze(
+    'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
+    window._fundPrompt, 500
+  ).then(function(result){
+    if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
+    if(btn){ btn.disabled=false; btn.textContent='🔄 วิเคราะห์ใหม่'; }
+  }).catch(function(){
+    if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
+    if(btn){ btn.disabled=false; btn.textContent='⚡ วิเคราะห์'; }
+  });
+}
+
 // ── renderInsider ──
 function renderInsider(ticker, containerId){
   const el=document.getElementById(containerId);
@@ -3014,8 +3034,11 @@ function drawerTab(tab, btn){
         '</div>'
       ) : '') +
       '<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">' +
-        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
-        '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
+          '<button id="fundAIBtn" onclick="triggerFundAI(\''+s.t+'\')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:\'Syne\',sans-serif">⚡ วิเคราะห์</button>' +
+        '</div>' +
+        '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text3)">กด "วิเคราะห์" เพื่อให้ AI สรุปหุ้นนี้</div>' +
       '</div>' +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">🏢 ข้อมูลบริษัท</div>' +
       '<div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">'+s.t+'</span></div>' +
@@ -3126,19 +3149,8 @@ function drawerTab(tab, btn){
       'Fundamental Score: '+fs+'/100 ('+fr.label+')\n'+
       'Peer Comparison: '+peerSummary+'\n'+
       '\nวิเคราะห์ให้ครอบคลุม: ธุรกิจทำอะไร รายได้มาจากไหน กำไร/ขาดทุน อัตราการโต ความเสี่ยง (beta/short/หนี้) ปันผล เป้าราคานักวิเคราะห์ เปรียบกับ peer และเหมาะกับนักลงทุนแบบไหน ตอบ 6-7 ประโยคภาษาไทยเหมือนคุยกับเพื่อน';
-    var fundEl=document.getElementById('fundAIText');
-    if(fundEl) fundEl.innerHTML='<span style="opacity:0.6;font-size:11px">✨ Gemini 1.5 Pro กำลังวิเคราะห์...</span>';
-    callAI_Analyze(
-      'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น ห้ามพูดถึงราคา แนวรับ แนวต้าน หรือ indicator ทางเทคนิคใดๆ',
-      fundPrompt,
-      500
-    ).then(function(result){
-      var el=document.getElementById('fundAIText');
-      if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
-    }).catch(function(){
-      var el=document.getElementById('fundAIText');
-      if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
-    });
+    // เก็บ prompt ไว้รอกดปุ่ม
+    window._fundPrompt = fundPrompt;
 
     // ── Render Historical Earnings Chart, Insider, Peer (after DOM ready) ──
     requestAnimationFrame(()=>{
