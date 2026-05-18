@@ -43,7 +43,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── LAYOUT ── */
 #app{flex:1;display:flex;flex-direction:column;height:100dvh;overflow:hidden}
 #topbar{flex-shrink:0;z-index:100}
-#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px;will-change:scroll-position;transform:translateZ(0)}
 #bottomnav{flex-shrink:0;position:fixed;bottom:0;left:0;right:0;z-index:200}
 
 /* ── TOP BAR ── */
@@ -89,7 +89,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
 /* ── PAGES ── */
-.page{display:none;animation:fadeIn 0.2s ease}
+.page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -295,8 +295,11 @@ canvas.spark{width:100%;height:52px;display:block}
   display:flex;flex-direction:column;
   background:var(--bg1);
   transform:translateY(100%);
-  transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);
+  transition:transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
   padding-bottom:env(safe-area-inset-bottom);
+  will-change:transform;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
 }
 #drawer.open{transform:translateY(0)}
 .drawer-handle{width:36px;height:4px;border-radius:2px;background:var(--bg4);margin:10px auto 0}
@@ -309,7 +312,7 @@ canvas.spark{width:100%;height:52px;display:block}
 .drawer-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 16px;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;white-space:nowrap;flex-shrink:0}
 .drawer-tab{padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;font-family:'Syne',sans-serif;transition:all 0.15s;flex-shrink:0}
 .drawer-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
-.drawer-body{flex:1;overflow-y:auto;padding:16px}
+.drawer-body{flex:1;overflow-y:auto;padding:16px;transition:opacity 0.18s ease;-webkit-overflow-scrolling:touch;will-change:scroll-position;transform:translateZ(0)}
 
 /* Chart area */
 .big-chart{height:220px;background:var(--bg2);border-radius:16px;overflow:hidden;position:relative;margin-bottom:16px;border:1px solid var(--border)}
@@ -500,6 +503,7 @@ canvas.bigchart{width:100%;height:100%}
 .unlock-btn:active{background:rgba(255,77,106,0.25)}
 
 /* ── SCROLLBAR ── */
+#content{scroll-behavior:smooth}
 #content::-webkit-scrollbar{width:3px}
 #content::-webkit-scrollbar-track{background:transparent}
 #content::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
@@ -763,29 +767,36 @@ canvas.bigchart{width:100%;height:100%}
         <!-- Finnhub key ย้ายไปเก็บใน Cloudflare Worker secret แล้ว — ไม่ต้องใส่ที่นี่ -->
         <div class="settings-row" id="apiKeyRow">
           <div style="width:100%">
-            <div class="settings-label">🔒 Finnhub API Key</div>
-            <div class="settings-sublabel">Key เก็บอยู่ใน Cloudflare Worker secret อย่างปลอดภัย — ไม่ผ่าน browser</div>
+            <div class="settings-label">🔑 Finnhub API Key</div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://finnhub.io/dashboard" target="_blank" style="color:var(--ice);text-decoration:none">finnhub.io/dashboard</a> — ใช้ดึงราคาหุ้น Real-time</div>
             <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <div style="flex:1;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text3)">
-                <span style="color:var(--green)">●</span> Managed by Worker — <code style="font-size:11px;color:var(--text2)">wrangler secret put FINNHUB_KEY</code>
-              </div>
+              <input class="settings-input" id="finnhubKeyInput" type="password" placeholder="d83v... (ใส่ key จาก Finnhub)" style="flex:1">
               <button class="settings-btn" id="testApiBtn" onclick="testApiKey()">🔑 ทดสอบ</button>
             </div>
+            <div id="apiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
           </div>
         </div>
-        <div id="apiKeyStatus" style="display:none;margin:0 16px 14px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
         <div class="settings-row">
           <div style="width:100%">
-            <div class="settings-label">🔒 Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
-            <div class="settings-sublabel">Key เก็บอยู่ใน Cloudflare Worker secret อย่างปลอดภัย</div>
+            <div class="settings-label">🤖 Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--ice);text-decoration:none">aistudio.google.com/app/apikey</a> — วิเคราะห์หุ้น AI (ฟรี)</div>
             <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <div style="flex:1;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text3)">
-                <span style="color:var(--green)">●</span> Managed by Worker — <code style="font-size:11px;color:var(--text2)">wrangler secret put GEMINI_KEY</code>
-              </div>
+              <input class="settings-input" id="geminiKeyInput" type="password" placeholder="AIza..." style="flex:1">
               <button class="settings-btn" id="testGeminiBtn" onclick="testGeminiKey()">🧪 ทดสอบ</button>
             </div>
+            <div id="geminiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
           </div>
-          <div id="geminiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">🟣 Anthropic API Key <span style="font-size:10px;color:var(--text3)">(Claude AI)</span></div>
+            <div class="settings-sublabel">ใส่ key จาก <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--ice);text-decoration:none">console.anthropic.com</a> — ใช้ Claude วิเคราะห์หุ้น</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="settings-input" id="anthropicKeyInput" type="password" placeholder="sk-ant-..." style="flex:1">
+              <button class="settings-btn" id="testAnthropicBtn" onclick="testAnthropicKey()">🧪 ทดสอบ</button>
+            </div>
+            <div id="anthropicKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+          </div>
         </div>
         <div class="settings-row">
           <div style="width:100%">
@@ -993,6 +1004,7 @@ canvas.bigchart{width:100%;height:100%}
     <div class="drawer-price">
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
+      <div id="drawerExtPrice" style="display:none"></div>
     </div>
 
   </div>
@@ -1078,6 +1090,24 @@ const stocks=[
   {t:"SOFI",n:"SoFi Technologies",p:18.0,c:0,pe:null,mktcap:"20.0B",rev:"33%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"9.4%",target:22.0},
   {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.0,short:"0.5%",target:620.0},
   {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.6,short:"12.8%",target:28.0},
+  {t:"ELF",n:"e.l.f. Beauty",p:0,c:0,pe:null,mktcap:"3.5B",rev:"31%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"15.2%",target:45.0},
+  {t:"PFS",n:"Provident Financial Services",p:0,c:0,pe:12.5,mktcap:"2.1B",rev:"8%",earn:"ก.ค. 2026",div:"4.2%",beta:0.9,short:"2.1%",target:22.0},
+  {t:"AMSC",n:"American Superconductor",p:0,c:0,pe:null,mktcap:"0.8B",rev:"42%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"10.3%",target:35.0},
+  {t:"APP",n:"Applovin",p:0,c:0,pe:85.0,mktcap:"120B",rev:"44%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"3.8%",target:380.0},
+  {t:"COST",n:"Costco Wholesale",p:0,c:0,pe:52.0,mktcap:"420B",rev:"8%",earn:"ก.ย. 2026",div:"0.7%",beta:0.7,short:"1.2%",target:1050.0},
+  {t:"MCO",n:"Moodys Corp",p:0,c:0,pe:38.0,mktcap:"82B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.1,short:"1.0%",target:520.0},
+  {t:"CBOE",n:"Cboe Global Markets",p:0,c:0,pe:22.0,mktcap:"21B",rev:"9%",earn:"ส.ค. 2026",div:"1.2%",beta:0.6,short:"0.8%",target:230.0},
+  {t:"UNH",n:"UnitedHealth Group",p:0,c:0,pe:18.0,mktcap:"420B",rev:"12%",earn:"ก.ค. 2026",div:"1.8%",beta:0.5,short:"0.9%",target:620.0},
+  {t:"ABT",n:"Abbott Laboratories",p:0,c:0,pe:24.0,mktcap:"195B",rev:"7%",earn:"ก.ค. 2026",div:"1.9%",beta:0.7,short:"0.8%",target:145.0},
+  {t:"BRK.B",n:"Berkshire Hathaway B",p:0,c:0,pe:21.0,mktcap:"950B",rev:"5%",earn:"ส.ค. 2026",div:null,beta:0.9,short:"0.4%",target:520.0},
+  {t:"CAVA",n:"CAVA Group",p:0,c:0,pe:180.0,mktcap:"18B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.9,short:"8.2%",target:120.0},
+  {t:"RDDT",n:"Reddit",p:0,c:0,pe:null,mktcap:"22B",rev:"61%",earn:"ส.ค. 2026",div:null,beta:2.2,short:"6.4%",target:180.0},
+  {t:"LUNR",n:"Intuitive Machines",p:0,c:0,pe:null,mktcap:"2.1B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:3.1,short:"14.2%",target:25.0},
+  {t:"RCAT",n:"Red Cat Holdings",p:0,c:0,pe:null,mktcap:"0.6B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.5,short:"11.8%",target:18.0},
+  {t:"UUUU",n:"Energy Fuels",p:0,c:0,pe:null,mktcap:"0.9B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"9.6%",target:12.0},
+  {t:"NNE",n:"Nano Nuclear Energy",p:0,c:0,pe:null,mktcap:"1.2B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"16.4%",target:30.0},
+  {t:"AFRM",n:"Affirm Holdings",p:0,c:0,pe:null,mktcap:"18B",rev:"36%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"12.1%",target:65.0},
+  {t:"SEZL",n:"Sezzle",p:0,c:0,pe:22.0,mktcap:"0.8B",rev:"48%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"8.8%",target:280.0},
   {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026",div:null,beta:1.2,short:"0.7%",target:1150.0},
   {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026",div:"0.7%",beta:0.5,short:"0.8%",target:1050.0},
   {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"6.1%",target:60.0},
@@ -1204,14 +1234,14 @@ const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00
 const sectorMap={'ETF':['IWM','SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
   'คลาวด์':['MSFT','GOOGL','AAPL','META','AMZN','PLTR','NOW','CRWD','RBRK','AXON','NFLX','CRM','ADBE','SNOW','DDOG','MDB','NET'],
-  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI'],
-  'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM'],
+  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI','APP'],
+  'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM','LUNR','RCAT'],
   'สุขภาพ':['LLY','NVO','ISRG','TMDX','HIMS'],
-  'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL'],
+  'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL','PFS','MCO','CBOE','BRK.B'],
   'EV':['TSLA','RIVN','LCID'],
   'LatAm':['MELI'],
-  'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG'],
-  'พลังงาน':['XOM','EOSE','SLNH','MP'],
+  'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG','ELF','COST','UNH','ABT','CAVA','RDDT','AFRM','SEZL'],
+  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE'],
 };
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
@@ -1317,15 +1347,15 @@ const peerGroups={
 // ── Finnhub key ย้ายไปเก็บใน Cloudflare Worker secret แล้ว ──
 // Client ไม่มี key อีกต่อไป — ทุก request ผ่าน WORKER endpoint
 // FINNHUB_KEY เหลือไว้เป็น boolean flag เท่านั้น (ตรวจสอบจาก /api/test)
-var FINNHUB_KEY = 'worker'; // sentinel: "มี key อยู่ที่ Worker"
+var FINNHUB_KEY = (()=>{try{return localStorage.getItem('finnhubKey')||'d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';}catch{return 'd83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';}})();
 var _workerKeyVerified = false; // true เมื่อ /api/test ยืนยันแล้ว
 // FIX: ครอบ try/catch ป้องกัน crash ใน iOS Private Mode / Safari ITP
 let PORT_SIZE = (()=>{ try{ return parseInt(localStorage.getItem('_sp_portsize')||'10000'); }catch{ return 10000; } })();
 
 // ── Named constants (ป้องกัน magic numbers กระจัดกระจาย) ──
 const BUY_SIGNAL_THRESHOLD = 52;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
-const WS_SUBSCRIBE_LIMIT   = 50;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
-const POLL_STAGGER_MS      = 200;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
+const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
+const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
 const BUY_SIGNAL_COOLDOWN  = 900000; // 15 นาที cooldown ต่อ ticker
@@ -1336,7 +1366,12 @@ let candleCache={}, liveCache={};
 let currentSector='all', currentSort='chg', searchQuery='';
 let currentDrawerTicker=null;
 let currentDrawerTab='tech';
-let watchlist=new Set((()=>{ try{ return JSON.parse(localStorage.getItem('_sp_watchlist')||'[]'); }catch{ return []; } })());
+let watchlist=new Set((()=>{
+  try{ const ls=localStorage.getItem('_sp_watchlist'); if(ls) return JSON.parse(ls); }catch{}
+  try{ const ss=sessionStorage.getItem('_sp_watchlist'); if(ss) return JSON.parse(ss); }catch{}
+  try{ const m=document.cookie.match(/_sp_watchlist=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
+  return [];
+})());
 let showWatchlistOnly=false;
 let priceAlerts=(()=>{ try{ return JSON.parse(localStorage.getItem('_sp_alerts')||'[]'); }catch{ return []; } })(); // [{ticker,price,dir,triggered}]
 // ── Persistent cooldown (survives reload/background) ──
@@ -1377,13 +1412,27 @@ function _saveAiHistory(){
 // ดู: https://developers.cloudflare.com/workers/runtime-apis/kv/
 // ══════════════════════════════════════════════════════════
 const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
-const ALERT_WORKER='https://stock-alert.datsakonping1994.workers.dev'; // Worker ตัวใหม่
-// ── Sync alerts + portfolio ขึ้น Worker (background) ──
+const ALERT_WORKER='https://stock-alert.datsakonping1994.workers.dev';
+
+// ── Sync พอร์ต + alerts + trailing high ขึ้น Worker KV ──
 function syncAlertsToWorker(){
   try{
     const portfolio=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return[];}})();
-    fetch(ALERT_WORKER+'/alerts',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({alerts:priceAlerts,portfolio:portfolio.map(p=>({t:p.ticker||p.t,avgPrice:p.avgPrice||p.cost||0}))})
+    const trailingHigh=(()=>{try{return JSON.parse(localStorage.getItem('_sp_trailHigh')||'{}');}catch{return{};}})();
+    const body={
+      portfolio: portfolio.map(p=>({
+        t: p.ticker||p.t||'',
+        avgPrice: p.avgPrice||p.cost||p.avg||0,
+        shares: p.shares||p.qty||1,
+        earn: p.earn||null
+      })).filter(p=>p.t),
+      priceAlerts: priceAlerts,
+      trailingHigh: trailingHigh
+    };
+    fetch(ALERT_WORKER+'/sync',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
     }).catch(()=>{});
   }catch{}
 }
@@ -1636,7 +1685,10 @@ function addAlertFromDrawer(){
 
 // ── Watchlist ──
 function saveWatchlist(){
-  try{ localStorage.setItem('_sp_watchlist', JSON.stringify([...watchlist])); }catch{}
+  const _wlData=JSON.stringify([...watchlist]);
+  try{ localStorage.setItem('_sp_watchlist', _wlData); }catch{}
+  try{ sessionStorage.setItem('_sp_watchlist', _wlData); }catch{}
+  try{ const d=new Date(); d.setFullYear(d.getFullYear()+1); document.cookie=`_sp_watchlist=${encodeURIComponent(_wlData)};expires=${d.toUTCString()};path=/;SameSite=Lax`; }catch{}
   updateWlCount();
 }
 
@@ -2027,6 +2079,7 @@ function _loadLogoNow(ticker, elId, size){
   const domain = getLogoUrl(ticker);
 
   const sources = [
+    `https://financialmodelingprep.com/image-stock/${ticker}.png`,
     `https://logo.clearbit.com/${domain}`,
     `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
@@ -2482,6 +2535,10 @@ function openDrawer(ticker){
   // render tech tab ครั้งเดียวตอนเปิด
   _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
   drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  // ดึง analyst data ในพื้นหลัง
+  fetchAnalystData(ticker).then(()=>{
+    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
+  });
   document.getElementById('drawer').classList.add('open');
   // FIX: lock body scroll ตอนเปิด Drawer
   document.body.style.overflow='hidden';
@@ -2636,6 +2693,70 @@ function _drawEarnChart(ticker, mode, containerId){
     // X label
     ctx.fillStyle='rgba(139,153,181,0.8)'; ctx.font='9px Syne,sans-serif'; ctx.textAlign='center';
     ctx.fillText(d.q, x+barW+2, H-PAD_B+12);
+  });
+}
+
+
+// ── Fetch Analyst Consensus + Short Interest จาก Finnhub ──
+async function fetchAnalystData(ticker){
+  try{
+    const WORKER = window.WORKER_URL || '';
+    // ดึง recommendation trends
+    const recRes = await safeFetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_KEY}`,{},1);
+    const recData = await recRes.json();
+    // เอาแค่ล่าสุด
+    if(recData && recData.length > 0){
+      const latest = recData[0];
+      const total = (latest.strongBuy||0)+(latest.buy||0)+(latest.hold||0)+(latest.sell||0)+(latest.strongSell||0);
+      if(total > 0){
+        const buyPct = Math.round(((latest.strongBuy||0)+(latest.buy||0))/total*100);
+        const holdPct = Math.round((latest.hold||0)/total*100);
+        const sellPct = Math.round(((latest.sell||0)+(latest.strongSell||0))/total*100);
+        const consensus = buyPct>=50?'Buy':sellPct>=40?'Sell':'Hold';
+        const s = stocks.find(x=>x.t===ticker);
+        if(s){
+          s.analystBuy = buyPct;
+          s.analystHold = holdPct;
+          s.analystSell = sellPct;
+          s.analystTotal = total;
+          s.analystConsensus = consensus;
+        }
+      }
+    }
+    // ดึง basic financials (มี beta, 52w high/low, short interest)
+    const metricRes = await safeFetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`,{},1);
+    const metricData = await metricRes.json();
+    const m = metricData?.metric||{};
+    const s = stocks.find(x=>x.t===ticker);
+    if(s){
+      if(m.beta!=null) s.beta = +m.beta.toFixed(2);
+      if(m['52WeekHigh']!=null) s.high52 = m['52WeekHigh'];
+      if(m['52WeekLow']!=null) s.low52 = m['52WeekLow'];
+      if(m['shortInterest']!=null){
+        const siPct = (m['shortInterest']/m['sharesOutstanding']*100);
+        if(!isNaN(siPct)) s.short = siPct.toFixed(1)+'%';
+      }
+    }
+  }catch(e){ console.warn('fetchAnalystData error',e); }
+}
+
+
+// ── Fund AI — เรียกเมื่อกดปุ่ม ──
+function triggerFundAI(ticker){
+  const btn = document.getElementById('fundAIBtn');
+  const el = document.getElementById('fundAIText');
+  if(!el || !window._fundPrompt) return;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังวิเคราะห์...'; }
+  el.innerHTML='<span style="opacity:0.6;font-size:11px">✨ Gemini กำลังวิเคราะห์...</span>';
+  callAI_Analyze(
+    'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
+    window._fundPrompt, 500
+  ).then(function(result){
+    if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
+    if(btn){ btn.disabled=false; btn.textContent='🔄 วิเคราะห์ใหม่'; }
+  }).catch(function(){
+    if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
+    if(btn){ btn.disabled=false; btn.textContent='⚡ วิเคราะห์'; }
   });
 }
 
@@ -2934,8 +3055,11 @@ function drawerTab(tab, btn){
         '</div>'
       ) : '') +
       '<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px">' +
-        '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
-        '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text2)">⏳ กำลังวิเคราะห์...</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)">🤖 AI สรุปสำหรับนักลงทุนทั่วไป</div>' +
+          '<button id="fundAIBtn" onclick="triggerFundAI(\''+s.t+'\')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:\'Syne\',sans-serif">⚡ วิเคราะห์</button>' +
+        '</div>' +
+        '<div id="fundAIText" style="font-size:12px;line-height:1.8;color:var(--text3)">กด "วิเคราะห์" เพื่อให้ AI สรุปหุ้นนี้</div>' +
       '</div>' +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">🏢 ข้อมูลบริษัท</div>' +
       '<div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">'+s.t+'</span></div>' +
@@ -2958,6 +3082,21 @@ function drawerTab(tab, btn){
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">⚠️ ความเสี่ยง</div>' +
       (s.div?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+s.div+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
       (s.beta!=null?'<div class="ind-row"><span class="ind-name">📉 Beta (ความผันผวน)</span><span class="ind-val '+(s.beta>1.5?'bear':s.beta<0.8?'bull':'neut')+'">'+s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)')+'</span></div>':'') +
+      (s.analystConsensus?
+        '<div style="background:rgba(100,200,100,0.06);border:1px solid rgba(100,200,100,0.2);border-radius:12px;padding:12px;margin-bottom:10px">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">📊 Analyst Consensus ('+s.analystTotal+' analysts)</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
+            '<div style="flex:'+s.analystBuy+';height:8px;background:var(--green);border-radius:4px 0 0 4px"></div>' +
+            '<div style="flex:'+s.analystHold+';height:8px;background:var(--gold)"></div>' +
+            '<div style="flex:'+s.analystSell+';height:8px;background:var(--red);border-radius:0 4px 4px 0"></div>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:10px">' +
+            '<span style="color:var(--green)">Buy '+s.analystBuy+'%</span>' +
+            '<span style="color:var(--gold)">Hold '+s.analystHold+'%</span>' +
+            '<span style="color:var(--red)">Sell '+s.analystSell+'%</span>' +
+          '</div>' +
+        '</div>'
+      : '') +
       (s.short?'<div class="ind-row"><span class="ind-name">🩳 Short Float</span><span class="ind-val '+(parseFloat(s.short)>15?'bear':parseFloat(s.short)>8?'neut':'bull')+'">'+s.short+' '+(parseFloat(s.short)>15?'(Squeeze Risk สูง ⚠️)':parseFloat(s.short)>8?'(Short ปานกลาง)':'(Short ต่ำ)')+'</span></div>':'') +
       (()=>{
         const fe=fundExtra[s.t]||{};
@@ -3031,19 +3170,8 @@ function drawerTab(tab, btn){
       'Fundamental Score: '+fs+'/100 ('+fr.label+')\n'+
       'Peer Comparison: '+peerSummary+'\n'+
       '\nวิเคราะห์ให้ครอบคลุม: ธุรกิจทำอะไร รายได้มาจากไหน กำไร/ขาดทุน อัตราการโต ความเสี่ยง (beta/short/หนี้) ปันผล เป้าราคานักวิเคราะห์ เปรียบกับ peer และเหมาะกับนักลงทุนแบบไหน ตอบ 6-7 ประโยคภาษาไทยเหมือนคุยกับเพื่อน';
-    var fundEl=document.getElementById('fundAIText');
-    if(fundEl) fundEl.innerHTML='<span style="opacity:0.6;font-size:11px">✨ Gemini 1.5 Pro กำลังวิเคราะห์...</span>';
-    callAI_Analyze(
-      'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น ห้ามพูดถึงราคา แนวรับ แนวต้าน หรือ indicator ทางเทคนิคใดๆ',
-      fundPrompt,
-      500
-    ).then(function(result){
-      var el=document.getElementById('fundAIText');
-      if(el) el.innerHTML=result?mdToHtml(result):'ไม่สามารถวิเคราะห์ได้';
-    }).catch(function(){
-      var el=document.getElementById('fundAIText');
-      if(el) el.textContent='ไม่สามารถวิเคราะห์ได้';
-    });
+    // เก็บ prompt ไว้รอกดปุ่ม
+    window._fundPrompt = fundPrompt;
 
     // ── Render Historical Earnings Chart, Insider, Peer (after DOM ready) ──
     requestAnimationFrame(()=>{
@@ -3083,47 +3211,43 @@ function mdToHtml(text){
 
 // ── AI Engine — ใช้ Gemini ผ่าน key ที่ผู้ใช้ตั้ง หรือ fallback OpenRouter free ──
 // ผู้ใช้สามารถใส่ Gemini key ของตัวเองใน Settings → บันทึก
-// FIX: Gemini key ย้ายไปเก็บใน Worker secret GEMINI_KEY แล้ว
-// ฟังก์ชันนี้เรียกผ่าน Worker /api/gemini แทน
-function _getGeminiKey(){ return 'worker'; } // sentinel — key อยู่ที่ Worker
+function _getGeminiKey(){ return 'worker'; }
 function _getGeminiUrl(key){ return `${WORKER}/api/gemini`; }
 
-// ── Gemini via Worker — key ซ่อนอยู่ใน Worker secret ──
-async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(`${WORKER}/api/gemini`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'gemini-2.0-flash',
-        system_instruction:{parts:[{text:systemPrompt}]},
-        contents:[{parts:[{text:userPrompt}]}],
-        generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
-    }
-    console.warn('Gemini Worker error:', r.status);
-  }catch(e){console.warn('Gemini Worker error:',e.message);}
-  return null;
-}
-
-// ── Gemini 1.5 Pro via Worker — ฉลาดกว่า Flash แต่ quota น้อยกว่า ──
-async function _callGemini15Pro(systemPrompt, userPrompt, maxTokens=800){
+// ── Claude AI ผ่าน Worker (เร็ว ปลอดภัย key ไม่โผล่ browser) ──
+async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),25000);
-    const r=await fetch(`${WORKER}/api/gemini`,{
+    const r=await fetch(ALERT_WORKER+'/ai',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'gemini-1.5-pro',
+        system:systemPrompt,
+        messages:[{role:'user',content:userPrompt}],
+        max_tokens:maxTokens
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.content?.[0]?.text||null;
+    }
+  }catch(e){console.warn('Claude Worker error:',e.message);}
+  return null;
+}
+
+async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    const geminiKey=localStorage.getItem('geminiKey')||'';
+    if(!geminiKey) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
         system_instruction:{parts:[{text:systemPrompt}]},
         contents:[{parts:[{text:userPrompt}]}],
         generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
@@ -3135,12 +3259,35 @@ async function _callGemini15Pro(systemPrompt, userPrompt, maxTokens=800){
       const d=await r.json();
       return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
     }
-    console.warn('Gemini 1.5 Pro error:', r.status);
+  }catch(e){console.warn('Gemini Flash error:',e.message);}
+  return null;
+}
+
+async function _callGemini15Pro(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    const geminiKey=localStorage.getItem('geminiKey')||'';
+    if(!geminiKey) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),25000);
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents:[{parts:[{text:userPrompt}]}],
+        generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.candidates?.[0]?.content?.parts?.[0]?.text||null;
+    }
   }catch(e){console.warn('Gemini 1.5 Pro error:',e.message);}
   return null;
 }
 
-// ── Pollinations AI — ฟรี 100% ไม่ต้องใช้ key ──
 async function _callPollinationsAI(systemPrompt, userPrompt, maxTokens=800){
   try{
     const ctrl=new AbortController();
@@ -3204,156 +3351,95 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 }
 
 // ══════════════════════════════════════════════════════
-// ── AI เฉพาะทาง — แต่ละตัวทำหน้าที่ชัดเจน ──
+// ── AI เฉพาะทาง — เรียงตาม speed vs quality ──
 // ══════════════════════════════════════════════════════
 
-// 🔬 วิเคราะห์หุ้นลึก + Earnings → Gemini 1.5 Pro
+// 🔬 วิเคราะห์หุ้นลึก — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Gemini Flash
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
   const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
-  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  return null;
-}
-
-// 💬 Chat โต้ตอบผู้ใช้ → Claude Sonnet 4 (อัปเกรดจาก Haiku)
-async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
-  const _setLoadingLabel=(label)=>{
-    const el=document.getElementById('aiLoading');
-    if(el) el.innerHTML=`<span style="opacity:0.6;font-size:11px">${label}</span>`;
-  };
-  try{
-    _setLoadingLabel('✨ Claude Sonnet กำลังวิเคราะห์...');
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:maxTokens,
-        system:systemPrompt,
-        messages:[{role:'user',content:userPrompt}]
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      if(d.type!=='error'&&d?.content?.length){
-        return d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
-      }
-    }
-  }catch(e){console.warn('Claude Sonnet error:',e.message);}
-  // fallback → Gemini 1.5 Pro
-  _setLoadingLabel('✨ Gemini 1.5 Pro กำลังวิเคราะห์...');
-  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  _setLoadingLabel('⚡ Gemini Flash กำลังวิเคราะห์...');
-  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  _setLoadingLabel('⚡ Groq กำลังวิเคราะห์...');
-  const r4 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r4) return r4;
-  return null;
-}
-
-// ⚡ Quick Signal + Risk/Reward → Gemini 2.0 Flash
-async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
-  const r1 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
   const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  return null;
-}
-
-// ☀️ Morning Brief → OpenRouter Llama (ฟรี ไม่เปลืองโควต้า)
-async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(`${WORKER}/api/openrouter`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'meta-llama/llama-3.3-70b-instruct:free',
-        max_tokens:maxTokens,
-        messages:[
-          {role:'system',content:systemPrompt},
-          {role:'user',content:userPrompt}
-        ]
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      const text=d?.choices?.[0]?.message?.content||null;
-      if(text) return text;
-    }
-  }catch(e){console.warn('OpenRouter error:',e.message);}
-  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  return null;
-}
-
-// 🔄 callGemini — fallback รวม (ใช้เมื่อไม่ระบุ AI เฉพาะ)
-async function callGemini(systemPrompt, userPrompt, maxTokens=800){
-  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),15000);
-    const r=await fetch(WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:maxTokens,
-        system:systemPrompt,
-        messages:[{role:'user',content:userPrompt}]
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      if(d.type!=='error'&&d?.content?.length){
-        return d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
-      }
-    }
-  }catch(e){console.warn('Claude Haiku error:',e.message);}
   const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
+  return null;
+}
+
+// 💬 Chat — ต้องการความเร็ว → Groq → Claude → Gemini Flash → Pollinations
+async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
+  const _setStatus=(label)=>{
+    const el=document.getElementById('aiStatusLbl')||document.getElementById('aiLoading');
+    if(el) el.textContent=label;
+  };
+  const _trim=(s,n)=>s.slice(0,n);
+  // 1) Groq — เร็วที่สุด
   try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await fetch(`${WORKER}/api/openrouter`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'meta-llama/llama-3.3-70b-instruct:free',
-        max_tokens:maxTokens,
-        messages:[
-          {role:'system',content:systemPrompt},
-          {role:'user',content:userPrompt}
-        ]
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      const text=d?.choices?.[0]?.message?.content||null;
-      if(text) return text;
+    const groqKey=localStorage.getItem('groqKey')||'';
+    if(groqKey){
+      _setStatus('⚡ Groq กำลังวิเคราะห์...');
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),12000);
+      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+        body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:systemPrompt},{role:'user',content:_trim(userPrompt,8000)}],max_tokens:maxTokens,temperature:0.7}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+      if(r.ok){const d=await r.json();const txt=d?.choices?.[0]?.message?.content;if(txt)return txt;}
     }
-  }catch(e){console.warn('OpenRouter error:',e.message);}
-  const r5 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r5) return r5;
+  }catch(e){console.warn('Groq:',e.message);}
+  // 2) Claude Worker
+  _setStatus('🤖 Claude กำลังวิเคราะห์...');
+  const r1=await _callClaude(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r1) return r1;
+  // 3) Gemini Flash
+  _setStatus('⚡ Gemini Flash กำลังวิเคราะห์...');
+  const r2=await _callGeminiDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r2) return r2;
+  // 4) Pollinations — ฟรี 100%
+  _setStatus('🌐 กำลังเชื่อมต่อ...');
+  const r3=await _callPollinationsAI(systemPrompt,_trim(userPrompt,8000),maxTokens);
+  if(r3) return r3;
+  return null;
+}
+
+// ⚡ Quick — ต้องการความเร็ว → Groq → Claude → Gemini Flash
+async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
+  const r0 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  const r1 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  return null;
+}
+
+// ☀️ Morning Brief — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Pollinations
+async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  return null;
+}
+
+// 🔄 callGemini — ทั่วไป → Claude → Groq → Gemini Flash → Pollinations
+async function callGemini(systemPrompt, userPrompt, maxTokens=800){
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
   return null;
 }
 function buildFullIndicatorContext(ticker, price){
@@ -3492,7 +3578,7 @@ async function sendAI(ticker){
 function _loadTradeLog(){try{return JSON.parse(localStorage.getItem('_tl_v2')||'[]');}catch{return[];}}
 function _saveTradeLog(log){try{localStorage.setItem('_tl_v2',JSON.stringify(log.slice(-100)));}catch{}}
 
-const SIGNAL_WORKER = 'https://stock-signal.datsakonping1994.workers.dev';
+const SIGNAL_WORKER = ALERT_WORKER; // ใช้ Worker เดียวกัน
 
 // ── บันทึก signal ทั้ง localStorage และ Worker KV ──
 function logTrade(ticker, price, score){
@@ -3667,7 +3753,13 @@ Buy Score: ${score}/100
 
 // ── Exit Signal — แจ้งเตือนเมื่อควรขาย พร้อมบอกจำนวนหุ้นที่ควรขาย ──
 const _exitAlerted = _cooldown; // shared persistent cooldown
-const _trailingHigh = {}; // เก็บ high สูงสุดหลังซื้อสำหรับ Trailing Stop
+// _trailingHigh — โหลดจาก localStorage ป้องกันหายเมื่อปิดแอป
+const _trailingHigh = (()=>{
+  try{ return JSON.parse(localStorage.getItem('_sp_trailHigh')||'{}'); }catch{ return {}; }
+})();
+function _saveTrailingHigh(){
+  try{ localStorage.setItem('_sp_trailHigh', JSON.stringify(_trailingHigh)); }catch{}
+}
 
 async function checkExitSignal(ticker, price){
   const s = stocks.find(x=>x.t===ticker);
@@ -3688,8 +3780,10 @@ async function checkExitSignal(ticker, price){
     ? _calcBuyScore(ticker, price, s1, r1) : null;
 
   // ── อัพเดต Trailing High ──
-  if(!_trailingHigh[ticker] || price > _trailingHigh[ticker])
+  if(!_trailingHigh[ticker] || price > _trailingHigh[ticker]){
     _trailingHigh[ticker] = price;
+    _saveTrailingHigh();
+  }
   const trailingDrop = _trailingHigh[ticker] > 0
     ? ((_trailingHigh[ticker] - price) / _trailingHigh[ticker] * 100) : 0;
 
@@ -4007,25 +4101,19 @@ Buy Score: ${score}/100
     try{
       const ctrl=new AbortController();
       const tid=setTimeout(()=>ctrl.abort(),25000);
-      const r=await fetch(WORKER,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:600,
-          system:sys,
-          messages:[{role:'user',content:prompt}]
-        }),
-        signal:ctrl.signal
-      });
-      clearTimeout(tid);
-      if(r.ok){
-        const d=await r.json();
-        if(d.type!=='error'&&d?.content?.length)
-          reply=d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
+      // ใช้ Groq แทน Claude — ดึงตรงไม่ผ่าน Worker
+      const groqKey=localStorage.getItem('groqKey')||'';
+      if(groqKey){
+        const rg=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+          body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7}),
+          signal:ctrl.signal
+        });
+        clearTimeout(tid);
+        if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null;}
       }
-    }catch(e){console.warn('Sonnet signal error:',e.message);}
-    // fallback → Gemini
+    }catch(e){console.warn('signal AI error:',e.message);}
     if(!reply) reply=await callAI_Quick(sys,prompt,600);
     if(reply) _setAICache(cacheKey,reply);
   }
@@ -4186,12 +4274,23 @@ function applyLockState(){}
 
 // ── Settings ──
 function loadSettings(){
-  // FIX: ทั้ง Finnhub และ Gemini key อยู่ใน Worker secret — ไม่โหลดจาก localStorage
   document.getElementById('portSizeInput').value=PORT_SIZE;
   try{
     document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
     document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
     if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
+    // โหลด Finnhub key
+    const fk=localStorage.getItem('finnhubKey')||'';
+    const fkEl=document.getElementById('finnhubKeyInput');
+    if(fkEl) fkEl.value=fk;
+    // โหลด Gemini key
+    const gmk=localStorage.getItem('geminiKey')||'';
+    const gmkEl=document.getElementById('geminiKeyInput');
+    if(gmkEl) gmkEl.value=gmk;
+    // โหลด Anthropic key
+    const ank=localStorage.getItem('anthropicKey')||'';
+    const ankEl=document.getElementById('anthropicKeyInput');
+    if(ankEl) ankEl.value=ank;
     // โหลด Groq key
     const gk=localStorage.getItem('groqKey')||'';
     if(gk) document.getElementById('groqKeyInput').value=gk;
@@ -4203,14 +4302,30 @@ function loadSettings(){
     const ck=localStorage.getItem('cohereKey')||'';
     const ckEl=document.getElementById('cohereKeyInput');
     if(ckEl) ckEl.value=ck;
-    if(gneEl) gneEl.value=gne;
   }catch{}
 }
 function saveSettings(){
-  // FIX: ทั้ง Finnhub และ Gemini key อยู่ใน Worker secret แล้ว — ไม่บันทึกที่นี่
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
   PORT_SIZE=port;
   try{localStorage.setItem('_sp_portsize',port);}catch{}
+  // บันทึก Finnhub key
+  try{
+    const fk=document.getElementById('finnhubKeyInput')?.value?.trim()||'';
+    if(fk){ localStorage.setItem('finnhubKey',fk); FINNHUB_KEY=fk; }
+    else localStorage.removeItem('finnhubKey');
+  }catch{}
+  // บันทึก Gemini key
+  try{
+    const gmk=document.getElementById('geminiKeyInput')?.value?.trim()||'';
+    if(gmk) localStorage.setItem('geminiKey',gmk);
+    else localStorage.removeItem('geminiKey');
+  }catch{}
+  // บันทึก Anthropic key
+  try{
+    const ank=document.getElementById('anthropicKeyInput')?.value?.trim()||'';
+    if(ank) localStorage.setItem('anthropicKey',ank);
+    else localStorage.removeItem('anthropicKey');
+  }catch{}
   // บันทึก Groq key
   try{
     const gk=document.getElementById('groqKeyInput')?.value?.trim()||'';
@@ -4228,8 +4343,6 @@ function saveSettings(){
     const ck=document.getElementById('cohereKeyInput')?.value?.trim()||'';
     if(ck){ localStorage.setItem('cohereKey',ck); COHERE_KEY=ck; }
     else localStorage.removeItem('cohereKey');
-  }catch{}
-  try{
   }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
@@ -4306,67 +4419,159 @@ async function testApiKey(){
   const btn=document.getElementById('testApiBtn');
   const statusEl=document.getElementById('apiKeyStatus');
   if(!statusEl) return;
+  const key=document.getElementById('finnhubKeyInput')?.value?.trim()||FINNHUB_KEY||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Finnhub API Key ก่อน';
+    return;
+  }
   btn.disabled=true;
   btn.textContent='⏳ กำลังตรวจสอบ...';
   statusEl.style.display='block';
   statusEl.style.background='rgba(100,210,255,0.08)';
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
-  statusEl.textContent='⏳ กำลังทดสอบ Worker...';
+  statusEl.textContent='⏳ กำลังทดสอบ Finnhub...';
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
-    // FIX: ทดสอบผ่าน Worker /api/test — ไม่ส่ง key ออกจาก Worker
-    const r=await fetch(`${WORKER}/api/test`,{signal:ctrl.signal});
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${key}`,{signal:ctrl.signal});
     clearTimeout(tid);
-    if(!r.ok){
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent=`⚠️ Worker ตอบกลับ ${r.status} — ตรวจสอบ Worker deployment`;
-    } else {
+    if(r.status===401||r.status===403){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ finnhub.io/dashboard';
+    } else if(r.ok){
       const d=await r.json();
-      if(d.ok){
+      if(d&&d.c){
+        try{localStorage.setItem('finnhubKey',key); FINNHUB_KEY=key;}catch{}
         statusEl.style.background='rgba(0,230,118,0.1)';
         statusEl.style.border='1px solid rgba(0,230,118,0.3)';
         statusEl.style.color='var(--green)';
-        statusEl.textContent=d.market==='open'
-          ?`✅ Worker + Finnhub ใช้งานได้! — AAPL $${d.price?.toFixed(2)||''}`
-          :'✅ Worker + Finnhub ใช้งานได้! (ตลาดปิดอยู่)';
+        statusEl.textContent=`✅ Finnhub ใช้งานได้! — AAPL $${d.c?.toFixed(2)||''} (บันทึกแล้ว)`;
       } else {
-        statusEl.style.background='rgba(255,77,106,0.12)';
-        statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-        statusEl.style.color='var(--red)';
-        statusEl.textContent=`❌ Finnhub Key ใน Worker มีปัญหา — ${d.reason||'ตรวจสอบ wrangler secret'}`;
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Finnhub ตอบกลับแต่ข้อมูลไม่สมบูรณ์ — ตรวจสอบ Key อีกครั้ง';
       }
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Finnhub ตอบกลับ ${r.status}`;
     }
   } catch(e){
     statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
     statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
     statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
     statusEl.textContent=e.name==='AbortError'
-      ?'⏱️ Worker ไม่ตอบสนอง — ตรวจสอบ deployment'
-      :'❌ เชื่อมต่อ Worker ล้มเหลว — ตรวจสอบ URL หรืออินเทอร์เน็ต';
+      ?'⏱️ Finnhub ไม่ตอบสนอง'
+      :'❌ เชื่อมต่อล้มเหลว';
   }
   btn.disabled=false;
   btn.textContent='🔑 ทดสอบ';
 }
 
-async function testGeminiKey(){
-  const btn=document.getElementById('testGeminiBtn');
-  const statusEl=document.getElementById('geminiKeyStatus');
+async function testAnthropicKey(){
+  const btn=document.getElementById('testAnthropicBtn');
+  const statusEl=document.getElementById('anthropicKeyStatus');
   if(!statusEl) return;
+  const key=document.getElementById('anthropicKeyInput')?.value?.trim()||localStorage.getItem('anthropicKey')||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Anthropic API Key ก่อน';
+    return;
+  }
   btn.disabled=true;
   btn.textContent='⏳ กำลังตรวจสอบ...';
   statusEl.style.display='block';
   statusEl.style.background='rgba(100,210,255,0.08)';
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
-  statusEl.textContent='⏳ กำลังทดสอบ Gemini ผ่าน Worker...';
+  statusEl.textContent='⏳ กำลังทดสอบ Claude...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:10,
+        messages:[{role:'user',content:'Reply with the single word: ok'}]
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      try{localStorage.setItem('anthropicKey',key);}catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Claude ใช้งานได้! — claude-haiku พร้อม (บันทึกแล้ว)';
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ console.anthropic.com/settings/keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Claude ตอบกลับ ${r.status}`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Claude ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
+}
+
+async function testGeminiKey(){
+  const btn=document.getElementById('testGeminiBtn');
+  const statusEl=document.getElementById('geminiKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('geminiKeyInput')?.value?.trim()||localStorage.getItem('geminiKey')||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Gemini API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Gemini...';
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),10000);
-    const r=await fetch(`${WORKER}/api/gemini`,{
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4377,35 +4582,36 @@ async function testGeminiKey(){
       signal:ctrl.signal
     });
     clearTimeout(tid);
-    if(r.status===500){
-      statusEl.style.background='rgba(255,77,106,0.12)';
-      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-      statusEl.style.color='var(--red)';
-      statusEl.textContent='❌ GEMINI_KEY ยังไม่ได้ตั้งค่าใน Worker — ดูขั้นตอนด้านล่าง';
-    } else if(r.status===429){
+    if(r.status===429){
       statusEl.style.background='rgba(255,215,0,0.1)';
       statusEl.style.border='1px solid rgba(255,215,0,0.3)';
       statusEl.style.color='var(--yellow)';
       statusEl.textContent='⚠️ Gemini Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
     } else if(r.ok){
+      try{localStorage.setItem('geminiKey',key);}catch{}
       statusEl.style.background='rgba(0,230,118,0.1)';
       statusEl.style.border='1px solid rgba(0,230,118,0.3)';
       statusEl.style.color='var(--green)';
-      statusEl.textContent='✅ Gemini ผ่าน Worker ใช้งานได้! — gemini-2.0-flash พร้อม';
+      statusEl.textContent='✅ Gemini ใช้งานได้! — gemini-2.0-flash พร้อม (บันทึกแล้ว)';
+    } else if(r.status===400||r.status===401||r.status===403){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ aistudio.google.com/app/apikey';
     } else {
       statusEl.style.background='rgba(255,215,0,0.1)';
       statusEl.style.border='1px solid rgba(255,215,0,0.3)';
       statusEl.style.color='var(--yellow)';
-      statusEl.textContent=`⚠️ Worker ตอบกลับ ${r.status} — ตรวจสอบ GEMINI_KEY secret`;
+      statusEl.textContent=`⚠️ Gemini ตอบกลับ ${r.status} — ตรวจสอบ API Key อีกครั้ง`;
     }
   }catch(e){
     statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
     statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
     statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
-    statusEl.textContent=e.name==='AbortError'?'⏱️ Worker ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Gemini ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
   }
   btn.disabled=false;
-  btn.textContent='🧪 ทดสอบ Gemini';
+  btn.textContent='🧪 ทดสอบ';
 }
 
 function addStock(){
@@ -4438,11 +4644,15 @@ function startLive(){
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
   if(liveDot) liveDot.style.background='var(--gold)';
 
-  pollTimer=setInterval(httpPoll,15000);
+  // ดึงจาก Worker cache ก่อน (เร็วสุด) แล้วค่อย httpPoll + WS
+  loadWorkerPriceCache().then(()=>{
+    httpPoll();
+    wsConnect();
+  });
   signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
-
-  httpPoll();
-  wsConnect();
+  // รีเฟรช Worker cache ทุก 60 วินาที
+  if(window._workerCacheTimer) clearInterval(window._workerCacheTimer);
+  window._workerCacheTimer=setInterval(()=>loadWorkerPriceCache(), 60000);
 }
 
 // ── wsConnect — ดึง WS token จาก Worker (key ไม่ถึง client) ──
@@ -4452,23 +4662,7 @@ let _wsToken = null;
 let _wsTokenExpiry = 0;
 
 async function _getWsToken() {
-  // ใช้ token เดิมถ้ายังไม่หมดอายุ (cache 50 นาที)
-  if (_wsToken && Date.now() < _wsTokenExpiry) return _wsToken;
-  try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5000);
-    const r = await fetch(`${WORKER}/api/wstoken`, { signal: ctrl.signal });
-    clearTimeout(tid);
-    if (r.ok) {
-      const d = await r.json();
-      if (d.token) {
-        _wsToken = d.token;
-        _wsTokenExpiry = Date.now() + 50 * 60 * 1000; // 50 นาที
-        return _wsToken;
-      }
-    }
-  } catch {}
-  return null;
+  return FINNHUB_KEY;
 }
 
 async function wsConnect() {
@@ -4492,9 +4686,11 @@ async function wsConnect() {
     stocks.slice(0, WS_SUBSCRIBE_LIMIT).forEach(s => ws.send(JSON.stringify({ type: 'subscribe', symbol: s.t })));
     clearInterval(wsPing);
     wsPing = setInterval(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); }, 20000);
+    // WS connected — หยุด pollTimer ประหยัด quota
+    clearInterval(pollTimer); pollTimer = null;
     const statusEl = $id('statusText');
     const liveDot = $id('liveDot');
-    if (statusEl) statusEl.textContent = '🟢 WS Live';
+    if (statusEl) statusEl.textContent = '✅ Finnhub Live';
     if (liveDot) liveDot.style.background = 'var(--green)';
   };
   ws.onmessage = e => {
@@ -4504,9 +4700,11 @@ async function wsConnect() {
         d.data.forEach(tick => {
           const s = stocks.find(x => x.t === tick.s);
           if (s && tick.p > 0) {
-            if (!s.prevClose && s.p > 0) s.prevClose = s.p;
             s.p = tick.p;
-            if (s.prevClose > 0) s.c = +((tick.p - s.prevClose) / s.prevClose * 100).toFixed(2);
+            // คำนวณ % เฉพาะเมื่อมี prevClose จริงๆ จาก Finnhub httpPoll
+            if (s.prevClose > 0) {
+              s.c = +((tick.p - s.prevClose) / s.prevClose * 100).toFixed(2);
+            }
             updateCardLive(s);
           }
         });
@@ -4515,7 +4713,16 @@ async function wsConnect() {
   };
   ws.onclose = () => {
     clearInterval(wsPing); wsPing = null;
-    _wsToken = null; // invalidate token เมื่อ connection ตาย
+    _wsToken = null;
+    // WS ล่ม — fallback ไป httpPoll ทันที
+    if(isLive && !pollTimer){
+      pollTimer = setInterval(httpPoll, 15000);
+      httpPoll();
+      const statusEl = $id('statusText');
+      const liveDot = $id('liveDot');
+      if(statusEl) statusEl.textContent = '⚠️ WS ล่ม — ใช้ HTTP Poll';
+      if(liveDot) liveDot.style.background = 'var(--gold)';
+    }
     if (isLive && _wsReconnectCount < 10) {
       const delay = Math.min(30000, 1000 * Math.pow(2, _wsReconnectCount));
       _wsReconnectCount++;
@@ -4531,27 +4738,31 @@ async function httpPoll(){
   if(!hasApiKey()||_pollInFlight)return;
   _pollInFlight=true;
   try{
-    // กรองเฉพาะที่ cache หมดอายุ และ stagger เพื่อไม่โดน rate limit
-    const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,8);
-    for(const s of batch){
-      try{
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),5000);
-        const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(!r.ok)continue;
-        const d=await r.json();
-        if(d.c>0){
-          s.p=d.c;
-          s.c=d.dp||0;
-          // FIX: บันทึก prevClose จาก Finnhub (pc = previous close) เพื่อให้ WS คำนวณ % change ถูก
-          if(d.pc>0) s.prevClose=d.pc;
-          else if(!s.prevClose) s.prevClose=d.c;
-          liveCache[s.t]=Date.now();
-          updateCardLive(s);
-        }
-      }catch{}
-      await new Promise(r=>setTimeout(r,POLL_STAGGER_MS));
+    const stale=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000);
+    const batch=stale.slice(0,30);
+    // ดึงพร้อมกัน 10 ตัว ลด stagger เหลือ 50ms
+    const chunkSize=10;
+    for(let i=0;i<batch.length;i+=chunkSize){
+      const chunk=batch.slice(i,i+chunkSize);
+      await Promise.allSettled(chunk.map(async s=>{
+        try{
+          const ctrl=new AbortController();
+          const tid=setTimeout(()=>ctrl.abort(),3000);
+          const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.t}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
+          clearTimeout(tid);
+          if(!r.ok) return;
+          const d=await r.json();
+          if(d.c>0){
+            s.p=d.c; s.c=d.dp||0;
+            if(d.pc>0) s.prevClose=d.pc;
+            else if(!s.prevClose) s.prevClose=d.c;
+            liveCache[s.t]=Date.now();
+            updateCardLive(s);
+            try{ localStorage.setItem('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
+          }
+        }catch{}
+      }));
+      if(i+chunkSize<batch.length) await new Promise(r=>setTimeout(r,50));
     }
     const liveDot=$id('liveDot');
     if(liveDot) liveDot.style.background='var(--green)';
@@ -4706,7 +4917,11 @@ function _extractQuoteFromParsed(parsed){
     if(!res) return null;
     const meta=res.meta;
     const price=meta.regularMarketPrice||meta.previousClose;
-    const prev=meta.chartPreviousClose||meta.regularMarketPreviousClose||meta.previousClose;
+    // ใช้ regularMarketChangePercent ก่อน — แม่นกว่า chartPreviousClose
+    const chgPct=meta.regularMarketChangePercent;
+    if(price>0&&chgPct!=null) return{p:+price.toFixed(2),c:+chgPct.toFixed(2)};
+    // fallback: คำนวณจาก previousClose
+    const prev=meta.regularMarketPreviousClose||meta.previousClose;
     if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
   }
   if(parsed._type==='quote'){
@@ -4793,13 +5008,18 @@ async function fetchYahooQuote(ticker){
   }catch{ return null; }
 }
 
-// ── fetchSingleQuoteFast: Finnhub ถ้ามี key, Polygon fallback, Yahoo ถ้าไม่มี ──
+// ── fetchSingleQuoteFast: Worker cache → Finnhub → Polygon → Yahoo ──
 async function fetchSingleQuoteFast(s){
+  // ลองดึงจาก Worker cache ก่อน (เร็วที่สุด)
+  if(window._workerPriceCache&&window._workerPriceCache[s.t]){
+    return window._workerPriceCache[s.t];
+  }
+  // Finnhub direct
   if(hasApiKey()){
     try{
       const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),5000);
-      const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
+      const tid=setTimeout(()=>ctrl.abort(),3000);
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.t}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
       clearTimeout(tid);
       if(r.ok){
         const d=await r.json();
@@ -4816,6 +5036,51 @@ async function fetchSingleQuoteFast(s){
   return fetchYahooQuote(s.t);
 }
 
+// ── loadWorkerPriceCache — ดึงราคาทั้งหมดจาก Worker ครั้งเดียว ──
+let _workerCacheLoading=false;
+async function loadWorkerPriceCache(){
+  if(_workerCacheLoading) return;
+  _workerCacheLoading=true;
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(ALERT_WORKER+'/prices',{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return;
+    const d=await r.json();
+    if(d.ok&&d.quotes){
+      window._workerPriceCache=d.quotes;
+      // อัปเดตราคาทุกตัวทันที
+      let updated=0;
+      for(const s of stocks){
+        const q=d.quotes[s.t];
+        if(q&&q.price>0){
+          s.p=q.price; s.c=q.change||0;
+          liveCache[s.t]=Date.now();
+          updateCardLive(s);
+          updated++;
+        }
+      }
+      // อัปเดต SPY/QQQ
+      for(const sym of['SPY','QQQ']){
+        const q=d.quotes[sym];
+        if(q&&q.price>0){
+          marketCtx[sym].price=q.price;
+          marketCtx[sym].change=q.change||0;
+          marketCtx[sym].trend=q.change>0.5?'bullish':q.change<-0.5?'bearish':'neutral';
+        }
+      }
+      if(updated>0){
+        updateDashboard();
+        const stEl=$id('statusText');
+        if(stEl) stEl.textContent=`✅ ${updated} ตัว (Worker Cache · อายุ ${d.age||0}s)`;
+        _updateMarketStatusBadge(true);
+      }
+    }
+  }catch{}
+  finally{ _workerCacheLoading=false; }
+}
+
 let _yahooLoading=false;
 async function initYahooPrices(){
   if(_yahooLoading) return;
@@ -4824,12 +5089,11 @@ async function initYahooPrices(){
   const statusEl=document.getElementById('statusText');
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
 
-  // ค้นหา Yahoo proxy ที่ใช้ได้ (ใช้เป็น fallback เสมอ)
-  if(statusEl) statusEl.textContent='🔍 ค้นหา proxy...';
-  await _detectWorkingProxy();
+  // ค้นหา proxy เฉพาะครั้งแรก หรือถ้า proxy เก่าใช้ไม่ได้แล้ว
+  if(!_workingProxy) await _detectWorkingProxy();
 
-  // ดึงทุกตัวพร้อมกัน แบ่งเป็น batch ใหญ่ขึ้น
-  const BATCH=12, DELAY=200;
+  // ดึงทุกตัวพร้อมกัน batch ใหญ่ขึ้น delay น้อยลง
+  const BATCH=15, DELAY=100;
   for(let i=0;i<stocks.length;i+=BATCH){
     const batch=stocks.slice(i,i+BATCH);
     await Promise.allSettled(batch.map(async s=>{
@@ -4849,20 +5113,20 @@ async function initYahooPrices(){
     if(i+BATCH<stocks.length) await new Promise(r=>setTimeout(r,DELAY));
   }
 
-  // ดึง SPY/QQQ ด้วย
+  // ดึง SPY/QQQ
   try{
-    for(const sym of['SPY','QQQ']){
+    await Promise.allSettled(['SPY','QQQ'].map(async sym=>{
       const q=await fetchYahooQuote(sym);
       if(q&&q.p>0){
         marketCtx[sym].price=q.p;
         marketCtx[sym].change=q.c;
         marketCtx[sym].trend=q.c>0.5?'bullish':q.c<-0.5?'bearish':'neutral';
       }
-    }
+    }));
   }catch{}
 
   updateDashboard();
-  const src=hasApiKey()?'Finnhub':((()=>{ try{ return localStorage.getItem('polygonKey')||POLYGON_KEY; }catch{ return POLYGON_KEY; } })()&&loaded>0)?'Polygon':'Yahoo';
+  const src=hasApiKey()?'Finnhub':(POLYGON_KEY&&loaded>0)?'Polygon':'Yahoo';
   if(loaded>0){
     const open=_isMarketOpen();
     const pre=_isPreMarket();
@@ -5201,32 +5465,24 @@ async function _switchTF(btn, days){
 // ── Polygon.io config ──
 let POLYGON_KEY = (()=>{ try{ return localStorage.getItem('polygonKey')||'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; }catch{ return 'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; } })();
 
-// ── fetchPolygonQuote — ดึงราคา Real-time จาก Polygon.io ──
+// ── fetchPolygonQuote — ดึงราคา Real-time จาก Polygon.io (1 request) ──
 async function fetchPolygonQuote(ticker){
   try{
     const key=(()=>{ try{ return localStorage.getItem('polygonKey')||POLYGON_KEY; }catch{ return POLYGON_KEY; } })();
     if(!key) return null;
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(`https://api.polygon.io/v2/last/trade/${encodeURIComponent(ticker)}?apiKey=${key}`,{signal:ctrl.signal});
+    const tid=setTimeout(()=>ctrl.abort(),4000);
+    // ใช้ snapshot endpoint — ได้ราคา + prev close ในครั้งเดียว
+    const r=await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${encodeURIComponent(ticker)}?apiKey=${key}`,{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     const d=await r.json();
-    const price=d?.results?.p||d?.last?.price;
+    const snap=d?.ticker;
+    const price=snap?.day?.c||snap?.lastTrade?.p||snap?.prevDay?.c;
+    const prev=snap?.prevDay?.c;
     if(!price||price<=0) return null;
-    // ดึง prev close เพื่อคำนวณ % change
-    try{
-      const ctrl2=new AbortController();
-      const tid2=setTimeout(()=>ctrl2.abort(),5000);
-      const r2=await fetch(`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=true&apiKey=${key}`,{signal:ctrl2.signal});
-      clearTimeout(tid2);
-      if(r2.ok){
-        const d2=await r2.json();
-        const prev=d2?.results?.[0]?.c;
-        if(prev&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
-      }
-    }catch{}
-    return{p:+price.toFixed(2),c:0};
+    const chg=prev&&prev>0?+((price-prev)/prev*100).toFixed(2):0;
+    return{p:+price.toFixed(2),c:chg};
   }catch{ return null; }
 }
 
@@ -5321,7 +5577,7 @@ async function testCohereKey(){
     const r=await fetch('https://api.cohere.com/v2/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
+      body:JSON.stringify({model:'command-r-plus',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
       signal:ctrl.signal
     });
     clearTimeout(tid);
@@ -6195,7 +6451,7 @@ async function fetchMarketContext(){
       try{
         const ctrl=new AbortController();
         const tid=setTimeout(()=>ctrl.abort(),5000);
-        const r=await fetch(`${WORKER}/api/quote?symbol=${sym}`,{signal:ctrl.signal});
+        const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
         clearTimeout(tid);
         if(!r.ok) return;
         const d=await r.json();
@@ -6309,7 +6565,7 @@ async function fetchLiveNews(ticker){
     from.setDate(from.getDate()-3);
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(`${WORKER}/api/news?symbol=${ticker}&from=${from.toISOString().slice(0,10)}&to=${to.toISOString().slice(0,10)}`,{mode:'cors',signal:ctrl.signal});
+    const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${from.toISOString().slice(0,10)}&to=${to.toISOString().slice(0,10)}&token=${FINNHUB_KEY}`,{mode:'cors',signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     const items=await r.json();
@@ -6482,7 +6738,7 @@ async function _cohereTranslate(items){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+COHERE_KEY},
       body:JSON.stringify({
-        model:'command-r-plus-08-2024',
+        model:'command-r-plus',
         messages:[{role:'user',content:prompt}],
         max_tokens:2000
       }),
@@ -6587,7 +6843,7 @@ async function fetchAndRenderEarnings(){
       const ctrl=new AbortController();
       const tid=setTimeout(()=>ctrl.abort(),8000);
       const r=await fetch(
-        `${WORKER}/api/earnings?from=${fmt(from)}&to=${fmt(to)}`,
+        `https://finnhub.io/api/v1/calendar/earnings?from=${fmt(from)}&to=${fmt(to)}&token=${FINNHUB_KEY}`,
         {signal:ctrl.signal}
       );
       clearTimeout(tid);
@@ -6765,7 +7021,7 @@ async function runAIMarketSummaryV2(){
       try{
         const ctrl=new AbortController();
         const tid=setTimeout(()=>ctrl.abort(),4000);
-        const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
+        const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.t}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
         clearTimeout(tid);
         if(r.ok){
           const d=await r.json();
@@ -7043,7 +7299,7 @@ async function _fetchEconNews(query){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),25000);
-    const r=await fetch(`${WORKER}/api/econ-news?q=${encodeURIComponent(query)}`,{
+    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_KEY}`,{
       mode:'cors',signal:ctrl.signal
     });
     clearTimeout(tid);
@@ -7200,10 +7456,27 @@ async function triggerAISummary(){
 }
 
 
-// ── PORTFOLIO TRACKER ──
-let portfolio = (()=>{ try{ return JSON.parse(localStorage.getItem('_sp_portfolio') || '[]'); }catch{ return []; } })();
 
-function savePortfolio(){ try{ localStorage.setItem('_sp_portfolio', JSON.stringify(portfolio)); }catch{} }
+
+// ── PORTFOLIO TRACKER ──
+let portfolio = (()=>{
+  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) return JSON.parse(ls); }catch{}
+  try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) return JSON.parse(ss); }catch{}
+  try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
+  return [];
+})();
+
+function savePortfolio(){
+  const data = JSON.stringify(portfolio);
+  try{ localStorage.setItem('_sp_portfolio', data); }catch{}
+  try{ sessionStorage.setItem('_sp_portfolio', data); }catch{}
+  try{
+    const d=new Date(); d.setFullYear(d.getFullYear()+1);
+    document.cookie=`_sp_portfolio=${encodeURIComponent(data)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+  }catch{}
+  // Sync ขึ้น Worker KV ทุกครั้งที่บันทึกพอร์ต
+  setTimeout(syncAlertsToWorker, 500);
+}
 
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
@@ -7222,6 +7495,17 @@ function addPortPosition(){
     existing.shares = totalShares;
   } else {
     portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
+    // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
+    if(!stocks.find(s=>s.t===ticker)){
+      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
+      // ดึงราคาทันที
+      fetchSingleQuoteFast({t:ticker}).then(q=>{
+        if(q&&q.p>0){
+          const s=stocks.find(x=>x.t===ticker);
+          if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
+        }
+      }).catch(()=>{});
+    }
   }
   savePortfolio();
   document.getElementById('portTicker').value='';
@@ -7236,6 +7520,60 @@ function removePortPosition(ticker){
   savePortfolio();
   renderPortfolio();
 }
+
+
+
+function sellShares(ticker){
+  const pos = portfolio.find(p=>p.t===ticker);
+  if(!pos) return;
+  // สร้าง modal แทน prompt() ที่ block UI บน iOS
+  const existing = document.getElementById('_sellModal');
+  if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = '_sellModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;padding:0 0 env(safe-area-inset-bottom)';
+  modal.innerHTML=`
+    <div style="width:100%;max-width:500px;background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px;border-top:1px solid rgba(201,168,76,0.3)">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">💰 ขายหุ้น ${ticker}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px">ถืออยู่ ${pos.shares.toLocaleString()} หุ้น | ราคาเฉลี่ย $${pos.avgPrice.toFixed(2)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+        <button onclick="window._doSell('${ticker}',${pos.shares*0.25})" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer">25%</button>
+        <button onclick="window._doSell('${ticker}',${pos.shares*0.5})" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer">50%</button>
+        <button onclick="window._doSell('${ticker}',${pos.shares})" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--red);cursor:pointer">ทั้งหมด</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="_sellQtyInput" type="number" placeholder="จำนวนหุ้นที่ต้องการขาย" step="0.01" min="0.01" max="${pos.shares}" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:'Inter',sans-serif;outline:none">
+        <button onclick="window._doSellCustom('${ticker}')" style="background:var(--gold);border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif">ขาย</button>
+      </div>
+      <button onclick="document.getElementById('_sellModal').remove()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;color:var(--text2);cursor:pointer">ยกเลิก</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.onclick=(e)=>{ if(e.target===modal) modal.remove(); };
+}
+
+window._doSell = function(ticker, qty){
+  document.getElementById('_sellModal')?.remove();
+  const pos = portfolio.find(p=>p.t===ticker);
+  if(!pos) return;
+  const sell = Math.min(+qty.toFixed(4), pos.shares);
+  if(sell<=0) return;
+  if(sell >= pos.shares){
+    removePortPosition(ticker);
+    toast(`✅ ขาย ${ticker} ออกทั้งหมดแล้ว`);
+  } else {
+    pos.shares = +(pos.shares - sell).toFixed(4);
+    savePortfolio();
+    renderPortfolio();
+    toast(`✅ ขาย ${ticker} ${sell} หุ้น เหลือ ${pos.shares} หุ้น`);
+  }
+};
+
+window._doSellCustom = function(ticker){
+  const input = document.getElementById('_sellQtyInput');
+  const sell = parseFloat(input?.value);
+  if(isNaN(sell)||sell<=0){ toast('⚠️ ใส่จำนวนหุ้นที่ต้องการขาย'); return; }
+  window._doSell(ticker, sell);
+};
 
 function renderPortfolio(){
   const list = document.getElementById('portHoldingsList');
@@ -7252,9 +7590,15 @@ function renderPortfolio(){
   }
   let totalCost=0, totalVal=0;
   let html='';
-  portfolio.forEach(pos=>{
+  // เรียงตามมูลค่าจากมากไปน้อย
+  const sortedPortfolio = [...portfolio].sort((a,b)=>{
+    const sA=stocks.find(s=>s.t===a.t); const sB=stocks.find(s=>s.t===b.t);
+    return ((sB?.p||0)*b.shares) - ((sA?.p||0)*a.shares);
+  });
+  sortedPortfolio.forEach(pos=>{
     const stockData = stocks.find(s=>s.t===pos.t);
-    const curPrice = stockData?.p || 0;
+    // ถ้าไม่อยู่ใน stocks array ให้ดึงราคาจาก liveCache
+    const curPrice = stockData?.p || (liveCache[pos.t] ? (stocks.find(s=>s.t===pos.t)?.p||0) : 0) || pos.lastPrice || 0;
     const cost = pos.avgPrice * pos.shares;
     const val = curPrice * pos.shares;
     const pnl = val - cost;
@@ -7265,48 +7609,82 @@ function renderPortfolio(){
     totalVal += val;
     const safeTicker = _escHtml(pos.t);
     const safeName = _escHtml(stockData?.n||'');
+    const weightPct = 0; // คำนวณหลัง loop
     html+=`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;position:relative">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text)">${safeTicker}</div>
-          <div style="font-size:11px;color:var(--text3)">${safeName}</div>
+    <div class="port-row" data-ticker="${safeTicker}" style="border-bottom:1px solid var(--border);padding:12px 0;cursor:pointer">
+      <!-- Row หลัก -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="card-logo" id="portlogo-${safeTicker}" style="width:40px;height:40px;border-radius:50%;flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text)">${safeTicker}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:1px"><span class="port-weight-${safeTicker}">--</span> ของพอร์ต</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
+              <div style="font-size:12px;font-weight:600;color:${pnlColor};margin-top:1px">${curPrice>0?(isUp?'↑':'↓')+Math.abs(pnlPct).toFixed(2)+'%':'--'}</div>
+            </div>
+          </div>
         </div>
-        <button data-remove-ticker="${safeTicker}" class="port-remove-btn" style="background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer">ลบ</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">ราคาปัจจุบัน</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+curPrice.toFixed(2):'--'}</div>
+      <!-- รายละเอียด (ซ่อน/แสดง) -->
+      <div class="port-detail-${safeTicker}" style="display:none;margin-top:10px;background:var(--bg3);border-radius:10px;padding:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <div style="font-size:10px;color:var(--text3)">ราคาปัจจุบัน</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+curPrice.toFixed(2):'--'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3)">ราคาเฉลี่ย</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">$${pos.avgPrice.toFixed(2)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3)">จำนวนหุ้น</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">${pos.shares.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3)">ต้นทุน</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">$${cost.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3)">P&L</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:${pnlColor}">${curPrice>0?(isUp?'+':'')+pnl.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3)">P&L %</div>
+            <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:${pnlColor}">${curPrice>0?(isUp?'+':'')+pnlPct.toFixed(2)+'%':'--'}</div>
+          </div>
         </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">ราคาเฉลี่ย</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">$${pos.avgPrice.toFixed(2)}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">จำนวนหุ้น</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">${pos.shares.toLocaleString()}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">มูลค่า</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">ต้นทุน</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text2)">$${cost.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">P&L</div>
-          <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:${pnlColor}">${curPrice>0?(isUp?'+':'')+pnl.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})+' ('+(isUp?'+':'')+pnlPct.toFixed(2)+'%)':'--'}</div>
-        </div>
+        <button data-sell-ticker="${safeTicker}" class="port-sell-btn" style="width:100%;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:8px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif">💰 ขายหุ้น</button>
       </div>
     </div>`;
   });
   list.innerHTML=html;
-  // FIX: Event delegation สำหรับปุ่มลบ — ป้องกัน XSS จาก inline onclick
+  // โหลดโลโก้และคำนวณ weight หลัง render
+  sortedPortfolio.forEach(pos=>{
+    const stockData=stocks.find(s=>s.t===pos.t);
+    const curPrice=stockData?.p||0;
+    const val=curPrice*pos.shares;
+    const wPct=totalVal>0?(val/totalVal*100).toFixed(1)+'%':'--';
+    const wEl=list.querySelector(`.port-weight-${pos.t}`);
+    if(wEl) wEl.textContent=wPct;
+    const logoEl=document.getElementById(`portlogo-${pos.t}`);
+    if(logoEl) loadLogo(pos.t,`portlogo-${pos.t}`,40);
+  });
+  // accordion toggle
   list.onclick=(e)=>{
-    const btn=e.target.closest('.port-remove-btn');
-    if(btn&&btn.dataset.removeTicker) removePortPosition(btn.dataset.removeTicker);
+    const sellBtn=e.target.closest('.port-sell-btn');
+    if(sellBtn&&sellBtn.dataset.sellTicker){ e.stopPropagation(); sellShares(sellBtn.dataset.sellTicker); return; }
+    if(e.target.closest('[class*="port-detail-"]')) return;
+    const row=e.target.closest('.port-row');
+    if(row){
+      const ticker=row.dataset.ticker;
+      const detail=list.querySelector('.port-detail-'+ticker);
+      if(detail){
+        detail.style.display = detail.style.display==='block' ? 'none' : 'block';
+      }
+    }
   };
   // Summary
   const totalPnl = totalVal - totalCost;
@@ -7395,6 +7773,7 @@ function updateCardLive(s){
     chgEl.textContent=(chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
     chgEl.className='card-chg '+(chgNum>=0?'up':'dn');
   }
+
   // Portfolio live update — throttle 1 วินาที ป้องกัน DOM churn ทุก WS tick
   const portActive=document.getElementById('page-port')?.classList.contains('active');
   if(portActive && !_portUpdateTimer){
@@ -7697,6 +8076,8 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
   content.addEventListener('touchstart', e => {
     // ถ้า drawer เปิดอยู่ ไม่ swipe
     if(document.getElementById('drawer')?.classList.contains('open')) return;
+    // ถ้า touch เริ่มจาก scroll row (filter/sort bar) ไม่ swipe
+    if(e.target.closest('.stocks-controls,.sector-row,.search-bar,.ctrl-btn,.wl-filter-btn')) return;
     _pgSwipeX = e.touches[0].clientX;
     _pgSwipeY = e.touches[0].clientY;
     _pgSwipeTime = Date.now();
@@ -7709,7 +8090,7 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
     const dt = Date.now() - _pgSwipeTime;
     if(dt > 400) return;
     if(Math.abs(dx) < 70) return;
-    if(Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    if(Math.abs(dy) > Math.abs(dx) * 0.5) return;
     _goPage(dx < 0 ? 1 : -1);
   }, {passive:true});
 })();
@@ -7728,8 +8109,20 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
     const next = idx + dir;
     if(next < 0 || next >= TABS.length) return;
     const tab = TABS[next];
-    drawerTab(tab, _getTabEl(tab));
-    // scroll tab ให้เห็น
+    const body = document.getElementById('drawerBody');
+    if(body){
+      body.style.opacity='0';
+      body.style.transform=dir>0?'translateX(20px)':'translateX(-20px)';
+      setTimeout(()=>{
+        drawerTab(tab, _getTabEl(tab));
+        body.style.transition='opacity 0.2s ease,transform 0.2s ease';
+        body.style.opacity='1';
+        body.style.transform='translateX(0)';
+        setTimeout(()=>{ body.style.transition=''; body.style.transform=''; },220);
+      },80);
+    } else {
+      drawerTab(tab, _getTabEl(tab));
+    }
     _getTabEl(tab)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
   }
 
@@ -7747,10 +8140,9 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
     const dx = e.changedTouches[0].clientX - _swipeStartX;
     const dy = e.changedTouches[0].clientY - _swipeStartY;
     const dt = Date.now() - _swipeStartTime;
-    // swipe ต้องเร็ว (<350ms) แนวนอน (dx>dy) และระยะ >60px
-    if(dt > 350) return;
+    // swipe ต้องปัดแรง >60px และแนวนอนชัดเจน
     if(Math.abs(dx) < 60) return;
-    if(Math.abs(dy) > Math.abs(dx)) return;
+    if(Math.abs(dy) > Math.abs(dx) * 0.5) return;
     _goTab(dx < 0 ? 1 : -1);
   }, {passive:true});
 })();
