@@ -1347,8 +1347,8 @@ let PORT_SIZE = (()=>{ try{ return parseInt(localStorage.getItem('_sp_portsize')
 
 // ── Named constants (ป้องกัน magic numbers กระจัดกระจาย) ──
 const BUY_SIGNAL_THRESHOLD = 52;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
-const WS_SUBSCRIBE_LIMIT   = 50;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
-const POLL_STAGGER_MS      = 200;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
+const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
+const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
 const BUY_SIGNAL_COOLDOWN  = 900000; // 15 นาที cooldown ต่อ ticker
@@ -4641,7 +4641,7 @@ async function httpPoll(){
   _pollInFlight=true;
   try{
     // กรองเฉพาะที่ cache หมดอายุ และ stagger เพื่อไม่โดน rate limit
-    const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,8);
+    const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,12);
     for(const s of batch){
       try{
         const ctrl=new AbortController();
@@ -4658,6 +4658,8 @@ async function httpPoll(){
           else if(!s.prevClose) s.prevClose=d.c;
           liveCache[s.t]=Date.now();
           updateCardLive(s);
+          // cache ราคาล่าสุดไว้ใน localStorage
+          try{ localStorage.setItem('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
         }
       }catch{}
       await new Promise(r=>setTimeout(r,POLL_STAGGER_MS));
