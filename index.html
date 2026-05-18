@@ -821,17 +821,6 @@ canvas.bigchart{width:100%;height:100%}
           </div>
         </div>
         <div class="settings-row">
-          <div>
-            <div class="settings-label">📰 GNews API Key <span style="font-size:10px;color:var(--text3)">(ข่าวเศรษฐกิจ)</span></div>
-            <div class="settings-sublabel">สมัครฟรีที่ <a href="https://gnews.io" target="_blank" style="color:var(--ice);text-decoration:none">gnews.io</a> — 100 requests/วัน ได้ข่าว Fed/เศรษฐกิจตรงๆ</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="gnewsKeyInput" type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex:1">
-              <button class="settings-btn" id="testGnewsBtn" onclick="testGnewsKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="gnewsKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
@@ -4200,9 +4189,6 @@ function loadSettings(){
     const ck=localStorage.getItem('cohereKey')||'';
     const ckEl=document.getElementById('cohereKeyInput');
     if(ckEl) ckEl.value=ck;
-    // โหลด GNews key
-    const gne=localStorage.getItem('gnewsKey')||'';
-    const gneEl=document.getElementById('gnewsKeyInput');
     if(gneEl) gneEl.value=gne;
   }catch{}
 }
@@ -4229,59 +4215,10 @@ function saveSettings(){
     if(ck){ localStorage.setItem('cohereKey',ck); COHERE_KEY=ck; }
     else localStorage.removeItem('cohereKey');
   }catch{}
-  // บันทึก GNews key
   try{
-    const gne=document.getElementById('gnewsKeyInput')?.value?.trim()||'';
-    if(gne) localStorage.setItem('gnewsKey',gne);
-    else localStorage.removeItem('gnewsKey');
   }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
-}
-
-async function testGnewsKey(){
-  const btn=document.getElementById('testGnewsBtn');
-  const statusEl=document.getElementById('gnewsKeyStatus');
-  const key=document.getElementById('gnewsKeyInput')?.value?.trim()||'';
-  if(!key){
-    statusEl.style.display='block';
-    statusEl.style.background='rgba(255,77,106,0.1)';
-    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-    statusEl.style.color='var(--red)';
-    statusEl.textContent='❌ กรุณาใส่ API Key ก่อน';
-    return;
-  }
-  if(btn){btn.textContent='⏳';btn.disabled=true;}
-  statusEl.style.display='none';
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),10000);
-    const r=await fetch(`https://gnews.io/api/v4/search?q=economy&lang=en&max=1&token=${key}`,{signal:ctrl.signal});
-    clearTimeout(tid);
-    const data=await r.json();
-    if(r.ok&&data.articles?.length){
-      statusEl.style.display='block';
-      statusEl.style.background='rgba(0,230,118,0.1)';
-      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
-      statusEl.style.color='var(--green)';
-      statusEl.textContent=`✅ ใช้งานได้! พบข่าว: "${data.articles[0].title.slice(0,60)}..."`;
-      try{localStorage.setItem('gnewsKey',key);}catch{}
-    } else {
-      const msg=data.errors?.[0]||data.message||'Key ไม่ถูกต้อง';
-      statusEl.style.display='block';
-      statusEl.style.background='rgba(255,77,106,0.1)';
-      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-      statusEl.style.color='var(--red)';
-      statusEl.textContent=`❌ ${msg}`;
-    }
-  }catch(e){
-    statusEl.style.display='block';
-    statusEl.style.background='rgba(255,77,106,0.1)';
-    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-    statusEl.style.color='var(--red)';
-    statusEl.textContent='❌ เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';
-  }
-  if(btn){btn.textContent='🧪 ทดสอบ';btn.disabled=false;}
 }
 
 async function testGroqKey(){
@@ -7086,29 +7023,9 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
-// ── _fetchEconNews: GNews direct → Worker fallback ──
+// ── _fetchEconNews: Worker ──
 async function _fetchEconNews(query){
-  // 1) ลอง GNews โดยตรงถ้ามี key ใน Settings
-  const gnewsKey=(localStorage.getItem('gnewsKey')||'').trim();
-  if(gnewsKey){
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),12000);
-      const url=`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&token=${gnewsKey}`;
-      const r=await fetch(url,{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(r.ok){
-        const d=await r.json();
-        if(d.articles?.length) return d.articles.map(a=>({
-          title:a.title||'',
-          link:a.url||'#',
-          pubDate:a.publishedAt||new Date().toISOString(),
-          source:a.source?.name||'GNews',
-        }));
-      }
-    }catch(e){console.warn('GNews direct:',e.message);}
-  }
-  // 2) Fallback: Worker
+  // Worker only
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),25000);
