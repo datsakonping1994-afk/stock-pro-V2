@@ -7083,11 +7083,12 @@ async function _fetchEconNewsAI(){
     );
     if(!raw) return [];
     const parsed=_parseNewsJson(raw);
-    if(parsed.length>0) return parsed.map(it=>({
+    const _now=new Date().toISOString();
+    if(parsed.length>0) return parsed.map((it,i)=>({
       title:it.title||'',
       source:it.source||'Reuters',
-      pubDate:it.pubDate||new Date().toISOString(),
-      link:it.link||'#',
+      pubDate:_now, // always use current time
+      link:'#',    // mark as AI-generated
       titleTH:it.titleTH||it.title||'',
       summaryTH:it.summaryTH||'',
     }));
