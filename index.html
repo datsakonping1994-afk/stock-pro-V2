@@ -7472,19 +7472,15 @@ function renderPortfolio(){
   });
   // accordion toggle
   list.onclick=(e)=>{
-    e.stopPropagation();
     const sellBtn=e.target.closest('.port-sell-btn');
-    if(sellBtn&&sellBtn.dataset.sellTicker){ sellShares(sellBtn.dataset.sellTicker); return; }
+    if(sellBtn&&sellBtn.dataset.sellTicker){ e.stopPropagation(); sellShares(sellBtn.dataset.sellTicker); return; }
+    if(e.target.closest('[class*="port-detail-"]')) return;
     const row=e.target.closest('.port-row');
     if(row){
       const ticker=row.dataset.ticker;
-      const detail=list.querySelector(`.port-detail-${ticker}`);
+      const detail=list.querySelector('.port-detail-'+ticker);
       if(detail){
-        const isOpen = detail.style.display !== 'none';
-        // ปิดทุกอันก่อน
-        list.querySelectorAll('[class^="port-detail-"]').forEach(d=>d.style.display='none');
-        // ถ้าอันนี้ปิดอยู่ให้เปิด
-        if(!isOpen) detail.style.display='block';
+        detail.style.display = detail.style.display==='block' ? 'none' : 'block';
       }
     }
   };
