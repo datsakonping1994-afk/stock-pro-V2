@@ -706,19 +706,12 @@ canvas.bigchart{width:100%;height:100%}
   <!-- ALERTS PAGE -->
   <div class="page" id="page-news" style="background:var(--bg0);min-height:100%">
     <div style="padding:12px 14px 0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="section-title" style="margin-bottom:0">📰 ข่าวเศรษฐกิจ</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-title" style="margin-bottom:0">📰 ข่าวเศรษฐกิจวันนี้</div>
         <div style="display:flex;align-items:center;gap:8px">
           <span id="newsLastUpdated" style="font-size:10px;color:var(--text3)"></span>
           <button id="newsRefreshBtn" onclick="refreshNewsManual()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;transition:all 0.15s">🔄</button>
         </div>
-      </div>
-      <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;margin-bottom:10px" id="newsCatRow">
-        <button class="sector-btn active" onclick="loadEconNews('top',this)">⭐ ข่าวเด่น</button>
-        <button class="sector-btn" onclick="loadEconNews('market',this)">🌍 ตลาด</button>
-        <button class="sector-btn" onclick="loadEconNews('fed',this)">🏦 Fed</button>
-        <button class="sector-btn" onclick="loadEconNews('tech',this)">💻 เทค</button>
-        <button class="sector-btn" onclick="loadEconNews('crypto',this)">₿ Crypto</button>
       </div>
       <div id="econNewsBody" style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
         <div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>
@@ -1452,7 +1445,7 @@ function navTo(page, el){
     else if(page==='dash') updateDashboard();
     else if(page==='settings') loadSettings();
     else if(page==='port') renderPortfolio();
-    else if(page==='news') loadEconNews('top', document.querySelector('#newsCatRow .sector-btn'));
+    else if(page==='news') loadEconNews();
   });
 }
 
@@ -3202,22 +3195,21 @@ async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
-// 💬 Chat โต้ตอบผู้ใช้ → Claude Haiku
+// 💬 Chat โต้ตอบผู้ใช้ → Claude Sonnet 4 (อัปเกรดจาก Haiku)
 async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
-  // อัปเดต loading label
   const _setLoadingLabel=(label)=>{
     const el=document.getElementById('aiLoading');
     if(el) el.innerHTML=`<span style="opacity:0.6;font-size:11px">${label}</span>`;
   };
   try{
-    _setLoadingLabel('🤖 Claude Haiku กำลังวิเคราะห์...');
+    _setLoadingLabel('✨ Claude Sonnet กำลังวิเคราะห์...');
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),15000);
+    const tid=setTimeout(()=>ctrl.abort(),20000);
     const r=await fetch(WORKER,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
+        model:'claude-sonnet-4-6',
         max_tokens:maxTokens,
         system:systemPrompt,
         messages:[{role:'user',content:userPrompt}]
@@ -3231,7 +3223,8 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
         return d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
       }
     }
-  }catch(e){console.warn('Claude Haiku error:',e.message);}
+  }catch(e){console.warn('Claude Sonnet error:',e.message);}
+  // fallback → Gemini 1.5 Pro
   _setLoadingLabel('✨ Gemini 1.5 Pro กำลังวิเคราะห์...');
   const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
@@ -3392,6 +3385,11 @@ Volume Profile POC: ราคาที่ซื้อขายมากที่
 Tenkan: ${ind.tenkan!=null?'$'+ind.tenkan.toFixed(2):'N/A'} | Kijun: ${ind.kijun!=null?'$'+ind.kijun.toFixed(2):'N/A'}
 Senkou A: ${ind.senkouA!=null?'$'+ind.senkouA.toFixed(2):'N/A'} | Senkou B: ${ind.senkouB!=null?'$'+ind.senkouB.toFixed(2):'N/A'}
 Ichimoku Signal: ${ind.ichimokuSignal??'N/A'} | Chikou: ${ind.chikouSignal??'N/A'}`;
+
+    // ── Heikin Ashi + Elder Ray ──
+    ctx+=`\n\n🕯️ Heikin Ashi & Elder Ray
+Heikin Ashi: ${ind.haBull!=null?(ind.haBull?'🟢 Bullish':'🔴 Bearish'):'N/A'}${ind.haStrong?' (Strong — ไม่มีไส้บน)':''} | แท่งเขียวต่อเนื่อง: ${ind.haConsecutive??0} แท่ง
+Elder Ray — Bull Power: ${ind.bullPower!=null?ind.bullPower.toFixed(3):'N/A'} | Bear Power: ${ind.bearPower!=null?ind.bearPower.toFixed(3):'N/A'} | ${ind.elderBull?'🟢 Elder Buy Signal':'⚪ ไม่มี signal'}`;
 
     // ── Candlestick Patterns ──
     const patterns=[];
@@ -3590,9 +3588,212 @@ function exportCSV(){
 }
 
 // ── Buy Signal ──
+// ── AI Pre-Screen — ให้ AI กรองสัญญาณก่อน popup ──
+// ส่ง indicator ครบทุกตัวให้ AI ตัดสิน ถ้าผ่านค่อย popup
+async function _aiPreScreenSignal(ticker, price, s1, r1, score){
+  const cacheKey = `prescreen_${ticker}_${Math.round(score)}`;
+  const cached = _getAICache(cacheKey);
+  if(cached) return cached === 'BUY';
+
+  const indCtx = buildFullIndicatorContext(ticker, price);
+  const rrPct = +((r1-price)/price*100).toFixed(2);
+  const slPct = +((price-s1)/price*100).toFixed(2);
+
+  // ── ดึงภาพรวมตลาด + Win Rate ──
+  const spy = marketCtx.SPY.change||0;
+  const qqq = marketCtx.QQQ.change||0;
+  const fng = window._fngForAI;
+  const stats = getTradeStats();
+  const marketSummary = `SPY ${spy>=0?'+':''}${spy}% | QQQ ${qqq>=0?'+':''}${qqq}%${fng?` | Fear&Greed ${fng.value}/100 (${fng.text})`:''}`;
+  const winRateSummary = stats ? `Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)` : 'ยังไม่มีประวัติ';
+
+  const sys = `คุณคือระบบกรองสัญญาณซื้อหุ้นอัตโนมัติ
+กฎเหล็ก:
+- ตอบได้แค่ "BUY" หรือ "SKIP" เท่านั้น ห้ามมีคำอื่น
+- BUY = สัญญาณน่าเชื่อถือ ควรแจ้งเตือน
+- SKIP = สัญญาณหลอก ไม่ควรแจ้งเตือน
+เกณฑ์ตัดสิน:
+- ถ้า Supertrend Bearish → SKIP เสมอ
+- ถ้า RSI > 70 → SKIP (Overbought)
+- ถ้า MACD ไม่ยืนยัน momentum → SKIP
+- ถ้า Volume ต่ำกว่าปกติ (volRatio < 0.8) → SKIP
+- ถ้า Candle ล่าสุดเป็นแท่งแดงใหญ่ → SKIP
+- ถ้า SPY และ QQQ ลงแรงกว่า -1% → SKIP (ตลาดร่วง)
+- ถ้า Fear&Greed < 20 (Extreme Fear) และ score < 70 → SKIP
+- ผ่านเกณฑ์ส่วนใหญ่ → BUY`;
+
+  const prompt = `${indCtx}
+
+Buy Score: ${score}/100
+ห่าง S1: ${slPct}% | เป้า R1: +${rrPct}% | R:R ${(rrPct/Math.max(slPct,0.01)).toFixed(1)}x
+
+🌎 ภาพรวมตลาดวันนี้: ${marketSummary}
+📊 ประวัติระบบ: ${winRateSummary}
+
+ตอบแค่ BUY หรือ SKIP เท่านั้น`;
+
+  try{
+    const reply = await callAI_Quick(sys, prompt, 10);
+    const decision = (reply||'').trim().toUpperCase().includes('BUY') ? 'BUY' : 'SKIP';
+    _setAICache(cacheKey, decision);
+    return decision === 'BUY';
+  }catch{
+    return score >= 65;
+  }
+}
+
+// ── Exit Signal — แจ้งเตือนเมื่อควรขาย พร้อมบอกจำนวนหุ้นที่ควรขาย ──
+const _exitAlerted = new Set();
+const _trailingHigh = {}; // เก็บ high สูงสุดหลังซื้อสำหรับ Trailing Stop
+
+async function checkExitSignal(ticker, price){
+  const s = stocks.find(x=>x.t===ticker);
+  if(!s||price<=0) return;
+  const r1 = getR1(ticker, price);
+  const r2 = getR2(ticker, price);
+  const s1 = getS1(ticker, price);
+
+  // ดึง portfolio
+  let portfolio=[];
+  try{ portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+  const pos = portfolio.find(p=>p.t===ticker);
+  if(!pos||!pos.avgPrice||!pos.shares) return;
+
+  const pnlPct = ((price - pos.avgPrice) / pos.avgPrice * 100);
+  const rsi = rsiData[ticker]||50;
+  const ind = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock
+    ? _calcBuyScore(ticker, price, s1, r1) : null;
+
+  // ── อัพเดต Trailing High ──
+  if(!_trailingHigh[ticker] || price > _trailingHigh[ticker])
+    _trailingHigh[ticker] = price;
+  const trailingDrop = _trailingHigh[ticker] > 0
+    ? ((_trailingHigh[ticker] - price) / _trailingHigh[ticker] * 100) : 0;
+
+  // ── คำนวณสัดส่วนพอร์ต ──
+  let portValue = 0;
+  try{
+    portfolio.forEach(p=>{
+      const st=stocks.find(x=>x.t===p.t);
+      if(st&&st.p>0&&p.shares) portValue += st.p * p.shares;
+    });
+  }catch{}
+  const posValue = price * pos.shares;
+  const portPct = portValue > 0 ? (posValue/portValue*100) : 0;
+
+  // ── เงื่อนไข + จำนวนที่ควรขาย ──
+  const hitR2       = price >= r2 * 0.995;
+  const hitR1       = price >= r1 * 0.995 && !hitR2;
+  const overbought  = rsi >= 72;
+  const stBearish   = ind ? ind.supertrendBull === false : false;
+  const bigLoss     = pnlPct <= -7;
+  const trailingHit = pnlPct > 5 && trailingDrop >= 3; // กำไร >5% แล้วร่วงจาก high 3%
+  const overweight  = portPct >= 25; // หุ้นตัวนี้เกิน 25% ของพอร์ต
+
+  let exitReason = '', sellAction = '', sellShares = 0;
+  const exitKey_r2       = `exit_r2_${ticker}`;
+  const exitKey_r1       = `exit_r1_${ticker}`;
+  const exitKey_loss     = `exit_loss_${ticker}`;
+  const exitKey_momentum = `exit_mom_${ticker}`;
+  const exitKey_trail    = `exit_trail_${ticker}`;
+  const exitKey_weight   = `exit_wt_${ticker}`;
+
+  if(hitR2 && !_exitAlerted.has(exitKey_r2)){
+    // ถึง R2 → ขายทั้งหมด
+    exitReason = `🎯 ถึงเป้า R2 $${r2.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
+    sellAction = `ขายทั้งหมด ${pos.shares} หุ้น`;
+    sellShares = pos.shares;
+    _exitAlerted.add(exitKey_r2);
+    setTimeout(()=>_exitAlerted.delete(exitKey_r2), 7200000);
+
+  } else if(hitR1 && !_exitAlerted.has(exitKey_r1)){
+    // ถึง R1 → ขายครึ่ง lock กำไร รอ R2
+    const half = Math.ceil(pos.shares / 2);
+    exitReason = `🎯 ถึงเป้า R1 $${r1.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
+    sellAction = `ขายครึ่ง ${half} หุ้น (lock กำไร รอ R2 $${r2.toFixed(2)})`;
+    sellShares = half;
+    _exitAlerted.add(exitKey_r1);
+    setTimeout(()=>_exitAlerted.delete(exitKey_r1), 7200000);
+
+  } else if(bigLoss && !_exitAlerted.has(exitKey_loss)){
+    // Cut Loss → ขายทั้งหมด
+    exitReason = `🛑 Cut Loss! ขาดทุน ${pnlPct.toFixed(1)}%`;
+    sellAction = `ขายทั้งหมด ${pos.shares} หุ้น ทันที`;
+    sellShares = pos.shares;
+    _exitAlerted.add(exitKey_loss);
+    setTimeout(()=>_exitAlerted.delete(exitKey_loss), 3600000);
+
+  } else if(overbought && stBearish && !_exitAlerted.has(exitKey_momentum)){
+    // Momentum หมด → ขายทั้งหมด
+    exitReason = `📉 RSI Overbought + Supertrend กลับตัว`;
+    sellAction = `ขายทั้งหมด ${pos.shares} หุ้น`;
+    sellShares = pos.shares;
+    _exitAlerted.add(exitKey_momentum);
+    setTimeout(()=>_exitAlerted.delete(exitKey_momentum), 3600000);
+
+  } else if(trailingHit && !_exitAlerted.has(exitKey_trail)){
+    // Trailing Stop → ขายครึ่ง ป้องกันกำไรหาย
+    const half = Math.ceil(pos.shares / 2);
+    exitReason = `📉 Trailing Stop! ร่วงจาก High ${trailingDrop.toFixed(1)}%`;
+    sellAction = `ขายครึ่ง ${half} หุ้น (ปกป้องกำไร)`;
+    sellShares = half;
+    _exitAlerted.add(exitKey_trail);
+    setTimeout(()=>_exitAlerted.delete(exitKey_trail), 3600000);
+
+  } else if(overweight && pnlPct > 10 && !_exitAlerted.has(exitKey_weight)){
+    // พอร์ตหนักเกินไป → ขาย 25% ลดสัดส่วน
+    const trimShares = Math.ceil(pos.shares * 0.25);
+    exitReason = `⚖️ หุ้นนี้หนัก ${portPct.toFixed(0)}% ของพอร์ต`;
+    sellAction = `ขาย ${trimShares} หุ้น (ลดสัดส่วนให้สมดุล)`;
+    sellShares = trimShares;
+    _exitAlerted.add(exitKey_weight);
+    setTimeout(()=>_exitAlerted.delete(exitKey_weight), 86400000); // cooldown 1 วัน
+
+  } else return;
+
+  const tgMsg = `🚨 Exit Signal: ${ticker}
+${exitReason}
+📌 แนะนำ: ${sellAction}
+💰 ราคา $${fmt(price)} | เข้าที่ $${pos.avgPrice.toFixed(2)}
+📊 P&L: ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}% | ถือ ${pos.shares} หุ้น${portValue>0?` | สัดส่วนพอร์ต ${portPct.toFixed(0)}%`:''}`;
+
+  toast(`🚨 ${ticker} — ${exitReason} | ${sellAction}`, 6000);
+  sendTG(tgMsg);
+}
+
+// ── Earnings Alert — แจ้งเตือนหุ้นในพอร์ตที่ Earnings ใกล้ ──
+const _earnAlerted = new Set();
+function checkEarningsAlert(){
+  let portfolio=[];
+  try{ portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+  if(!portfolio.length) return;
+
+  portfolio.forEach(pos=>{
+    const s = stocks.find(x=>x.t===pos.t);
+    if(!s||!s.earn) return;
+    const daysLeft = _getEarningsDaysLeft(s.earn);
+    if(daysLeft===null) return;
+
+    const earnKey = `earn_${pos.t}_${s.earn}`;
+    if(_earnAlerted.has(earnKey)) return;
+
+    let msg = '';
+    if(daysLeft===0)      msg = `📅 ${pos.t} รายงาน Earnings วันนี้!`;
+    else if(daysLeft===1) msg = `📅 ${pos.t} รายงาน Earnings พรุ่งนี้`;
+    else if(daysLeft<=3)  msg = `📅 ${pos.t} รายงาน Earnings อีก ${daysLeft} วัน`;
+    else return;
+
+    _earnAlerted.add(earnKey);
+    setTimeout(()=>_earnAlerted.delete(earnKey), 43200000); // cooldown 12 ชั่วโมง
+
+    const pnlPct = pos.avgPrice>0 ? ((s.p-pos.avgPrice)/pos.avgPrice*100) : 0;
+    toast(msg, 5000);
+    sendTG(`${msg}\n💰 ราคา $${fmt(s.p)} | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%\n⚠️ ระวัง volatility ก่อน/หลัง Earnings`);
+  });
+}
+
 // ── Buy Signal — ใช้ _calcBuyScore เต็มๆ ทุกครั้ง ──
 function checkBuySignal(ticker,price){
-  // เรียก full version แบบ async (ไม่ block UI)
   checkBuySignalFull(ticker,price);
 }
 
@@ -3726,53 +3927,100 @@ function _setAICache(key,text){ _aiCache[key]={text,ts:Date.now()}; }
 
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
   const el=document.getElementById('signalAiText');
-  if(el) el.textContent='⏳ AI กำลังวิเคราะห์ indicator ครบทุกตัว...';
+  if(el) el.textContent='⏳ Claude Sonnet กำลังวิเคราะห์ indicator ครบทุกตัว...';
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
   const indCtx=buildFullIndicatorContext(ticker,price);
   const rrPct=+((r1-price)/price*100).toFixed(2);
   const slPct=+((price-s1)/price*100).toFixed(2);
-  const riskReward=(rrPct/slPct).toFixed(1);
+  const riskReward=(rrPct/Math.max(slPct,0.01)).toFixed(1);
+
+  // ── ดึงประวัติ Win/Loss ของ ticker นี้ ──
+  const tradeLog = _loadTradeLog().filter(t=>t.ticker===ticker&&t.result!==null);
+  let historyCtx = 'ไม่มีประวัติ signal ของหุ้นตัวนี้';
+  if(tradeLog.length){
+    const wins = tradeLog.filter(t=>t.result==='win').length;
+    const avgPct = tradeLog.reduce((a,t)=>a+(t.pct||0),0)/tradeLog.length;
+    const recent = tradeLog.slice(-3).map(t=>`${t.result==='win'?'✅':'❌'} Score${t.score||'?'} เข้า$${t.price} → ${t.result==='win'?'+':''}${t.pct}%`).join(' | ');
+    historyCtx = `Win Rate ${(wins/tradeLog.length*100).toFixed(0)}% จาก ${tradeLog.length} ครั้ง | Avg P&L ${avgPct>=0?'+':''}${avgPct.toFixed(1)}%\nล่าสุด: ${recent}`;
+  }
+
+  // ── ภาพรวมตลาด ──
+  const spy=marketCtx.SPY.change||0;
+  const qqq=marketCtx.QQQ.change||0;
+  const fng=window._fngForAI;
+  const mktCtx=`SPY ${spy>=0?'+':''}${spy}% | QQQ ${qqq>=0?'+':''}${qqq}%${fng?` | Fear&Greed ${fng.value}/100 (${fng.text})`:''}`;
+
   const prompt=`${indCtx}
 
+🌎 ภาพรวมตลาด: ${mktCtx}
+📜 ประวัติ Signal ${ticker}: ${historyCtx}
+
 Buy Score: ${score}/100
-แนวรับ: S1 $${s1.toFixed(2)} | S2 $${getS2(ticker,price).toFixed(2)}
-แนวต้าน: R1 $${r1.toFixed(2)} | R2 $${getR2(ticker,price).toFixed(2)}
+แนวรับ: S1 $${s1.toFixed(2)} | S2 $${s2.toFixed(2)}
+แนวต้าน: R1 $${r1.toFixed(2)} | R2 $${r2.toFixed(2)}
 ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}% | เป้า R1: +${rrPct}% | Risk/Reward: ${riskReward}x
 
-ตัดสินใจ: ควรเข้าซื้อตอนนี้ไหม?
-ตอบเป็นรูปแบบนี้เท่านั้น (5-6 บรรทัด):
+วิเคราะห์และตอบในรูปแบบนี้:
 🎯 คำตัดสินใจ: [ซื้อได้เลย / รอก่อน / ไม่แนะนำ] — เหตุผลหลัก 1 ประโยค
-📊 สัญญาณเด่น: indicator ที่ส่งสัญญาณชัดที่สุด 2-3 ตัว
+📊 % โอกาส BUY สำเร็จ: [0-100%] — อธิบายว่าคำนวณจากอะไร
+✅ ผ่าน: indicator ที่ส่งสัญญาณดี (ระบุชื่อ+ค่าจริง)
+❌ ไม่ผ่าน: indicator ที่น่าเป็นห่วง (ระบุชื่อ+ค่าจริง)
 ⚠️ ความเสี่ยง: สิ่งที่ต้องระวังที่สุด
 💰 Entry: $${price.toFixed(2)} | Stop Loss: $${s1.toFixed(2)} (-${slPct}%) | เป้า: $${r1.toFixed(2)} (+${rrPct}%)
-🔥 ความมั่นใจ: [สูง/กลาง/ต่ำ] — บอกว่าทำไม`;
-  const sys=`คุณคือนักเทรดมืออาชีพที่ตัดสินใจเด็ดขาด ไม่พูดกลางๆ ไม่บอกว่า "ขึ้นอยู่กับความเสี่ยงของคุณ"
-วิเคราะห์จาก indicator ครบทุกตัวที่ให้มา ให้น้ำหนัก: RSI+MACD+Supertrend+Volume มากกว่าตัวอื่น
-ถ้า Score>=70 AND RSI<=50 AND Supertrend Bullish → ซื้อได้เลย
-ถ้า Score 50-69 → รอก่อน ระบุเงื่อนไขที่ต้องรอ
-ถ้า Score<50 OR Supertrend Bearish → ไม่แนะนำ
-ตอบภาษาไทยชาวบ้าน ใช้ emoji แทน bullet ห้ามใช้ศัพท์อังกฤษ`;
+📜 เรียนรู้จากประวัติ: วิเคราะห์ว่าประวัติ Win/Loss ของหุ้นนี้บอกอะไร
+🔥 ความมั่นใจ: [สูง/กลาง/ต่ำ] — เหตุผล`;
 
-  // แสดง model ที่กำลังใช้
-  const modelLabel = _getGeminiKey() ? 'Gemini 2.0 Flash' : 'Claude Haiku';
-  const el2pre = document.getElementById('signalAiModel');
-  if(el2pre) el2pre.textContent = `🤖 ${modelLabel}`;
+  const sys=`คุณคือนักเทรดมืออาชีพที่ตัดสินใจเด็ดขาด ไม่พูดกลางๆ
+วิเคราะห์ indicator ทุกตัวที่ให้มาอย่างละเอียด ระบุชื่อและค่าจริงทุกครั้ง
+น้ำหนักสำคัญ: RSI > MACD > Supertrend > Volume > Heikin Ashi > Elder Ray
+เรียนรู้จากประวัติ Win/Loss — ถ้าหุ้นนี้ Win Rate ต่ำ ให้ระวังมากขึ้น
+ตอบภาษาไทยชาวบ้าน ใช้ emoji ห้ามใช้ศัพท์อังกฤษ`;
 
-  // FIX: ใช้ cache ก่อน เพื่อลด API call ซ้ำ
-  const cacheKey=`signal_${ticker}_${score}`;
+  // อัปเดต model label
+  const el2pre=document.getElementById('signalAiModel');
+  if(el2pre) el2pre.textContent='✨ Claude Sonnet 4';
+
+  const cacheKey=`signal_v2_${ticker}_${score}`;
   const cached=_getAICache(cacheKey);
-  const reply=cached||await callAI_Quick(sys, prompt, 400);
-  if(reply&&!cached) _setAICache(cacheKey,reply);
+
+  // ใช้ Claude Sonnet สำหรับการวิเคราะห์ signal โดยตรง
+  let reply = cached;
+  if(!reply){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),25000);
+      const r=await fetch(WORKER,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:600,
+          system:sys,
+          messages:[{role:'user',content:prompt}]
+        }),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d.type!=='error'&&d?.content?.length)
+          reply=d.content.filter(b=>b.type==='text').map(b=>b.text).join('')||null;
+      }
+    }catch(e){console.warn('Sonnet signal error:',e.message);}
+    // fallback → Gemini
+    if(!reply) reply=await callAI_Quick(sys,prompt,600);
+    if(reply) _setAICache(cacheKey,reply);
+  }
+
   const el2=document.getElementById('signalAiText');
   if(!el2) return;
   if(reply){
     el2.innerHTML=mdToHtml(reply);
   } else {
-    // fallback สรุปจาก score
-    if(score>=70) el2.textContent=`📈 Score ${score}/100 — สัญญาณแข็งแกร่ง ราคาใกล้แนวรับ S1 ความเสี่ยงต่ำ เป้าหมาย R1 ${r1.toFixed(2)}`;
-    else if(score>=55) el2.textContent=`⚡ Score ${score}/100 — สัญญาณปานกลาง แนวรับ S1 ${s1.toFixed(2)} / S2 ${s2.toFixed(2)} เป้า R1 ${r1.toFixed(2)}`;
-    else el2.textContent=`⚠️ Score ${score}/100 — สัญญาณอ่อน รอยืนยันแนวรับ S1 ${s1.toFixed(2)} ก่อนเข้า`;
+    if(score>=70) el2.textContent=`📈 Score ${score}/100 — สัญญาณแข็งแกร่ง เป้าหมาย R1 ${r1.toFixed(2)}`;
+    else if(score>=55) el2.textContent=`⚡ Score ${score}/100 — สัญญาณปานกลาง S1 ${s1.toFixed(2)} เป้า R1 ${r1.toFixed(2)}`;
+    else el2.textContent=`⚠️ Score ${score}/100 — สัญญาณอ่อน รอยืนยัน S1 ${s1.toFixed(2)} ก่อน`;
   }
 }
 
@@ -5835,9 +6083,54 @@ function _calcBuyScore(ticker, price, s1, r1){
   }
 
   // ════════════════════════════════════════════════
+  // GROUP 7 — Heikin Ashi + Elder Ray (10 คะแนน)
+  // ════════════════════════════════════════════════
+  let g7=0;
+
+  // ── Heikin Ashi ──
+  let haBull=null, haStrong=null, haConsecutive=0;
+  if(closes.length>=5 && highs.length>=5 && lows.length>=5 && data?.o){
+    const opens=data.o;
+    const haC=[], haO=[];
+    const haH=[], haL=[];
+    for(let i=0;i<closes.length;i++){
+      const hac=+((( opens[i]||closes[i-1]||closes[i])+highs[i]+lows[i]+closes[i])/4).toFixed(3);
+      const hao=i===0?+((opens[i]+closes[i])/2).toFixed(3):+((haO[i-1]+haC[i-1])/2).toFixed(3);
+      haC.push(hac); haO.push(hao);
+      haH.push(Math.max(highs[i],hao,hac));
+      haL.push(Math.min(lows[i],hao,hac));
+    }
+    const last=haC.length-1;
+    haBull=haC[last]>haO[last];
+    haStrong=haBull&&Math.abs(haH[last]-Math.max(haC[last],haO[last]))<(haC[last]-haO[last])*0.1;
+    for(let i=last;i>=0;i--){ if(haC[i]>haO[i]) haConsecutive++; else break; }
+    if(haBull&&haStrong&&haConsecutive>=3)      g7+=6;
+    else if(haBull&&haConsecutive>=2)           g7+=4;
+    else if(haBull)                             g7+=2;
+    if(haConsecutive>0) scoreBreakdown.push(`🕯️ HA ${haConsecutive}แท่งเขียว${haStrong?' (Strong)':''}`);
+  }
+
+  // ── Elder Ray Index ──
+  let bullPower=null, bearPower=null, elderBull=false;
+  if(ema13!==null && highs.length>=2 && lows.length>=2){
+    const lastHigh=highs[highs.length-1];
+    const lastLow=lows[lows.length-1];
+    bullPower=+(lastHigh-ema13).toFixed(3);
+    bearPower=+(lastLow-ema13).toFixed(3);
+    const prevBearPower=+(lows[lows.length-2]-ema13).toFixed(3);
+    elderBull=bearPower<0&&bearPower>prevBearPower&&bullPower>0;
+    if(elderBull)                                    g7+=4;
+    else if(bearPower<0&&bearPower>prevBearPower)    g7+=2;
+    if(elderBull) scoreBreakdown.push(`⚡ Elder Ray Bull`);
+  }
+
+  const score7=Math.min(g7,10);
+  if(score7>0) scoreBreakdown.push(`🔬 HA+Elder ${score7}/10`);
+
+  // ════════════════════════════════════════════════
   // รวมคะแนน + Trend multiplier
   // ════════════════════════════════════════════════
-  let total = score1 + score2 + score3 + score4 + score5 + score6; // max = 115 → clamp 100
+  let total = score1 + score2 + score3 + score4 + score5 + score6 + score7; // max = 125 → clamp 100
 
   if(inUptrend===true){
     total = Math.round(total*1.05); // ขาขึ้น: บวกเพิ่ม 5%
@@ -5867,7 +6160,9 @@ function _calcBuyScore(ticker, price, s1, r1){
     kijun, tenkan, senkouA, senkouB, ichimokuSignal,
     chikouSignal,
     supertrendBull, supertrendVal,
-    psar, psarBullish
+    psar, psarBullish,
+    haBull, haStrong, haConsecutive,
+    bullPower, bearPower, elderBull
   };
 }
 
@@ -6508,62 +6803,101 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 
 // ── Economic News ──
 const _econQueries={
-  top:'stock market S&P500 breaking news economy Fed earnings',
-  market:'stock market S&P500 Nasdaq economy',
-  fed:'Federal Reserve interest rate Fed Powell',
-  economy:'GDP inflation CPI employment economic data',
-  tech:'technology AI semiconductor earnings',
-  crypto:'bitcoin cryptocurrency crypto market',
-  asia:'Asia China Japan economy trade',
+  fed:'Federal Reserve FOMC interest rate decision Powell rate hike cut',
+  macro:'GDP inflation CPI PPI jobs report nonfarm payroll unemployment',
+  earnings:'earnings results beat miss revenue Apple Microsoft Google Meta Amazon Nvidia Tesla',
+  geopolitics:'trade war tariff sanction geopolitics conflict China US Taiwan',
+  tech:'AI artificial intelligence Nvidia semiconductor chip OpenAI regulation antitrust',
 };
-// จำนวนข่าวต่อหมวด
-const _econNewsLimit={top:8, market:5, fed:5, tech:5, crypto:5, economy:5, asia:5};
+const _econNewsLimit={fed:6, macro:6, earnings:6, geopolitics:6, tech:6};
 let _econNewsCache={};
 let _econNewsCacheTime={};
-const _ECON_NEWS_TTL=5*60*1000;
+const _ECON_NEWS_TTL=10*60*1000;
 
-// FIX: Guard ป้องกัน duplicate interval
+// ── Auto-refresh ข่าวทุก 10 นาที ──
 if(window._econNewsInterval) clearInterval(window._econNewsInterval);
 window._econNewsInterval=setInterval(()=>{
-  const activeCat=document.querySelector('#newsCatRow .sector-btn.active');
   const page=document.getElementById('page-news');
   if(!page?.classList.contains('active')) return;
-  const catMap={'🌍 ตลาดรวม':'market','🏦 Fed':'fed','📊 เศรษฐกิจ':'economy','💻 เทค':'tech','₿ Crypto':'crypto','🌏 เอเชีย':'asia'};
-  const catKey=catMap[activeCat?.textContent?.trim()]||'market';
-  delete _econNewsCache[catKey];
-  loadEconNews(catKey, activeCat);
-}, 5*60*1000);
+  _econNewsCacheTime['all']=0; // force refresh
+  loadEconNews();
+}, 10*60*1000);
 
 async function refreshNewsManual(){
   const btn=document.getElementById('newsRefreshBtn');
-  const activeCat=document.querySelector('#newsCatRow .sector-btn.active');
-  const catMap={'🌍 ตลาดรวม':'market','🏦 Fed':'fed','📊 เศรษฐกิจ':'economy','💻 เทค':'tech','₿ Crypto':'crypto','🌏 เอเชีย':'asia'};
-  const catKey=catMap[activeCat?.textContent?.trim()]||'market';
   if(btn){btn.textContent='⏳';btn.disabled=true;}
-  delete _econNewsCache[catKey];
-  delete _econNewsCacheTime[catKey];
-  await loadEconNews(catKey, activeCat);
+  _econNewsCacheTime['all']=0;
+  await loadEconNews();
   if(btn){btn.textContent='🔄';btn.disabled=false;}
 }
 
-let _currentNewsCat='top';
-async function loadEconNews(cat, btn){
-  _currentNewsCat=cat;
-  document.querySelectorAll('#newsCatRow .sector-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+// ── loadEconNews: ดึงทุกหมวดพร้อมกัน รวมเป็นฟีดเดียว เรียงวันที่ใหม่สุดก่อน ──
+async function loadEconNews(){
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  if(_econNewsCache[cat]&&_econNewsCache[cat][0]?.titleTH&&(Date.now()-(_econNewsCacheTime[cat]||0)<_ECON_NEWS_TTL)){
-    renderEconNews(_econNewsCache[cat], body);
+  // cache 10 นาที
+  if(_econNewsCache['all']&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
+    renderEconNews(_econNewsCache['all'], body);
     return;
   }
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
-  const query=_econQueries[cat]||cat;
-  const items=await _fetchEconNews(query);
+
+  // ดึงทุก query พร้อมกัน
+  const allQueries=Object.values(_econQueries);
+  const cutoff24h=Date.now()-24*3600*1000;
+  const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
+
+  // keywords บ่งข่าวสำคัญ
+  const _highKw=['federal reserve','fomc','interest rate','rate decision','rate hike','rate cut','powell',
+    'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
+    'earnings','beat','miss','revenue','profit','trade war','tariff','sanction',
+    'war','conflict','taiwan','nvidia','openai','ai regulation','antitrust','merger','acquisition',
+    'crash','surge','plunge','collapse','record high','record low','bankruptcy','crisis'];
+  const _topSrc=['reuters','bloomberg','cnbc','wsj','financial times','marketwatch','ap news','bbc'];
+
+  function _score(item){
+    const txt=((item.title||'')+(item.source||'')).toLowerCase();
+    let s=0;
+    _highKw.forEach(kw=>{if(txt.includes(kw))s+=10;});
+    if(_topSrc.some(src=>txt.includes(src)))s+=15;
+    return s;
+  }
+
+  // รวม + dedup
+  const seen=new Set();
+  let merged=[];
+  results.forEach(r=>{
+    if(r.status!=='fulfilled'||!r.value?.length) return;
+    r.value.forEach(item=>{
+      const key=(item.title||'').slice(0,60).toLowerCase();
+      if(seen.has(key)) return;
+      seen.add(key);
+      if(item.pubDate){const ts=new Date(item.pubDate).getTime();if(!isNaN(ts)&&ts<cutoff24h) return;}
+      item._score=_score(item);
+      merged.push(item);
+    });
+  });
+
+  // เรียง score สูงก่อน, เท่ากันให้ใหม่กว่าก่อน
+  merged.sort((a,b)=>{
+    if(b._score!==a._score) return b._score-a._score;
+    const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
+    const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
+    return tsB-tsA;
+  });
+
+  // เอาแค่ 8 ข่าวสำคัญ
+  merged=merged.slice(0,8);
+
+  if(!merged.length){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าวสำคัญวันนี้ ลองกด 🔄</div>';
+    return;
+  }
+
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
-  const translated=await _translateNewsGemini(items);
-  _econNewsCache[cat]=translated;
-  _econNewsCacheTime[cat]=Date.now();
+  const translated=await _translateNewsGemini(merged);
+  _econNewsCache['all']=translated;
+  _econNewsCacheTime['all']=Date.now();
   const tsEl=document.getElementById('newsLastUpdated');
   if(tsEl){const d=new Date();tsEl.textContent=`อัพเดท ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
   renderEconNews(translated, body);
@@ -6676,18 +7010,27 @@ async function _fetchEconNews(query){
         const parser=new DOMParser();
         const doc=parser.parseFromString(text,'text/xml');
         const limit=_econNewsLimit[_currentNewsCat]||5;
-        const list=Array.from(doc.querySelectorAll('item')).slice(0,20).map(item=>({
+        const cutoff7d=Date.now()-7*86400000; // กรองข่าวเก่าเกิน 7 วัน
+        const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
+        const list=Array.from(doc.querySelectorAll('item')).slice(0,30).map(item=>({
           title:item.querySelector('title')?.textContent||'',
           link:item.querySelector('link')?.textContent||'#',
           pubDate:item.querySelector('pubDate')?.textContent||'',
           source:item.querySelector('source')?.textContent||'',
         })).filter(i=>i.title)
-        // คัดข่าวเด่น: ให้ priority แหล่งข่าวใหญ่ก่อน
+        // กรองข่าวเก่าเกิน 7 วัน (ถ้ามี pubDate)
+        .filter(i=>{
+          if(!i.pubDate) return true;
+          const ts=new Date(i.pubDate).getTime();
+          return isNaN(ts)||ts>=cutoff7d;
+        })
+        // sort: วันที่ใหม่สุดก่อน โดยให้ bonus แหล่งข่าวใหญ่ (ไม่ดันข่าวเก่าขึ้นมา)
         .sort((a,b)=>{
-          const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
-          const aScore=topSrc.findIndex(s=>a.source?.includes(s))>=0?1:0;
-          const bScore=topSrc.findIndex(s=>b.source?.includes(s))>=0?1:0;
-          return bScore-aScore;
+          const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
+          const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
+          const aTop=topSrc.findIndex(s=>a.source?.includes(s))>=0?3600000:0; // bonus 1 ชั่วโมง
+          const bTop=topSrc.findIndex(s=>b.source?.includes(s))>=0?3600000:0;
+          return (tsB+bTop)-(tsA+aTop);
         }).slice(0,limit);
         if(list.length>0) return list;
         throw new Error('empty');
@@ -6727,9 +7070,11 @@ function renderEconNews(items, body){
 function _timeAgo(date){
   if(!date||isNaN(date)) return '';
   const diff=(Date.now()-date)/1000;
-  if(diff<3600) return `${Math.floor(diff/60)} นาทีที่แล้ว`;
-  if(diff<86400) return `${Math.floor(diff/3600)} ชั่วโมงที่แล้ว`;
-  return `${Math.floor(diff/86400)} วันที่แล้ว`;
+  if(diff<60) return `<span style="color:var(--green);font-weight:600">เมื่อกี้</span>`;
+  if(diff<3600){const m=Math.floor(diff/60);return `<span style="color:var(--green);font-weight:600">${m} นาทีที่แล้ว</span>`;}
+  if(diff<86400){const h=Math.floor(diff/3600);return `<span style="color:${h<6?'var(--ice)':'var(--text2)'}">${h} ชั่วโมงที่แล้ว</span>`;}
+  const d=Math.floor(diff/86400);
+  return `<span style="color:${d<=2?'var(--text3)':'var(--red2)'}">${d} วันที่แล้ว</span>`;
 }
 
 // ── Heatmap V2 ──
@@ -6962,8 +7307,27 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(score>=BUY_SIGNAL_THRESHOLD){
+    // ── AI Pre-Screen: ให้ AI กรองก่อน popup ──
+    let aiApproved = false;
+    if(hasCandleData){
+      try{
+        aiApproved = await _aiPreScreenSignal(ticker, price, s1, r1, score);
+      }catch{
+        // ถ้า AI error → fallback ใช้ score สูง
+        aiApproved = score >= 65;
+      }
+    } else {
+      // ถ้าไม่มี candle data → ใช้เกณฑ์เดิม
+      aiApproved = true;
+    }
+
+    if(!aiApproved){
+      console.log(`[Signal] ${ticker} Score ${Math.round(score)} — AI กรองออก (สัญญาณหลอก)`);
+      return;
+    }
+
     showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
-    const tgMsg=`🔔 Buy Signal: ${ticker}\n💰 ${price.toFixed(2)} | Score ${Math.round(score)}/100\n📊 S1 ${s1.toFixed(2)} | S2 ${getS2(ticker,price).toFixed(2)} | R1 ${r1.toFixed(2)} | R2 ${getR2(ticker,price).toFixed(2)}\n${hasCandleData?'✅ Full Indicator Analysis':'⚠️ Basic Analysis'}`;
+    const tgMsg=`🤖 AI-Verified Buy Signal: ${ticker}\n💰 ${price.toFixed(2)} | Score ${Math.round(score)}/100\n📊 S1 ${s1.toFixed(2)} | S2 ${getS2(ticker,price).toFixed(2)} | R1 ${r1.toFixed(2)} | R2 ${getR2(ticker,price).toFixed(2)}\n✅ ผ่านการกรองจาก AI แล้ว`;
     sendTG(tgMsg);
   }
 }
@@ -6993,6 +7357,8 @@ function updateCardLive(s){
   }
   // ตรวจ price alerts
   if(s.p>0) checkPriceAlerts(s.t, s.p);
+  // ตรวจ Exit Signal (เฉพาะหุ้นในพอร์ต)
+  if(s.p>0) checkExitSignal(s.t, s.p);
   if(!_buyAlerted.has(s.t)&&s.p>0){
     _buyAlerted.add(s.t);
     setTimeout(()=>_buyAlerted.delete(s.t), BUY_SIGNAL_COOLDOWN); // cooldown 15 นาที
@@ -7254,7 +7620,10 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 
-// ── Swipe ซ้าย-ขวา บน Content เพื่อเปลี่ยนหน้า ──
+// ── ตรวจ Earnings ทุก 30 นาที ──
+if(window._earnCheckInterval) clearInterval(window._earnCheckInterval);
+window._earnCheckInterval = setInterval(()=>{try{checkEarningsAlert();}catch{}}, 1800000);
+setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอนเปิดแอป
 (function(){
   const PAGES = ['dash','stocks','news','alerts','port','settings'];
   let _pgSwipeX=0, _pgSwipeY=0, _pgSwipeTime=0;
