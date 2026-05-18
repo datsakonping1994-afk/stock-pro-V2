@@ -253,9 +253,6 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .card-badge.earn{background:rgba(201,168,76,0.12);color:var(--gold);border-color:rgba(201,168,76,0.25)}
 .card-right{text-align:right}
 .card-price{font-family:'Manrope',sans-serif;font-size:20px;font-weight:800;color:var(--text);letter-spacing:-0.3px;text-shadow:0 1px 8px rgba(0,0,0,0.4)}
-.ext-price{font-size:10px;color:var(--text3);margin-top:1px}
-.ext-price.pre{color:#64b5f6}
-.ext-price.post{color:#ffa726}
 .card-chg{font-size:12px;font-weight:700;margin-top:3px;font-family:'Manrope',sans-serif;letter-spacing:0.2px}
 .card-chg.up{color:var(--green)}
 .card-chg.dn{color:var(--red)}
@@ -1000,7 +997,7 @@ canvas.bigchart{width:100%;height:100%}
     <div class="drawer-price">
       <div class="drawer-price-val" id="drawerPrice">--</div>
       <div class="card-chg" id="drawerChg">--</div>
-      <div id="drawerExtPrice" style="font-size:10px;color:var(--text3);margin-top:2px;text-align:right;display:none"></div>
+      <div id="drawerExtPrice" style="display:none"></div>
     </div>
 
   </div>
@@ -1944,7 +1941,6 @@ function makeCard(s){
           <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
         </div>
         <div class="card-price" id="price-v2-${s.t}">${s.p>0?fmt(s.p):'<span style="color:var(--text3);font-size:14px">กำลังโหลด...</span>'}</div>
-        <div class="ext-price" id="ext-${s.t}" style="display:none"></div>
         <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${s.p>0?(isUp?'+':'')+((+s.c).toFixed(2))+'%':'--'}</div>
       </div>
     </div>
@@ -2036,6 +2032,7 @@ function _loadLogoNow(ticker, elId, size){
   const domain = getLogoUrl(ticker);
 
   const sources = [
+    `https://financialmodelingprep.com/image-stock/${ticker}.png`,
     `https://logo.clearbit.com/${domain}`,
     `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
@@ -2491,6 +2488,10 @@ function openDrawer(ticker){
   // render tech tab ครั้งเดียวตอนเปิด
   _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
   drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  // ดึง analyst data ในพื้นหลัง
+  fetchAnalystData(ticker).then(()=>{
+    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
+  });
   document.getElementById('drawer').classList.add('open');
   // FIX: lock body scroll ตอนเปิด Drawer
   document.body.style.overflow='hidden';
@@ -2646,6 +2647,50 @@ function _drawEarnChart(ticker, mode, containerId){
     ctx.fillStyle='rgba(139,153,181,0.8)'; ctx.font='9px Syne,sans-serif'; ctx.textAlign='center';
     ctx.fillText(d.q, x+barW+2, H-PAD_B+12);
   });
+}
+
+
+// ── Fetch Analyst Consensus + Short Interest จาก Finnhub ──
+async function fetchAnalystData(ticker){
+  try{
+    const WORKER = window.WORKER_URL || '';
+    // ดึง recommendation trends
+    const recRes = await safeFetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg`,{},1);
+    const recData = await recRes.json();
+    // เอาแค่ล่าสุด
+    if(recData && recData.length > 0){
+      const latest = recData[0];
+      const total = (latest.strongBuy||0)+(latest.buy||0)+(latest.hold||0)+(latest.sell||0)+(latest.strongSell||0);
+      if(total > 0){
+        const buyPct = Math.round(((latest.strongBuy||0)+(latest.buy||0))/total*100);
+        const holdPct = Math.round((latest.hold||0)/total*100);
+        const sellPct = Math.round(((latest.sell||0)+(latest.strongSell||0))/total*100);
+        const consensus = buyPct>=50?'Buy':sellPct>=40?'Sell':'Hold';
+        const s = stocks.find(x=>x.t===ticker);
+        if(s){
+          s.analystBuy = buyPct;
+          s.analystHold = holdPct;
+          s.analystSell = sellPct;
+          s.analystTotal = total;
+          s.analystConsensus = consensus;
+        }
+      }
+    }
+    // ดึง basic financials (มี beta, 52w high/low, short interest)
+    const metricRes = await safeFetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg`,{},1);
+    const metricData = await metricRes.json();
+    const m = metricData?.metric||{};
+    const s = stocks.find(x=>x.t===ticker);
+    if(s){
+      if(m.beta!=null) s.beta = +m.beta.toFixed(2);
+      if(m['52WeekHigh']!=null) s.high52 = m['52WeekHigh'];
+      if(m['52WeekLow']!=null) s.low52 = m['52WeekLow'];
+      if(m['shortInterest']!=null){
+        const siPct = (m['shortInterest']/m['sharesOutstanding']*100);
+        if(!isNaN(siPct)) s.short = siPct.toFixed(1)+'%';
+      }
+    }
+  }catch(e){ console.warn('fetchAnalystData error',e); }
 }
 
 // ── renderInsider ──
@@ -2967,6 +3012,21 @@ function drawerTab(tab, btn){
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">⚠️ ความเสี่ยง</div>' +
       (s.div?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+s.div+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
       (s.beta!=null?'<div class="ind-row"><span class="ind-name">📉 Beta (ความผันผวน)</span><span class="ind-val '+(s.beta>1.5?'bear':s.beta<0.8?'bull':'neut')+'">'+s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)')+'</span></div>':'') +
+      (s.analystConsensus?
+        '<div style="background:rgba(100,200,100,0.06);border:1px solid rgba(100,200,100,0.2);border-radius:12px;padding:12px;margin-bottom:10px">' +
+          '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">📊 Analyst Consensus ('+s.analystTotal+' analysts)</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">' +
+            '<div style="flex:'+s.analystBuy+';height:8px;background:var(--green);border-radius:4px 0 0 4px"></div>' +
+            '<div style="flex:'+s.analystHold+';height:8px;background:var(--gold)"></div>' +
+            '<div style="flex:'+s.analystSell+';height:8px;background:var(--red);border-radius:0 4px 4px 0"></div>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:10px">' +
+            '<span style="color:var(--green)">Buy '+s.analystBuy+'%</span>' +
+            '<span style="color:var(--gold)">Hold '+s.analystHold+'%</span>' +
+            '<span style="color:var(--red)">Sell '+s.analystSell+'%</span>' +
+          '</div>' +
+        '</div>'
+      : '') +
       (s.short?'<div class="ind-row"><span class="ind-name">🩳 Short Float</span><span class="ind-val '+(parseFloat(s.short)>15?'bear':parseFloat(s.short)>8?'neut':'bull')+'">'+s.short+' '+(parseFloat(s.short)>15?'(Squeeze Risk สูง ⚠️)':parseFloat(s.short)>8?'(Short ปานกลาง)':'(Short ต่ำ)')+'</span></div>':'') +
       (()=>{
         const fe=fundExtra[s.t]||{};
@@ -4723,20 +4783,7 @@ function _extractQuoteFromParsed(parsed){
     if(!res) return null;
     const price=res.regularMarketPrice;
     const chg=res.regularMarketChangePercent;
-    const preP=res.preMarketPrice;
-    const preC=res.preMarketChangePercent;
-    const postP=res.postMarketPrice;
-    const postC=res.postMarketChangePercent;
-    const mktState=res.marketState; // PRE, REGULAR, POST, CLOSED
-    if(price>0) return{
-      p:+price.toFixed(2),
-      c:+(chg||0).toFixed(2),
-      preP:preP?+preP.toFixed(2):null,
-      preC:preC?+preC.toFixed(2):null,
-      postP:postP?+postP.toFixed(2):null,
-      postC:postC?+postC.toFixed(2):null,
-      mktState:mktState||'REGULAR'
-    };
+    if(price>0) return{p:+price.toFixed(2),c:+(chg||0).toFixed(2)};
   }
   return null;
 }
@@ -7222,6 +7269,8 @@ async function triggerAISummary(){
 }
 
 
+
+
 // ── PORTFOLIO TRACKER ──
 let portfolio = (()=>{ try{ return JSON.parse(localStorage.getItem('_sp_portfolio') || '[]'); }catch{ return []; } })();
 
@@ -7417,38 +7466,7 @@ function updateCardLive(s){
     chgEl.textContent=(chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
     chgEl.className='card-chg '+(chgNum>=0?'up':'dn');
   }
-  // แสดง pre/post market ใต้ราคา
-  const extEl=document.getElementById(`ext-${s.t}`);
-  if(extEl){
-    if(s.mktState==='PRE'&&s.preP){
-      extEl.textContent=`Pre: $${s.preP} (${s.preC>=0?'+':''}${s.preC?.toFixed(2)}%)`;
-      extEl.className='ext-price pre';
-      extEl.style.display='block';
-    } else if(s.mktState==='POST'&&s.postP){
-      extEl.textContent=`After: $${s.postP} (${s.postC>=0?'+':''}${s.postC?.toFixed(2)}%)`;
-      extEl.className='ext-price post';
-      extEl.style.display='block';
-    } else {
-      extEl.style.display='none';
-    }
-  }
-  // อัพเดท drawer ถ้าเปิดอยู่
-  if(currentDrawerTicker===s.t){
-    const extDrawer=document.getElementById('drawerExtPrice');
-    if(extDrawer){
-      if(s.mktState==='PRE'&&s.preP){
-        extDrawer.textContent=`Pre-market: $${s.preP} (${s.preC>=0?'+':''}${s.preC?.toFixed(2)}%)`;
-        extDrawer.style.color='#64b5f6';
-        extDrawer.style.display='block';
-      } else if(s.mktState==='POST'&&s.postP){
-        extDrawer.textContent=`After-hours: $${s.postP} (${s.postC>=0?'+':''}${s.postC?.toFixed(2)}%)`;
-        extDrawer.style.color='#ffa726';
-        extDrawer.style.display='block';
-      } else {
-        extDrawer.style.display='none';
-      }
-    }
-  }
+
   // Portfolio live update — throttle 1 วินาที ป้องกัน DOM churn ทุก WS tick
   const portActive=document.getElementById('page-port')?.classList.contains('active');
   if(portActive && !_portUpdateTimer){
