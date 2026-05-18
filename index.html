@@ -821,6 +821,17 @@ canvas.bigchart{width:100%;height:100%}
           </div>
         </div>
         <div class="settings-row">
+          <div>
+            <div class="settings-label">📰 GNews API Key <span style="font-size:10px;color:var(--text3)">(ข่าวเศรษฐกิจ)</span></div>
+            <div class="settings-sublabel">สมัครฟรีที่ <a href="https://gnews.io" target="_blank" style="color:var(--ice);text-decoration:none">gnews.io</a> — 100 requests/วัน ได้ข่าว Fed/เศรษฐกิจตรงๆ</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="settings-input" id="gnewsKeyInput" type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex:1">
+              <button class="settings-btn" id="testGnewsBtn" onclick="testGnewsKey()">🧪 ทดสอบ</button>
+            </div>
+            <div id="gnewsKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
+          </div>
+        </div>
+        <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
         </div>
@@ -1368,6 +1379,9 @@ function _saveAiHistory(){
 // ดู: https://developers.cloudflare.com/workers/runtime-apis/kv/
 // ══════════════════════════════════════════════════════════
 const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
+const _GNEWS_KEY='04e902741e046e76b09896b84f17b83b';
+const _NEWSAPI_KEY='29dc935760054d8f8892dfc729f5a5da';
+const _MARKETAUX_KEY='6NR1RtHOSzR5Bx4DiyznD2uGc0EuhVoVGYSo7qFN';
 
 // FIX: key อยู่ที่ Worker — client ไม่ต้องตรวจสอบ key เอง
 // hasApiKey() คืน true เสมอ (Worker จัดการ error เองถ้า key ไม่ถูก)
@@ -4186,6 +4200,10 @@ function loadSettings(){
     const ck=localStorage.getItem('cohereKey')||'';
     const ckEl=document.getElementById('cohereKeyInput');
     if(ckEl) ckEl.value=ck;
+    // โหลด GNews key
+    const gne=localStorage.getItem('gnewsKey')||'';
+    const gneEl=document.getElementById('gnewsKeyInput');
+    if(gneEl) gneEl.value=gne;
   }catch{}
 }
 function saveSettings(){
@@ -4211,8 +4229,59 @@ function saveSettings(){
     if(ck){ localStorage.setItem('cohereKey',ck); COHERE_KEY=ck; }
     else localStorage.removeItem('cohereKey');
   }catch{}
+  // บันทึก GNews key
+  try{
+    const gne=document.getElementById('gnewsKeyInput')?.value?.trim()||'';
+    if(gne) localStorage.setItem('gnewsKey',gne);
+    else localStorage.removeItem('gnewsKey');
+  }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
+}
+
+async function testGnewsKey(){
+  const btn=document.getElementById('testGnewsBtn');
+  const statusEl=document.getElementById('gnewsKeyStatus');
+  const key=document.getElementById('gnewsKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.1)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='❌ กรุณาใส่ API Key ก่อน';
+    return;
+  }
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  statusEl.style.display='none';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`https://gnews.io/api/v4/search?q=economy&lang=en&max=1&token=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    const data=await r.json();
+    if(r.ok&&data.articles?.length){
+      statusEl.style.display='block';
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent=`✅ ใช้งานได้! พบข่าว: "${data.articles[0].title.slice(0,60)}..."`;
+      try{localStorage.setItem('gnewsKey',key);}catch{}
+    } else {
+      const msg=data.errors?.[0]||data.message||'Key ไม่ถูกต้อง';
+      statusEl.style.display='block';
+      statusEl.style.background='rgba(255,77,106,0.1)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent=`❌ ${msg}`;
+    }
+  }catch(e){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.1)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='❌ เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';
+  }
+  if(btn){btn.textContent='🧪 ทดสอบ';btn.disabled=false;}
 }
 
 async function testGroqKey(){
@@ -6975,7 +7044,7 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
-// ── _fetchEconNews: Finnhub เป็นหลัก, CORS proxy สำรอง ──
+// ── _fetchEconNews: GNews + NewsAPI + Marketaux + Finnhub ──
 async function _fetchEconNews(query){
   const cutoff=Date.now()-3*86400000;
   const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
@@ -6993,85 +7062,57 @@ async function _fetchEconNews(query){
         const bA=topSrc.some(s=>a.source?.includes(s))?1800000:0;
         const bB=topSrc.some(s=>b.source?.includes(s))?1800000:0;
         return (tsB+bB)-(tsA+bA);
-      }).slice(0,8);
+      });
   }
 
-  // ── วิธีที่ 1: Finnhub market news ผ่าน Worker (ใช้งานได้แน่นอน) ──
-  try{
-    const to=new Date(),from=new Date();
-    from.setDate(from.getDate()-3);
-    const fromStr=from.toISOString().slice(0,10);
-    const toStr=to.toISOString().slice(0,10);
-    // ดึงข่าว market ผ่าน SPY (ได้ข่าวเศรษฐกิจทั่วไป)
-    const tickers=['SPY','QQQ','AAPL','MSFT','NVDA'];
-    const results=await Promise.allSettled(tickers.map(async sym=>{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),8000);
-      try{
-        const r=await fetch(`${WORKER}/api/news?symbol=${sym}&from=${fromStr}&to=${toStr}`,{mode:'cors',signal:ctrl.signal});
-        clearTimeout(tid);
-        if(!r.ok) throw new Error('not ok');
-        const data=await r.json();
-        return Array.isArray(data)?data:[];
-      }catch(e){clearTimeout(tid);throw e;}
-    }));
-    const seen=new Set();
-    let merged=[];
-    results.forEach(r=>{
-      if(r.status!=='fulfilled'||!r.value?.length) return;
-      r.value.forEach(n=>{
-        const key=(n.headline||'').slice(0,60);
-        if(!key||seen.has(key)) return;
-        seen.add(key);
-        if(n.datetime&&n.datetime*1000<cutoff) return;
-        merged.push({
-          title:n.headline||'',
-          link:n.url||'#',
-          pubDate:n.datetime?new Date(n.datetime*1000).toUTCString():'',
-          source:n.source||'Finnhub',
-        });
-      });
+  const q=encodeURIComponent(query);
+  const from=new Date(Date.now()-3*86400000).toISOString().slice(0,10);
+
+  // ดึงทุก API พร้อมกัน
+  const [gnewsRes, newsapiRes, marketauxRes, finnhubRes] = await Promise.allSettled([
+
+    // GNews
+    fetch(`https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&from=${from}&token=${_GNEWS_KEY}`)
+      .then(r=>r.ok?r.json():null)
+      .then(d=>d?.articles?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.publishedAt,source:a.source?.name||'GNews'}))||[]),
+
+    // NewsAPI
+    fetch(`https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=10&from=${from}&apiKey=${_NEWSAPI_KEY}`)
+      .then(r=>r.ok?r.json():null)
+      .then(d=>d?.articles?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.publishedAt,source:a.source?.name||'NewsAPI'}))||[]),
+
+    // Marketaux
+    fetch(`https://api.marketaux.com/v1/news/all?search=${q}&language=en&limit=10&published_after=${from}T00:00:00&api_token=${_MARKETAUX_KEY}`)
+      .then(r=>r.ok?r.json():null)
+      .then(d=>d?.data?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.published_at,source:a.source||'Marketaux'}))||[]),
+
+    // Finnhub (ผ่าน Worker)
+    (async()=>{
+      const to=new Date().toISOString().slice(0,10);
+      const tickers=['SPY','QQQ'];
+      const results=await Promise.allSettled(tickers.map(sym=>
+        fetch(`${WORKER}/api/news?symbol=${sym}&from=${from}&to=${to}`,{mode:'cors'})
+          .then(r=>r.ok?r.json():[])
+          .then(d=>Array.isArray(d)?d.map(n=>({title:n.headline,link:n.url||'#',pubDate:n.datetime?new Date(n.datetime*1000).toISOString():'',source:n.source||'Finnhub'})):[])
+      ));
+      return results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+    })(),
+  ]);
+
+  // รวมทุกแหล่ง + dedup
+  const seen=new Set();
+  let merged=[];
+  [gnewsRes, newsapiRes, marketauxRes, finnhubRes].forEach(r=>{
+    if(r.status!=='fulfilled'||!r.value?.length) return;
+    r.value.forEach(item=>{
+      const key=(item.title||'').slice(0,60).toLowerCase();
+      if(!key||seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
     });
-    const parsed=_parseItems(merged);
-    if(parsed.length>=2) return parsed;
-  }catch{}
+  });
 
-  // ── วิธีที่ 2: CORS proxies Google News ──
-  try{
-    const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-    const proxies=[
-      `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-      `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
-      `https://thingproxy.freeboard.io/fetch/${rssUrl}`,
-    ];
-    const result=await Promise.any(proxies.map(async url=>{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),10000);
-      try{
-        const r=await fetch(url,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(!r.ok) throw new Error('not ok');
-        let text=await r.text();
-        try{const j=JSON.parse(text);text=j.contents||j.body||text;}catch{}
-        if(!text.includes('<item>')) throw new Error('no items');
-        const doc=new DOMParser().parseFromString(text,'text/xml');
-        const list=Array.from(doc.querySelectorAll('item')).map(item=>({
-          title:item.querySelector('title')?.textContent||'',
-          link:item.querySelector('link')?.textContent||'#',
-          pubDate:item.querySelector('pubDate')?.textContent||'',
-          source:item.querySelector('source')?.textContent||'',
-        }));
-        const parsed=_parseItems(list);
-        if(parsed.length>0) return parsed;
-        throw new Error('empty');
-      }catch(e){clearTimeout(tid);throw e;}
-    }));
-    if(result?.length) return result;
-  }catch{}
-
-  return [];
+  return _parseItems(merged).slice(0,10);
 }
 
 function renderEconNews(items, body){
