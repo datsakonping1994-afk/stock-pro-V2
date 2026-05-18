@@ -6831,39 +6831,19 @@ async function refreshNewsManual(){
   if(btn){btn.textContent='🔄';btn.disabled=false;}
 }
 
-// ── loadEconNews: ดึงทุกหมวดพร้อมกัน รวมเป็นฟีดเดียว เรียงวันที่ใหม่สุดก่อน ──
+// ── loadEconNews: ดึงข่าว 3 วัน รวมเป็นฟีดเดียว คัด 8 สำคัญ ──
 async function loadEconNews(){
   const body=document.getElementById('econNewsBody');
   if(!body) return;
-  // cache 10 นาที
-  if(_econNewsCache['all']&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
-    renderEconNews(_econNewsCache['all'], body);
-    return;
+  if(_econNewsCache['all']?.length&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
+    renderEconNews(_econNewsCache['all'],body); return;
   }
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
 
-  // ดึงทุก query พร้อมกัน
   const allQueries=Object.values(_econQueries);
   const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
 
-  // keywords บ่งข่าวสำคัญ
-  const _highKw=['federal reserve','fomc','interest rate','rate decision','rate hike','rate cut','powell',
-    'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
-    'earnings','beat','miss','revenue','profit','trade war','tariff','sanction',
-    'war','conflict','taiwan','nvidia','openai','ai regulation','antitrust','merger','acquisition',
-    'crash','surge','plunge','collapse','record high','record low','bankruptcy','crisis'];
-  const _topSrc=['reuters','bloomberg','cnbc','wsj','financial times','marketwatch','ap news','bbc'];
-
-  function _score(item){
-    const txt=((item.title||'')+(item.source||'')).toLowerCase();
-    let s=0;
-    _highKw.forEach(kw=>{if(txt.includes(kw))s+=10;});
-    if(_topSrc.some(src=>txt.includes(src)))s+=15;
-    return s;
-  }
-
-  // รวม + dedup (cutoff 72 ชม. เผื่อวันหยุดตลาด)
-  const cutoff72h=Date.now()-72*3600*1000;
+  // รวม + dedup ไม่ filter วันที่ซ้ำ (filter ทำใน _fetchEconNews แล้ว)
   const seen=new Set();
   let merged=[];
   results.forEach(r=>{
@@ -6872,25 +6852,34 @@ async function loadEconNews(){
       const key=(item.title||'').slice(0,60).toLowerCase();
       if(seen.has(key)) return;
       seen.add(key);
-      if(item.pubDate){const ts=new Date(item.pubDate).getTime();if(!isNaN(ts)&&ts<cutoff72h) return;}
-      item._score=_score(item);
       merged.push(item);
     });
   });
 
-  // เรียง score สูงก่อน, เท่ากันให้ใหม่กว่าก่อน
-  merged.sort((a,b)=>{
-    if(b._score!==a._score) return b._score-a._score;
-    const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
-    const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
-    return tsB-tsA;
-  });
-
-  // เอา 8 ข่าว score สูงสุด — ถ้าไม่มีเลยให้เอาตามวันที่แทน
   if(!merged.length){
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าว ลองกด 🔄</div>';
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:24px;margin-bottom:8px">📡</div><div>ดึงข่าวไม่ได้ อาจเป็นเพราะ proxy ช้า<br>ลองกด 🔄 อีกครั้ง</div></div>';
     return;
   }
+
+  // score ความสำคัญ
+  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell',
+    'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
+    'earnings','beat','miss','trade war','tariff','sanction','war','conflict',
+    'nvidia','openai','ai','crash','surge','plunge','record high','bankruptcy','crisis'];
+  const _topSrc=['reuters','bloomberg','cnbc','wsj','financial times','marketwatch','ap','bbc'];
+  merged.forEach(item=>{
+    const txt=((item.title||'')+(item.source||'')).toLowerCase();
+    let s=0;
+    _highKw.forEach(kw=>{if(txt.includes(kw))s+=10;});
+    if(_topSrc.some(src=>txt.includes(src)))s+=15;
+    item._score=s;
+  });
+
+  // เรียง score ก่อน → ใหม่กว่าก่อน
+  merged.sort((a,b)=>{
+    if(b._score!==a._score) return b._score-a._score;
+    return (new Date(b.pubDate||0))-(new Date(a.pubDate||0));
+  });
   merged=merged.slice(0,8);
 
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
@@ -6899,7 +6888,7 @@ async function loadEconNews(){
   _econNewsCacheTime['all']=Date.now();
   const tsEl=document.getElementById('newsLastUpdated');
   if(tsEl){const d=new Date();tsEl.textContent=`อัพเดท ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
-  renderEconNews(translated, body);
+  renderEconNews(translated,body);
 }
 
 // ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
@@ -6988,7 +6977,6 @@ async function _translateNewsGemini(items){
 
 async function _fetchEconNews(query){
   const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-  const cutoff3d=Date.now()-3*86400000; // 1-3 วัน
   const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
   const proxies=[
     `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
@@ -7017,7 +7005,7 @@ async function _fetchEconNews(query){
         .filter(i=>{
           if(!i.pubDate) return true;
           const ts=new Date(i.pubDate).getTime();
-          return isNaN(ts)||ts>=cutoff3d; // เฉพาะ 1-3 วัน
+          return isNaN(ts)||ts>=(Date.now()-3*86400000); // 3 วัน
         })
         .sort((a,b)=>{
           const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
