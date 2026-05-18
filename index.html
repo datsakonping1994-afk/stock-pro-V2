@@ -4545,11 +4545,10 @@ function startLive(){
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
   if(liveDot) liveDot.style.background='var(--gold)';
 
-  pollTimer=setInterval(httpPoll,15000);
-  signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
-
+  // httpPoll ครั้งแรกเพื่อดึง prevClose ก่อน WS
   httpPoll();
   wsConnect();
+  signalTimer=setInterval(()=>{checkAllBuySignals();updateDashboard();},30000);
 }
 
 // ── wsConnect — ดึง WS token จาก Worker (key ไม่ถึง client) ──
@@ -4599,9 +4598,11 @@ async function wsConnect() {
     stocks.slice(0, WS_SUBSCRIBE_LIMIT).forEach(s => ws.send(JSON.stringify({ type: 'subscribe', symbol: s.t })));
     clearInterval(wsPing);
     wsPing = setInterval(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); }, 20000);
+    // WS connected — หยุด pollTimer ประหยัด quota
+    clearInterval(pollTimer); pollTimer = null;
     const statusEl = $id('statusText');
     const liveDot = $id('liveDot');
-    if (statusEl) statusEl.textContent = '🟢 WS Live';
+    if (statusEl) statusEl.textContent = '✅ Finnhub Live';
     if (liveDot) liveDot.style.background = 'var(--green)';
   };
   ws.onmessage = e => {
@@ -4624,7 +4625,16 @@ async function wsConnect() {
   };
   ws.onclose = () => {
     clearInterval(wsPing); wsPing = null;
-    _wsToken = null; // invalidate token เมื่อ connection ตาย
+    _wsToken = null;
+    // WS ล่ม — fallback ไป httpPoll ทันที
+    if(isLive && !pollTimer){
+      pollTimer = setInterval(httpPoll, 15000);
+      httpPoll();
+      const statusEl = $id('statusText');
+      const liveDot = $id('liveDot');
+      if(statusEl) statusEl.textContent = '⚠️ WS ล่ม — ใช้ HTTP Poll';
+      if(liveDot) liveDot.style.background = 'var(--gold)';
+    }
     if (isLive && _wsReconnectCount < 10) {
       const delay = Math.min(30000, 1000 * Math.pow(2, _wsReconnectCount));
       _wsReconnectCount++;
@@ -4641,27 +4651,30 @@ async function httpPoll(){
   _pollInFlight=true;
   try{
     // กรองเฉพาะที่ cache หมดอายุ และ stagger เพื่อไม่โดน rate limit
-    const batch=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000).slice(0,12);
-    for(const s of batch){
-      try{
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),5000);
-        const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(!r.ok)continue;
-        const d=await r.json();
-        if(d.c>0){
-          s.p=d.c;
-          s.c=d.dp||0;
-          // FIX: บันทึก prevClose จาก Finnhub (pc = previous close) เพื่อให้ WS คำนวณ % change ถูก
-          if(d.pc>0) s.prevClose=d.pc;
-          else if(!s.prevClose) s.prevClose=d.c;
-          liveCache[s.t]=Date.now();
-          updateCardLive(s);
-          // cache ราคาล่าสุดไว้ใน localStorage
-          try{ localStorage.setItem('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
-        }
-      }catch{}
+    const stale=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>30000);
+    const batch=stale.slice(0,20);
+    // ดึงพร้อมกัน 4 ตัว แทนทีละตัว
+    const chunkSize=4;
+    for(let i=0;i<batch.length;i+=chunkSize){
+      const chunk=batch.slice(i,i+chunkSize);
+      await Promise.allSettled(chunk.map(async s=>{
+        try{
+          const ctrl=new AbortController();
+          const tid=setTimeout(()=>ctrl.abort(),5000);
+          const r=await fetch(`${WORKER}/api/quote?symbol=${s.t}`,{signal:ctrl.signal});
+          clearTimeout(tid);
+          if(!r.ok) return;
+          const d=await r.json();
+          if(d.c>0){
+            s.p=d.c; s.c=d.dp||0;
+            if(d.pc>0) s.prevClose=d.pc;
+            else if(!s.prevClose) s.prevClose=d.c;
+            liveCache[s.t]=Date.now();
+            updateCardLive(s);
+            try{ localStorage.setItem('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
+          }
+        }catch{}
+      }));
       await new Promise(r=>setTimeout(r,POLL_STAGGER_MS));
     }
     const liveDot=$id('liveDot');
