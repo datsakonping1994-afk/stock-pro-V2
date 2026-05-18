@@ -6907,7 +6907,7 @@ async function loadEconNews(){
   if(_econNewsCache['all']?.length&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
     renderEconNews(_econNewsCache['all'],body); return;
   }
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...<br><span style="font-size:10px;opacity:0.6;margin-top:4px;display:block">จะใช้ RSS backup หากเซิร์ฟเวอร์ช้า</span></div>';
 
   const allQueries=Object.values(_econQueries);
   const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
@@ -6926,7 +6926,7 @@ async function loadEconNews(){
   });
 
   if(!merged.length){
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:24px;margin-bottom:8px">📡</div><div>ดึงข่าวไม่ได้ อาจเป็นเพราะ proxy ช้า<br>ลองกด 🔄 อีกครั้ง</div></div>';
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:28px;margin-bottom:10px">📡</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">ไม่สามารถโหลดข่าวได้</div><div style="color:var(--text3);line-height:1.7">เซิร์ฟเวอร์ข่าวและ RSS backup<br>ตอบสนองช้าหรือไม่มีการเชื่อมต่อ<br><br>กด <span style="color:var(--gold)">🔄</span> เพื่อลองใหม่</div></div>';
     return;
   }
 
@@ -7044,20 +7044,53 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
-// ── _fetchEconNews: GNews + NewsAPI + Marketaux + Finnhub ──
+// ── _fetchEconNews: Worker → RSS fallback ──
 async function _fetchEconNews(query){
+  // 1) ลอง Worker ก่อน (timeout 10 วิ)
   try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),15000);
+    const tid=setTimeout(()=>ctrl.abort(),10000);
     const r=await fetch(`${WORKER}/api/econ-news?q=${encodeURIComponent(query)}`,{
-      mode:'cors',
-      signal:ctrl.signal
+      mode:'cors',signal:ctrl.signal
     });
     clearTimeout(tid);
-    if(!r.ok) throw new Error('worker '+r.status);
-    const data=await r.json();
-    if(Array.isArray(data)&&data.length>0) return data;
-  }catch(e){console.warn('econ-news:',e.message);}
+    if(r.ok){
+      const data=await r.json();
+      if(Array.isArray(data)&&data.length>0) return data;
+    }
+  }catch(e){console.warn('econ-news worker:',e.message);}
+
+  // 2) Fallback: Google News RSS ผ่าน allorigins (ไม่ต้อง API key)
+  try{
+    const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+    const proxies=[
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
+    ];
+    let xml=null;
+    for(const proxy of proxies){
+      try{
+        const ctrl2=new AbortController();
+        const tid2=setTimeout(()=>ctrl2.abort(),8000);
+        const r2=await fetch(proxy,{signal:ctrl2.signal});
+        clearTimeout(tid2);
+        if(r2.ok){xml=await r2.text();break;}
+      }catch{}
+    }
+    if(!xml) return [];
+    const parser=new DOMParser();
+    const doc=parser.parseFromString(xml,'application/xml');
+    const items=[...doc.querySelectorAll('item')].slice(0,6);
+    return items.map(it=>{
+      const title=it.querySelector('title')?.textContent||'';
+      const link=it.querySelector('link')?.textContent||it.querySelector('guid')?.textContent||'#';
+      const pubDate=it.querySelector('pubDate')?.textContent||'';
+      const srcEl=it.querySelector('source');
+      const source=srcEl?.textContent||'Google News';
+      return{title,link,pubDate:pubDate?new Date(pubDate).toISOString():new Date().toISOString(),source,titleTH:null,summaryTH:null};
+    }).filter(i=>i.title);
+  }catch(e){console.warn('econ-news rss fallback:',e.message);}
   return [];
 }
 
