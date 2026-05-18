@@ -6972,9 +6972,19 @@ async function loadEconNews(){
     usedAI=true;
   }
 
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
-  const translated=await _translateNewsGemini(merged);
-  _econNewsCache['all']=translated;
+  // แยก: items ที่มี titleTH แล้ว (AI) vs ต้องแปล (Server)
+  const needsTrans=merged.filter(it=>!it.titleTH);
+  const alreadyTH=merged.filter(it=>!!it.titleTH);
+  let finalItems;
+  if(needsTrans.length>0){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
+    const translated=await _translateNewsGemini(needsTrans);
+    // รวมกับ AI items แล้วเรียง score
+    finalItems=[...translated,...alreadyTH].sort((a,b)=>((b._score||0)-(a._score||0))).slice(0,8);
+  } else {
+    finalItems=alreadyTH.slice(0,8);
+  }
+  _econNewsCache['all']=finalItems;
   _econNewsCacheTime['all']=Date.now();
   const tsEl=document.getElementById('newsLastUpdated');
   if(tsEl){const d=new Date();const hh=d.getHours().toString().padStart(2,'0');const mm=d.getMinutes().toString().padStart(2,'0');
@@ -6984,7 +6994,7 @@ async function loadEconNews(){
       tsEl.innerHTML=`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.25);border-radius:8px;padding:2px 7px;color:var(--green);font-weight:600">🌐 Server</span> ${hh}:${mm}`;
     }
   }
-  renderEconNews(translated,body);
+  renderEconNews(finalItems,body);
 }
 
 // ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
