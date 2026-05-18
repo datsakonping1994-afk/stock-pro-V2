@@ -6844,7 +6844,6 @@ async function loadEconNews(){
 
   // ดึงทุก query พร้อมกัน
   const allQueries=Object.values(_econQueries);
-  const cutoff24h=Date.now()-24*3600*1000;
   const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
 
   // keywords บ่งข่าวสำคัญ
@@ -6863,7 +6862,8 @@ async function loadEconNews(){
     return s;
   }
 
-  // รวม + dedup
+  // รวม + dedup (cutoff 72 ชม. เผื่อวันหยุดตลาด)
+  const cutoff72h=Date.now()-72*3600*1000;
   const seen=new Set();
   let merged=[];
   results.forEach(r=>{
@@ -6872,7 +6872,7 @@ async function loadEconNews(){
       const key=(item.title||'').slice(0,60).toLowerCase();
       if(seen.has(key)) return;
       seen.add(key);
-      if(item.pubDate){const ts=new Date(item.pubDate).getTime();if(!isNaN(ts)&&ts<cutoff24h) return;}
+      if(item.pubDate){const ts=new Date(item.pubDate).getTime();if(!isNaN(ts)&&ts<cutoff72h) return;}
       item._score=_score(item);
       merged.push(item);
     });
@@ -6886,13 +6886,12 @@ async function loadEconNews(){
     return tsB-tsA;
   });
 
-  // เอาแค่ 8 ข่าวสำคัญ
-  merged=merged.slice(0,8);
-
+  // เอา 8 ข่าว score สูงสุด — ถ้าไม่มีเลยให้เอาตามวันที่แทน
   if(!merged.length){
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าวสำคัญวันนี้ ลองกด 🔄</div>';
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าว ลองกด 🔄</div>';
     return;
   }
+  merged=merged.slice(0,8);
 
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
   const translated=await _translateNewsGemini(merged);
@@ -7022,7 +7021,7 @@ async function _fetchEconNews(query){
         .filter(i=>{
           if(!i.pubDate) return true;
           const ts=new Date(i.pubDate).getTime();
-          return isNaN(ts)||ts>=cutoff7d;
+          return isNaN(ts)||ts>=(Date.now()-7*86400000);
         })
         // sort: วันที่ใหม่สุดก่อน โดยให้ bonus แหล่งข่าวใหญ่ (ไม่ดันข่าวเก่าขึ้นมา)
         .sort((a,b)=>{
