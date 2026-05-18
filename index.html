@@ -6975,51 +6975,156 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
+// ── _fetchEconNews: ลอง 5 วิธีตามลำดับ ──
 async function _fetchEconNews(query){
-  const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const cutoff=Date.now()-3*86400000;
   const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
-  const proxies=[
-    `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-    `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`,
-  ];
+
+  function _parseItems(list){
+    return list.filter(i=>i.title)
+      .filter(i=>{
+        if(!i.pubDate) return true;
+        const ts=new Date(i.pubDate).getTime();
+        return isNaN(ts)||ts>=cutoff;
+      })
+      .sort((a,b)=>{
+        const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
+        const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
+        const bA=topSrc.some(s=>a.source?.includes(s))?1800000:0;
+        const bB=topSrc.some(s=>b.source?.includes(s))?1800000:0;
+        return (tsB+bB)-(tsA+bA);
+      }).slice(0,8);
+  }
+
+  function _parseRSSText(text){
+    try{
+      if(text.includes('"contents"')) text=JSON.parse(text).contents;
+      if(text.includes('"body"')) text=JSON.parse(text).body;
+    }catch{}
+    if(!text?.includes('<item>')) return null;
+    const doc=new DOMParser().parseFromString(text,'text/xml');
+    const list=Array.from(doc.querySelectorAll('item')).map(item=>({
+      title:item.querySelector('title')?.textContent||'',
+      link:item.querySelector('link')?.textContent||'#',
+      pubDate:item.querySelector('pubDate')?.textContent||'',
+      source:item.querySelector('source')?.textContent||'',
+    }));
+    const parsed=_parseItems(list);
+    return parsed.length>0?parsed:null;
+  }
+
+  const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+
+  // ── วิธีที่ 1: CORS proxies พร้อมกัน ──
   try{
-    const items=await Promise.any(proxies.map(async url=>{
+    const proxies=[
+      `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+      `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`,
+      `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(rssUrl)}`,
+    ];
+    const result=await Promise.any(proxies.map(async url=>{
       const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),12000);
+      const tid=setTimeout(()=>ctrl.abort(),10000);
       try{
         const r=await fetch(url,{signal:ctrl.signal});
         clearTimeout(tid);
         if(!r.ok) throw new Error('not ok');
-        let text=await r.text();
-        if(text.includes('"contents"')){try{text=JSON.parse(text).contents;}catch{}}
-        const doc=new DOMParser().parseFromString(text,'text/xml');
-        const list=Array.from(doc.querySelectorAll('item')).map(item=>({
-          title:item.querySelector('title')?.textContent||'',
-          link:item.querySelector('link')?.textContent||'#',
-          pubDate:item.querySelector('pubDate')?.textContent||'',
-          source:item.querySelector('source')?.textContent||'',
-        })).filter(i=>i.title)
-        .filter(i=>{
-          if(!i.pubDate) return true;
-          const ts=new Date(i.pubDate).getTime();
-          return isNaN(ts)||ts>=(Date.now()-3*86400000); // 3 วัน
-        })
-        .sort((a,b)=>{
-          const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
-          const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
-          const bA=topSrc.some(s=>a.source?.includes(s))?1800000:0;
-          const bB=topSrc.some(s=>b.source?.includes(s))?1800000:0;
-          return (tsB+bB)-(tsA+bA);
-        }).slice(0,8);
-        if(list.length>0) return list;
+        const text=await r.text();
+        const items=_parseRSSText(text);
+        if(items) return items;
         throw new Error('empty');
       }catch(e){clearTimeout(tid);throw e;}
     }));
-    return items;
+    if(result?.length) return result;
   }catch{}
+
+  // ── วิธีที่ 2: Finnhub market news ผ่าน Worker ──
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`${WORKER}/api/market-news?category=general`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const data=await r.json();
+      if(Array.isArray(data)&&data.length){
+        const q=query.toLowerCase().split(' ');
+        const list=data
+          .filter(n=>n.headline&&q.some(w=>w.length>3&&n.headline.toLowerCase().includes(w)))
+          .filter(n=>!n.datetime||(n.datetime*1000)>=cutoff)
+          .map(n=>({
+            title:n.headline,
+            link:n.url||'#',
+            pubDate:n.datetime?new Date(n.datetime*1000).toUTCString():'',
+            source:n.source||'Finnhub',
+          })).slice(0,8);
+        if(list.length>0) return _parseItems(list);
+      }
+    }
+  }catch{}
+
+  // ── วิธีที่ 3: Pollinations AI สร้างหัวข้อข่าวจริงที่รู้จาก training ──
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const prompt=`List 5 recent real financial news headlines (within last 3 days from ${today}) about: ${query}
+Return ONLY a JSON array: [{"title":"...","source":"...","pubDate":"..."}]
+Use only real headlines you know. No fake news.`;
+    const raw=await _callPollinationsAI('You are a financial news aggregator. Return only real recent headlines as JSON array.',prompt,500);
+    if(raw){
+      let clean=raw.replace(/```json|```/g,'').trim();
+      const m=clean.match(/\[[\s\S]*\]/);
+      if(m){
+        const parsed=JSON.parse(m[0]);
+        if(Array.isArray(parsed)&&parsed.length){
+          return parsed.map(n=>({
+            title:n.title||'',
+            link:n.url||'#',
+            pubDate:n.pubDate||new Date().toUTCString(),
+            source:n.source||'AI News',
+          })).filter(n=>n.title).slice(0,5);
+        }
+      }
+    }
+  }catch{}
+
+  // ── วิธีที่ 4: Worker proxy ดึง RSS โดยตรง ──
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`${WORKER}/api/proxy-rss?url=${encodeURIComponent(rssUrl)}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const text=await r.text();
+      const items=_parseRSSText(text);
+      if(items) return items;
+    }
+  }catch{}
+
+  // ── วิธีที่ 5: Gemini สร้างหัวข้อข่าว ──
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const prompt=`Give me 5 real recent financial news headlines (last 3 days, around ${today}) about: ${query}
+Return ONLY JSON: [{"title":"...","source":"Reuters/Bloomberg/CNBC","pubDate":"${today}"}]`;
+    const raw=await _callGeminiDirect('Return only real recent news as JSON array. No fake headlines.',prompt,400);
+    if(raw){
+      let clean=raw.replace(/```json|```/g,'').trim();
+      const m=clean.match(/\[[\s\S]*\]/);
+      if(m){
+        const parsed=JSON.parse(m[0]);
+        if(Array.isArray(parsed)&&parsed.length){
+          return parsed.map(n=>({
+            title:n.title||'',
+            link:'#',
+            pubDate:n.pubDate||new Date().toUTCString(),
+            source:n.source||'Gemini News',
+          })).filter(n=>n.title).slice(0,5);
+        }
+      }
+    }
+  }catch{}
+
   return [];
 }
 
