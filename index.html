@@ -7046,73 +7046,19 @@ async function _translateNewsGemini(items){
 
 // ── _fetchEconNews: GNews + NewsAPI + Marketaux + Finnhub ──
 async function _fetchEconNews(query){
-  const cutoff=Date.now()-3*86400000;
-  const topSrc=['Reuters','Bloomberg','CNBC','WSJ','Financial Times','MarketWatch','AP','BBC'];
-
-  function _parseItems(list){
-    return list.filter(i=>i.title&&i.title.length>5)
-      .filter(i=>{
-        if(!i.pubDate) return true;
-        const ts=new Date(i.pubDate).getTime();
-        return isNaN(ts)||ts>=cutoff;
-      })
-      .sort((a,b)=>{
-        const tsA=a.pubDate?new Date(a.pubDate).getTime():0;
-        const tsB=b.pubDate?new Date(b.pubDate).getTime():0;
-        const bA=topSrc.some(s=>a.source?.includes(s))?1800000:0;
-        const bB=topSrc.some(s=>b.source?.includes(s))?1800000:0;
-        return (tsB+bB)-(tsA+bA);
-      });
-  }
-
-  const q=encodeURIComponent(query);
-  const from=new Date(Date.now()-3*86400000).toISOString().slice(0,10);
-
-  // ดึงทุก API พร้อมกัน
-  const [gnewsRes, newsapiRes, marketauxRes, finnhubRes] = await Promise.allSettled([
-
-    // GNews
-    fetch(`https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&from=${from}&token=${_GNEWS_KEY}`)
-      .then(r=>r.ok?r.json():null)
-      .then(d=>d?.articles?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.publishedAt,source:a.source?.name||'GNews'}))||[]),
-
-    // NewsAPI
-    fetch(`https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=10&from=${from}&apiKey=${_NEWSAPI_KEY}`)
-      .then(r=>r.ok?r.json():null)
-      .then(d=>d?.articles?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.publishedAt,source:a.source?.name||'NewsAPI'}))||[]),
-
-    // Marketaux
-    fetch(`https://api.marketaux.com/v1/news/all?search=${q}&language=en&limit=10&published_after=${from}T00:00:00&api_token=${_MARKETAUX_KEY}`)
-      .then(r=>r.ok?r.json():null)
-      .then(d=>d?.data?.map(a=>({title:a.title,link:a.url||'#',pubDate:a.published_at,source:a.source||'Marketaux'}))||[]),
-
-    // Finnhub (ผ่าน Worker)
-    (async()=>{
-      const to=new Date().toISOString().slice(0,10);
-      const tickers=['SPY','QQQ'];
-      const results=await Promise.allSettled(tickers.map(sym=>
-        fetch(`${WORKER}/api/news?symbol=${sym}&from=${from}&to=${to}`,{mode:'cors'})
-          .then(r=>r.ok?r.json():[])
-          .then(d=>Array.isArray(d)?d.map(n=>({title:n.headline,link:n.url||'#',pubDate:n.datetime?new Date(n.datetime*1000).toISOString():'',source:n.source||'Finnhub'})):[])
-      ));
-      return results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
-    })(),
-  ]);
-
-  // รวมทุกแหล่ง + dedup
-  const seen=new Set();
-  let merged=[];
-  [gnewsRes, newsapiRes, marketauxRes, finnhubRes].forEach(r=>{
-    if(r.status!=='fulfilled'||!r.value?.length) return;
-    r.value.forEach(item=>{
-      const key=(item.title||'').slice(0,60).toLowerCase();
-      if(!key||seen.has(key)) return;
-      seen.add(key);
-      merged.push(item);
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),15000);
+    const r=await fetch(`${WORKER}/api/econ-news?q=${encodeURIComponent(query)}`,{
+      mode:'cors',
+      signal:ctrl.signal
     });
-  });
-
-  return _parseItems(merged).slice(0,10);
+    clearTimeout(tid);
+    if(!r.ok) throw new Error('worker '+r.status);
+    const data=await r.json();
+    if(Array.isArray(data)&&data.length>0) return data;
+  }catch(e){console.warn('econ-news:',e.message);}
+  return [];
 }
 
 function renderEconNews(items, body){
