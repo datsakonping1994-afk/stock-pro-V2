@@ -1339,7 +1339,16 @@ let currentDrawerTab='tech';
 let watchlist=new Set((()=>{ try{ return JSON.parse(localStorage.getItem('_sp_watchlist')||'[]'); }catch{ return []; } })());
 let showWatchlistOnly=false;
 let priceAlerts=(()=>{ try{ return JSON.parse(localStorage.getItem('_sp_alerts')||'[]'); }catch{ return []; } })(); // [{ticker,price,dir,triggered}]
-const _alertFired=new Set();
+// ── Persistent cooldown (survives reload/background) ──
+const _cooldown = {
+  _key: '_sp_cooldown',
+  _data: (()=>{ try{ const d=JSON.parse(localStorage.getItem('_sp_cooldown')||'{}'); const now=Date.now(); Object.keys(d).forEach(k=>{ if(d[k]<now) delete d[k]; }); return d; }catch{ return {}; } })(),
+  _save(){ try{ localStorage.setItem(this._key, JSON.stringify(this._data)); }catch{} },
+  has(k){ const v=this._data[k]; if(v&&v>Date.now()) return true; if(v) { delete this._data[k]; this._save(); } return false; },
+  add(k, ms){ this._data[k]=Date.now()+ms; this._save(); },
+  delete(k){ delete this._data[k]; this._save(); }
+};
+const _alertFired = _cooldown;
 let marketCtx={SPY:{change:0,price:0},QQQ:{change:0,price:0}};
 // FIX: aiHistory — โหลดจาก localStorage เพื่อให้ประวัติไม่หายเมื่อปิดแอป
 const _AI_HISTORY_KEY='_sp_aiHistory';
@@ -1368,6 +1377,16 @@ function _saveAiHistory(){
 // ดู: https://developers.cloudflare.com/workers/runtime-apis/kv/
 // ══════════════════════════════════════════════════════════
 const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
+const ALERT_WORKER='https://stock-alert.datsakonping1994.workers.dev'; // Worker ตัวใหม่
+// ── Sync alerts + portfolio ขึ้น Worker (background) ──
+function syncAlertsToWorker(){
+  try{
+    const portfolio=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return[];}})();
+    fetch(ALERT_WORKER+'/alerts',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({alerts:priceAlerts,portfolio:portfolio.map(p=>({t:p.ticker||p.t,avgPrice:p.avgPrice||p.cost||0}))})
+    }).catch(()=>{});
+  }catch{}
+}
 const _GNEWS_KEY='04e902741e046e76b09896b84f17b83b';
 const _NEWSAPI_KEY='29dc935760054d8f8892dfc729f5a5da';
 const _MARKETAUX_KEY='6NR1RtHOSzR5Bx4DiyznD2uGc0EuhVoVGYSo7qFN';
@@ -1456,6 +1475,7 @@ function navTo(page, el){
 // ── Price Alerts ──
 function savePriceAlerts(){
   try{ localStorage.setItem('_sp_alerts', JSON.stringify(priceAlerts)); }catch{}
+  syncAlertsToWorker(); // sync ขึ้น Worker ทุกครั้งที่บันทึก
 }
 
 function buildTickerSelect(){
@@ -1556,7 +1576,7 @@ function checkPriceAlerts(ticker, price){
     if(!hit) return;
     const fireKey=ticker+'_'+a.dir+'_'+a.price;
     if(_alertFired.has(fireKey)) return;
-    _alertFired.add(fireKey);
+    _alertFired.add(fireKey, 86400000); // cooldown 24 ชั่วโมง
     a.triggered=true;
     savePriceAlerts();
     // เสียงแจ้งเตือน
@@ -3646,7 +3666,7 @@ Buy Score: ${score}/100
 }
 
 // ── Exit Signal — แจ้งเตือนเมื่อควรขาย พร้อมบอกจำนวนหุ้นที่ควรขาย ──
-const _exitAlerted = new Set();
+const _exitAlerted = _cooldown; // shared persistent cooldown
 const _trailingHigh = {}; // เก็บ high สูงสุดหลังซื้อสำหรับ Trailing Stop
 
 async function checkExitSignal(ticker, price){
@@ -3706,8 +3726,7 @@ async function checkExitSignal(ticker, price){
     exitReason = `🎯 ถึงเป้า R2 $${r2.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
     sellAction = `ขายทั้งหมด ${pos.shares} หุ้น`;
     sellShares = pos.shares;
-    _exitAlerted.add(exitKey_r2);
-    setTimeout(()=>_exitAlerted.delete(exitKey_r2), 7200000);
+    _exitAlerted.add(exitKey_r2, 7200000);
 
   } else if(hitR1 && !_exitAlerted.has(exitKey_r1)){
     // ถึง R1 → ขายครึ่ง lock กำไร รอ R2
@@ -3715,24 +3734,21 @@ async function checkExitSignal(ticker, price){
     exitReason = `🎯 ถึงเป้า R1 $${r1.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
     sellAction = `ขายครึ่ง ${half} หุ้น (lock กำไร รอ R2 $${r2.toFixed(2)})`;
     sellShares = half;
-    _exitAlerted.add(exitKey_r1);
-    setTimeout(()=>_exitAlerted.delete(exitKey_r1), 7200000);
+    _exitAlerted.add(exitKey_r1, 7200000);
 
   } else if(bigLoss && !_exitAlerted.has(exitKey_loss)){
     // Cut Loss → ขายทั้งหมด
     exitReason = `🛑 Cut Loss! ขาดทุน ${pnlPct.toFixed(1)}%`;
     sellAction = `ขายทั้งหมด ${pos.shares} หุ้น ทันที`;
     sellShares = pos.shares;
-    _exitAlerted.add(exitKey_loss);
-    setTimeout(()=>_exitAlerted.delete(exitKey_loss), 3600000);
+    _exitAlerted.add(exitKey_loss, 3600000);
 
   } else if(overbought && stBearish && !_exitAlerted.has(exitKey_momentum)){
     // Momentum หมด → ขายทั้งหมด
     exitReason = `📉 RSI Overbought + Supertrend กลับตัว`;
     sellAction = `ขายทั้งหมด ${pos.shares} หุ้น`;
     sellShares = pos.shares;
-    _exitAlerted.add(exitKey_momentum);
-    setTimeout(()=>_exitAlerted.delete(exitKey_momentum), 3600000);
+    _exitAlerted.add(exitKey_momentum, 3600000);
 
   } else if(trailingHit && !_exitAlerted.has(exitKey_trail)){
     // Trailing Stop → ขายครึ่ง ป้องกันกำไรหาย
@@ -3740,8 +3756,7 @@ async function checkExitSignal(ticker, price){
     exitReason = `📉 Trailing Stop! ร่วงจาก High ${trailingDrop.toFixed(1)}%`;
     sellAction = `ขายครึ่ง ${half} หุ้น (ปกป้องกำไร)`;
     sellShares = half;
-    _exitAlerted.add(exitKey_trail);
-    setTimeout(()=>_exitAlerted.delete(exitKey_trail), 3600000);
+    _exitAlerted.add(exitKey_trail, 3600000);
 
   } else if(overweight && pnlPct > 10 && !_exitAlerted.has(exitKey_weight)){
     // พอร์ตหนักเกินไป → ขาย 25% ลดสัดส่วน
@@ -3749,8 +3764,7 @@ async function checkExitSignal(ticker, price){
     exitReason = `⚖️ หุ้นนี้หนัก ${portPct.toFixed(0)}% ของพอร์ต`;
     sellAction = `ขาย ${trimShares} หุ้น (ลดสัดส่วนให้สมดุล)`;
     sellShares = trimShares;
-    _exitAlerted.add(exitKey_weight);
-    setTimeout(()=>_exitAlerted.delete(exitKey_weight), 86400000); // cooldown 1 วัน
+    _exitAlerted.add(exitKey_weight, 86400000); // cooldown 1 วัน
 
   } else return;
 
@@ -7406,8 +7420,7 @@ function updateCardLive(s){
     if(stk&&stk.short&&parseFloat(stk.short)>15&&stk.c>3){
       const sqKey='sq_'+stk.t;
       if(!_alertFired.has(sqKey)){
-        _alertFired.add(sqKey);
-        setTimeout(()=>_alertFired.delete(sqKey),3600000); // cooldown 1 ชั่วโมง
+        _alertFired.add(sqKey, 3600000); // cooldown 1 ชั่วโมง
         toast(`🩳 Short Squeeze Alert! ${stk.t} — Short Float ${stk.short} ราคาขึ้น +${(+stk.c).toFixed(1)}%`,4000);
         sendTG(`🩳 Short Squeeze Risk!\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา ${fmt(stk.p)}`);
       }
