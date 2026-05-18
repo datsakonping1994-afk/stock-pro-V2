@@ -6909,10 +6909,13 @@ async function loadEconNews(){
   }
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
 
-  const allQueries=Object.values(_econQueries);
-  const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
+  // ดึง 2 query แทน 5 เพื่อไม่ overwhelm worker
+  const mainQueries=[
+    'Federal Reserve inflation CPI GDP earnings trade war AI tech',
+    'stock market economy jobs recession tariff earnings results',
+  ];
+  const results=await Promise.allSettled(mainQueries.map(q=>_fetchEconNews(q)));
 
-  // รวม + dedup ไม่ filter วันที่ซ้ำ (filter ทำใน _fetchEconNews แล้ว)
   const seen=new Set();
   let merged=[];
   results.forEach(r=>{
@@ -6978,7 +6981,9 @@ async function loadEconNews(){
   let finalItems;
   if(needsTrans.length>0){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
-    const translated=await _translateNewsGemini(needsTrans);
+    let translated=await _translateNewsGemini(needsTrans);
+    // safety: ถ้าแปลไม่ได้ ใช้ title ภาษอังกฤษไปก่อน
+    if(!translated.length) translated=needsTrans.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:''}));
     // รวมกับ AI items แล้วเรียง score
     finalItems=[...translated,...alreadyTH].sort((a,b)=>((b._score||0)-(a._score||0))).slice(0,8);
   } else {
@@ -7081,11 +7086,32 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
-// ── _fetchEconNews: Worker (10s timeout) — returns null on fail ──
+// ── _fetchEconNews: GNews direct → Worker fallback ──
 async function _fetchEconNews(query){
+  // 1) ลอง GNews โดยตรงถ้ามี key ใน Settings
+  const gnewsKey=(localStorage.getItem('gnewsKey')||'').trim();
+  if(gnewsKey){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),12000);
+      const url=`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&token=${gnewsKey}`;
+      const r=await fetch(url,{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d.articles?.length) return d.articles.map(a=>({
+          title:a.title||'',
+          link:a.url||'#',
+          pubDate:a.publishedAt||new Date().toISOString(),
+          source:a.source?.name||'GNews',
+        }));
+      }
+    }catch(e){console.warn('GNews direct:',e.message);}
+  }
+  // 2) Fallback: Worker
   try{
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const tid=setTimeout(()=>ctrl.abort(),25000);
     const r=await fetch(`${WORKER}/api/econ-news?q=${encodeURIComponent(query)}`,{
       mode:'cors',signal:ctrl.signal
     });
@@ -7094,32 +7120,41 @@ async function _fetchEconNews(query){
       const data=await r.json();
       if(Array.isArray(data)&&data.length>0) return data;
     }
-  }catch(e){console.warn('econ-news:',e.message);}
+  }catch(e){console.warn('econ-news worker:',e.message);}
   return null;
 }
 
 // ── _fetchEconNewsAI: AI-generated news when endpoint is down ──
 async function _fetchEconNewsAI(){
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  const isoNow=new Date().toISOString();
-  const prompt=`Today is ${today}. Generate 8 realistic financial news headlines on: Fed/rates, inflation, major earnings, trade/geopolitics, AI/tech. Return ONLY a JSON array, no markdown:\n[{"title":"...","source":"Reuters","pubDate":"${isoNow}","link":"#","titleTH":"...","summaryTH":"..."},...]\ntitleTH=Thai translation. summaryTH=1-sentence Thai summary. Use only Reuters/Bloomberg/CNBC/MarketWatch/AP as source.`;
-  try{
-    const raw=await callAI_Brief(
-      'You are a financial news aggregator. Return ONLY a valid JSON array. No markdown, no extra text.',
-      prompt, 1200
-    );
-    if(!raw) return [];
-    const parsed=_parseNewsJson(raw);
-    const _now=new Date().toISOString();
-    if(parsed.length>0) return parsed.map((it,i)=>({
-      title:it.title||'',
-      source:it.source||'Reuters',
-      pubDate:_now, // always use current time
-      link:'#',    // mark as AI-generated
-      titleTH:it.titleTH||it.title||'',
-      summaryTH:it.summaryTH||'',
-    }));
-  }catch(e){console.warn('AI news fallback:',e.message);}
+  const sys='Return ONLY a JSON array. No explanation, no markdown, no extra text. Start with [';
+  const prompt=`Generate 7 financial news items for today covering Fed/rates, inflation, earnings, trade, AI/tech.
+Format: [{"title":"...","source":"Reuters","titleTH":"ประโยคภาษาไทย...","summaryTH":"สรุป 1 ประโยค..."},...]
+Sources: Reuters/Bloomberg/CNBC/MarketWatch/AP only. titleTH=Thai title. summaryTH=Thai 1-sentence summary.`;
+
+  // ลองทุก AI ตามลำดับ
+  const callers=[
+    ()=>callAI_Brief(sys,prompt,1000),
+    ()=>callGemini(sys,prompt,1000),
+    ()=>callAI_Quick(sys,prompt,1000),
+  ];
+  for(const fn of callers){
+    try{
+      const raw=await fn();
+      if(!raw) continue;
+      // พยายาม parse JSON เป็น array
+      const parsed=_parseNewsJson(raw);
+      if(!parsed.length) continue;
+      const now=new Date().toISOString();
+      return parsed.map(it=>({
+        title:it.title||'',
+        source:it.source||'Reuters',
+        pubDate:now,
+        link:'#',
+        titleTH:it.titleTH||it.title||'',
+        summaryTH:it.summaryTH||'',
+      }));
+    }catch(e){console.warn('_fetchEconNewsAI attempt failed:',e.message);}
+  }
   return [];
 }
 
