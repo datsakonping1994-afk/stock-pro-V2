@@ -1083,6 +1083,24 @@ const stocks=[
   {t:"SOFI",n:"SoFi Technologies",p:18.0,c:0,pe:null,mktcap:"20.0B",rev:"33%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"9.4%",target:22.0},
   {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.0,short:"0.5%",target:620.0},
   {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.6,short:"12.8%",target:28.0},
+  {t:"ELF",n:"e.l.f. Beauty",p:0,c:0,pe:null,mktcap:"3.5B",rev:"31%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"15.2%",target:45.0},
+  {t:"PFS",n:"Provident Financial Services",p:0,c:0,pe:12.5,mktcap:"2.1B",rev:"8%",earn:"ก.ค. 2026",div:"4.2%",beta:0.9,short:"2.1%",target:22.0},
+  {t:"AMSC",n:"American Superconductor",p:0,c:0,pe:null,mktcap:"0.8B",rev:"42%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"10.3%",target:35.0},
+  {t:"APP",n:"Applovin",p:0,c:0,pe:85.0,mktcap:"120B",rev:"44%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"3.8%",target:380.0},
+  {t:"COST",n:"Costco Wholesale",p:0,c:0,pe:52.0,mktcap:"420B",rev:"8%",earn:"ก.ย. 2026",div:"0.7%",beta:0.7,short:"1.2%",target:1050.0},
+  {t:"MCO",n:"Moodys Corp",p:0,c:0,pe:38.0,mktcap:"82B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.1,short:"1.0%",target:520.0},
+  {t:"CBOE",n:"Cboe Global Markets",p:0,c:0,pe:22.0,mktcap:"21B",rev:"9%",earn:"ส.ค. 2026",div:"1.2%",beta:0.6,short:"0.8%",target:230.0},
+  {t:"UNH",n:"UnitedHealth Group",p:0,c:0,pe:18.0,mktcap:"420B",rev:"12%",earn:"ก.ค. 2026",div:"1.8%",beta:0.5,short:"0.9%",target:620.0},
+  {t:"ABT",n:"Abbott Laboratories",p:0,c:0,pe:24.0,mktcap:"195B",rev:"7%",earn:"ก.ค. 2026",div:"1.9%",beta:0.7,short:"0.8%",target:145.0},
+  {t:"BRK.B",n:"Berkshire Hathaway B",p:0,c:0,pe:21.0,mktcap:"950B",rev:"5%",earn:"ส.ค. 2026",div:null,beta:0.9,short:"0.4%",target:520.0},
+  {t:"CAVA",n:"CAVA Group",p:0,c:0,pe:180.0,mktcap:"18B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.9,short:"8.2%",target:120.0},
+  {t:"RDDT",n:"Reddit",p:0,c:0,pe:null,mktcap:"22B",rev:"61%",earn:"ส.ค. 2026",div:null,beta:2.2,short:"6.4%",target:180.0},
+  {t:"LUNR",n:"Intuitive Machines",p:0,c:0,pe:null,mktcap:"2.1B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:3.1,short:"14.2%",target:25.0},
+  {t:"RCAT",n:"Red Cat Holdings",p:0,c:0,pe:null,mktcap:"0.6B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.5,short:"11.8%",target:18.0},
+  {t:"UUUU",n:"Energy Fuels",p:0,c:0,pe:null,mktcap:"0.9B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"9.6%",target:12.0},
+  {t:"NNE",n:"Nano Nuclear Energy",p:0,c:0,pe:null,mktcap:"1.2B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"16.4%",target:30.0},
+  {t:"AFRM",n:"Affirm Holdings",p:0,c:0,pe:null,mktcap:"18B",rev:"36%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"12.1%",target:65.0},
+  {t:"SEZL",n:"Sezzle",p:0,c:0,pe:22.0,mktcap:"0.8B",rev:"48%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"8.8%",target:280.0},
   {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026",div:null,beta:1.2,short:"0.7%",target:1150.0},
   {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026",div:"0.7%",beta:0.5,short:"0.8%",target:1050.0},
   {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"6.1%",target:60.0},
@@ -1209,14 +1227,14 @@ const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00
 const sectorMap={'ETF':['IWM','SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
   'คลาวด์':['MSFT','GOOGL','AAPL','META','AMZN','PLTR','NOW','CRWD','RBRK','AXON','NFLX','CRM','ADBE','SNOW','DDOG','MDB','NET'],
-  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI'],
-  'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM'],
+  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI','APP'],
+  'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM','LUNR','RCAT'],
   'สุขภาพ':['LLY','NVO','ISRG','TMDX','HIMS'],
-  'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL'],
+  'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL','PFS','MCO','CBOE','BRK.B'],
   'EV':['TSLA','RIVN','LCID'],
   'LatAm':['MELI'],
-  'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG'],
-  'พลังงาน':['XOM','EOSE','SLNH','MP'],
+  'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG','ELF','COST','UNH','ABT','CAVA','RDDT','AFRM','SEZL'],
+  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE'],
 };
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
@@ -7286,9 +7304,22 @@ async function triggerAISummary(){
 
 
 // ── PORTFOLIO TRACKER ──
-let portfolio = (()=>{ try{ return JSON.parse(localStorage.getItem('_sp_portfolio') || '[]'); }catch{ return []; } })();
+let portfolio = (()=>{
+  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) return JSON.parse(ls); }catch{}
+  try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) return JSON.parse(ss); }catch{}
+  try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
+  return [];
+})();
 
-function savePortfolio(){ try{ localStorage.setItem('_sp_portfolio', JSON.stringify(portfolio)); }catch{} }
+function savePortfolio(){
+  const data = JSON.stringify(portfolio);
+  try{ localStorage.setItem('_sp_portfolio', data); }catch{}
+  try{ sessionStorage.setItem('_sp_portfolio', data); }catch{}
+  try{
+    const d=new Date(); d.setFullYear(d.getFullYear()+1);
+    document.cookie=`_sp_portfolio=${encodeURIComponent(data)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+  }catch{}
+}
 
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
@@ -7441,13 +7472,20 @@ function renderPortfolio(){
   });
   // accordion toggle
   list.onclick=(e)=>{
+    e.stopPropagation();
     const sellBtn=e.target.closest('.port-sell-btn');
     if(sellBtn&&sellBtn.dataset.sellTicker){ sellShares(sellBtn.dataset.sellTicker); return; }
     const row=e.target.closest('.port-row');
     if(row){
       const ticker=row.dataset.ticker;
       const detail=list.querySelector(`.port-detail-${ticker}`);
-      if(detail) detail.style.display=detail.style.display==='none'?'block':'none';
+      if(detail){
+        const isOpen = detail.style.display !== 'none';
+        // ปิดทุกอันก่อน
+        list.querySelectorAll('[class^="port-detail-"]').forEach(d=>d.style.display='none');
+        // ถ้าอันนี้ปิดอยู่ให้เปิด
+        if(!isOpen) detail.style.display='block';
+      }
     }
   };
   // Summary
