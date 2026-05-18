@@ -327,96 +327,15 @@ canvas.bigchart{width:100%;height:100%}
 .ind-val.bear{color:var(--red)}
 .ind-val.neut{color:var(--gold)}
 
-/* ── AI CHAT (upgraded) ── */
-.ai-chat{display:flex;flex-direction:column;gap:0;flex:1;overflow-y:auto;min-height:0;padding:4px 0 8px;scroll-behavior:smooth}
-.ai-chat::-webkit-scrollbar{display:none}
-
-/* bubble wrapper */
-.ai-bubble-wrap{display:flex;align-items:flex-end;gap:8px;padding:4px 14px;animation:bubbleIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both}
-.ai-bubble-wrap.user{flex-direction:row-reverse}
-@keyframes bubbleIn{from{opacity:0;transform:translateY(8px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-
-/* AI avatar */
-.ai-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#f0c860);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;box-shadow:0 0 10px rgba(201,168,76,0.35);margin-bottom:2px}
-
-/* bubble */
-.ai-msg{padding:11px 14px;border-radius:18px;font-size:13px;line-height:1.65;max-width:88%;position:relative;word-break:break-word}
-.ai-msg.user{
-  background:linear-gradient(135deg,rgba(201,168,76,0.22),rgba(201,168,76,0.12));
-  border:1px solid rgba(201,168,76,0.3);
-  color:var(--text);
-  border-bottom-right-radius:5px;
-  box-shadow:0 2px 10px rgba(201,168,76,0.1);
-}
-.ai-msg.bot{
-  background:linear-gradient(145deg,rgba(28,35,51,0.98),rgba(20,25,38,0.99));
-  border:1px solid rgba(255,255,255,0.07);
-  color:var(--text2);
-  border-bottom-left-radius:5px;
-  box-shadow:0 2px 12px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;
-}
-/* timestamp */
-.ai-ts{font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:0.3px;padding:0 4px}
-.ai-bubble-wrap.user .ai-ts{text-align:right}
-
-/* typing dots */
-.ai-typing{display:flex;align-items:center;gap:4px;padding:12px 16px}
-.ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--gold);opacity:0.4;animation:typingDot 1.2s infinite}
-.ai-typing span:nth-child(2){animation-delay:0.2s}
-.ai-typing span:nth-child(3){animation-delay:0.4s}
-@keyframes typingDot{0%,60%,100%{opacity:0.3;transform:scale(0.85)}30%{opacity:1;transform:scale(1.1)}}
-
-/* status label during loading */
-.ai-status-lbl{font-size:10px;color:var(--gold);opacity:0.8;margin-left:2px;display:block;margin-top:4px}
-
-/* quick reply pills */
-.ai-quick-row{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 8px;animation:bubbleIn 0.28s 0.1s both}
-.ai-quick-btn{
-  background:rgba(201,168,76,0.08);
-  border:1px solid rgba(201,168,76,0.25);
-  border-radius:20px;
-  padding:6px 12px;
-  font-size:11px;
-  color:var(--gold);
-  cursor:pointer;
-  font-family:'Inter',sans-serif;
-  font-weight:500;
-  transition:all 0.15s;
-  white-space:nowrap;
-}
-.ai-quick-btn:active{background:rgba(201,168,76,0.22);transform:scale(0.96)}
-
-/* news badge in chat */
-.ai-news-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:2px 7px;font-size:10px;color:var(--ice);margin-bottom:6px}
-
-/* input area */
-.ai-input-row{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;background:rgba(8,10,15,0.6);backdrop-filter:blur(10px)}
-.ai-input{
-  flex:1;
-  background:rgba(20,25,38,0.9);
-  border:1px solid rgba(255,255,255,0.08);
-  border-radius:22px;
-  padding:10px 16px;
-  font-size:13px;
-  font-weight:400;
-  color:var(--text);
-  font-family:'Inter',sans-serif;
-  outline:none;
-  transition:border-color 0.2s,box-shadow 0.2s;
-}
-.ai-input:focus{border-color:rgba(201,168,76,0.5);box-shadow:0 0 0 3px rgba(201,168,76,0.08)}
-.ai-input::placeholder{color:var(--text3)}
-.ai-send{
-  background:linear-gradient(135deg,#d4a843,#f0c860);
-  border:none;border-radius:50%;
-  width:40px;height:40px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:17px;cursor:pointer;color:#000;flex-shrink:0;
-  box-shadow:0 3px 12px rgba(212,168,67,0.4);
-  transition:all 0.15s;
-}
-.ai-send:active{transform:scale(0.92);box-shadow:0 1px 6px rgba(212,168,67,0.3)}
-.ai-send:disabled{opacity:0.4;transform:none}
+/* AI Tab */
+.ai-chat{display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto;min-height:0}
+.ai-msg{padding:12px;border-radius:12px;font-size:12px;line-height:1.6}
+.ai-msg.user{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);color:var(--text);margin-left:20px}
+.ai-msg.bot{background:var(--bg2);border:1px solid var(--border);color:var(--text2);margin-right:20px}
+.ai-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);flex-shrink:0}
+.ai-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:500;color:var(--text);font-family:'Inter',sans-serif;outline:none}
+.ai-input:focus{border-color:var(--gold)}
+.ai-send{background:var(--gold);border:none;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:#000;flex-shrink:0}
 
 /* ── ALERTS PAGE ── */
 .alerts-page{padding:14px}
@@ -2932,27 +2851,15 @@ function drawerTab(tab, btn){
     }
   } else if(tab==='ai'){
     const hist=aiHistory[s.t]||[];
-    const _fmtTime=()=>new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
-    const _botBubble=(html,ts='')=>`<div class="ai-bubble-wrap bot"><div class="ai-avatar">🤖</div><div><div class="ai-msg bot">${html}</div>${ts?`<div class="ai-ts">${ts}</div>`:''}</div></div>`;
-    const _userBubble=(html,ts='')=>`<div class="ai-bubble-wrap user"><div><div class="ai-msg user">${html}</div>${ts?`<div class="ai-ts">${ts}</div>`:''}</div></div>`;
-    const quickBtns=['📊 วิเคราะห์ตัวนี้','📰 มีข่าวอะไรบ้าง','💰 ควรซื้อตอนนี้ไหม','🎯 Entry / SL / TP คือเท่าไหร่','📈 แนวโน้มระยะสั้น'];
-    const quickRow=`<div class="ai-quick-row" id="aiQuickRow">${quickBtns.map(q=>`<button class="ai-quick-btn" onclick="document.getElementById('aiInput').value='${q.replace(/'/g,"\\'")}';sendAI('${s.t}')">${q}</button>`).join('')}</div>`;
     body.innerHTML=`
       <div style="display:flex;flex-direction:column;height:100%;min-height:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px 4px;flex-shrink:0">
-        <div style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse-dot 2s infinite"></span>Claude AI · ${s.t}</div>
-        <button onclick="aiHistory['${s.t}']=[];_saveAiHistory();drawerTab('ai',document.querySelector('.drawer-tab[onclick*=\\'ai\\']'))" style="background:none;border:none;font-size:10px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:6px;font-family:'Inter',sans-serif">🗑 ล้างประวัติ</button>
-      </div>
       <div class="ai-chat" id="aiChat">
-        ${hist.length
-          ? hist.map(m=>m.role==='user'?_userBubble(_escHtml(m.content)):_botBubble(mdToHtml(m.content))).join('')
-          : _botBubble(`👋 สวัสดีครับ! ผมคือ <b>Claude AI</b> ที่ปรึกษาการลงทุนส่วนตัวของคุณ<br>ถามเรื่อง <b>${s.t}</b> ได้เลย — มีข่าวล่าสุด, วิเคราะห์เทคนิค, Entry/SL/TP พร้อมให้บริการ ✨`,'')
-        }
+        ${hist.length?hist.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join(''):
+          `<div class="ai-msg bot">👋 สวัสดีครับ! ถามเกี่ยวกับ ${s.t} ได้เลย เช่น "วิเคราะห์หุ้นตัวนี้ให้หน่อย" หรือ "ควรซื้อตอนนี้ไหม"</div>`}
       </div>
-      ${!hist.length?quickRow:''}
       <div class="ai-input-row">
         <input class="ai-input" id="aiInput" placeholder="ถามเกี่ยวกับ ${s.t}..." onkeydown="if(event.key==='Enter')sendAI('${s.t}')">
-        <button class="ai-send" id="aiSendBtn" onclick="sendAI('${s.t}')">↑</button>
+        <button class="ai-send" onclick="sendAI('${s.t}')">↑</button>
       </div></div>`;
   } else if(tab==='news'){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
@@ -3517,79 +3424,47 @@ async function sendAI(ticker){
   const msg=input?.value?.trim();
   if(!msg)return;
   _aiSending=true;
-  const sendBtn=document.getElementById('aiSendBtn');
-  if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.4';}
+  const sendBtn=input?.nextElementSibling;
+  if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.5';}
   input.value='';
-  input.disabled=true;
   const s=stocks.find(x=>x.t===ticker);
   if(!aiHistory[ticker])aiHistory[ticker]=[];
   aiHistory[ticker].push({role:'user',content:msg});
   _saveAiHistory();
   const chat=document.getElementById('aiChat');
-  //숨기기 quick reply row
-  const qr=document.getElementById('aiQuickRow');
-  if(qr)qr.style.display='none';
-  // ── helper ──
-  const _now=()=>new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
-  const _userBubble=(txt)=>`<div class="ai-bubble-wrap user"><div><div class="ai-msg user">${_escHtml(txt)}</div><div class="ai-ts">${_now()}</div></div></div>`;
-  const _typingBubble=()=>`<div class="ai-bubble-wrap bot" id="aiTypingWrap"><div class="ai-avatar">🤖</div><div><div class="ai-msg bot"><div class="ai-typing"><span></span><span></span><span></span></div><span class="ai-status-lbl" id="aiStatusLbl">📰 กำลังดึงข่าวล่าสุด...</span></div></div></div>`;
   if(chat){
-    chat.innerHTML+=_userBubble(msg)+_typingBubble();
+    chat.innerHTML+=`<div class="ai-msg user">${_escHtml(msg)}</div><div class="ai-msg bot" id="aiLoading"><span style="opacity:0.6;font-size:11px">🤖 Claude Haiku กำลังวิเคราะห์...</span></div>`;
     chat.scrollTop=chat.scrollHeight;
   }
-  const _setStatus=(t)=>{const el=document.getElementById('aiStatusLbl');if(el)el.textContent=t;};
-  // โหลด candle ถ้ายังไม่มี
+  // โหลด candle ถ้ายังไม่มี เพื่อให้ indicator ครบ
   if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
     try{ await fetchCandles(ticker,60); await updateRSIFromCandles(ticker); }catch{}
   }
   const context=buildFullIndicatorContext(ticker, s.p);
-  // ── ดึงข่าวจริงจาก internet ──
-  let newsContext='';
-  let newsCount=0;
   try{
-    let newsItems=_loadNewsCache(ticker);
-    if(!newsItems||!newsItems.length){
-      newsItems=await fetchNewsForTicker(ticker);
-      if(newsItems&&newsItems.length) _saveNewsCache(ticker,newsItems);
-    }
-    if(newsItems&&newsItems.length){
-      newsCount=Math.min(newsItems.length,6);
-      newsContext=`\n\n📰 ข่าวล่าสุดของ ${ticker} (${newsCount} ชิ้น ดึงจาก internet จริงๆ)\n`+
-        newsItems.slice(0,newsCount).map((n,i)=>`${i+1}. [${n.s}] ${n.h}${n.x?'\n   → '+n.x.slice(0,150):''}`).join('\n');
-    }
-  }catch(e){console.warn('news fetch:',e);}
-  _setStatus('🤖 Claude กำลังวิเคราะห์...');
-  try{
-    const systemPrompt=`คุณคือนักเทรดมืออาชีพที่มีประสบการณ์ 20 ปี วิเคราะห์จาก indicator และข่าวจริงที่ให้มา
+    const systemPrompt=`คุณคือนักเทรดมืออาชีพที่มีประสบการณ์ 20 ปี วิเคราะห์จาก indicator ครบทุกตัวที่ให้มา
 กฎเหล็ก:
 - ตัดสินใจให้ชัดเสมอ ห้ามพูดกลางๆ หรือ "ขึ้นอยู่กับ..."
 - ทุกคำตอบต้องมี: สรุปชัด + เหตุผล + entry/SL/TP ถ้าถามเรื่องซื้อขาย
 - ให้น้ำหนัก indicator: RSI, MACD, Supertrend, Volume สำคัญที่สุด
-- ถ้าถามเรื่องข่าว ให้สรุปจากข่าวที่ได้มา ระบุแหล่งที่มาและวันที่ด้วย
-- อธิบายเป็นภาษาชาวบ้านเข้าใจง่าย ใช้ emoji แทน bullet
-- ห้ามใช้ ## ** --- ห้ามใช้ศัพท์อังกฤษเยอะ
-- ถ้าหุ้นน่าซื้อ/ไม่น่าซื้อ บอกตรงๆ พร้อมเหตุผล
-- ถ้าไม่มีข่าวในข้อมูล บอกตรงๆ ว่าไม่พบ แนะนำ Bloomberg/Reuters`;
-    const userPrompt=`${context}${newsContext}\n\nประวัติ:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
-    const reply=await callAI_Chat(systemPrompt, userPrompt, 1000);
+- อธิบายเป็นภาษาชาวบ้าน เช่น "โมเมนตัมกำลังดี" แทน "MACD bullish crossover"
+- ใช้ emoji แทน bullet ห้ามใช้ ## ** --- ห้ามใช้ศัพท์อังกฤษ
+- ถ้าหุ้นน่าซื้อ บอกตรงๆ ถ้าไม่น่าซื้อ บอกตรงๆ พร้อมเหตุผล`;
+    const userPrompt=`${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
+    const reply=await callAI_Chat(systemPrompt, userPrompt, 800);
     const replyText=reply||'❌ ไม่ได้รับคำตอบ กรุณาลองใหม่';
     aiHistory[ticker].push({role:'assistant',content:replyText});
     _saveAiHistory();
-    // แทน typing bubble ด้วย bot bubble จริง
-    const typingWrap=document.getElementById('aiTypingWrap');
-    if(typingWrap){
-      const newsBadge=newsCount>0?`<div class="ai-news-badge">📰 ข่าวจริง ${newsCount} ชิ้น</div>`:'';
-      typingWrap.outerHTML=`<div class="ai-bubble-wrap bot"><div class="ai-avatar">🤖</div><div>${newsBadge}<div class="ai-msg bot">${mdToHtml(replyText)}</div><div class="ai-ts">${_now()}</div></div></div>`;
-    }
+    const loading=document.getElementById('aiLoading');
+    if(loading){loading.id='';loading.innerHTML=mdToHtml(replyText);}
     if(chat)chat.scrollTop=chat.scrollHeight;
   }catch(e){
-    const typingWrap=document.getElementById('aiTypingWrap');
-    if(typingWrap) typingWrap.outerHTML=`<div class="ai-bubble-wrap bot"><div class="ai-avatar">🤖</div><div><div class="ai-msg bot">❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง</div></div></div>`;
+    const loading=document.getElementById('aiLoading');
+    if(loading){loading.id='';loading.textContent='❌ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';}
   }finally{
     _aiSending=false;
+    const sendBtn=document.getElementById('aiInput')?.nextElementSibling;
     if(sendBtn){sendBtn.disabled=false;sendBtn.style.opacity='';}
-    if(input) input.disabled=false;
-    input?.focus();
   }
 }
 
