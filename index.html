@@ -6961,12 +6961,29 @@ async function loadEconNews(){
   });
   merged=merged.slice(0,8);
 
+  // ถ้า Server ส่งข่าวน้อยกว่า 4 ใบ เติมด้วย AI
+  let usedAI=false;
+  if(merged.length<4){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 ข่าวจาก Server น้อยเกินไป เติมด้วย AI...</div>';
+    const aiExtra=await _fetchEconNewsAI();
+    const existKeys=new Set(merged.map(i=>i.title.slice(0,50).toLowerCase()));
+    const toAdd=aiExtra.filter(i=>!existKeys.has(i.title.slice(0,50).toLowerCase()));
+    merged=[...merged,...toAdd].slice(0,8);
+    usedAI=true;
+  }
+
   body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
   const translated=await _translateNewsGemini(merged);
   _econNewsCache['all']=translated;
   _econNewsCacheTime['all']=Date.now();
   const tsEl=document.getElementById('newsLastUpdated');
-  if(tsEl){const d=new Date();tsEl.innerHTML=`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.25);border-radius:8px;padding:2px 7px;color:var(--green);font-weight:600">🌐 Server</span> ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
+  if(tsEl){const d=new Date();const hh=d.getHours().toString().padStart(2,'0');const mm=d.getMinutes().toString().padStart(2,'0');
+    if(usedAI){
+      tsEl.innerHTML=`<span style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:2px 7px;color:var(--gold);font-weight:600">🌐+🤖 Mix</span> ${hh}:${mm}`;
+    } else {
+      tsEl.innerHTML=`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.25);border-radius:8px;padding:2px 7px;color:var(--green);font-weight:600">🌐 Server</span> ${hh}:${mm}`;
+    }
+  }
   renderEconNews(translated,body);
 }
 
