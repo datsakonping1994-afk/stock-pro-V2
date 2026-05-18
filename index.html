@@ -4581,9 +4581,11 @@ async function wsConnect() {
         d.data.forEach(tick => {
           const s = stocks.find(x => x.t === tick.s);
           if (s && tick.p > 0) {
-            if (!s.prevClose && s.p > 0) s.prevClose = s.p;
             s.p = tick.p;
-            if (s.prevClose > 0) s.c = +((tick.p - s.prevClose) / s.prevClose * 100).toFixed(2);
+            // คำนวณ % เฉพาะเมื่อมี prevClose จริงๆ จาก Finnhub httpPoll
+            if (s.prevClose > 0) {
+              s.c = +((tick.p - s.prevClose) / s.prevClose * 100).toFixed(2);
+            }
             updateCardLive(s);
           }
         });
@@ -4783,7 +4785,11 @@ function _extractQuoteFromParsed(parsed){
     if(!res) return null;
     const meta=res.meta;
     const price=meta.regularMarketPrice||meta.previousClose;
-    const prev=meta.chartPreviousClose||meta.regularMarketPreviousClose||meta.previousClose;
+    // ใช้ regularMarketChangePercent ก่อน — แม่นกว่า chartPreviousClose
+    const chgPct=meta.regularMarketChangePercent;
+    if(price>0&&chgPct!=null) return{p:+price.toFixed(2),c:+chgPct.toFixed(2)};
+    // fallback: คำนวณจาก previousClose
+    const prev=meta.regularMarketPreviousClose||meta.previousClose;
     if(price>0&&prev>0) return{p:+price.toFixed(2),c:+((price-prev)/prev*100).toFixed(2)};
   }
   if(parsed._type==='quote'){
