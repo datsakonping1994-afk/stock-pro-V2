@@ -6907,7 +6907,7 @@ async function loadEconNews(){
   if(_econNewsCache['all']?.length&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
     renderEconNews(_econNewsCache['all'],body); return;
   }
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...<br><span style="font-size:10px;opacity:0.6;margin-top:4px;display:block">จะใช้ RSS backup หากเซิร์ฟเวอร์ช้า</span></div>';
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
 
   const allQueries=Object.values(_econQueries);
   const results=await Promise.allSettled(allQueries.map(q=>_fetchEconNews(q)));
@@ -6916,7 +6916,7 @@ async function loadEconNews(){
   const seen=new Set();
   let merged=[];
   results.forEach(r=>{
-    if(r.status!=='fulfilled'||!r.value?.length) return;
+    if(r.status!=='fulfilled'||!Array.isArray(r.value)||!r.value.length) return;
     r.value.forEach(item=>{
       const key=(item.title||'').slice(0,60).toLowerCase();
       if(seen.has(key)) return;
@@ -6926,7 +6926,17 @@ async function loadEconNews(){
   });
 
   if(!merged.length){
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:28px;margin-bottom:10px">📡</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">ไม่สามารถโหลดข่าวได้</div><div style="color:var(--text3);line-height:1.7">เซิร์ฟเวอร์ข่าวและ RSS backup<br>ตอบสนองช้าหรือไม่มีการเชื่อมต่อ<br><br>กด <span style="color:var(--gold)">🔄</span> เพื่อลองใหม่</div></div>';
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังเรียก AI สร้างข่าว...<br><span style="font-size:10px;opacity:0.5;display:block;margin-top:6px">Server ข่าวไม่ตอบสนอง ใช้ AI สรุปแทน</span></div>';
+    const aiItems=await _fetchEconNewsAI();
+    if(aiItems.length){
+      _econNewsCache['all']=aiItems;
+      _econNewsCacheTime['all']=Date.now();
+      const tsEl=document.getElementById('newsLastUpdated');
+      if(tsEl){const d=new Date();tsEl.innerHTML=`<span style="background:rgba(100,210,255,0.12);border:1px solid rgba(100,210,255,0.25);border-radius:8px;padding:2px 7px;color:var(--ice);font-weight:600">🤖 AI</span> ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
+      renderEconNews(aiItems,body);
+    } else {
+      body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:28px;margin-bottom:10px">📡</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">ไม่สามารถโหลดข่าวได้</div><div style="color:var(--text3);line-height:1.8">กด <span style="color:var(--gold)">🔄</span> เพื่อลองใหม่</div></div>';
+    }
     return;
   }
 
@@ -6956,7 +6966,7 @@ async function loadEconNews(){
   _econNewsCache['all']=translated;
   _econNewsCacheTime['all']=Date.now();
   const tsEl=document.getElementById('newsLastUpdated');
-  if(tsEl){const d=new Date();tsEl.textContent=`อัพเดท ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
+  if(tsEl){const d=new Date();tsEl.innerHTML=`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.25);border-radius:8px;padding:2px 7px;color:var(--green);font-weight:600">🌐 Server</span> ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
   renderEconNews(translated,body);
 }
 
@@ -7044,9 +7054,8 @@ async function _translateNewsGemini(items){
   return items.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:'',titleOrig:it.title}));
 }
 
-// ── _fetchEconNews: Worker → RSS fallback ──
+// ── _fetchEconNews: Worker (10s timeout) — returns null on fail ──
 async function _fetchEconNews(query){
-  // 1) ลอง Worker ก่อน (timeout 10 วิ)
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),10000);
@@ -7058,39 +7067,31 @@ async function _fetchEconNews(query){
       const data=await r.json();
       if(Array.isArray(data)&&data.length>0) return data;
     }
-  }catch(e){console.warn('econ-news worker:',e.message);}
+  }catch(e){console.warn('econ-news:',e.message);}
+  return null;
+}
 
-  // 2) Fallback: Google News RSS ผ่าน allorigins (ไม่ต้อง API key)
+// ── _fetchEconNewsAI: AI-generated news when endpoint is down ──
+async function _fetchEconNewsAI(){
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const isoNow=new Date().toISOString();
+  const prompt=`Today is ${today}. Generate 8 realistic financial news headlines on: Fed/rates, inflation, major earnings, trade/geopolitics, AI/tech. Return ONLY a JSON array, no markdown:\n[{"title":"...","source":"Reuters","pubDate":"${isoNow}","link":"#","titleTH":"...","summaryTH":"..."},...]\ntitleTH=Thai translation. summaryTH=1-sentence Thai summary. Use only Reuters/Bloomberg/CNBC/MarketWatch/AP as source.`;
   try{
-    const rssUrl=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-    const proxies=[
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-      `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
-      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
-    ];
-    let xml=null;
-    for(const proxy of proxies){
-      try{
-        const ctrl2=new AbortController();
-        const tid2=setTimeout(()=>ctrl2.abort(),8000);
-        const r2=await fetch(proxy,{signal:ctrl2.signal});
-        clearTimeout(tid2);
-        if(r2.ok){xml=await r2.text();break;}
-      }catch{}
-    }
-    if(!xml) return [];
-    const parser=new DOMParser();
-    const doc=parser.parseFromString(xml,'application/xml');
-    const items=[...doc.querySelectorAll('item')].slice(0,6);
-    return items.map(it=>{
-      const title=it.querySelector('title')?.textContent||'';
-      const link=it.querySelector('link')?.textContent||it.querySelector('guid')?.textContent||'#';
-      const pubDate=it.querySelector('pubDate')?.textContent||'';
-      const srcEl=it.querySelector('source');
-      const source=srcEl?.textContent||'Google News';
-      return{title,link,pubDate:pubDate?new Date(pubDate).toISOString():new Date().toISOString(),source,titleTH:null,summaryTH:null};
-    }).filter(i=>i.title);
-  }catch(e){console.warn('econ-news rss fallback:',e.message);}
+    const raw=await callAI_Brief(
+      'You are a financial news aggregator. Return ONLY a valid JSON array. No markdown, no extra text.',
+      prompt, 1200
+    );
+    if(!raw) return [];
+    const parsed=_parseNewsJson(raw);
+    if(parsed.length>0) return parsed.map(it=>({
+      title:it.title||'',
+      source:it.source||'Reuters',
+      pubDate:it.pubDate||new Date().toISOString(),
+      link:it.link||'#',
+      titleTH:it.titleTH||it.title||'',
+      summaryTH:it.summaryTH||'',
+    }));
+  }catch(e){console.warn('AI news fallback:',e.message);}
   return [];
 }
 
@@ -7104,11 +7105,13 @@ function renderEconNews(items, body){
     const ago=item.pubDate?_timeAgo(new Date(item.pubDate)):'';
     const titleDisplay=item.titleTH||_escHtml(_stripNewsSource(item.title));
     const isTop=topSrc.some(s=>item.source?.includes(s));
+    const isAI=!item.link||item.link==='#';
     const srcBadge=isTop
       ?`<span style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:1px 7px;font-size:9px;color:var(--gold);font-weight:700">${_escHtml(item.source)}</span>`
       :`<span style="font-size:10px;color:var(--text3)">${_escHtml(item.source||'News')}</span>`;
     return`<a href="${_escHtml(item.link||'#')}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
       <div style="background:var(--bg2);border:1px solid ${isTop?'rgba(201,168,76,0.2)':'var(--border)'};border-radius:14px;padding:14px;transition:all 0.15s">
+        ${isAI?'<div style="font-size:9px;color:var(--ice);background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:6px;padding:2px 7px;display:inline-block;margin-bottom:6px;font-family:Syne,sans-serif;font-weight:700;letter-spacing:0.5px">🤖 AI GENERATED</div>':''}
         <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px">${titleDisplay}</div>
         ${item.summaryTH?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px">${item.summaryTH}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
