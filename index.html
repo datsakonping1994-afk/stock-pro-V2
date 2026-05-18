@@ -5472,17 +5472,14 @@ async function fetchPolygonQuote(ticker){
     if(!key) return null;
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),4000);
-    // ใช้ snapshot endpoint — ได้ราคา + prev close ในครั้งเดียว
-    const r=await fetch(`https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${encodeURIComponent(ticker)}?apiKey=${key}`,{signal:ctrl.signal});
+    // ใช้ prev day endpoint — ข้อมูลถูกต้องกว่า snapshot สำหรับ free tier
+    const r=await fetch(`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=true&apiKey=${key}`,{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     const d=await r.json();
-    const snap=d?.ticker;
-    const price=snap?.day?.c||snap?.lastTrade?.p||snap?.prevDay?.c;
-    const prev=snap?.prevDay?.c;
-    if(!price||price<=0) return null;
-    const chg=prev&&prev>0?+((price-prev)/prev*100).toFixed(2):0;
-    return{p:+price.toFixed(2),c:chg};
+    const result=d?.results?.[0];
+    if(!result||!result.c||result.c<=0) return null;
+    return{p:+result.c.toFixed(2),c:result.o>0?+((result.c-result.o)/result.o*100).toFixed(2):0};
   }catch{ return null; }
 }
 
@@ -5577,7 +5574,7 @@ async function testCohereKey(){
     const r=await fetch('https://api.cohere.com/v2/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'command-r-plus',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
+      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
       signal:ctrl.signal
     });
     clearTimeout(tid);
@@ -6738,7 +6735,7 @@ async function _cohereTranslate(items){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+COHERE_KEY},
       body:JSON.stringify({
-        model:'command-r-plus',
+        model:'command-r-plus-08-2024',
         messages:[{role:'user',content:prompt}],
         max_tokens:2000
       }),
