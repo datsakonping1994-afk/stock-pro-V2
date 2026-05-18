@@ -1341,7 +1341,12 @@ let candleCache={}, liveCache={};
 let currentSector='all', currentSort='chg', searchQuery='';
 let currentDrawerTicker=null;
 let currentDrawerTab='tech';
-let watchlist=new Set((()=>{ try{ return JSON.parse(localStorage.getItem('_sp_watchlist')||'[]'); }catch{ return []; } })());
+let watchlist=new Set((()=>{
+  try{ const ls=localStorage.getItem('_sp_watchlist'); if(ls) return JSON.parse(ls); }catch{}
+  try{ const ss=sessionStorage.getItem('_sp_watchlist'); if(ss) return JSON.parse(ss); }catch{}
+  try{ const m=document.cookie.match(/_sp_watchlist=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
+  return [];
+})());
 let showWatchlistOnly=false;
 let priceAlerts=(()=>{ try{ return JSON.parse(localStorage.getItem('_sp_alerts')||'[]'); }catch{ return []; } })(); // [{ticker,price,dir,triggered}]
 // ── Persistent cooldown (survives reload/background) ──
@@ -1641,7 +1646,10 @@ function addAlertFromDrawer(){
 
 // ── Watchlist ──
 function saveWatchlist(){
-  try{ localStorage.setItem('_sp_watchlist', JSON.stringify([...watchlist])); }catch{}
+  const _wlData=JSON.stringify([...watchlist]);
+  try{ localStorage.setItem('_sp_watchlist', _wlData); }catch{}
+  try{ sessionStorage.setItem('_sp_watchlist', _wlData); }catch{}
+  try{ const d=new Date(); d.setFullYear(d.getFullYear()+1); document.cookie=`_sp_watchlist=${encodeURIComponent(_wlData)};expires=${d.toUTCString()};path=/;SameSite=Lax`; }catch{}
   updateWlCount();
 }
 
@@ -7308,6 +7316,26 @@ function removePortPosition(ticker){
   renderPortfolio();
 }
 
+
+
+function sellShares(ticker){
+  const pos = portfolio.find(p=>p.t===ticker);
+  if(!pos) return;
+  const input = prompt(`ขาย ${ticker} กี่หุ้น? (ถืออยู่ ${pos.shares} หุ้น)`);
+  if(!input) return;
+  const sell = parseFloat(input);
+  if(isNaN(sell) || sell <= 0){ toast('⚠️ จำนวนไม่ถูกต้อง'); return; }
+  if(sell >= pos.shares){
+    removePortPosition(ticker);
+    toast(`✅ ขาย ${ticker} ออกทั้งหมดแล้ว`);
+  } else {
+    pos.shares = +(pos.shares - sell).toFixed(4);
+    savePortfolio();
+    renderPortfolio();
+    toast(`✅ ขาย ${ticker} ${sell} หุ้น เหลือ ${pos.shares} หุ้น`);
+  }
+}
+
 function renderPortfolio(){
   const list = document.getElementById('portHoldingsList');
   if(!list) return;
@@ -7371,13 +7399,20 @@ function renderPortfolio(){
           <div style="font-size:14px;font-weight:700;font-family:'Manrope',sans-serif;color:${pnlColor}">${curPrice>0?(isUp?'+':'')+pnl.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})+' ('+(isUp?'+':'')+pnlPct.toFixed(2)+'%)':'--'}</div>
         </div>
       </div>
+      <!-- ปุ่มขาย -->
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button data-sell-ticker="${safeTicker}" class="port-sell-btn" style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:8px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif">💰 ขายหุ้น</button>
+        <button data-remove-ticker="${safeTicker}" class="port-remove-btn" style="background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:10px;padding:8px 14px;font-size:12px;color:var(--red);cursor:pointer">🗑️</button>
+      </div>
     </div>`;
   });
   list.innerHTML=html;
   // FIX: Event delegation สำหรับปุ่มลบ — ป้องกัน XSS จาก inline onclick
   list.onclick=(e)=>{
-    const btn=e.target.closest('.port-remove-btn');
-    if(btn&&btn.dataset.removeTicker) removePortPosition(btn.dataset.removeTicker);
+    const removeBtn=e.target.closest('.port-remove-btn');
+    if(removeBtn&&removeBtn.dataset.removeTicker) removePortPosition(removeBtn.dataset.removeTicker);
+    const sellBtn=e.target.closest('.port-sell-btn');
+    if(sellBtn&&sellBtn.dataset.sellTicker) sellShares(sellBtn.dataset.sellTicker);
   };
   // Summary
   const totalPnl = totalVal - totalCost;
