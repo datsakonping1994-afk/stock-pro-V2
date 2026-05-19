@@ -7185,59 +7185,48 @@ async function analyzeMarketNewsWithAI(){
   if(!resultEl||!btn) return;
 
   resultEl.style.display='block';
-  resultEl.innerHTML=`<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">🤖 AI กำลังวิเคราะห์ข่าวตลาด...</div>`;
+  resultEl.innerHTML=`<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">🤖 AI กำลังวิเคราะห์ตลาดวันนี้...</div>`;
   btn.disabled=true;
 
-  // รวบรวมข่าวที่โหลดไว้แล้วในหน้า
+  // รวบรวมข่าวจาก cache ที่โหลดไว้แล้ว
   let newsContext='';
   try{
-    const newsEls=document.querySelectorAll('#econNewsBody .news-item-title, #econNewsBody .news-title');
-    const titles=[];
-    newsEls.forEach(el=>{ if(el.textContent.trim()) titles.push(el.textContent.trim()); });
-
-    // ถ้าไม่มีใน DOM ดึงจาก cache
-    if(!titles.length&&_econNewsCache['all']?.length){
-      _econNewsCache['all'].slice(0,8).forEach((n,i)=>{
-        titles.push(n.titleTH||n.title||n.headline||'');
-      });
+    // ลอง econNewsCache ก่อน
+    if(_econNewsCache['all']?.length){
+      const titles=_econNewsCache['all'].slice(0,8).map((n,i)=>`${i+1}. ${n.titleTH||n.title||n.headline||''}`).filter(t=>t.length>3);
+      if(titles.length) newsContext='ข่าวตลาดล่าสุด:\n'+titles.join('\n');
     }
-
-    // fallback ดึงใหม่จาก Yahoo RSS
-    if(!titles.length){
-      const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
-      if(r.ok){
-        const xml=await r.text();
-        const rx=/<title><!\[CDATA\[(.*?)\]\]><\/title>/g;
-        let m; let i=0;
-        while((m=rx.exec(xml))!==null&&i<8){ titles.push(m[1]); i++; }
-      }
-    }
-
-    if(titles.length){
-      newsContext=titles.slice(0,8).map((t,i)=>`${i+1}. ${t}`).join('\n');
+    // ลอง liveNewsCache
+    if(!newsContext){
+      const cached=Object.values(liveNewsCache||{}).flatMap(c=>c.items||[]).slice(0,5);
+      if(cached.length) newsContext='ข่าวหุ้นล่าสุด:\n'+cached.map((n,i)=>`${i+1}. ${n.h||n.title||''}`).join('\n');
     }
   }catch{}
 
-  if(!newsContext){
-    resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ ไม่พบข่าว กด 🔄 รีเฟรชข่าวก่อนครับ</div>`;
-    btn.disabled=false;
-    return;
-  }
-
+  // ดึงข้อมูลตลาดที่มีอยู่
+  const up=stocks.filter(s=>s.c>0).length;
+  const dn=stocks.filter(s=>s.c<0).length;
+  const topG=stocks.filter(s=>s.c>3).sort((a,b)=>b.c-a.c).slice(0,5).map(s=>`${s.t}+${s.c}%`).join(', ');
+  const topL=stocks.filter(s=>s.c<-3).sort((a,b)=>a.c-b.c).slice(0,5).map(s=>`${s.t}${s.c}%`).join(', ');
+  const oversold=stocks.filter(s=>(rsiData[s.t]||50)<=40).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
   const spyChg=marketCtx?.SPY?.change||0;
   const qqqChg=marketCtx?.QQQ?.change||0;
   const fng=window._fngForAI;
 
-  const sys='คุณคือนักวิเคราะห์การลงทุน วิเคราะห์ข่าวตลาดและบอกผลกระทบต่อการลงทุน ตอบภาษาไทยกระชับ ห้ามใช้ ** # หรือ Markdown ใช้แค่ emoji';
-  const prompt=`ข่าวตลาดวันนี้:
-${newsContext}
-
-ตลาด: SPY ${spyChg>=0?'+':''}${spyChg}% | QQQ ${qqqChg>=0?'+':''}${qqqChg}%${fng?` | Fear&Greed ${fng.value}/100`:''}
+  const sys='คุณคือนักวิเคราะห์การลงทุนมืออาชีพ วิเคราะห์ภาวะตลาดและให้คำแนะนำ ตอบภาษาไทยกระชับ ห้ามใช้ ** # หรือ Markdown ใช้แค่ emoji';
+  const prompt=`ข้อมูลตลาดวันนี้:
+📊 SPY ${spyChg>=0?'+':''}${spyChg}% | QQQ ${qqqChg>=0?'+':''}${qqqChg}%
+😱 Fear & Greed: ${fng?`${fng.value}/100 (${fng.text})`:'N/A'}
+📈 ขึ้น ${up} ตัว | ลง ${dn} ตัว
+🚀 ขึ้นแรง: ${topG||'ไม่มี'}
+📉 ลงแรง: ${topL||'ไม่มี'}
+💹 Oversold: ${oversold||'ไม่มี'}
+${newsContext?'\n'+newsContext:''}
 
 วิเคราะห์ 3 ข้อ:
-1️⃣ ข่าวไหนกระทบตลาดมากที่สุด และผลกระทบเป็นบวกหรือลบ
-2️⃣ กลุ่มหุ้นไหนได้ประโยชน์ / เสียประโยชน์จากข่าวนี้
-3️⃣ กลยุทธ์วันนี้ควรทำอะไร`;
+1️⃣ ภาวะตลาดวันนี้ Risk-On หรือ Risk-Off และเพราะอะไร
+2️⃣ หุ้นไหนน่าจับตา / น่าระวัง
+3️⃣ กลยุทธ์วันนี้`;
 
   try{
     const result=await callAI_Analyze(sys,prompt,500);
