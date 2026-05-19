@@ -1051,7 +1051,7 @@ function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]
 const stocks=[
   // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
   // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
-  {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"12.4%",target:28.0},
+  {t:"XAU",n:"Gold (XAU/USD)",p:3300.0,c:0,pe:null,mktcap:"commodity",rev:null,earn:null,div:null,beta:0.1,short:null,target:3500.0,_isGold:true},
   {t:"EOSE",n:"Eos Energy",p:8.01,c:25.94,pe:null,mktcap:"0.8B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.2,short:"18.1%",target:12.0},
   {t:"SLNH",n:"Soluna Holdings",p:1.83,c:20.39,pe:null,mktcap:"0.1B",rev:"22%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"9.2%",target:4.0},
   {t:"MU",n:"Micron Technology",p:105.0,c:0,pe:12.8,mktcap:"116B",rev:"38%",earn:"มิ.ย. 2026",div:"0.5%",beta:1.6,short:"1.8%",target:140.0},
@@ -1095,19 +1095,8 @@ const stocks=[
   {t:"AMSC",n:"American Superconductor",p:0,c:0,pe:null,mktcap:"0.8B",rev:"42%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"10.3%",target:35.0},
   {t:"APP",n:"Applovin",p:0,c:0,pe:85.0,mktcap:"120B",rev:"44%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"3.8%",target:380.0},
   {t:"COST",n:"Costco Wholesale",p:0,c:0,pe:52.0,mktcap:"420B",rev:"8%",earn:"ก.ย. 2026",div:"0.7%",beta:0.7,short:"1.2%",target:1050.0},
-  {t:"MCO",n:"Moodys Corp",p:0,c:0,pe:38.0,mktcap:"82B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.1,short:"1.0%",target:520.0},
-  {t:"CBOE",n:"Cboe Global Markets",p:0,c:0,pe:22.0,mktcap:"21B",rev:"9%",earn:"ส.ค. 2026",div:"1.2%",beta:0.6,short:"0.8%",target:230.0},
   {t:"UNH",n:"UnitedHealth Group",p:0,c:0,pe:18.0,mktcap:"420B",rev:"12%",earn:"ก.ค. 2026",div:"1.8%",beta:0.5,short:"0.9%",target:620.0},
-  {t:"ABT",n:"Abbott Laboratories",p:0,c:0,pe:24.0,mktcap:"195B",rev:"7%",earn:"ก.ค. 2026",div:"1.9%",beta:0.7,short:"0.8%",target:145.0},
   {t:"BRK.B",n:"Berkshire Hathaway B",p:0,c:0,pe:21.0,mktcap:"950B",rev:"5%",earn:"ส.ค. 2026",div:null,beta:0.9,short:"0.4%",target:520.0},
-  {t:"CAVA",n:"CAVA Group",p:0,c:0,pe:180.0,mktcap:"18B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.9,short:"8.2%",target:120.0},
-  {t:"RDDT",n:"Reddit",p:0,c:0,pe:null,mktcap:"22B",rev:"61%",earn:"ส.ค. 2026",div:null,beta:2.2,short:"6.4%",target:180.0},
-  {t:"LUNR",n:"Intuitive Machines",p:0,c:0,pe:null,mktcap:"2.1B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:3.1,short:"14.2%",target:25.0},
-  {t:"RCAT",n:"Red Cat Holdings",p:0,c:0,pe:null,mktcap:"0.6B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.5,short:"11.8%",target:18.0},
-  {t:"UUUU",n:"Energy Fuels",p:0,c:0,pe:null,mktcap:"0.9B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"9.6%",target:12.0},
-  {t:"NNE",n:"Nano Nuclear Energy",p:0,c:0,pe:null,mktcap:"1.2B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"16.4%",target:30.0},
-  {t:"AFRM",n:"Affirm Holdings",p:0,c:0,pe:null,mktcap:"18B",rev:"36%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"12.1%",target:65.0},
-  {t:"SEZL",n:"Sezzle",p:0,c:0,pe:22.0,mktcap:"0.8B",rev:"48%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"8.8%",target:280.0},
   {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026",div:null,beta:1.2,short:"0.7%",target:1150.0},
   {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026",div:"0.7%",beta:0.5,short:"0.8%",target:1050.0},
   {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"6.1%",target:60.0},
@@ -1125,8 +1114,6 @@ const stocks=[
   {t:"MDB",n:"MongoDB",p:190.0,c:0,pe:null,mktcap:"13B",rev:"22%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.8%",target:250.0},
   {t:"NET",n:"Cloudflare",p:110.0,c:0,pe:null,mktcap:"36B",rev:"27%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"2.6%",target:140.0},
   {t:"TSLA",n:"Tesla",p:295.0,c:0,pe:85.2,mktcap:"949B",rev:"2%",earn:"ก.ค. 2026",div:null,beta:2.3,short:"3.2%",target:300.0},
-  {t:"RIVN",n:"Rivian",p:13.5,c:0,pe:null,mktcap:"14B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"10.4%",target:18.0},
-  {t:"LCID",n:"Lucid Motors",p:2.8,c:0,pe:null,mktcap:"7B",rev:"52%",earn:"ส.ค. 2026",div:null,beta:3.0,short:"13.6%",target:4.0},
   {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
   {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
   {t:"PYPL",n:"PayPal",p:68.0,c:0,pe:14.8,mktcap:"67B",rev:"6%",earn:"ก.ค. 2026",div:null,beta:1.5,short:"2.8%",target:85.0},
@@ -2132,6 +2119,8 @@ XOM:`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><rect width="36
 };
 
 function buildLogoFallback(t){
+  // ทองคำ — icon พิเศษ
+  if(t==='XAU') return `<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d4a843,#f0c860);border-radius:10px;font-size:14px">🥇</span>`;
   // gradient fallback — แสดงระหว่างรอโหลดโลโก้จริง
   const palettes=[['#6366f1','#8b5cf6'],['#06b6d4','#0284c7'],['#10b981','#059669'],['#f59e0b','#d97706'],['#ef4444','#dc2626'],['#ec4899','#db2777'],['#14b8a6','#0d9488'],['#f97316','#ea580c']];
   let hash=0;for(const c of t)hash=(hash*31+c.charCodeAt(0))&0xffffffff;
@@ -5010,6 +4999,26 @@ async function fetchYahooQuote(ticker){
 
 // ── fetchSingleQuoteFast: Worker cache → Finnhub → Polygon → Yahoo ──
 async function fetchSingleQuoteFast(s){
+  // ทองคำ — ดึงจาก Worker Gold API หรือ Yahoo Finance
+  if(s._isGold||s.t==='XAU'){
+    // ลอง Worker /gold ก่อน
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const r=await fetch(ALERT_WORKER+'/gold',{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d.ok&&d.price>0) return{p:d.price,c:d.changePct||0};
+      }
+    }catch{}
+    // fallback Yahoo Finance GC=F
+    try{
+      const q=await fetchYahooQuote('GC=F');
+      if(q&&q.p>0) return q;
+    }catch{}
+    return null;
+  }
   // ลองดึงจาก Worker cache ก่อน (เร็วที่สุด)
   if(window._workerPriceCache&&window._workerPriceCache[s.t]){
     return window._workerPriceCache[s.t];
