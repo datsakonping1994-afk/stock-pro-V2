@@ -1986,7 +1986,7 @@ function makeCard(s){
       </div>
       <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="background:${frating.bg};border:1px solid ${frating.border};border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;color:${frating.color};font-family:'Syne',sans-serif;letter-spacing:0.5px;box-shadow:${frating.shadow||'none'}">${frating.label}</div>
+          <div style="background:${frating.bg};border:1px solid ${frating.border};border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;color:${frating.color};font-family:'Syne',sans-serif;letter-spacing:0.5px;box-shadow:${frating.shadow||'none'}">${frating.label} <span style="opacity:0.7;font-size:9px">${fscore}</span></div>
           <div class="wl-btn ${watchlist.has(s.t)?'active':''}" onclick="event.stopPropagation();toggleWatchlist('${s.t}',this)" id="wl-${s.t}">${watchlist.has(s.t)?'⭐':'☆'}</div>
         </div>
         <div class="card-price" id="price-v2-${s.t}">${s.p>0?fmt(s.p):'<span style="color:var(--text3);font-size:14px">กำลังโหลด...</span>'}</div>
