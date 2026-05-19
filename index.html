@@ -726,6 +726,11 @@ canvas.bigchart{width:100%;height:100%}
           <button id="newsRefreshBtn" onclick="refreshNewsManual()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;transition:all 0.15s">🔄</button>
         </div>
       </div>
+      <!-- ปุ่ม AI วิเคราะห์ข่าว -->
+      <button onclick="analyzeMarketNewsWithAI()" id="newsAiBtn" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
+        🤖 AI วิเคราะห์ข่าวตลาดวันนี้
+      </button>
+      <div id="newsAiResult" style="display:none;margin-bottom:12px"></div>
       <div id="econNewsBody" style="display:flex;flex-direction:column;gap:10px;padding-bottom:16px">
         <div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>
       </div>
@@ -6666,16 +6671,28 @@ async function renderNewsTab(ticker){
   if(!body) return;
   const pane=body.querySelector('.news-pane')||(()=>{const d=document.createElement('div');d.className='news-pane';body.appendChild(d);return d;})();
   const now=Date.now();
-  const FETCH_TTL=300000; // memory cache 5 นาที
+  const FETCH_TTL=300000;
 
-  // 1. ลอง memory cache ก่อน (เร็วสุด)
+  // เพิ่มปุ่ม AI วิเคราะห์ข่าว ด้านบน
+  let aiBtn=body.querySelector('.news-ai-btn');
+  if(!aiBtn){
+    aiBtn=document.createElement('div');
+    aiBtn.className='news-ai-btn';
+    aiBtn.style.cssText='padding:0 0 10px 0';
+    aiBtn.innerHTML=`
+      <button onclick="analyzeNewsWithAI('${ticker}')" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">
+        🤖 <span>AI วิเคราะห์ข่าว ${ticker}</span>
+      </button>
+      <div id="aiNewsResult-${ticker}" style="margin-top:8px;display:none"></div>`;
+    body.insertBefore(aiBtn,pane);
+  }
+
   const memCached=liveNewsCache[ticker];
   if(memCached&&memCached.translated&&(now-memCached.ts<FETCH_TTL)){
     _renderNewsItems(pane,memCached.items,ticker);
     return;
   }
 
-  // 2. ลอง localStorage cache (30 นาที)
   const localCached=_loadNewsCache(ticker);
   if(localCached){
     liveNewsCache[ticker]={items:localCached,ts:now,translated:true};
@@ -6683,25 +6700,19 @@ async function renderNewsTab(ticker){
     return;
   }
 
-  // 3. ดึงใหม่
   pane.innerHTML=`<div style="color:var(--dim);font-size:12px;padding:14px 0;text-align:center">⏳ กำลังโหลดข่าว...</div>`;
   const raw=await fetchLiveNews(ticker);
   let items=null;
   let isStatic=false;
 
   if(raw&&raw.length){
-    // แสดงภาษาอังกฤษก่อนทันที
     _renderNewsItems(pane,raw,ticker);
     pane.innerHTML+=`<div id="translateStatus" style="color:var(--gold);font-size:11px;padding:8px 0;text-align:center">⏳ กำลังแปลเป็นภาษาไทย...</div>`;
 
     const translated=await translateNewsItems(raw);
     const didTranslate=translated.some((n,i)=>n.h!==raw[i]?.h);
 
-    // บันทึก localStorage ถ้าแปลสำเร็จ
-    if(didTranslate){
-      _saveNewsCache(ticker, translated);
-    }
-
+    if(didTranslate) _saveNewsCache(ticker, translated);
     translated.forEach(n=>{if(n.h) _translatedCache[n.h.slice(0,60)]=n;});
     liveNewsCache[ticker]={items:translated,ts:now,translated:didTranslate};
 
@@ -6720,6 +6731,60 @@ async function renderNewsTab(ticker){
     isStatic=!memCached?.items;
     _renderNewsItems(pane,items,ticker,isStatic);
   }
+}
+
+// ── AI วิเคราะห์ข่าว ──
+async function analyzeNewsWithAI(ticker){
+  const resultEl=document.getElementById(`aiNewsResult-${ticker}`);
+  const btn=document.querySelector(`.news-ai-btn button`);
+  if(!resultEl) return;
+
+  // แสดง loading
+  resultEl.style.display='block';
+  resultEl.innerHTML=`<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">🤖 AI กำลังวิเคราะห์ข่าว ${ticker}...</div>`;
+  if(btn) btn.disabled=true;
+
+  // ดึงข่าว
+  let newsItems=liveNewsCache[ticker]?.items||[];
+  if(!newsItems.length){
+    const raw=await fetchLiveNews(ticker);
+    if(raw&&raw.length) newsItems=raw;
+  }
+
+  if(!newsItems.length){
+    resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ ไม่พบข่าวสำหรับ ${ticker}</div>`;
+    if(btn) btn.disabled=false;
+    return;
+  }
+
+  // รวบรวมข่าว
+  const newsContext=newsItems.slice(0,5).map((n,i)=>`${i+1}. ${n.h||n.title||''}`).join('\n');
+  const curPrice=stocks.find(s=>s.t===ticker)?.p||0;
+
+  const sys='คุณคือนักวิเคราะห์หุ้นมืออาชีพ วิเคราะห์ข่าวและบอกผลกระทบต่อราคาหุ้น ตอบภาษาไทยกระชับ ห้ามใช้ ** # หรือ Markdown ใช้แค่ emoji และข้อความธรรมดา';
+  const prompt=`หุ้น: ${ticker} ราคาปัจจุบัน $${curPrice.toFixed(2)}
+
+ข่าวล่าสุด:
+${newsContext}
+
+วิเคราะห์ 3 ข้อ:
+1️⃣ ข่าวนี้กระทบราคาบวกหรือลบ และเพราะอะไร
+2️⃣ ระยะสั้น (1-5 วัน) ราคาน่าจะไปทางไหน
+3️⃣ ควร ซื้อ / ถือ / ขาย ตอนนี้`;
+
+  try{
+    const result=await callAI_Analyze(sys, prompt, 400);
+    if(result){
+      resultEl.innerHTML=`
+        <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${result}</div>
+        <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:4px">วิเคราะห์โดย AI — ไม่ใช่คำแนะนำการลงทุน</div>`;
+    } else {
+      resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ AI ไม่ตอบสนอง ลองใหม่อีกครั้ง</div>`;
+    }
+  }catch(e){
+    resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ Error: ${e.message}</div>`;
+  }
+  if(btn) btn.disabled=false;
 }
 
 // ── Google Translate (unofficial, ไม่ต้องใช้ key) ──
@@ -7027,10 +7092,8 @@ const WORKER_AI=WORKER;
 
 async function runAIMarketSummaryV2(){
   // ── ดึงข้อมูลสดก่อนวิเคราะห์ ──
-  // 1. อัพเดท SPY/QQQ ล่าสุด
   await fetchMarketContext();
 
-  // 2. อัพเดทราคาหุ้นล่าสุดจาก Finnhub (top 10 by market cap)
   if(hasApiKey()){
     const topStocks=stocks.slice(0,10);
     await Promise.allSettled(topStocks.map(async s=>{
@@ -7047,6 +7110,31 @@ async function runAIMarketSummaryV2(){
     }));
   }
 
+  // ── ดึงข่าวตลาดล่าสุด ──
+  let newsContext='';
+  try{
+    // ดึงข่าวจาก GNews หรือ cache
+    const gnewsKey=localStorage.getItem('gnewsKey')||'';
+    let newsItems=[];
+    if(gnewsKey){
+      const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=5&apikey=${gnewsKey}`,{signal:AbortSignal.timeout(6000)});
+      if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
+    }
+    // fallback Yahoo Finance RSS
+    if(!newsItems.length){
+      const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
+      if(r.ok){
+        const xml=await r.text();
+        const rx=/<title><!\[CDATA\[(.*?)\]\]><\/title>/g;
+        let m; let i=0;
+        while((m=rx.exec(xml))!==null&&i<5){ newsItems.push({title:m[1]}); i++; }
+      }
+    }
+    if(newsItems.length){
+      newsContext='\n📰 ข่าวตลาดล่าสุด:\n'+newsItems.slice(0,5).map((n,i)=>`${i+1}. ${n.title||n.headline||''}`).join('\n');
+    }
+  }catch{}
+
   // ── รวบรวมข้อมูล ──
   const up=stocks.filter(s=>s.c>0).length, dn=stocks.filter(s=>s.c<0).length;
   const flat=stocks.filter(s=>s.c===0).length;
@@ -7062,10 +7150,7 @@ async function runAIMarketSummaryV2(){
   }).map(s=>s.t).slice(0,5).join(', ');
   const oversold=stocks.filter(s=>(rsiData[s.t]||50)<=35).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
   const overbought=stocks.filter(s=>(rsiData[s.t]||50)>=70).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
-
-  // Earnings ใกล้ (7 วัน)
   const upcomingEarn=earningsData.filter(e=>_getEarningsSt(e)==='soon').map(e=>`${e.t}(${e.d})`).join(', ');
-
   const stats=getTradeStats();
   const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const nowTime=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
@@ -7081,7 +7166,7 @@ async function runAIMarketSummaryV2(){
 💹 RSI ต่ำ (ถูกเกินจริง): ${oversold||'ไม่มี'}
 🔴 RSI สูง (แพงเกินจริง): ${overbought||'ไม่มี'}
 📅 Earnings เร็วๆ นี้: ${upcomingEarn||'ไม่มี'}
-${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}
+${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}${newsContext}
 
 วิเคราะห์ 4 หัวข้อ (ตัดสินใจชัด ไม่กลางๆ):
 1) 🌎 ตลาดวันนี้: บรรยากาศโดยรวม Risk-On หรือ Risk-Off? ทำไม?
@@ -7093,7 +7178,81 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 }
 
 
-// ── Economic News ──
+// ── AI วิเคราะห์ข่าวตลาดหน้า News ──
+async function analyzeMarketNewsWithAI(){
+  const resultEl=document.getElementById('newsAiResult');
+  const btn=document.getElementById('newsAiBtn');
+  if(!resultEl||!btn) return;
+
+  resultEl.style.display='block';
+  resultEl.innerHTML=`<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">🤖 AI กำลังวิเคราะห์ข่าวตลาด...</div>`;
+  btn.disabled=true;
+
+  // รวบรวมข่าวที่โหลดไว้แล้วในหน้า
+  let newsContext='';
+  try{
+    const newsEls=document.querySelectorAll('#econNewsBody .news-item-title, #econNewsBody .news-title');
+    const titles=[];
+    newsEls.forEach(el=>{ if(el.textContent.trim()) titles.push(el.textContent.trim()); });
+
+    // ถ้าไม่มีใน DOM ดึงจาก cache
+    if(!titles.length&&_econNewsCache['all']?.length){
+      _econNewsCache['all'].slice(0,8).forEach((n,i)=>{
+        titles.push(n.titleTH||n.title||n.headline||'');
+      });
+    }
+
+    // fallback ดึงใหม่จาก Yahoo RSS
+    if(!titles.length){
+      const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
+      if(r.ok){
+        const xml=await r.text();
+        const rx=/<title><!\[CDATA\[(.*?)\]\]><\/title>/g;
+        let m; let i=0;
+        while((m=rx.exec(xml))!==null&&i<8){ titles.push(m[1]); i++; }
+      }
+    }
+
+    if(titles.length){
+      newsContext=titles.slice(0,8).map((t,i)=>`${i+1}. ${t}`).join('\n');
+    }
+  }catch{}
+
+  if(!newsContext){
+    resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ ไม่พบข่าว กด 🔄 รีเฟรชข่าวก่อนครับ</div>`;
+    btn.disabled=false;
+    return;
+  }
+
+  const spyChg=marketCtx?.SPY?.change||0;
+  const qqqChg=marketCtx?.QQQ?.change||0;
+  const fng=window._fngForAI;
+
+  const sys='คุณคือนักวิเคราะห์การลงทุน วิเคราะห์ข่าวตลาดและบอกผลกระทบต่อการลงทุน ตอบภาษาไทยกระชับ ห้ามใช้ ** # หรือ Markdown ใช้แค่ emoji';
+  const prompt=`ข่าวตลาดวันนี้:
+${newsContext}
+
+ตลาด: SPY ${spyChg>=0?'+':''}${spyChg}% | QQQ ${qqqChg>=0?'+':''}${qqqChg}%${fng?` | Fear&Greed ${fng.value}/100`:''}
+
+วิเคราะห์ 3 ข้อ:
+1️⃣ ข่าวไหนกระทบตลาดมากที่สุด และผลกระทบเป็นบวกหรือลบ
+2️⃣ กลุ่มหุ้นไหนได้ประโยชน์ / เสียประโยชน์จากข่าวนี้
+3️⃣ กลยุทธ์วันนี้ควรทำอะไร`;
+
+  try{
+    const result=await callAI_Analyze(sys,prompt,500);
+    if(result){
+      resultEl.innerHTML=`
+        <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">${result}</div>
+        <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:4px">วิเคราะห์โดย AI — ไม่ใช่คำแนะนำการลงทุน</div>`;
+    } else {
+      resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3);text-align:center">⚠️ AI ไม่ตอบสนอง ลองใหม่อีกครั้ง</div>`;
+    }
+  }catch(e){
+    resultEl.innerHTML=`<div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text3)">⚠️ Error: ${e.message}</div>`;
+  }
+  btn.disabled=false;
+}
 const _econQueries={
   fed:'Federal Reserve FOMC interest rate decision Powell rate hike cut',
   macro:'GDP inflation CPI PPI jobs report nonfarm payroll unemployment',
