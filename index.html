@@ -769,7 +769,7 @@ canvas.bigchart{width:100%;height:100%}
       <button class="ctrl-btn active" onclick="sortStocks('chg',this)">% Change</button>
       <button class="ctrl-btn" onclick="sortStocks('name',this)">A–Z</button>
       <button class="ctrl-btn" onclick="sortStocks('rsi',this)">RSI</button>
-      <button class="ctrl-btn" onclick="sortStocks('mcap',this)">Market Cap</button>
+      <button class="ctrl-btn" onclick="sortStocks('score',this)">🎯 Buy Score</button>
       <button class="ctrl-btn" onclick="sortStocks('near',this)">ใกล้แนวรับ</button>
       <button class="ctrl-btn" onclick="sortStocks('div',this)">💰 ปันผล</button>
       <button class="ctrl-btn" onclick="sortStocks('fundscore',this)">⭐ Fund Score</button>
@@ -2030,8 +2030,14 @@ function makeCard(s){
     </div>
     <div class="card-stats">
       <div class="card-stat">
-        <div class="card-stat-val">${s.mktcapLive||s.mktcap||'N/A'}${s.mktcapLive?'<span style="font-size:8px;color:var(--accent);margin-left:2px">●</span>':''}</div>
-        <div class="card-stat-lbl">Mkt Cap</div>
+        ${(()=>{
+          const cd=candleCache[s.t]?.data;
+          const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
+          const scoreVal=sc?Math.round(sc.score):null;
+          const scoreColor=scoreVal>=55?'var(--green)':scoreVal>=45?'var(--gold)':'var(--text2)';
+          return `<div class="card-stat-val" style="color:${scoreColor}">${scoreVal?scoreVal+'/100':'--'}</div>`;
+        })()}
+        <div class="card-stat-lbl">Buy Score</div>
       </div>
       <div class="card-stat">
         <div class="card-stat-val" style="color:${parseFloat(s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.rev||'N/A'}</div>
@@ -2232,6 +2238,18 @@ function getVisibleStocks(){
   if(currentSort==='chg') list.sort((a,b)=>b.c-a.c);
   else if(currentSort==='name') list.sort((a,b)=>a.t.localeCompare(b.t));
   else if(currentSort==='rsi') list.sort((a,b)=>(rsiData[a.t]||50)-(rsiData[b.t]||50));
+  else if(currentSort==='score'){
+    list.sort((a,b)=>{
+      const getScore=s=>{
+        const cd=candleCache[s.t]?.data;
+        if(!cd||cd._mock) return -1;
+        const s1=getS1(s.t,s.p), r1=getR1(s.t,s.p);
+        const sc=_calcBuyScore(s.t,s.p,s1,r1);
+        return sc?sc.score:-1;
+      };
+      return getScore(b)-getScore(a);
+    });
+  }
   else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcapLive||b.mktcap)-parseMcap(a.mktcapLive||a.mktcap));
   else if(currentSort==='near'){
     list.sort((a,b)=>{
@@ -3853,14 +3871,15 @@ async function _aiPreScreenSignal(ticker, price, s1, r1, score){
 - ตอบได้แค่ "BUY" หรือ "SKIP" เท่านั้น ห้ามมีคำอื่น
 - BUY = สัญญาณน่าเชื่อถือ ควรแจ้งเตือน
 - SKIP = สัญญาณหลอก ไม่ควรแจ้งเตือน
-เกณฑ์ตัดสิน:
-- ถ้า Supertrend Bearish และ ราคาห่างจาก S1 มากกว่า 3% → SKIP
-- ถ้า RSI > 70 → SKIP (Overbought)
-- ถ้า Volume ต่ำกว่าปกติมาก (volRatio < 0.5) → SKIP
-- ถ้า Candle ล่าสุดเป็นแท่งแดงใหญ่และห่างจาก S1 มากกว่า 2% → SKIP
-- ถ้า SPY และ QQQ ลงแรงกว่า -2.5% → SKIP (ตลาดร่วงหนักมาก)
-- ถ้า Fear&Greed < 10 (Extreme Fear สุดขีด) และ score < 70 → SKIP
-- ผ่านเกณฑ์ส่วนใหญ่ → BUY`;
+เกณฑ์ตัดสิน (ต้องผิดอย่างน้อย 2 ข้อถึงจะ SKIP):
+- ถ้า RSI > 70 → ผิด 1 ข้อ
+- ถ้า Supertrend Bearish และราคาห่างจาก S1 มากกว่า 3% → ผิด 1 ข้อ
+- ถ้า Volume ต่ำมาก (volRatio < 0.5) → ผิด 1 ข้อ
+- ถ้า Candle ล่าสุดเป็นแท่งแดงใหญ่และห่างจาก S1 มากกว่า 2% → ผิด 1 ข้อ
+- ถ้า SPY และ QQQ ลงแรงกว่า -2.5% → ผิด 1 ข้อ
+- ถ้า Fear&Greed < 10 และ score < 70 → ผิด 1 ข้อ
+ผิดแค่ข้อเดียว → BUY ได้
+ผิด 2 ข้อขึ้นไป → SKIP`;
 
   const prompt = `${indCtx}
 
@@ -4076,6 +4095,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   const overlay=document.getElementById('signalOverlay');
   overlay.className='signal-overlay';
   overlay.style.display='flex';
+  overlay.style.pointerEvents='auto';
   overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
   // FIX: escape ticker & name เพื่อป้องกัน XSS จาก innerHTML
   const safeTicker=_escHtml(ticker);
@@ -4089,7 +4109,10 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
       <div class="signal-handle"></div>
       <div class="signal-header">
         <div class="signal-title">🔔 Buy Signal Detected</div>
-        <div class="signal-close" onclick="closeSignal()">✕</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="signal-close" onclick="closeSignal()">✕</div>
+        </div>
       </div>
       <div class="signal-ticker-row">
         <div class="signal-logo" id="sig-logo-${safeTicker}">${buildLogoFallback(ticker)}</div>
@@ -4159,9 +4182,6 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   // AI analysis
   _analyzeSignalAI(ticker,price,s1,r1,score);
   _analyzeRiskReward(ticker,price,s1,r1,score);
-  // auto-close หลัง 30 วินาที
-  if(window._signalAutoClose) clearTimeout(window._signalAutoClose);
-  window._signalAutoClose=setTimeout(()=>closeSignal(),30000);
 }
 
 // FIX: AI result cache — ลด API call ซ้ำ (TTL 15 นาที)
@@ -4325,7 +4345,12 @@ ${shortFloat>15?'⚠️ Short Float สูง มีโอกาส Short Squeez
 
 function closeSignal(){
   if(window._signalAutoClose){ clearTimeout(window._signalAutoClose); window._signalAutoClose=null; }
-  document.getElementById('signalOverlay').style.display='none';
+  const overlay=document.getElementById('signalOverlay');
+  if(overlay){
+    overlay.style.display='none';
+    overlay.style.pointerEvents='none';
+    overlay.innerHTML='';
+  }
 }
 
 // ── Telegram ──
@@ -8136,20 +8161,24 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(score>=BUY_SIGNAL_THRESHOLD){
-    // ส่ง signal ทันที ไม่รอ AI
-    showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
-    const tgMsg=`🟢 <b>Buy Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}\n⏳ AI กำลังวิเคราะห์...`;
-    sendTG(tgMsg);
-
-    // AI วิเคราะห์ทีหลัง ส่งต่อเป็นข้อความที่ 2
+    // AI คัดก่อน popup
+    let aiApproved = true;
     if(hasCandleData){
-      _aiPreScreenSignal(ticker, price, s1, r1, score).then(approved=>{
-        const verdict = approved
-          ? `✅ AI: สัญญาณน่าเชื่อถือ ผ่านเกณฑ์`
-          : `⚠️ AI: ระวัง อาจเป็นสัญญาณหลอก`;
-        sendTG(`🤖 <b>AI วิเคราะห์ ${ticker}</b>\n${verdict}\nScore ${Math.round(score)}/100 | RSI ${rsiData[ticker]||'N/A'}`);
-      }).catch(()=>{});
+      try{
+        aiApproved = await _aiPreScreenSignal(ticker, price, s1, r1, score);
+      }catch{
+        aiApproved = score >= 55;
+      }
     }
+
+    if(aiApproved){
+      showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
+    }
+
+    // ส่ง Telegram เสมอ พร้อมบอกว่า AI ผ่านไหม
+    const aiTag = aiApproved ? '' : '\n⚠️ AI: ระวัง อาจเป็นสัญญาณหลอก';
+    const tgMsg=`🟢 <b>Buy Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}${aiTag}`;
+    sendTG(tgMsg);
   }
 }
 
