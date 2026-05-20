@@ -11,11 +11,11 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg0:#080a0f;
-  --bg1:#0d1117;
-  --bg2:#141922;
-  --bg3:#1c2333;
-  --bg4:#232d3f;
+  --bg0:#060810;
+  --bg1:#0a0e15;
+  --bg2:#111620;
+  --bg3:#181f2e;
+  --bg4:#1e2738;
   --gold:#c9a84c;
   --gold2:#e8c87a;
   --ice:#64d2ff;
@@ -24,9 +24,9 @@
   --green2:#69f0ae;
   --red:#ff4d6a;
   --red2:#ff8096;
-  --text:#e8edf5;
-  --text2:#8b99b5;
-  --text3:#4a5568;
+  --text:#f0f4fc;
+  --text2:#a8b8d0;
+  --text3:#6b7fa0;
   --border:#1e2a3a;
   --border2:#243040;
   --glow-gold:rgba(201,168,76,0.15);
@@ -34,7 +34,7 @@
   --glow-green:rgba(0,230,118,0.12);
   --yellow:#ffd700;
   --accent:#c9a84c;
-  --dim:#4a5568;
+  --dim:#6b7fa0;
 }
 html,body{height:100%;background:var(--bg0);color:var(--text);overflow:hidden}
 #app::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(100,210,255,0.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(201,168,76,0.04) 0%,transparent 50%);pointer-events:none;z-index:0}
@@ -449,6 +449,7 @@ canvas.bigchart{width:100%;height:100%}
 .earn-badge{font-size:10px;font-weight:600;padding:3px 6px;border-radius:6px;text-align:center;white-space:nowrap}
 .earn-done{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
 .earn-soon{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25)}
+.earn-miss{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.25)}
 .earn-grp{font-size:10px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 2px 4px;margin-top:8px}
 
 
@@ -1071,7 +1072,7 @@ function $id(id){
 }
 function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
 
-const STOCKS_DEFAULT=[
+const stocks=[
   // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
   // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
   {t:"XAU",n:"Gold (XAU/USD)",p:3300.0,c:0,pe:null,mktcap:"commodity",rev:null,earn:null,div:null,beta:0.1,short:null,target:3500.0,_isGold:true},
@@ -1153,22 +1154,6 @@ const STOCKS_DEFAULT=[
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
 ];
-
-// ── stocks persistence ──
-let stocks = (()=>{
-  try{
-    const saved=localStorage.getItem('_sp_stocks');
-    if(saved){
-      const arr=JSON.parse(saved);
-      if(Array.isArray(arr)&&arr.length>0) return arr;
-    }
-  }catch{}
-  return JSON.parse(JSON.stringify(STOCKS_DEFAULT));
-})();
-
-function saveStocks(){
-  try{ localStorage.setItem('_sp_stocks', JSON.stringify(stocks)); }catch{}
-}
 
 const rsiData={IWM:50.0,SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
 
@@ -3066,8 +3051,12 @@ function drawerTab(tab, btn){
     const profitRow = s.pe
       ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
       : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>';
-    const earnResRow = eData?.res
-      ? '<div class="ind-row"><span class="ind-name">ผล Earnings ล่าสุด</span><span class="ind-val">'+eData.res+'</span></div>' : '';
+    const earnResRow = eData?.res ? (()=>{
+      const isMiss=eData.res.includes('Miss')||eData.res.includes('❌');
+      const isBeat=eData.res.includes('Beat')||eData.res.includes('✅');
+      const cls=isBeat?'bull':isMiss?'bear':'neut';
+      return '<div class="ind-row"><span class="ind-name">ผล Earnings ล่าสุด</span><span class="ind-val '+cls+'">'+eData.res+'</span></div>';
+    })() : '';
     const earnDateRow = s.earn
       ? '<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">'+s.earn+'</span></div>' : '';
 
@@ -4653,7 +4642,6 @@ function addStock(){
   stocks.push({t,n:t,p:0,c:0,pe:null,mktcap:'N/A',rev:'N/A',earn:null});
   document.getElementById('addTickerInput').value='';
   toast('✅ เพิ่ม '+t+' แล้ว');
-  saveStocks();
   renderCards();
   renderStockManager();
   syncAlertsToWorker();
@@ -4664,7 +4652,6 @@ function removeStock(t){
   if(idx===-1) return;
   stocks.splice(idx,1);
   toast('🗑 ลบ '+t+' แล้ว');
-  saveStocks();
   renderCards();
   renderStockManager();
   syncAlertsToWorker();
@@ -7063,8 +7050,10 @@ function renderEarningsData(data, isLive=false){
     // แสดง actual ถ้ามี ไม่งั้นแสดง estimate
     const epsStr=e.epsActual||e.eps||'—';
     const revStr=e.revActual||e.rev||'—';
+    const isMissRes=e.res&&(e.res.includes('Miss')||e.res.includes('❌'));
+    const badgeClass=isDone?(isMissRes?'earn-miss':'earn-done'):'earn-soon';
     const badge=isDone
-      ?`<span class="earn-badge earn-done">${e.res||'✅ Done'}</span>`
+      ?`<span class="earn-badge ${badgeClass}">${e.res||'✅ Done'}</span>`
       :isSoon
       ?`<span class="earn-badge earn-soon">${countdown(e.d)||'⏳'}</span>`
       :`<span style="color:var(--dim);font-size:11px">—</span>`;
@@ -7724,7 +7713,6 @@ function addPortPosition(){
     // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
     if(!stocks.find(s=>s.t===ticker)){
       stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
-      saveStocks();
       // ดึงราคาทันที
       fetchSingleQuoteFast({t:ticker}).then(q=>{
         if(q&&q.p>0){
