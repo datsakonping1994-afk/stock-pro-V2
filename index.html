@@ -840,73 +840,6 @@ canvas.bigchart{width:100%;height:100%}
 
       <div class="settings-section">
         <div class="settings-section-title">API & Connection</div>
-        <!-- Finnhub key ย้ายไปเก็บใน Cloudflare Worker secret แล้ว — ไม่ต้องใส่ที่นี่ -->
-        <div class="settings-row" id="apiKeyRow">
-          <div style="width:100%">
-            <div class="settings-label">🔑 Finnhub API Key</div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://finnhub.io/dashboard" target="_blank" style="color:var(--ice);text-decoration:none">finnhub.io/dashboard</a> — ใช้ดึงราคาหุ้น Real-time</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="finnhubKeyInput" type="password" placeholder="d83v... (ใส่ key จาก Finnhub)" style="flex:1">
-              <button class="settings-btn" id="testApiBtn" onclick="testApiKey()">🔑 ทดสอบ</button>
-            </div>
-            <div id="apiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">🤖 Gemini API Key <span style="font-size:10px;color:var(--text3)">(สำหรับ AI)</span></div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--ice);text-decoration:none">aistudio.google.com/app/apikey</a> — วิเคราะห์หุ้น AI (ฟรี)</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="geminiKeyInput" type="password" placeholder="AIza..." style="flex:1">
-              <button class="settings-btn" id="testGeminiBtn" onclick="testGeminiKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="geminiKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">🟣 Anthropic API Key <span style="font-size:10px;color:var(--text3)">(Claude AI)</span></div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--ice);text-decoration:none">console.anthropic.com</a> — ใช้ Claude วิเคราะห์หุ้น</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="anthropicKeyInput" type="password" placeholder="sk-ant-..." style="flex:1">
-              <button class="settings-btn" id="testAnthropicBtn" onclick="testAnthropicKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="anthropicKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">⚡ Groq API Key <span style="font-size:10px;color:var(--text3)">(AI Fallback — ฟรี)</span></div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://console.groq.com/keys" target="_blank" style="color:var(--ice);text-decoration:none">console.groq.com</a> — ใช้เมื่อ Gemini ไม่ตอบสนอง</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input full" id="groqKeyInput" type="password" placeholder="gsk_...">
-              <button class="settings-btn" id="testGroqBtn" onclick="testGroqKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="groqKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">📐 Polygon.io API Key <span style="font-size:10px;color:var(--text3)">(Real-time Quote fallback)</span></div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://polygon.io/dashboard/api-keys" target="_blank" style="color:var(--ice);text-decoration:none">polygon.io</a> — ใช้ดึงราคา Real-time เมื่อ Finnhub ไม่ตอบสนอง (Free tier รองรับ)</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="polygonKeyInput" type="password" placeholder="H4aN... (มี key เริ่มต้นแล้ว)" style="flex:1">
-              <button class="settings-btn" id="testPolygonBtn" onclick="testPolygonKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="polygonKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">🌐 Cohere API Key <span style="font-size:10px;color:var(--text3)">(แปลข่าวภาษาไทย)</span></div>
-            <div class="settings-sublabel">ใส่ key จาก <a href="https://dashboard.cohere.com/api-keys" target="_blank" style="color:var(--ice);text-decoration:none">dashboard.cohere.com</a> — ใช้แปลข่าวเป็นภาษาไทย (Free tier รองรับ)</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-              <input class="settings-input" id="cohereKeyInput" type="password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="flex:1">
-              <button class="settings-btn" id="testCohereBtn" onclick="testCohereKey()">🧪 ทดสอบ</button>
-            </div>
-            <div id="cohereKeyStatus" style="display:none;margin-top:8px;padding:10px 14px;border-radius:10px;font-size:12px;font-family:'Inter',sans-serif;line-height:1.5"></div>
-          </div>
-        </div>
         <div class="settings-row">
           <div class="settings-label">Port Size (USD)</div>
           <input class="settings-input" id="portSizeInput" type="number" value="10000">
@@ -1197,7 +1130,6 @@ const STOCKS_DEFAULT=[
   {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
   {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
   {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
-  {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
@@ -1216,7 +1148,7 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={SMH:52.0,VIX:45.0,FPS:56.8,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0};
+const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0};
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -1239,7 +1171,6 @@ const fundExtra={
   RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
   IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
   NBIS:{de:0.18,fcf:'-$0.2B'},KTOS:{de:0.32,fcf:'$0.1B'},MP:{de:0.45,fcf:'-$0.2B'},
-  FPS:{de:0.30,fcf:null},
 };
 
 // ── คำนวณ Fundamental Score (0-100) ──
@@ -1301,7 +1232,7 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={SMH:200.0,VIX:14.0,FPS:38.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00};
+const sup0={SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00};
 
 const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
@@ -1313,7 +1244,7 @@ const sectorMap={'ETF':['SMH','VIX'],
   'EV':['TSLA'],
   'LatAm':['MELI'],
   'Consumer':['ELF','COST','UNH','CAVA','RDDT','AFRM','SEZL'],
-  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE','FPS'],
+  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE'],
 };
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
@@ -4219,7 +4150,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
     signalCard.addEventListener('touchstart',e=>{_sigSwipeStartY=e.touches[0].clientY;},{passive:true});
     signalCard.addEventListener('touchend',e=>{
       const dy=e.changedTouches[0].clientY-_sigSwipeStartY;
-      if(dy>80) closeSignal();
+      if(dy>40) closeSignal();
     },{passive:true});
   }
   // เล่นเสียงแจ้งเตือน
@@ -4228,6 +4159,9 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   // AI analysis
   _analyzeSignalAI(ticker,price,s1,r1,score);
   _analyzeRiskReward(ticker,price,s1,r1,score);
+  // auto-close หลัง 30 วินาที
+  if(window._signalAutoClose) clearTimeout(window._signalAutoClose);
+  window._signalAutoClose=setTimeout(()=>closeSignal(),30000);
 }
 
 // FIX: AI result cache — ลด API call ซ้ำ (TTL 15 นาที)
@@ -4390,6 +4324,7 @@ ${shortFloat>15?'⚠️ Short Float สูง มีโอกาส Short Squeez
 }
 
 function closeSignal(){
+  if(window._signalAutoClose){ clearTimeout(window._signalAutoClose); window._signalAutoClose=null; }
   document.getElementById('signalOverlay').style.display='none';
 }
 
