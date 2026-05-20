@@ -1168,7 +1168,22 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={IWM:50.0,SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
+const rsiData={}; // legacy — ใช้ getRSI(ticker) แทน
+
+// ── getRSI — ดึง RSI จาก candles จริง fallback hardcode ──
+function getRSI(ticker){
+  try{
+    const c=candleCache[ticker]?.data?.c;
+    if(c&&c.length>=15&&!candleCache[ticker]?.data?._mock){
+      const r=calcRSI(c,14);
+      if(r!=null&&!isNaN(r)){
+        getRSI(ticker)=+r.toFixed(1); // cache ไว้
+        return +r.toFixed(1);
+      }
+    }
+  }catch{}
+  return getRSI(ticker)||50;
+}
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -1317,28 +1332,8 @@ const histEarnings={
   V:[{q:"Q1'24",eps:2.51,epsEst:2.44,rev:8.8,revEst:8.6},{q:"Q2'24",eps:2.42,epsEst:2.42,rev:8.9,revEst:8.9},{q:"Q3'24",eps:2.71,epsEst:2.68,rev:9.1,revEst:9.1},{q:"Q4'24",eps:2.65,epsEst:2.58,rev:9.5,revEst:9.4},{q:"Q1'25",eps:2.76,epsEst:2.68,rev:9.6,revEst:9.6},{q:"Q2'25",eps:null,epsEst:2.95,rev:null,revEst:10.0}],
 };
 
-// ── Insider Activity Data (ย้อนหลัง 6 เดือน) ──
-const insiderData={
-  NVDA:[{name:'Jensen Huang',role:'CEO',type:'sell',shares:240000,price:138.5,date:'ม.ค. 2025',val:'$33.2M'},{name:'Colette Kress',role:'CFO',type:'sell',shares:60000,price:142.0,date:'ก.พ. 2025',val:'$8.5M'}],
-  AAPL:[{name:'Tim Cook',role:'CEO',type:'sell',shares:200000,price:225.0,date:'พ.ย. 2024',val:'$45.0M'},{name:'Luca Maestri',role:'CFO',type:'sell',shares:100000,price:220.0,date:'ธ.ค. 2024',val:'$22.0M'}],
-  TSLA:[{name:'Elon Musk',role:'CEO',type:'sell',shares:10000000,price:280.0,date:'ม.ค. 2025',val:'$2.8B'},{name:'Vaibhav Taneja',role:'CFO',type:'sell',shares:50000,price:295.0,date:'มี.ค. 2025',val:'$14.8M'}],
-  PLTR:[{name:'Peter Thiel',role:'Director',type:'sell',shares:1500000,price:80.0,date:'ธ.ค. 2024',val:'$120M'},{name:'Alex Karp',role:'CEO',type:'sell',shares:500000,price:120.0,date:'มี.ค. 2025',val:'$60M'}],
-  RKLB:[{name:'Peter Beck',role:'CEO',type:'buy',shares:200000,price:18.0,date:'ก.ย. 2024',val:'$3.6M'},{name:'Adam Spice',role:'CFO',type:'buy',shares:50000,price:22.0,date:'พ.ย. 2024',val:'$1.1M'}],
-  ASTS:[{name:'Abel Avellan',role:'CEO',type:'buy',shares:500000,price:22.0,date:'ส.ค. 2024',val:'$11.0M'},{name:'Scott Wisniewski',role:'CPO',type:'buy',shares:100000,price:25.0,date:'ต.ค. 2024',val:'$2.5M'}],
-  HIMS:[{name:'Andrew Dudum',role:'CEO',type:'sell',shares:800000,price:38.0,date:'ก.พ. 2025',val:'$30.4M'},{name:'Yemi Okupe',role:'CFO',type:'buy',shares:50000,price:32.0,date:'ม.ค. 2025',val:'$1.6M'}],
-  OKLO:[{name:'Jacob DeWitte',role:'CEO',type:'buy',shares:100000,price:35.0,date:'ก.พ. 2025',val:'$3.5M'},{name:'Caroline Cochran',role:'COO',type:'buy',shares:80000,price:40.0,date:'เม.ย. 2025',val:'$3.2M'}],
-  META:[{name:'Mark Zuckerberg',role:'CEO',type:'sell',shares:180000,price:550.0,date:'ม.ค. 2025',val:'$99M'},{name:'Sheryl Sandberg',role:'Board',type:'sell',shares:40000,price:580.0,date:'มี.ค. 2025',val:'$23.2M'}],
-  MSFT:[{name:'Satya Nadella',role:'CEO',type:'sell',shares:100000,price:430.0,date:'พ.ย. 2024',val:'$43.0M'},{name:'Amy Hood',role:'CFO',type:'sell',shares:40000,price:440.0,date:'ก.พ. 2025',val:'$17.6M'}],
-  AMZN:[{name:'Andy Jassy',role:'CEO',type:'sell',shares:300000,price:200.0,date:'ก.พ. 2025',val:'$60M'},{name:'Brian Olsavsky',role:'CFO',type:'sell',shares:60000,price:210.0,date:'มี.ค. 2025',val:'$12.6M'}],
-  CRWD:[{name:'George Kurtz',role:'CEO',type:'sell',shares:50000,price:340.0,date:'ม.ค. 2025',val:'$17M'},{name:'Burt Podbere',role:'CFO',type:'sell',shares:20000,price:350.0,date:'มี.ค. 2025',val:'$7M'}],
-  IONQ:[{name:'Peter Chapman',role:'CEO',type:'buy',shares:100000,price:38.0,date:'ต.ค. 2024',val:'$3.8M'},{name:'Thomas Kramer',role:'CFO',type:'buy',shares:30000,price:42.0,date:'ม.ค. 2025',val:'$1.3M'}],
-  HOOD:[{name:'Vlad Tenev',role:'CEO',type:'sell',shares:1000000,price:50.0,date:'ก.พ. 2025',val:'$50M'},{name:'Jason Warnick',role:'CFO',type:'buy',shares:100000,price:55.0,date:'มี.ค. 2025',val:'$5.5M'}],
-  AMD:[{name:'Lisa Su',role:'CEO',type:'sell',shares:150000,price:140.0,date:'ก.พ. 2025',val:'$21M'},{name:'Jean Hu',role:'CFO',type:'sell',shares:30000,price:135.0,date:'ม.ค. 2025',val:'$4.1M'}],
-  INTC:[{name:'Pat Gelsinger',role:'CEO',type:'buy',shares:200000,price:22.0,date:'ต.ค. 2024',val:'$4.4M'},{name:'David Zinsner',role:'CFO',type:'buy',shares:50000,price:20.0,date:'พ.ย. 2024',val:'$1.0M'}],
-  IREN:[{name:'Daniel Roberts',role:'CEO',type:'buy',shares:500000,price:10.0,date:'ม.ค. 2025',val:'$5.0M'},{name:'Lloyd Wall',role:'CFO',type:'buy',shares:200000,price:12.0,date:'มี.ค. 2025',val:'$2.4M'}],
-  LLY:[{name:'David Ricks',role:'CEO',type:'sell',shares:20000,price:850.0,date:'ก.พ. 2025',val:'$17M'},{name:'Anat Ashkenazi',role:'CFO',type:'sell',shares:5000,price:820.0,date:'มี.ค. 2025',val:'$4.1M'}],
-  NFLX:[{name:'Reed Hastings',role:'Chairman',type:'sell',shares:50000,price:900.0,date:'ม.ค. 2025',val:'$45M'},{name:'Greg Peters',role:'Co-CEO',type:'sell',shares:20000,price:950.0,date:'มี.ค. 2025',val:'$19M'}],
-};
+// insiderData removed — ใช้ live จาก Finnhub แทน
+const insiderData={};
 
 // ── Peer Comparison (กลุ่มหุ้นเดียวกัน) ──
 const peerGroups={
@@ -1984,7 +1979,7 @@ function makeCard(s){
   const s1=getS1(s.t,s.p);
   const r1=getR1(s.t,s.p);
   const pos=s1&&r1&&r1>s1?Math.min(100,Math.max(0,(s.p-s1)/(r1-s1)*100)):50;
-  const rsi=rsiData[s.t]||50;
+  const rsi=getRSI(s.t)||50;
   const zone=pos<15?'ใกล้แนวรับ 🎯':pos>85?'ใกล้แนวต้าน ⚠️':pos<40?'โซนต่ำ':'กลางช่วง';
 
   const div=document.createElement('div');
@@ -2031,12 +2026,18 @@ function makeCard(s){
     </div>
     <div class="card-stats">
       <div class="card-stat">
-        <div class="card-stat-val">${s.mktcap||'N/A'}</div>
+        <div class="card-stat-val">${s.mktcapLive||s.mktcap||'N/A'}</div>
         <div class="card-stat-lbl">Mkt Cap</div>
       </div>
       <div class="card-stat">
-        <div class="card-stat-val" style="color:${parseFloat(s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.rev||'N/A'}</div>
-        <div class="card-stat-lbl">Rev Growth</div>
+        ${(()=>{
+          const sig=(candleCache[s.t]?.data&&!candleCache[s.t]?.data?._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
+          const score=sig?.score??null;
+          const color=score==null?'var(--text3)':score>=58?'var(--green)':score>=45?'var(--gold)':'var(--text3)';
+          const label=score==null?'N/A':score>=58?'🟢 '+score:score>=45?'👀 '+score:score+'';
+          return `<div class="card-stat-val" style="color:${color}">${label}</div>
+        <div class="card-stat-lbl">Buy Score</div>`;
+        })()}
       </div>
       <div class="card-stat">
         <div class="card-stat-val">${s.pe?`P/E ${s.pe}`:'N/A'}</div>
@@ -2233,7 +2234,7 @@ function getVisibleStocks(){
   }
   if(currentSort==='chg') list.sort((a,b)=>b.c-a.c);
   else if(currentSort==='name') list.sort((a,b)=>a.t.localeCompare(b.t));
-  else if(currentSort==='rsi') list.sort((a,b)=>(rsiData[a.t]||50)-(rsiData[b.t]||50));
+  else if(currentSort==='rsi') list.sort((a,b)=>(getRSI(a.t)||50)-(getRSI(b.t)||50));
   else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcap)-parseMcap(a.mktcap));
   else if(currentSort==='near'){
     list.sort((a,b)=>{
@@ -2932,7 +2933,7 @@ function renderPeerComparison(ticker, containerId){
     const isCurrent=s.t===ticker;
     const peStr=s.pe?s.pe.toString():'N/A';
     const revStr=s.rev||'N/A';
-    const mcStr=s.mktcap||'N/A';
+    const mcStr=s.mktcapLive||s.mktcap||'N/A';
     const peColor=s.pe?(s.pe<25?'var(--green)':s.pe<50?'var(--gold)':'var(--red)'):'var(--text3)';
     const revNum=parseFloat(s.rev||0);
     const revColor=revNum>=20?'var(--green)':revNum>=0?'var(--gold)':'var(--red)';
@@ -2973,7 +2974,7 @@ function drawerTab(tab, btn){
   if(!s)return;
   const body=document.getElementById('drawerBody');
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
-  const rsi=rsiData[s.t]||50;
+  const rsi=getRSI(s.t)||50;
   if(tab==='tech'){
     // FIX: fetch candles ก่อนถ้ายังไม่มี แล้ว re-render indicator
     const _renderTech=()=>{
@@ -3278,7 +3279,7 @@ function drawerTab(tab, btn){
     const fundPrompt=
       'บริษัท: '+s.t+' ('+s.n+')\n'+
       'Sector: '+sector+'\n'+
-      'Market Cap: '+s.mktcap+'\n'+
+      'Market Cap: '+(s.mktcapLive||s.mktcap)+'\n'+
       'P/E Ratio: '+(s.pe||'ยังขาดทุน')+'\n'+
       'EPS: '+epsVal+'\n'+
       'Revenue: '+revVal+'\n'+
@@ -3586,7 +3587,7 @@ function buildFullIndicatorContext(ticker, price){
 
   // ── Fundamental ──
   let ctx=`📊 ข้อมูลหุ้น ${ticker} (${s.n})
-ราคา: $${price} (${s.c>=0?'+':''}${(+s.c).toFixed(2)}%) | MCap: ${s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
+ราคา: $${price} (${s.c>=0?'+':''}${(+s.c).toFixed(2)}%) | MCap: ${s.mktcapLive||s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
 แนวรับ S1: $${s1.toFixed(2)} | S2: $${getS2(ticker,price).toFixed(2)} | แนวต้าน R1: $${r1.toFixed(2)} | R2: $${getR2(ticker,price).toFixed(2)} | ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}%`;
 
   if(ind){
@@ -3648,7 +3649,7 @@ Elder Ray — Bull Power: ${ind.bullPower!=null?ind.bullPower.toFixed(3):'N/A'} 
     ctx+=`\n\n🎯 Buy Score: ${ind.score}/100
 Breakdown: ${ind.scoreBreakdown?.join(' | ')||'N/A'}`;
   } else {
-    ctx+=`\n\nRSI: ${rsiData[ticker]||'N/A'} (ข้อมูล indicator เพิ่มเติมยังโหลดไม่ครบ)`;
+    ctx+=`\n\nRSI: ${getRSI(ticker)||'N/A'} (ข้อมูล indicator เพิ่มเติมยังโหลดไม่ครบ)`;
   }
 
   // ── Market Context ──
@@ -3909,7 +3910,7 @@ async function checkExitSignal(ticker, price){
   if(!pos||!pos.avgPrice||!pos.shares) return;
 
   const pnlPct = ((price - pos.avgPrice) / pos.avgPrice * 100);
-  const rsi = rsiData[ticker]||50;
+  const rsi = getRSI(ticker)||50;
   const ind = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock
     ? _calcBuyScore(ticker, price, s1, r1) : null;
 
@@ -5968,7 +5969,7 @@ function _calcMacdSignal(closes, ticker){
 // ── _calcBuyScore ──
 function _calcBuyScore(ticker, price, s1, r1){
   const scoreBreakdown = [];
-  const rsi = rsiData[ticker]||50;
+  const rsi = getRSI(ticker)||50;
   const data = candleCache[ticker]?.data;
   const closes = data?.c||[];
   const highs  = data?.h||[];
@@ -7331,15 +7332,15 @@ async function runAIMarketSummaryV2(){
   const topG=stocks.filter(s=>s.c>3).sort((a,b)=>b.c-a.c).map(s=>`${s.t}+${s.c}%`).slice(0,5).join(', ');
   const topL=stocks.filter(s=>s.c<-3).sort((a,b)=>a.c-b.c).map(s=>`${s.t}${s.c}%`).slice(0,5).join(', ');
   const nearS=stocks.filter(s=>{const s1=getS1(s.t,s.p);return s.p>0&&((s.p-s1)/s1*100)<2;})
-    .map(s=>{const s1=getS1(s.t,s.p);const rsi=rsiData[s.t]||50;return`${s.t}(RSI ${rsi}, ห่าง S1 ${((s.p-s1)/s1*100).toFixed(1)}%)`;})
+    .map(s=>{const s1=getS1(s.t,s.p);const rsi=getRSI(s.t)||50;return`${s.t}(RSI ${rsi}, ห่าง S1 ${((s.p-s1)/s1*100).toFixed(1)}%)`;})
     .slice(0,5).join(', ');
   const bullishInd=stocks.filter(s=>{
     if(!candleCache[s.t]?.data||candleCache[s.t]?.data?._mock) return false;
     const ind=_calcBuyScore(s.t,s.p,getS1(s.t,s.p),getR1(s.t,s.p));
     return ind.supertrendBull&&ind.ribbonBull&&ind.score>=50;
   }).map(s=>s.t).slice(0,5).join(', ');
-  const oversold=stocks.filter(s=>(rsiData[s.t]||50)<=35).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
-  const overbought=stocks.filter(s=>(rsiData[s.t]||50)>=70).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
+  const oversold=stocks.filter(s=>(getRSI(s.t)||50)<=35).map(s=>`${s.t}(RSI ${getRSI(s.t)})`).join(', ');
+  const overbought=stocks.filter(s=>(getRSI(s.t)||50)>=70).map(s=>`${s.t}(RSI ${getRSI(s.t)})`).join(', ');
   const upcomingEarn=earningsData.filter(e=>_getEarningsSt(e)==='soon').map(e=>`${e.t}(${e.d})`).join(', ');
   const stats=getTradeStats();
   const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -7398,7 +7399,7 @@ async function analyzeMarketNewsWithAI(){
   const dn=stocks.filter(s=>s.c<0).length;
   const topG=stocks.filter(s=>s.c>3).sort((a,b)=>b.c-a.c).slice(0,5).map(s=>`${s.t}+${s.c}%`).join(', ');
   const topL=stocks.filter(s=>s.c<-3).sort((a,b)=>a.c-b.c).slice(0,5).map(s=>`${s.t}${s.c}%`).join(', ');
-  const oversold=stocks.filter(s=>(rsiData[s.t]||50)<=40).map(s=>`${s.t}(RSI ${rsiData[s.t]})`).join(', ');
+  const oversold=stocks.filter(s=>(getRSI(s.t)||50)<=40).map(s=>`${s.t}(RSI ${getRSI(s.t)})`).join(', ');
   const spyChg=marketCtx?.SPY?.change||0;
   const qqqChg=marketCtx?.QQQ?.change||0;
   const fng=window._fngForAI;
@@ -8093,7 +8094,7 @@ async function checkBuySignalFull(ticker,price){
     score=sig.score||0;
   } else {
     // Basic score ถ้า candle ยังโหลดไม่ได้จริงๆ
-    const rsi=rsiData[ticker]||50;
+    const rsi=getRSI(ticker)||50;
     score=
       (pctFromS1<=0.5?35:pctFromS1<=1.5?25:pctFromS1<=3?12:0)+
       (rsi<=30?30:rsi<=40?20:rsi<=50?10:rsi<=60?5:0);
@@ -8176,7 +8177,7 @@ function updateCardLive(s){
 async function updateRSIFromCandles(ticker){
   if(candleCache[ticker]?.data?.c){
     const rsi=calcRSI(candleCache[ticker].data.c,14);
-    if(rsi) rsiData[ticker]=+rsi.toFixed(1);
+    if(rsi) getRSI(ticker)=+rsi.toFixed(1);
   }
 }
 
@@ -8244,7 +8245,7 @@ async function runEarningsPreview(ticker){
   const eData=(window.earningsData||[]).find(e=>e.t===ticker);
   const fe=fundExtra[ticker]||{};
   const daysLeft=_getEarningsDaysLeft(s.earn);
-  const rsi=rsiData[ticker]||50;
+  const rsi=getRSI(ticker)||50;
   const fs=calcFundScore(s);
 
   // ดึงข้อมูล historical earnings ย้อนหลัง 4 ไตรมาส
@@ -8268,7 +8269,7 @@ async function runEarningsPreview(ticker){
 📅 Earnings Date: ${s.earn} (อีก ${daysLeft} วัน)
 💰 Consensus EPS Estimate: ${consensusEPS}
 📊 Consensus Revenue Estimate: ${consensusRev}
-📈 Revenue Growth: ${s.rev} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcap}
+📈 Revenue Growth: ${s.rev} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcapLive||s.mktcap}
 📉 RSI: ${rsi} | Beta: ${s.beta||'N/A'} | Short Float: ${s.short||'N/A'}
 🔄 Earnings ล่าสุด 4 ไตรมาส: ${histStr}
 💵 Free Cash Flow: ${fe.fcf||'N/A'} | D/E: ${fe.de!=null?fe.de:'N/A'}
@@ -8349,7 +8350,7 @@ async function runMorningBrief(){
       const s=stocks.find(x=>x.t===pos.t);
       if(!s) return null;
       const pnlPct=pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
-      const rsi=rsiData[pos.t]||50;
+      const rsi=getRSI(pos.t)||50;
       return `${pos.t}: P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}% | RSI ${rsi}${rsi<=35?' (Oversold)':rsi>=70?' (Overbought)':''}`;
     }).filter(Boolean);
     portSummary=portDetails.join('\n');
