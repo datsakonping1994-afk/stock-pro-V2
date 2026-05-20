@@ -2737,20 +2737,79 @@ async function fetchAnalystData(ticker){
         }
       }
     }
-    // ดึง basic financials (มี beta, 52w high/low, short interest)
-    const metricRes = await safeFetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`,{},1);
-    const metricData = await metricRes.json();
-    const m = metricData?.metric||{};
+    // ดึง basic financials — Finnhub ก่อน ถ้าไม่ได้ fallback Polygon
     const s = stocks.find(x=>x.t===ticker);
-    if(s){
-      if(m.beta!=null) s.beta = +m.beta.toFixed(2);
-      if(m['52WeekHigh']!=null) s.high52 = m['52WeekHigh'];
-      if(m['52WeekLow']!=null) s.low52 = m['52WeekLow'];
-      if(m['shortInterest']!=null){
-        const siPct = (m['shortInterest']/m['sharesOutstanding']*100);
-        if(!isNaN(siPct)) s.short = siPct.toFixed(1)+'%';
+    let metricOk=false;
+    try{
+      const metricRes = await safeFetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`,{},1);
+      const metricData = await metricRes.json();
+      const m = metricData?.metric||{};
+      if(s){
+        if(m.beta!=null) s.beta=+m.beta.toFixed(2);
+        if(m['52WeekHigh']!=null) s.high52=m['52WeekHigh'];
+        if(m['52WeekLow']!=null) s.low52=m['52WeekLow'];
+        if(m['shortInterest']!=null&&m['sharesOutstanding']!=null){
+          const siPct=(m['shortInterest']/m['sharesOutstanding']*100);
+          if(!isNaN(siPct)) s.short=siPct.toFixed(1)+'%';
+        }
+        if(m['peBasicExclExtraTTM']!=null){ s.pe=+m['peBasicExclExtraTTM'].toFixed(1); metricOk=true; }
+        else if(m['peTTM']!=null){ s.pe=+m['peTTM'].toFixed(1); metricOk=true; }
+        if(m['epsBasicExclExtraItemsTTM']!=null) s.epsLive=+m['epsBasicExclExtraItemsTTM'].toFixed(2);
+        if(m['revenueGrowthTTMYoy']!=null){ s.revLive=(m['revenueGrowthTTMYoy']*100).toFixed(1)+'%'; metricOk=true; }
+        if(m['marketCapitalization']!=null){
+          const mc=m['marketCapitalization'];
+          s.mktcapLive=mc>=1000?`$${(mc/1000).toFixed(1)}T`:`$${mc.toFixed(0)}B`;
+          metricOk=true;
+        }
       }
+    }catch(e){ console.warn('Finnhub metric error',e); }
+
+    // Fallback Polygon — ถ้า Finnhub ไม่ได้ข้อมูล
+    if(!metricOk && s){
+      try{
+        const polyKey=localStorage.getItem('polygonKey')||POLYGON_KEY||'';
+        if(polyKey){
+          const polyRes=await safeFetch(`https://api.polygon.io/v3/reference/tickers/${ticker}?apiKey=${polyKey}`,{},1);
+          const polyData=await polyRes.json();
+          const r=polyData?.results||{};
+          if(r.market_cap!=null){
+            const mc=r.market_cap/1e9;
+            s.mktcapLive=mc>=1000?`$${(mc/1000).toFixed(1)}T`:`$${mc.toFixed(0)}B`;
+          }
+          // ดึง financials จาก Polygon
+          const polyFinRes=await safeFetch(`https://api.polygon.io/vX/reference/financials?ticker=${ticker}&limit=1&apiKey=${polyKey}`,{},1);
+          const polyFinData=await polyFinRes.json();
+          const fin=polyFinData?.results?.[0]?.financials||{};
+          if(fin.income_statement?.diluted_earnings_per_share?.value!=null)
+            s.epsLive=+fin.income_statement.diluted_earnings_per_share.value.toFixed(2);
+        }
+      }catch(e){ console.warn('Polygon metric error',e); }
     }
+
+    // ดึง Insider Transactions real-time
+    try{
+      const insRes=await safeFetch(`https://finnhub.io/api/v1/stock/insider-transactions?symbol=${ticker}&token=${FINNHUB_KEY}`,{},1);
+      const insData=await insRes.json();
+      const txns=insData?.data||[];
+      if(txns.length>0){
+        // เอาแค่ 5 รายการล่าสุด
+        const sorted=txns.filter(t=>t.transactionDate&&t.share&&t.transactionPrice)
+          .sort((a,b)=>new Date(b.transactionDate)-new Date(a.transactionDate))
+          .slice(0,5);
+        if(sorted.length>0){
+          const s2=stocks.find(x=>x.t===ticker);
+          if(s2) s2.insiderLive=sorted.map(t=>({
+            name:t.name||'Unknown',
+            role:t.filingDate?'Insider':'Insider',
+            type:t.share>0?'buy':'sell',
+            shares:Math.abs(t.share),
+            price:t.transactionPrice||0,
+            date:t.transactionDate,
+            val:t.transactionPrice&&t.share?`$${Math.abs((t.share*t.transactionPrice)/1e6).toFixed(1)}M`:'N/A'
+          }));
+        }
+      }
+    }catch(e){}
   }catch(e){ console.warn('fetchAnalystData error',e); }
 }
 
@@ -2778,7 +2837,9 @@ function triggerFundAI(ticker){
 function renderInsider(ticker, containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
-  const data=insiderData[ticker];
+  const s=stocks.find(x=>x.t===ticker);
+  const data=s?.insiderLive||insiderData[ticker];
+  const isLive=!!s?.insiderLive;
   if(!data||!data.length){
     el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">ไม่มีข้อมูล Insider</div>';
     return;
@@ -2788,7 +2849,7 @@ function renderInsider(ticker, containerId){
   const sentiment=buys>sells?'🟢 ผู้บริหารซื้อสุทธิ':buys<sells?'🔴 ผู้บริหารขายสุทธิ':'🟡 Mixed';
   el.innerHTML=`
     <div style="background:${buys>sells?'rgba(0,230,118,0.08)':buys<sells?'rgba(255,77,106,0.08)':'rgba(201,168,76,0.08)'};border:1px solid ${buys>sells?'rgba(0,230,118,0.25)':buys<sells?'rgba(255,77,106,0.25)':'rgba(201,168,76,0.25)'};border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:12px;font-weight:600;color:var(--text)">${sentiment}</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text)">${sentiment}${isLive?' <span style="font-size:9px;color:var(--accent)">● Live</span>':''}</span>
       <span style="font-size:10px;color:var(--text3)">🟢 ${buys} ซื้อ / 🔴 ${sells} ขาย</span>
     </div>` +
     data.map(d=>{
@@ -3083,13 +3144,14 @@ function drawerTab(tab, btn){
       '<div class="ind-row"><span class="ind-name">Ticker</span><span class="ind-val">'+s.t+'</span></div>' +
       '<div class="ind-row"><span class="ind-name">ชื่อบริษัท</span><span class="ind-val" style="font-size:11px;text-align:right;max-width:200px">'+s.n+'</span></div>' +
       '<div class="ind-row"><span class="ind-name">Sector</span><span class="ind-val neut">'+sector+'</span></div>' +
-      '<div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">'+(s.mktcap||'N/A')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">'+(s.mktcapLive||s.mktcap||'N/A')+(s.mktcapLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       profitRow +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">💰 ผลประกอบการ</div>' +
-      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(s.pe||'N/A')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(s.pe||'N/A')+(s.pe?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
+      (s.epsLive?'<div class="ind-row"><span class="ind-name">EPS (TTM)</span><span class="ind-val bull">$'+s.epsLive+' <span style="font-size:9px;color:var(--accent)">●</span></span></div>':'') +
       '<div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val '+epsCls+'">'+epsVal+'</span></div>' +
       '<div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val">'+revVal+'</span></div>' +
-      '<div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val '+revCls+'">'+(s.rev||'N/A')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">Revenue Growth</span><span class="ind-val '+revCls+'">'+(s.revLive||s.rev||'N/A')+(s.revLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       earnResRow + earnDateRow +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">📊 มูลค่าหุ้น</div>' +
       '<div class="ind-row"><span class="ind-name">52W High</span><span class="ind-val bull">'+high52+'</span></div>' +
@@ -3373,6 +3435,7 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 // ══════════════════════════════════════════════════════
 
 // 🔬 วิเคราะห์หุ้นลึก — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Gemini Flash
+// 🧠 Analyze — คุณภาพสูง: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
@@ -3382,6 +3445,8 @@ async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   if(r2) return r2;
   const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
+  const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
   return null;
 }
 
@@ -3425,6 +3490,7 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
 }
 
 // ⚡ Quick — ต้องการความเร็ว → Groq → Claude → Gemini Flash
+// ⚡ Quick — เร็ว: Groq → Claude → Gemini Flash → Pollinations
 async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
   const r0 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
@@ -3432,6 +3498,8 @@ async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
   if(r1) return r1;
   const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
+  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
   return null;
 }
 
@@ -3448,16 +3516,18 @@ async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
   return null;
 }
 
-// 🔄 callGemini — ทั่วไป → Claude → Groq → Gemini Flash → Pollinations
+// 🔄 callGemini — ทั่วไป: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
 async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
+  const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
   return null;
 }
 function buildFullIndicatorContext(ticker, price){
@@ -7164,22 +7234,43 @@ async function runAIMarketSummaryV2(){
   // ── ดึงข่าวตลาดล่าสุด ──
   let newsContext='';
   try{
-    // ดึงข่าวจาก GNews หรือ cache
-    const gnewsKey=localStorage.getItem('gnewsKey')||'';
+    // ดึงข่าว — Marketaux → NewsAPI → GNews → Yahoo RSS
+    const marketauxKey=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
+    const newsapiKey=localStorage.getItem('newsapiKey')||_NEWSAPI_KEY||'';
+    const gnewsKey=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
     let newsItems=[];
-    if(gnewsKey){
-      const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=5&apikey=${gnewsKey}`,{signal:AbortSignal.timeout(6000)});
-      if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
+    // 1. Marketaux — ข่าวหุ้นพร้อม sentiment
+    if(!newsItems.length&&marketauxKey){
+      try{
+        const r=await fetch(`https://api.marketaux.com/v1/news/all?language=en&filter_entities=true&limit=5&api_token=${marketauxKey}`,{signal:AbortSignal.timeout(6000)});
+        if(r.ok){ const d=await r.json(); newsItems=(d?.data||[]).map(n=>({title:n.title})); }
+      }catch{}
     }
-    // fallback Yahoo Finance RSS
+    // 2. NewsAPI
+    if(!newsItems.length&&newsapiKey){
+      try{
+        const r=await fetch(`https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey=${newsapiKey}`,{signal:AbortSignal.timeout(6000)});
+        if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
+      }catch{}
+    }
+    // 3. GNews
+    if(!newsItems.length&&gnewsKey){
+      try{
+        const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=5&apikey=${gnewsKey}`,{signal:AbortSignal.timeout(6000)});
+        if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
+      }catch{}
+    }
+    // 4. fallback Yahoo Finance RSS
     if(!newsItems.length){
-      const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
-      if(r.ok){
-        const xml=await r.text();
-        const rx=/<title><!\[CDATA\[(.*?)\]\]><\/title>/g;
-        let m; let i=0;
-        while((m=rx.exec(xml))!==null&&i<5){ newsItems.push({title:m[1]}); i++; }
-      }
+      try{
+        const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
+        if(r.ok){
+          const xml=await r.text();
+          const rx=/<title><!\[CDATA\[(.*?)\]\]><\/title>/g;
+          let m; let i=0;
+          while((m=rx.exec(xml))!==null&&i<5){ newsItems.push({title:m[1]}); i++; }
+        }
+      }catch{}
     }
     if(newsItems.length){
       newsContext='\n📰 ข่าวตลาดล่าสุด:\n'+newsItems.slice(0,5).map((n,i)=>`${i+1}. ${n.title||n.headline||''}`).join('\n');
