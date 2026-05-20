@@ -1470,7 +1470,7 @@ const _MARKETAUX_KEY='6NR1RtHOSzR5Bx4DiyznD2uGc0EuhVoVGYSo7qFN';
 // hasApiKey() คืน true เสมอ (Worker จัดการ error เองถ้า key ไม่ถูก)
 function hasApiKey(){ return true; }
 function fmt(n){return n>=1000?n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):n.toFixed(2);}
-function parseMcap(s){if(!s)return 0;const m=parseFloat(s);if(s.endsWith('T'))return m*1e12;if(s.endsWith('B'))return m*1e9;if(s.endsWith('M'))return m*1e6;return m;}
+function parseMcap(s){if(!s)return 0;const c=s.replace(/[$,\s]/g,'');const m=parseFloat(c);if(isNaN(m))return 0;if(c.endsWith('T'))return m*1e12;if(c.endsWith('B'))return m*1e9;if(c.endsWith('M'))return m*1e6;return m;}
 
 // FIX: Helper เปิด/ปิด Modal พร้อม animation
 function openModal(id){
@@ -2031,7 +2031,7 @@ function makeCard(s){
     </div>
     <div class="card-stats">
       <div class="card-stat">
-        <div class="card-stat-val">${s.mktcap||'N/A'}</div>
+        <div class="card-stat-val">${s.mktcapLive||s.mktcap||'N/A'}${s.mktcapLive?'<span style="font-size:8px;color:var(--accent);margin-left:2px">●</span>':''}</div>
         <div class="card-stat-lbl">Mkt Cap</div>
       </div>
       <div class="card-stat">
@@ -2234,7 +2234,7 @@ function getVisibleStocks(){
   if(currentSort==='chg') list.sort((a,b)=>b.c-a.c);
   else if(currentSort==='name') list.sort((a,b)=>a.t.localeCompare(b.t));
   else if(currentSort==='rsi') list.sort((a,b)=>(rsiData[a.t]||50)-(rsiData[b.t]||50));
-  else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcap)-parseMcap(a.mktcap));
+  else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcapLive||b.mktcap)-parseMcap(a.mktcapLive||a.mktcap));
   else if(currentSort==='near'){
     list.sort((a,b)=>{
       const pa=(a.p-getS1(a.t,a.p))/getS1(a.t,a.p)*100;
@@ -2866,7 +2866,7 @@ function triggerFundAI(ticker){
   const el = document.getElementById('fundAIText');
   if(!el || !window._fundPrompt) return;
   if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังวิเคราะห์...'; }
-  el.innerHTML='<span style="opacity:0.6;font-size:11px">✨ Gemini กำลังวิเคราะห์...</span>';
+  el.innerHTML='<span style="opacity:0.6;font-size:11px">🤖 AI กำลังวิเคราะห์...</span>';
   callAI_Analyze(
     'คุณคือนักวิเคราะห์ Fundamental ที่อธิบายธุรกิจของบริษัทให้คนทั่วไปเข้าใจง่าย ใช้ภาษาไทยเหมือนคุยกับเพื่อน ไม่ใช้ศัพท์เทคนิค ห้ามใช้ # ** --- หรือ Markdown ใดๆ ทั้งสิ้น ตอบเป็นประโยคธรรมดาเท่านั้น',
     window._fundPrompt, 500
@@ -3673,7 +3673,7 @@ async function sendAI(ticker){
   _saveAiHistory();
   const chat=document.getElementById('aiChat');
   if(chat){
-    chat.innerHTML+=`<div class="ai-msg user">${_escHtml(msg)}</div><div class="ai-msg bot" id="aiLoading"><span style="opacity:0.6;font-size:11px">🤖 Claude Haiku กำลังวิเคราะห์...</span></div>`;
+    chat.innerHTML+=`<div class="ai-msg user">${_escHtml(msg)}</div><div class="ai-msg bot" id="aiLoading"><span style="opacity:0.6;font-size:11px">🤖 AI กำลังวิเคราะห์...</span></div>`;
     chat.scrollTop=chat.scrollHeight;
   }
   // โหลด candle ถ้ายังไม่มี เพื่อให้ indicator ครบ
@@ -4172,7 +4172,7 @@ function _setAICache(key,text){ _aiCache[key]={text,ts:Date.now()}; }
 
 async function _analyzeSignalAI(ticker,price,s1,r1,score){
   const el=document.getElementById('signalAiText');
-  if(el) el.textContent='⏳ Claude Sonnet กำลังวิเคราะห์ indicator ครบทุกตัว...';
+  if(el) el.textContent='⏳ AI กำลังวิเคราะห์ indicator ครบทุกตัว...';
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
   const indCtx=buildFullIndicatorContext(ticker,price);
@@ -4222,20 +4222,20 @@ Buy Score: ${score}/100
 เรียนรู้จากประวัติ Win/Loss — ถ้าหุ้นนี้ Win Rate ต่ำ ให้ระวังมากขึ้น
 ตอบภาษาไทยชาวบ้าน ใช้ emoji ห้ามใช้ศัพท์อังกฤษ`;
 
-  // อัปเดต model label
+  // อัปเดต model label — แสดง pending ก่อน จะอัปเดตหลังได้รับคำตอบ
   const el2pre=document.getElementById('signalAiModel');
-  if(el2pre) el2pre.textContent='✨ Claude Sonnet 4';
+  if(el2pre) el2pre.textContent='⏳ กำลังเชื่อมต่อ AI...';
 
   const cacheKey=`signal_v2_${ticker}_${score}`;
   const cached=_getAICache(cacheKey);
 
-  // ใช้ Claude Sonnet สำหรับการวิเคราะห์ signal โดยตรง
+  // ลอง Groq ก่อน (เร็วสุด) → fallback callAI_Quick (Claude → Gemini → Pollinations)
   let reply = cached;
+  let usedModel = 'Cache';
   if(!reply){
     try{
       const ctrl=new AbortController();
       const tid=setTimeout(()=>ctrl.abort(),25000);
-      // ใช้ Groq แทน Claude — ดึงตรงไม่ผ่าน Worker
       const groqKey=localStorage.getItem('groqKey')||'';
       if(groqKey){
         const rg=await fetch('https://api.groq.com/openai/v1/chat/completions',{
@@ -4245,12 +4245,14 @@ Buy Score: ${score}/100
           signal:ctrl.signal
         });
         clearTimeout(tid);
-        if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null;}
+        if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null; if(reply) usedModel='⚡ Groq Llama 3.3';}
       }
     }catch(e){console.warn('signal AI error:',e.message);}
-    if(!reply) reply=await callAI_Quick(sys,prompt,600);
+    if(!reply){reply=await callAI_Quick(sys,prompt,600); if(reply) usedModel='🤖 Claude / Gemini';}
     if(reply) _setAICache(cacheKey,reply);
   }
+  // อัปเดต label ด้วย AI ที่ตอบจริง
+  if(el2pre) el2pre.textContent=usedModel;
 
   const el2=document.getElementById('signalAiText');
   if(!el2) return;
@@ -4635,43 +4637,41 @@ async function testAnthropicKey(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),12000);
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
+    // ทดสอบผ่าน Worker แทน direct call (ปลอดภัยกว่า — key อยู่ที่ Worker)
+    const r=await fetch(ALERT_WORKER+'/ai',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:10,
-        messages:[{role:'user',content:'Reply with the single word: ok'}]
+        system:'You are a test assistant.',
+        messages:[{role:'user',content:'Reply with the single word: ok'}],
+        max_tokens:10
       }),
       signal:ctrl.signal
     });
     clearTimeout(tid);
     if(r.ok){
-      try{localStorage.setItem('anthropicKey',key);}catch{}
-      statusEl.style.background='rgba(0,230,118,0.1)';
-      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
-      statusEl.style.color='var(--green)';
-      statusEl.textContent='✅ Claude ใช้งานได้! — claude-haiku พร้อม (บันทึกแล้ว)';
+      const d=await r.json();
+      if(d.ok){
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='✅ AI Worker พร้อมใช้งาน! — Claude/Groq/Gemini ผ่าน Worker';
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Worker ตอบ แต่ AI ไม่ตอบสนอง — ตรวจสอบ key ใน Worker';
+      }
     } else if(r.status===401){
       statusEl.style.background='rgba(255,77,106,0.12)';
       statusEl.style.border='1px solid rgba(255,77,106,0.3)';
       statusEl.style.color='var(--red)';
-      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ console.anthropic.com/settings/keys';
-    } else if(r.status===429){
-      statusEl.style.background='rgba(255,215,0,0.1)';
-      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
-      statusEl.style.color='var(--yellow)';
-      statusEl.textContent='⚠️ Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+      statusEl.textContent='❌ Worker ไม่อนุญาต — ตรวจสอบ CORS ของ Worker';
     } else {
       statusEl.style.background='rgba(255,215,0,0.1)';
       statusEl.style.border='1px solid rgba(255,215,0,0.3)';
       statusEl.style.color='var(--yellow)';
-      statusEl.textContent=`⚠️ Claude ตอบกลับ ${r.status}`;
+      statusEl.textContent=`⚠️ Worker ตอบกลับ ${r.status}`;
     }
   }catch(e){
     statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
@@ -5280,10 +5280,50 @@ async function initYahooPrices(){
   const statusEl=document.getElementById('statusText');
   if(statusEl) statusEl.textContent='⏳ กำลังดึงราคา...';
 
-  // ค้นหา proxy เฉพาะครั้งแรก หรือถ้า proxy เก่าใช้ไม่ได้แล้ว
+  // ── STEP 1: ดึงจาก Worker KV cache ก่อน (เร็ว + ครอบคลุมทุกตัว) ──
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(ALERT_WORKER+'/prices',{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      if(d.ok&&d.quotes){
+        window._workerPriceCache=d.quotes;
+        for(const s of stocks){
+          const q=d.quotes[s.t];
+          if(q&&q.price>0){
+            s.p=q.price; s.c=q.change||0;
+            if(q.prevClose>0) s.prevClose=q.prevClose;
+            liveCache[s.t]=Date.now();
+            updateCardLive(s);
+            loaded++;
+          }
+        }
+        for(const sym of['SPY','QQQ']){
+          const q=d.quotes[sym];
+          if(q&&q.price>0){
+            marketCtx[sym].price=q.price;
+            marketCtx[sym].change=q.change||0;
+            marketCtx[sym].trend=q.change>0.5?'bullish':q.change<-0.5?'bearish':'neutral';
+          }
+        }
+        if(loaded>0){
+          updateDashboard();
+          const open=_isMarketOpen(),pre=_isPreMarket(),after=_isAfterHours();
+          const mktLabel=open?'':pre?' · Pre-Market':after?' · After-Hours':' · ตลาดปิด';
+          if(statusEl) statusEl.textContent=`✅ ${loaded} ตัว (Worker${d.age?` · ${d.age}s`:''})${mktLabel}`;
+          _updateMarketStatusBadge(true);
+          _yahooLoading=false;
+          return; // สำเร็จจาก Worker — ไม่ต้อง fallback
+        }
+      }
+    }
+  }catch{}
+
+  // ── STEP 2: Fallback — ค้นหา proxy แล้วดึงผ่าน Yahoo/Finnhub ──
   if(!_workingProxy) await _detectWorkingProxy();
 
-  // ดึงทุกตัวพร้อมกัน batch ใหญ่ขึ้น delay น้อยลง
   const BATCH=15, DELAY=100;
   for(let i=0;i<stocks.length;i+=BATCH){
     const batch=stocks.slice(i,i+BATCH);
@@ -5338,43 +5378,23 @@ let _yahooTimer=null;
 
 // ── ตรวจสอบสถานะตลาด US (NYSE/NASDAQ) ──
 function _isMarketOpen(){
-  const now=new Date();
-  // แปลงเป็นเวลา ET (UTC-4 DST หรือ UTC-5 ปกติ)
-  const etOffset=_isEDT(now)?-4:-5;
-  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
-  const et=new Date(etMs);
-  const day=et.getDay(); // 0=Sun, 6=Sat
-  const h=et.getHours(), m=et.getMinutes();
-  const timeMin=h*60+m;
-  if(day===0||day===6) return false; // weekend
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const day=et.getDay();
+  if(day===0||day===6) return false;
+  const timeMin=et.getHours()*60+et.getMinutes();
   return timeMin>=570&&timeMin<960; // 9:30–16:00 ET
 }
-function _isEDT(d){
-  // FIX: สูตรถูกต้อง — EDT: อาทิตย์ที่สองของมีนาคม → อาทิตย์แรกของพฤศจิกายน
-  const y=d.getFullYear();
-  // หาวันอาทิตย์แรกของมีนาคม แล้ว +7 วัน = อาทิตย์ที่สอง
-  const march1=new Date(y,2,1);
-  const dstStart=new Date(y,2, 1+(7-march1.getDay())%7 + 7); // 2nd Sunday of March
-  // หาวันอาทิตย์แรกของพฤศจิกายน
-  const nov1=new Date(y,10,1);
-  const dstEnd=new Date(y,10, 1+(7-nov1.getDay())%7);        // 1st Sunday of November
-  return d>=dstStart&&d<dstEnd;
-}
+
+
 function _isPreMarket(){
-  const now=new Date();
-  const etOffset=_isEDT(now)?-4:-5;
-  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
-  const et=new Date(etMs);
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const day=et.getDay();
   if(day===0||day===6) return false;
   const timeMin=et.getHours()*60+et.getMinutes();
   return timeMin>=390&&timeMin<570; // 6:30–9:30 ET
 }
 function _isAfterHours(){
-  const now=new Date();
-  const etOffset=_isEDT(now)?-4:-5;
-  const etMs=now.getTime()+(now.getTimezoneOffset()+etOffset*60)*60000;
-  const et=new Date(etMs);
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const day=et.getDay();
   if(day===0||day===6) return false;
   const timeMin=et.getHours()*60+et.getMinutes();
@@ -5886,6 +5906,21 @@ async function fetchCandles(ticker, days=60){
   if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
   _candleFetching.add(ticker);
   try{
+    // ── 0. ลอง Worker KV cache ก่อน (เร็วที่สุด ไม่เสีย quota) ──
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),4000);
+      const r=await fetch(`${ALERT_WORKER}/candles?t=${ticker}&days=${days}`,{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d.ok&&d.c&&d.c.length>=10){
+          candleCache[ticker]={data:d,ts:Date.now(),days,src:'worker'};
+          return d;
+        }
+      }
+    }catch{}
+
     // ── 1. ลอง Polygon.io ก่อน (ข้อมูลแม่นยำ ไม่ต้อง proxy) ──
     let candleData=await fetchCandlesPolygon(ticker, days);
     if(candleData){
@@ -7802,7 +7837,7 @@ async function triggerAISummary(){
   const btn=document.getElementById("aiSummaryBtn");
   const body=document.getElementById("aiSummaryBody");
   if(btn){btn.disabled=true;btn.textContent="⏳ กำลังวิเคราะห์...";}
-  body.innerHTML="<div style='color:var(--text3)'>✨ Gemini 1.5 Pro กำลังวิเคราะห์ตลาด...</div>";
+  body.innerHTML="<div style='color:var(--text3)'>🤖 AI กำลังวิเคราะห์ตลาด...</div>";
   const result=await runAIMarketSummaryV2();
   // FIX: ผ่าน mdToHtml เพื่อ sanitize และ format
   body.innerHTML=result?mdToHtml(result):"❌ ไม่สามารถเชื่อมต่อ AI ได้";
