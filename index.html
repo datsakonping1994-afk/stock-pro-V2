@@ -8256,8 +8256,10 @@ function updateCardLive(s){
     const stk=stocks.find(x=>x.t===s.t);
     if(stk&&stk.short&&parseFloat(stk.short)>15&&stk.c>3){
       const sqKey='sq_'+stk.t;
-      if(!_alertFired.has(sqKey)){
-        _alertFired.add(sqKey, 3600000); // cooldown 1 ชั่วโมง
+      const lastSent=parseInt(localStorage.getItem(sqKey)||'0');
+      const cooldown=8*3600*1000; // 8 ชั่วโมง
+      if(Date.now()-lastSent>cooldown){
+        localStorage.setItem(sqKey, Date.now().toString());
         toast(`🩳 Short Squeeze Alert! ${stk.t} — Short Float ${stk.short} ราคาขึ้น +${(+stk.c).toFixed(1)}%`,4000);
         sendTG(`🩳 Short Squeeze Risk!\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา ${fmt(stk.p)}`);
       }
