@@ -1072,7 +1072,7 @@ function $id(id){
 }
 function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
 
-const stocks=[
+const STOCKS_DEFAULT=[
   // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
   // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
   {t:"XAU",n:"Gold (XAU/USD)",p:3300.0,c:0,pe:null,mktcap:"commodity",rev:null,earn:null,div:null,beta:0.1,short:null,target:3500.0,_isGold:true},
@@ -1154,6 +1154,19 @@ const stocks=[
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
 ];
+
+// ── stocks persistence ──
+let stocks=(()=>{
+  try{
+    const saved=localStorage.getItem('_sp_stocks');
+    if(saved){ const arr=JSON.parse(saved); if(Array.isArray(arr)&&arr.length>0) return arr; }
+  }catch{}
+  return JSON.parse(JSON.stringify(STOCKS_DEFAULT));
+})();
+
+function saveStocks(){
+  try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
+}
 
 const rsiData={IWM:50.0,SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
 
@@ -1439,7 +1452,8 @@ function syncAlertsToWorker(){
         earn: p.earn||null
       })).filter(p=>p.t),
       priceAlerts: priceAlerts,
-      trailingHigh: trailingHigh
+      trailingHigh: trailingHigh,
+      stocks: stocks.map(s=>({t:s.t,short:s.short||null,earn:s.earn||null}))
     };
     fetch(ALERT_WORKER+'/sync',{
       method:'POST',
@@ -2745,15 +2759,20 @@ async function fetchAnalystData(ticker){
       const metricData = await metricRes.json();
       const m = metricData?.metric||{};
       if(s){
-        if(m.beta!=null) s.beta=+m.beta.toFixed(2);
-        if(m['52WeekHigh']!=null) s.high52=m['52WeekHigh'];
-        if(m['52WeekLow']!=null) s.low52=m['52WeekLow'];
-        if(m['shortInterest']!=null&&m['sharesOutstanding']!=null){
+        // Beta valid -5 to 10
+        if(m.beta!=null){ const b=+m.beta; if(b>=-5&&b<=10) s.beta=+b.toFixed(2); }
+        // 52W High/Low
+        const curP=s.p||0;
+        if(m['52WeekHigh']!=null){ const h=m['52WeekHigh']; if(h>0&&(!curP||h<=curP*5)) s.high52=h; }
+        if(m['52WeekLow']!=null){ const l=m['52WeekLow']; if(l>0&&(!curP||l>=curP*0.1)) s.low52=l; }
+        // Short Float valid 0-100%
+        if(m['shortInterest']!=null&&m['sharesOutstanding']>0){
           const siPct=(m['shortInterest']/m['sharesOutstanding']*100);
-          if(!isNaN(siPct)) s.short=siPct.toFixed(1)+'%';
+          if(!isNaN(siPct)&&siPct>=0&&siPct<=100) s.short=siPct.toFixed(1)+'%';
         }
-        if(m['peBasicExclExtraTTM']!=null){ s.pe=+m['peBasicExclExtraTTM'].toFixed(1); metricOk=true; }
-        else if(m['peTTM']!=null){ s.pe=+m['peTTM'].toFixed(1); metricOk=true; }
+        // P/E valid -500 to 2000
+        if(m['peBasicExclExtraTTM']!=null){ const pe=+m['peBasicExclExtraTTM']; if(pe>=-500&&pe<=2000){ s.pe=+pe.toFixed(1); metricOk=true; }}
+        else if(m['peTTM']!=null){ const pe=+m['peTTM']; if(pe>=-500&&pe<=2000){ s.pe=+pe.toFixed(1); metricOk=true; }}
         // EPS — valid range -$500 to $500
         if(m['epsBasicExclExtraItemsTTM']!=null){
           const eps=+m['epsBasicExclExtraItemsTTM'];
@@ -2766,11 +2785,11 @@ async function fetchAnalystData(ticker){
         }
         if(m['marketCapitalization']!=null){
           const mc=m['marketCapitalization'];
-          // Finnhub ส่งหน่วย million USD — valid range $10M to $10T
-          const mcB=mc/1000; // แปลงจาก million → billion
+          const mcB=mc/1000; // Finnhub หน่วย million → billion
           if(mcB>=0.01&&mcB<=10000){
             s.mktcapLive=mcB>=1000?`$${(mcB/1000).toFixed(1)}T`:`$${mcB.toFixed(1)}B`;
-          metricOk=true;
+            metricOk=true;
+          }
         }
       }
     }catch(e){ console.warn('Finnhub metric error',e); }
@@ -2805,7 +2824,14 @@ async function fetchAnalystData(ticker){
       const txns=insData?.data||[];
       if(txns.length>0){
         // เอาแค่ 5 รายการล่าสุด
-        const sorted=txns.filter(t=>t.transactionDate&&t.share&&t.transactionPrice)
+        // รวม transactions ซ้ำชื่อ+วันเดียวกัน
+        const grouped={};
+        txns.filter(t=>t.transactionDate&&t.share&&t.transactionPrice).forEach(t=>{
+          const key=`${t.name}_${t.transactionDate}_${t.share>0?'buy':'sell'}`;
+          if(!grouped[key]) grouped[key]={...t};
+          else grouped[key].share=(grouped[key].share||0)+(t.share||0);
+        });
+        const sorted=Object.values(grouped)
           .sort((a,b)=>new Date(b.transactionDate)-new Date(a.transactionDate))
           .slice(0,5);
         if(sorted.length>0){
@@ -4732,6 +4758,7 @@ function addStock(){
   stocks.push({t,n:t,p:0,c:0,pe:null,mktcap:'N/A',rev:'N/A',earn:null});
   document.getElementById('addTickerInput').value='';
   toast('✅ เพิ่ม '+t+' แล้ว');
+  saveStocks();
   renderCards();
   renderStockManager();
   syncAlertsToWorker();
@@ -4742,6 +4769,7 @@ function removeStock(t){
   if(idx===-1) return;
   stocks.splice(idx,1);
   toast('🗑 ลบ '+t+' แล้ว');
+  saveStocks();
   renderCards();
   renderStockManager();
   syncAlertsToWorker();
