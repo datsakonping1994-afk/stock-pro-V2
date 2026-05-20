@@ -891,6 +891,15 @@ canvas.bigchart{width:100%;height:100%}
             <button class="settings-btn" onclick="addStock()">เพิ่ม</button>
           </div>
         </div>
+        <div class="settings-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:0">
+          <div onclick="toggleStockList()" style="display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;padding:4px 0">
+            <div class="settings-label" style="margin:0">รายการหุ้นทั้งหมด <span id="stockListCount" style="color:var(--gold);font-size:11px"></span></div>
+            <span id="stockListArrow" style="color:var(--text3);font-size:12px;transition:transform 0.2s">▼</span>
+          </div>
+          <div id="stockListCollapse" style="display:none;width:100%;padding-top:8px">
+            <div id="stockListManager" style="display:flex;flex-wrap:wrap;gap:6px;width:100%"></div>
+          </div>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -4307,6 +4316,7 @@ function loadSettings(){
     const ckEl=document.getElementById('cohereKeyInput');
     if(ckEl) ckEl.value=ck;
   }catch{}
+  renderStockManager();
 }
 function saveSettings(){
   const port=parseInt(document.getElementById('portSizeInput')?.value||'10000');
@@ -4628,6 +4638,40 @@ function addStock(){
   document.getElementById('addTickerInput').value='';
   toast('✅ เพิ่ม '+t+' แล้ว');
   renderCards();
+  renderStockManager();
+  syncAlertsToWorker();
+}
+
+function removeStock(t){
+  const idx=stocks.findIndex(x=>x.t===t);
+  if(idx===-1) return;
+  stocks.splice(idx,1);
+  toast('🗑 ลบ '+t+' แล้ว');
+  renderCards();
+  renderStockManager();
+  syncAlertsToWorker();
+}
+
+function toggleStockList(){
+  const collapse=document.getElementById('stockListCollapse');
+  const arrow=document.getElementById('stockListArrow');
+  if(!collapse) return;
+  const isOpen=collapse.style.display!=='none';
+  collapse.style.display=isOpen?'none':'block';
+  if(arrow) arrow.style.transform=isOpen?'':'rotate(180deg)';
+}
+
+function renderStockManager(){
+  const el=document.getElementById('stockListManager');
+  const countEl=document.getElementById('stockListCount');
+  if(!el) return;
+  if(countEl) countEl.textContent=`(${stocks.length} ตัว)`;
+  el.innerHTML=stocks.map(s=>`
+    <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text)">${s.t}</span>
+      <button onclick="removeStock('${s.t}')" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+    </div>
+  `).join('');
 }
 
 // ── WebSocket Live ──
