@@ -1075,7 +1075,6 @@ function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]
 const STOCKS_DEFAULT=[
   // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
   // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
-  {t:"XAU",n:"Gold (XAU/USD)",p:3300.0,c:0,pe:null,mktcap:"commodity",rev:null,earn:null,div:null,beta:0.1,short:null,target:3500.0,_isGold:true},
   {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"12.4%",target:28.0},
   {t:"EOSE",n:"Eos Energy",p:8.01,c:25.94,pe:null,mktcap:"0.8B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.2,short:"18.1%",target:12.0},
   {t:"SLNH",n:"Soluna Holdings",p:1.83,c:20.39,pe:null,mktcap:"0.1B",rev:"22%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"9.2%",target:4.0},
@@ -1116,7 +1115,6 @@ const STOCKS_DEFAULT=[
   {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.0,short:"0.5%",target:620.0},
   {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.6,short:"12.8%",target:28.0},
   {t:"ELF",n:"e.l.f. Beauty",p:0,c:0,pe:null,mktcap:"3.5B",rev:"31%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"15.2%",target:45.0},
-  {t:"PFS",n:"Provident Financial Services",p:0,c:0,pe:12.5,mktcap:"2.1B",rev:"8%",earn:"ก.ค. 2026",div:"4.2%",beta:0.9,short:"2.1%",target:22.0},
   {t:"AMSC",n:"American Superconductor",p:0,c:0,pe:null,mktcap:"0.8B",rev:"42%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"10.3%",target:35.0},
   {t:"APP",n:"Applovin",p:0,c:0,pe:85.0,mktcap:"120B",rev:"44%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"3.8%",target:380.0},
   {t:"COST",n:"Costco Wholesale",p:0,c:0,pe:52.0,mktcap:"420B",rev:"8%",earn:"ก.ย. 2026",div:"0.7%",beta:0.7,short:"1.2%",target:1050.0},
@@ -1141,16 +1139,9 @@ const STOCKS_DEFAULT=[
   {t:"TSLA",n:"Tesla",p:295.0,c:0,pe:85.2,mktcap:"949B",rev:"2%",earn:"ก.ค. 2026",div:null,beta:2.3,short:"3.2%",target:300.0},
   {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
   {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
-  {t:"PYPL",n:"PayPal",p:68.0,c:0,pe:14.8,mktcap:"67B",rev:"6%",earn:"ก.ค. 2026",div:null,beta:1.5,short:"2.8%",target:85.0},
-  {t:"KO",n:"Coca-Cola",p:72.0,c:0,pe:24.1,mktcap:"309B",rev:"3%",earn:"ก.ค. 2026",div:"3.1%",beta:0.6,short:"0.7%",target:80.0},
-  {t:"PEP",n:"PepsiCo",p:135.0,c:0,pe:20.8,mktcap:"185B",rev:"2%",earn:"ก.ค. 2026",div:"3.6%",beta:0.6,short:"0.8%",target:155.0},
-  {t:"NKE",n:"Nike",p:62.0,c:0,pe:18.4,mktcap:"93B",rev:"-9%",earn:"ก.ค. 2026",div:"2.1%",beta:1.0,short:"2.4%",target:78.0},
-  {t:"MCD",n:"McDonald's",p:310.0,c:0,pe:22.1,mktcap:"223B",rev:"2%",earn:"ก.ค. 2026",div:"2.4%",beta:0.7,short:"0.6%",target:350.0},
   {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
-  {t:"JNJ",n:"Johnson & Johnson",p:158.0,c:0,pe:15.2,mktcap:"380B",rev:"4%",earn:"ก.ค. 2026",div:"3.2%",beta:0.5,short:"0.6%",target:180.0},
-  {t:"PG",n:"Procter & Gamble",p:170.0,c:0,pe:24.8,mktcap:"400B",rev:"3%",earn:"ก.ค. 2026",div:"2.4%",beta:0.5,short:"0.5%",target:195.0},
+  {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
   // ── ETF ──
-  {t:"IWM",n:"Russell 2000 ETF",p:198.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"1.5%",beta:1.2,short:null,target:null},
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
 ];
@@ -1168,7 +1159,7 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={IWM:50.0,SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,PYPL:42.0,KO:52.0,PEP:48.0,NKE:40.0,MCD:50.0,WMT:54.0,JNJ:46.0,PG:50.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,RIVN:38.0,LCID:32.0};
+const rsiData={SMH:52.0,VIX:45.0,FPS:56.8,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0};
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -1182,17 +1173,16 @@ const fundExtra={
   DDOG:{de:0.00,fcf:'$0.7B'},NET:{de:0.37,fcf:'$0.3B'},MDB:{de:0.44,fcf:'$0.3B'},
   LLY:{de:1.88,fcf:'$8.3B'},NVO:{de:0.49,fcf:'$9.4B'},ISRG:{de:0.00,fcf:'$2.1B'},
   HIMS:{de:0.00,fcf:'$0.2B'},V:{de:0.98,fcf:'$20B'},MA:{de:2.31,fcf:'$12B'},
-  PYPL:{de:0.65,fcf:'$4.2B'},JPM:{de:null,fcf:null},XOM:{de:0.21,fcf:'$16B'},
+  JPM:{de:null,fcf:null},XOM:{de:0.21,fcf:'$16B'},
   SOFI:{de:null,fcf:null},QCOM:{de:0.56,fcf:'$3.1B'},AMAT:{de:0.40,fcf:'$5.8B'},
   LRCX:{de:1.02,fcf:'$4.0B'},AXON:{de:0.21,fcf:'$0.8B'},VRT:{de:0.89,fcf:'$1.1B'},
   ANET:{de:0.00,fcf:'$2.1B'},MELI:{de:1.34,fcf:'$2.8B'},RBRK:{de:0.12,fcf:'$0.5B'},
-  HOOD:{de:0.00,fcf:'$0.6B'},RIVN:{de:0.72,fcf:'-$4.2B'},
-  LCID:{de:0.51,fcf:'-$1.8B'},KO:{de:1.69,fcf:'$9.2B'},PEP:{de:2.42,fcf:'$7.1B'},
-  NKE:{de:0.88,fcf:'$2.6B'},MCD:{de:null,fcf:'$9.1B'},WMT:{de:0.57,fcf:'$19B'},
-  JNJ:{de:0.44,fcf:'$17B'},PG:{de:0.66,fcf:'$15B'},SPGI:{de:0.74,fcf:'$4.7B'},
+  HOOD:{de:0.00,fcf:'$0.6B'},
+  WMT:{de:0.57,fcf:'$19B'},SPGI:{de:0.74,fcf:'$4.7B'},
   RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
   IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
   NBIS:{de:0.18,fcf:'-$0.2B'},KTOS:{de:0.32,fcf:'$0.1B'},MP:{de:0.45,fcf:'-$0.2B'},
+  FPS:{de:0.30,fcf:null},
 };
 
 // ── คำนวณ Fundamental Score (0-100) ──
@@ -1254,19 +1244,19 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={IWM:188.0,SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,RIVN:10.50,LCID:2.20,V:308.0,MA:475.0,PYPL:58.00,KO:64.00,PEP:118.0,NKE:52.00,MCD:275.0,WMT:88.00,JNJ:148.0,PG:155.0};
+const sup0={SMH:200.0,VIX:14.0,FPS:38.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00};
 
-const sectorMap={'ETF':['IWM','SMH','VIX'],
+const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
   'คลาวด์':['MSFT','GOOGL','AAPL','META','AMZN','PLTR','NOW','CRWD','RBRK','AXON','NFLX','CRM','ADBE','SNOW','DDOG','MDB','NET'],
   'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI','APP'],
   'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM','LUNR','RCAT'],
   'สุขภาพ':['LLY','NVO','ISRG','TMDX','HIMS'],
-  'การเงิน':['JPM','HOOD','SOFI','V','MA','PYPL','PFS','MCO','CBOE','BRK.B'],
-  'EV':['TSLA','RIVN','LCID'],
+  'การเงิน':['JPM','HOOD','SOFI','V','MA','PFS','MCO','CBOE','BRK.B'],
+  'EV':['TSLA'],
   'LatAm':['MELI'],
-  'Consumer':['KO','PEP','NKE','MCD','WMT','JNJ','PG','ELF','COST','UNH','ABT','CAVA','RDDT','AFRM','SEZL'],
-  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE'],
+  'Consumer':['ELF','COST','UNH','CAVA','RDDT','AFRM','SEZL'],
+  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE','FPS'],
 };
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
@@ -1358,13 +1348,12 @@ const peerGroups={
   IONQ:['OKLO','RKLB','ASTS'],OKLO:['IONQ','ASTS','RKLB'],TEM:['HIMS','LLY','NVO'],
   LLY:['NVO','ISRG','TMDX'],NVO:['LLY','HIMS','ISRG'],ISRG:['LLY','TMDX','NVO'],
   HIMS:['NVO','LLY','TEM'],TMDX:['ISRG','LLY','NVO'],
-  JPM:['V','MA','PYPL'],HOOD:['SOFI','PYPL','JPM'],SOFI:['HOOD','PYPL','V'],
-  V:['MA','PYPL','JPM'],MA:['V','PYPL','JPM'],PYPL:['V','MA','HOOD'],
-  TSLA:['RIVN','LCID','NIO'],RIVN:['TSLA','LCID','NIO'],LCID:['RIVN','TSLA','NIO'],
-  KO:['PEP','MCD','WMT'],PEP:['KO','MCD','PG'],NKE:['PEP','KO','WMT'],
-  MCD:['KO','PEP','WMT'],WMT:['KO','MCD','PG'],JNJ:['PG','KO','LLY'],PG:['KO','JNJ','PEP'],
+  JPM:['V','MA','SOFI'],HOOD:['SOFI','JPM','V'],SOFI:['HOOD','JPM','V'],
+  V:['MA','JPM','SOFI'],MA:['V','JPM','SOFI'],
+  TSLA:['NIO','VRT','ANET'],
+  WMT:['COST','AMZN','SPGI'],
   XOM:['SLNH','MP','EOSE'],EOSE:['XOM','MP','SLNH'],MP:['XOM','EOSE','SLNH'],
-  MELI:['AMZN','PYPL','V'],SPGI:['MSFT','V','JPM'],
+  MELI:['AMZN','V','MA'],SPGI:['MSFT','V','JPM'],
   CRWV:['ANET','VRT','NBIS'],NBIS:['CRWV','ANET','VRT'],
   IREN:['EOSE','SLNH','XOM'],NVTS:['AMD','AVGO','QCOM'],SLNH:['XOM','EOSE','MP'],
 };
@@ -2175,8 +2164,7 @@ function getLogoUrl(t){
     NFLX:'netflix.com', NOW:'servicenow.com', AXON:'axon.com', ANET:'arista.com',
     VRT:'vertiv.com', ARM:'arm.com', TSM:'tsmc.com', ASML:'asml.com',
     JPM:'jpmorganchase.com', XOM:'exxonmobil.com', V:'visa.com', MA:'mastercard.com',
-    PYPL:'paypal.com', KO:'coca-cola.com', PEP:'pepsico.com', NKE:'nike.com',
-    MCD:'mcdonalds.com', WMT:'walmart.com', JNJ:'jnj.com', PG:'pg.com',
+    PYPL:'paypal.com', WMT:'walmart.com',
     CRM:'salesforce.com', ADBE:'adobe.com', SNOW:'snowflake.com', DDOG:'datadoghq.com',
     MDB:'mongodb.com', NET:'cloudflare.com', RKLB:'rocketlabusa.com', HOOD:'robinhood.com',
     SOFI:'sofi.com', LLY:'lilly.com', NVO:'novonordisk.com', ISRG:'intuitivesurgical.com',
@@ -2184,7 +2172,7 @@ function getLogoUrl(t){
     MU:'micron.com', ASTS:'ast-science.com', HIMS:'hims.com', IREN:'iren.com',
     IONQ:'ionq.com', OKLO:'oklo.com', TEM:'tempus.com', CRDO:'credotechnology.com',
     SPGI:'spglobal.com', MP:'mpmaterials.com', NBIS:'nebius.com', TMDX:'transmedics.com',
-    CRWV:'coreweave.com', MELI:'mercadolibre.com', RIVN:'rivian.com', LCID:'lucidmotors.com',
+    CRWV:'coreweave.com', MELI:'mercadolibre.com',
     KTOS:'kratosdefense.com', RBRK:'rubrik.com', EOSE:'eosenergy.com',
     SLNH:'solunaholdings.com', NVTS:'navitassemi.com',
   };
