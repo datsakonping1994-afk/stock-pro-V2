@@ -1177,12 +1177,12 @@ function getRSI(ticker){
     if(c&&c.length>=15&&!candleCache[ticker]?.data?._mock){
       const r=calcRSI(c,14);
       if(r!=null&&!isNaN(r)){
-        getRSI(ticker)=+r.toFixed(1); // cache ไว้
+        rsiData[ticker]=+r.toFixed(1);
         return +r.toFixed(1);
       }
     }
   }catch{}
-  return getRSI(ticker)||50;
+  return rsiData[ticker]||50;
 }
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
