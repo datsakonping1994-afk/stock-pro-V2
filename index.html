@@ -2754,11 +2754,22 @@ async function fetchAnalystData(ticker){
         }
         if(m['peBasicExclExtraTTM']!=null){ s.pe=+m['peBasicExclExtraTTM'].toFixed(1); metricOk=true; }
         else if(m['peTTM']!=null){ s.pe=+m['peTTM'].toFixed(1); metricOk=true; }
-        if(m['epsBasicExclExtraItemsTTM']!=null) s.epsLive=+m['epsBasicExclExtraItemsTTM'].toFixed(2);
-        if(m['revenueGrowthTTMYoy']!=null){ s.revLive=(m['revenueGrowthTTMYoy']*100).toFixed(1)+'%'; metricOk=true; }
+        // EPS — valid range -$500 to $500
+        if(m['epsBasicExclExtraItemsTTM']!=null){
+          const eps=+m['epsBasicExclExtraItemsTTM'];
+          if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
+        }
+        // Revenue Growth — valid range -100% to 500%
+        if(m['revenueGrowthTTMYoy']!=null){
+          const revG=m['revenueGrowthTTMYoy']*100;
+          if(revG>=-100&&revG<=500){ s.revLive=revG.toFixed(1)+'%'; metricOk=true; }
+        }
         if(m['marketCapitalization']!=null){
           const mc=m['marketCapitalization'];
-          s.mktcapLive=mc>=1000?`$${(mc/1000).toFixed(1)}T`:`$${mc.toFixed(0)}B`;
+          // Finnhub ส่งหน่วย million USD — valid range $10M to $10T
+          const mcB=mc/1000; // แปลงจาก million → billion
+          if(mcB>=0.01&&mcB<=10000){
+            s.mktcapLive=mcB>=1000?`$${(mcB/1000).toFixed(1)}T`:`$${mcB.toFixed(1)}B`;
           metricOk=true;
         }
       }
@@ -2774,7 +2785,8 @@ async function fetchAnalystData(ticker){
           const r=polyData?.results||{};
           if(r.market_cap!=null){
             const mc=r.market_cap/1e9;
-            s.mktcapLive=mc>=1000?`$${(mc/1000).toFixed(1)}T`:`$${mc.toFixed(0)}B`;
+            if(mc>=0.01&&mc<=10000)
+              s.mktcapLive=mc>=1000?`$${(mc/1000).toFixed(1)}T`:`$${mc.toFixed(1)}B`;
           }
           // ดึง financials จาก Polygon
           const polyFinRes=await safeFetch(`https://api.polygon.io/vX/reference/financials?ticker=${ticker}&limit=1&apiKey=${polyKey}`,{},1);
@@ -2798,15 +2810,23 @@ async function fetchAnalystData(ticker){
           .slice(0,5);
         if(sorted.length>0){
           const s2=stocks.find(x=>x.t===ticker);
-          if(s2) s2.insiderLive=sorted.map(t=>({
-            name:t.name||'Unknown',
-            role:t.filingDate?'Insider':'Insider',
-            type:t.share>0?'buy':'sell',
-            shares:Math.abs(t.share),
-            price:t.transactionPrice||0,
-            date:t.transactionDate,
-            val:t.transactionPrice&&t.share?`$${Math.abs((t.share*t.transactionPrice)/1e6).toFixed(1)}M`:'N/A'
-          }));
+          if(s2) s2.insiderLive=sorted
+            .filter(t=>Math.abs(t.share)<=100000000&&(t.transactionPrice||0)<=100000) // กรอง outlier
+            .map(t=>({
+              name:t.name||'Unknown',
+              role:'Insider',
+              type:t.share>0?'buy':'sell',
+              shares:Math.abs(t.share),
+              price:t.transactionPrice||0,
+              date:t.transactionDate,
+              val:(()=>{
+                const v=Math.abs((t.share||0)*(t.transactionPrice||0));
+                if(v>=1e9) return `$${(v/1e9).toFixed(1)}B`;
+                if(v>=1e6) return `$${(v/1e6).toFixed(1)}M`;
+                if(v>=1e3) return `$${(v/1e3).toFixed(0)}K`;
+                return 'N/A';
+              })()
+            })).filter(t=>t.val!=='N/A');
         }
       }
     }catch(e){}
