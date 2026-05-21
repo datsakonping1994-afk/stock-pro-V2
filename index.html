@@ -7896,18 +7896,19 @@ async function analyzePortfolioAI(){
     const fng=window._fngForAI;
     const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`; 
 
-    const sys=`คุณคือที่ปรึกษาการลงทุนมืออาชีพ วิเคราะห์พอร์ตหุ้นเป็นภาษาไทย กระชับ ตรงประเด็น ไม่เกิน 5 บรรทัด`;
+    const sys=`คุณคือที่ปรึกษาการลงทุน สรุปพอร์ตเป็นภาษาไทย เข้าใจง่าย กระชับ ใช้ emoji ประกอบ ไม่เกิน 4 บรรทัด ห้ามใช้ ** หรือ markdown`;
     const prompt=`พอร์ตปัจจุบัน:
 ${holdings}
 เงินสด: $${_portCash} (${cashPct}% ของพอร์ตรวม)
 ภาพรวมตลาด: ${mkt}
 
-วิเคราะห์: ความเสี่ยง, กระจุกตัวไหม, ควรถือ cash เท่าไหร่, และคำแนะนำสั้นๆ`;
+สรุปใน 4 บรรทัด: 1)ความเสี่ยงรวม 2)หุ้นที่น่าจับตา 3)ควรถือ cash เท่าไหร่ 4)คำแนะนำสั้นๆ`;
 
-    // ลองตามลำดับ Claude → Gemini → Groq
+    // Claude เป็นหลัก fallback Gemini → Groq
     let reply = await _callClaude(sys,prompt,200);
     if(!reply) reply = await _callGemini15Pro(sys,prompt,200);
     if(!reply) reply = await _callGroq(sys,prompt,200);
+    reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'');
     resultEl.innerHTML=reply||'ไม่สามารถวิเคราะห์ได้';
   }catch(e){
     resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
