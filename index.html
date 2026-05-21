@@ -8216,9 +8216,9 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(score>=BUY_SIGNAL_THRESHOLD){
-    // AI คัดก่อน popup — ต้องผิด 2 ข้อขึ้นไปถึง SKIP
+    // ถ้าชิด S1 ≤ 1% → ข้าม AI เลย โอกาส bounce สูงมาก
     let aiApproved = true;
-    if(hasCandleData){
+    if(hasCandleData && pctFromS1 > 1.0){
       try{
         aiApproved = await _aiPreScreenSignal(ticker, price, s1, r1, score);
       }catch{
