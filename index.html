@@ -2032,9 +2032,15 @@ function makeCard(s){
       <div class="card-stat">
         ${(()=>{
           try{
-            const cd=candleCache[s.t]?.data;
-            const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
-            const scoreVal=sc?Math.round(sc.score):null;
+            // ใช้ cache ถ้ามี ไม่คำนวณซ้ำ
+            if(!window._buyScoreCache) window._buyScoreCache={};
+            const cacheKey=`${s.t}_${s.p}`;
+            if(window._buyScoreCache[cacheKey]===undefined){
+              const cd=candleCache[s.t]?.data;
+              const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
+              window._buyScoreCache[cacheKey]=sc?Math.round(sc.score):null;
+            }
+            const scoreVal=window._buyScoreCache[cacheKey];
             const scoreColor=scoreVal>=55?'var(--green)':scoreVal>=45?'var(--gold)':'var(--text2)';
             return `<div class="card-stat-val" style="color:${scoreColor}">${scoreVal?scoreVal+'/100':'--'}</div>`;
           }catch(e){
