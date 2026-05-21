@@ -105,6 +105,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .stock-card{animation:cardIn 0.28s cubic-bezier(0.22,1,0.36,1) both}
@@ -247,6 +248,8 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
   border-radius:20px;
   overflow:hidden;
   cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(201,168,76,0.1);
   transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s ease;
   position:relative;
   box-shadow:
@@ -2054,6 +2057,19 @@ function makeCard(s){
     if(e.target.closest('.wl-btn')) return;
     openDrawer(s.t);
   };
+  // iOS Safari fix: touchend เพื่อให้ tap ทำงานแน่นอน
+  let _tStartX=0,_tStartY=0;
+  div.addEventListener('touchstart',(e)=>{
+    if(e.target.closest('.wl-btn')) return;
+    _tStartX=e.touches[0].clientX;
+    _tStartY=e.touches[0].clientY;
+  },{passive:true});
+  div.addEventListener('touchend',(e)=>{
+    if(e.target.closest('.wl-btn')) return;
+    const dx=Math.abs(e.changedTouches[0].clientX-_tStartX);
+    const dy=Math.abs(e.changedTouches[0].clientY-_tStartY);
+    if(dx<10&&dy<10){ e.preventDefault(); openDrawer(s.t); }
+  },{passive:false});
   return div;
 }
 
