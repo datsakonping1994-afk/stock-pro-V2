@@ -3016,7 +3016,7 @@ function drawerTab(tab, btn){
   if(tab==='tech'){
     // FIX: fetch candles ก่อนถ้ายังไม่มี แล้ว re-render indicator
     const _renderTech=()=>{
-      const _isMock=candleCache[s.t]?.data?._mock;
+      const _isMock=false;
       const sig=candleCache[s.t]?.data ? _calcBuyScore(s.t,s.p,s1,r1) : null;
     const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
     const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
@@ -3062,7 +3062,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
       <div class="big-chart"><canvas id="bigChartCanvas"></canvas></div>
-      ${_isMock?`<div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px">⚠️ <span>ข้อมูลประมาณการ — API โหลดไม่ได้ indicator อาจไม่แม่น</span></div>`:''}
+      ${sig?'':''}
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3140,18 +3140,37 @@ function drawerTab(tab, btn){
       }
     },50));
     }; // end _renderTech
-    _renderTech();
+    if(candleCache[s.t]?.data){
+      // มีข้อมูลแล้ว render เลย
+      _renderTech();
+    } else {
+      // แสดง loading ก่อน
+      body.innerHTML=`
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:12px;text-align:center">
+          <div style="font-size:28px">⏳</div>
+          <div style="font-size:13px;color:var(--text2)">กำลังโหลดข้อมูล ${s.t}...</div>
+        </div>`;
+    }
     // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator ทันที
-    if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
+    if(!candleCache[s.t]?.data){
       fetchCandles(s.t,60).then((data)=>{
         if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
           updateRSIFromCandles(s.t);
-          _renderTech();
-          if(data&&!data._mock){
-            const src=candleCache[s.t]?.src||'';
-            toast(`📊 โหลด indicator ${s.t} สำเร็จ (${src})`,2000);
+          if(data){
+            _renderTech();
+            toast(`📊 โหลด indicator ${s.t} สำเร็จ (${candleCache[s.t]?.src||''})`,2000);
           } else {
-            toast(`⚠️ ${s.t}: ใช้ข้อมูลประมาณการ (API ไม่ตอบ)`,3000);
+            // แสดง error state พร้อมปุ่ม retry
+            const body=document.getElementById('drawerBody');
+            if(body){
+              body.innerHTML=`
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:16px;text-align:center">
+                  <div style="font-size:36px">📡</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text)">โหลดข้อมูลไม่ได้</div>
+                  <div style="font-size:12px;color:var(--text3);line-height:1.6">API ทุกตัวไม่ตอบสนอง<br>ลองใหม่หรือตรวจสอบ internet</div>
+                  <button onclick="drawerTab('tech',document.querySelector('.drawer-tab[onclick*=\\'tech\\']'))" style="background:var(--gold);border:none;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>
+                </div>`;
+            }
           }
         }
       }).catch(()=>{});
@@ -5686,15 +5705,7 @@ async function fetchCandles(ticker, days=60){
     }
   }catch(e){}
   finally{ _candleFetching.delete(ticker); }
-  // Fallback: mock data
-  const s=stocks.find(x=>x.t===ticker);
-  if(s&&s.p>0){
-    const data=_genMockCandles(ticker,s.p,days);
-    if(data){
-      candleCache[ticker]={data,ts:Date.now()-240000,days};
-      return data;
-    }
-  }
+  // ไม่มีข้อมูลจริง — คืน null ไม่ใช้ mock
   return null;
 }
 
