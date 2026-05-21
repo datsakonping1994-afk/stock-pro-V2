@@ -105,7 +105,6 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
-@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .stock-card{animation:cardIn 0.28s cubic-bezier(0.22,1,0.36,1) both}
@@ -248,8 +247,6 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
   border-radius:20px;
   overflow:hidden;
   cursor:pointer;
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:rgba(201,168,76,0.1);
   transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s ease;
   position:relative;
   box-shadow:
@@ -2057,19 +2054,6 @@ function makeCard(s){
     if(e.target.closest('.wl-btn')) return;
     openDrawer(s.t);
   };
-  // iOS Safari fix: touchend เพื่อให้ tap ทำงานแน่นอน
-  let _tStartX=0,_tStartY=0;
-  div.addEventListener('touchstart',(e)=>{
-    if(e.target.closest('.wl-btn')) return;
-    _tStartX=e.touches[0].clientX;
-    _tStartY=e.touches[0].clientY;
-  },{passive:true});
-  div.addEventListener('touchend',(e)=>{
-    if(e.target.closest('.wl-btn')) return;
-    const dx=Math.abs(e.changedTouches[0].clientX-_tStartX);
-    const dy=Math.abs(e.changedTouches[0].clientY-_tStartY);
-    if(dx<10&&dy<10){ e.preventDefault(); openDrawer(s.t); }
-  },{passive:false});
   return div;
 }
 
@@ -3131,7 +3115,7 @@ function drawerTab(tab, btn){
       const allTs=candleCache[s.t]?.data?.t||null;
       const timestamps=allTs?allTs.slice(-days):null;
       drawBigChartWithAxes(c,prices,timestamps,s.c>=0);
-      if(!hasCandleData&&hasApiKey()){
+      if(!hasCandleData){
         fetchCandles(s.t,days).then(()=>{
           const c2=document.getElementById('bigChartCanvas');
           if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock){
@@ -3155,10 +3139,13 @@ function drawerTab(tab, btn){
     },50));
     }; // end _renderTech
     _renderTech();
-    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
+    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator ทันที
     if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
-      if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
-        if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _renderTech();
+      fetchCandles(s.t,60).then(()=>{
+        if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
+          updateRSIFromCandles(s.t);
+          _renderTech();
+        }
       }).catch(()=>{});
     }
   } else if(tab==='ai'){
@@ -5430,7 +5417,29 @@ function calcVolumeProfile(data, bins=10){
 }
 
 // ── _genMockCandles ──
-
+function _genMockCandles(ticker, price, days=60){
+  if(!price||price<=0) return null;
+  const c=[],h=[],l=[],o=[],v=[],t=[];
+  let p=price*(0.85+Math.random()*0.1);
+  const now=Math.floor(Date.now()/1000);
+  const DAY=86400;
+  for(let i=days;i>=0;i--){
+    const chg=(Math.random()-0.48)*0.025;
+    const open=p;
+    p=Math.max(p*(1+chg), price*0.3);
+    const hi=Math.max(open,p)*(1+Math.random()*0.01);
+    const lo=Math.min(open,p)*(1-Math.random()*0.01);
+    o.push(+open.toFixed(2));
+    c.push(+p.toFixed(2));
+    h.push(+hi.toFixed(2));
+    l.push(+lo.toFixed(2));
+    v.push(Math.floor(1000000+Math.random()*5000000));
+    t.push(now-i*DAY);
+  }
+  // force last close = current price
+  c[c.length-1]=price;
+  return {c,h,l,o,v,t,_mock:true};
+}
 
 // ── Timeframe switcher ──
 async function _switchTF(btn, days){
@@ -5480,8 +5489,31 @@ async function fetchPolygonQuote(ticker){
 }
 
 // ── testPolygonKey ──
+async function testPolygonKey(key){
+  try{
+    const ctrl=new AbortController();
+    setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(`https://api.polygon.io/v2/aggs/ticker/AAPL/prev?adjusted=true&apiKey=${key}`,{signal:ctrl.signal});
+    if(!r.ok) return false;
+    const d=await r.json();
+    return !!(d?.results?.length);
+  }catch{ return false; }
+}
 
 // ── testCohereKey ──
+async function testCohereKey(key){
+  try{
+    const ctrl=new AbortController();
+    setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch('https://api.cohere.com/v2/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'hi'}],max_tokens:5}),
+      signal:ctrl.signal
+    });
+    return r.ok;
+  }catch{ return false; }
+}
 
 // ── Twelve Data config ──
 const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
@@ -6275,6 +6307,66 @@ async function fetchMarketContext(){
 }
 
 // ── fetchLiveNews — parallel proxy fetch, ข่าวใหม่ 3 วัน ──
+async function fetchLiveNews(ticker){
+  // 1. Finnhub company news
+  try{
+    const to=new Date(); const from=new Date(); from.setDate(from.getDate()-7);
+    const fmtD=d=>d.toISOString().slice(0,10);
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${fmtD(from)}&to=${fmtD(to)}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      if(Array.isArray(d)&&d.length){
+        const items=d.slice(0,8).map(n=>({
+          h:n.headline||'', x:n.summary||'',
+          s:n.source||'Finnhub', u:n.url||'#',
+          d:n.datetime?new Date(n.datetime*1000).toLocaleDateString('th-TH'):''
+        }));
+        liveNewsCache[ticker]={items,ts:Date.now()};
+        return items;
+      }
+    }
+  }catch{}
+  // 2. Marketaux
+  try{
+    const key=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
+    if(key){
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),6000);
+      const r=await fetch(`https://api.marketaux.com/v1/news/all?symbols=${ticker}&language=en&limit=8&api_token=${key}`,{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d?.data?.length){
+          const items=d.data.map(n=>({h:n.title||'',x:n.description||'',s:n.source||'Marketaux',u:n.url||'#',d:n.published_at?new Date(n.published_at).toLocaleDateString('th-TH'):''}));
+          liveNewsCache[ticker]={items,ts:Date.now()};
+          return items;
+        }
+      }
+    }
+  }catch{}
+  // 3. GNews
+  try{
+    const key=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
+    if(key){
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),6000);
+      const r=await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(ticker)}&lang=en&max=8&apikey=${key}`,{signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const d=await r.json();
+        if(d?.articles?.length){
+          const items=d.articles.map(n=>({h:n.title||'',x:n.description||'',s:n.source?.name||'GNews',u:n.url||'#',d:n.publishedAt?new Date(n.publishedAt).toLocaleDateString('th-TH'):''}));
+          liveNewsCache[ticker]={items,ts:Date.now()};
+          return items;
+        }
+      }
+    }
+  }catch{}
+  return [];
+}
 
 // ── News localStorage helpers (TTL 30 นาที) ──
 const NEWS_TTL=1800000;
@@ -6337,6 +6429,22 @@ async function _renderNewsItems(pane, items, ticker, isStatic=false){
 }
 
 // ── renderNewsTab ──
+async function renderNewsTab(ticker){
+  const body=document.getElementById('drawerBody');
+  if(!body) return;
+  // ลอง cache ก่อน
+  const cached=_loadNewsCache(ticker);
+  if(cached&&cached.length){ await _renderNewsItems(body,cached,ticker,true); return; }
+  if(liveNewsCache[ticker]?.items?.length){ await _renderNewsItems(body,liveNewsCache[ticker].items,ticker); return; }
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
+  const items=await fetchLiveNews(ticker);
+  if(!items||!items.length){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าวสำหรับ '+ticker+'</div>';
+    return;
+  }
+  _saveNewsCache(ticker,items);
+  await _renderNewsItems(body,items,ticker);
+}
 
 // ── AI วิเคราะห์ข่าว ──
 async function analyzeNewsWithAI(ticker){
@@ -6900,6 +7008,111 @@ async function refreshNewsManual(){
 }
 
 // ── loadEconNews: ดึงข่าว 3 วัน รวมเป็นฟีดเดียว คัด 8 สำคัญ ──
+async function loadEconNews(){
+  const body=document.getElementById('econNewsBody');
+  if(!body) return;
+
+  // ใช้ cache ถ้ายังไม่หมดอายุ
+  if(_econNewsCache['all']&&Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL){
+    _renderEconNews(_econNewsCache['all']);
+    return;
+  }
+
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
+
+  let items=[];
+
+  // 1. ลอง Finnhub general news
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      if(Array.isArray(d)&&d.length){
+        items=d.slice(0,12).map(n=>({
+          h:_stripNewsSource(n.headline||''),
+          x:n.summary||'',
+          s:n.source||'Finnhub',
+          u:n.url||'#',
+          d:n.datetime?new Date(n.datetime*1000).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''
+        }));
+      }
+    }
+  }catch{}
+
+  // 2. Fallback: Marketaux
+  if(!items.length){
+    try{
+      const key=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
+      if(key){
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),6000);
+        const r=await fetch(`https://api.marketaux.com/v1/news/all?language=en&filter_entities=true&limit=12&api_token=${key}`,{signal:ctrl.signal});
+        clearTimeout(tid);
+        if(r.ok){
+          const d=await r.json();
+          if(d?.data?.length){
+            items=d.data.map(n=>({
+              h:_stripNewsSource(n.title||''),x:n.description||'',
+              s:n.source||'Marketaux',u:n.url||'#',
+              d:n.published_at?new Date(n.published_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}):''
+            }));
+          }
+        }
+      }
+    }catch{}
+  }
+
+  // 3. Fallback: GNews business headlines
+  if(!items.length){
+    try{
+      const key=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
+      if(key){
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),6000);
+        const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&max=12&apikey=${key}`,{signal:ctrl.signal});
+        clearTimeout(tid);
+        if(r.ok){
+          const d=await r.json();
+          if(d?.articles?.length){
+            items=d.articles.map(n=>({
+              h:_stripNewsSource(n.title||''),x:n.description||'',
+              s:n.source?.name||'GNews',u:n.url||'#',
+              d:n.publishedAt?new Date(n.publishedAt).toLocaleDateString('th-TH',{day:'numeric',month:'short'}):''
+            }));
+          }
+        }
+      }
+    }catch{}
+  }
+
+  if(items.length){
+    _econNewsCache['all']=items;
+    _econNewsCacheTime['all']=Date.now();
+    _renderEconNews(items);
+    const upd=document.getElementById('newsLastUpdated');
+    if(upd) upd.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  } else {
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าว — ลองกด 🔄</div>';
+  }
+}
+
+function _renderEconNews(items){
+  const body=document.getElementById('econNewsBody');
+  if(!body||!items?.length) return;
+  body.innerHTML=items.map(n=>`
+    <a href="${n.u||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block">
+      <div style="background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.3);margin-bottom:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${_escHtml(n.h||'')}</div>
+        ${n.x?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px">${_escHtml((n.x||'').slice(0,180))}</div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+          <span>${_escHtml(n.s||'')}</span><span>${n.d||''}</span>
+        </div>
+      </div>
+    </a>`).join('');
+}
 
 // ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
 function _stripNewsSource(title){
