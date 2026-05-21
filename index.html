@@ -2031,11 +2031,15 @@ function makeCard(s){
     <div class="card-stats">
       <div class="card-stat">
         ${(()=>{
-          const cd=candleCache[s.t]?.data;
-          const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
-          const scoreVal=sc?Math.round(sc.score):null;
-          const scoreColor=scoreVal>=55?'var(--green)':scoreVal>=45?'var(--gold)':'var(--text2)';
-          return `<div class="card-stat-val" style="color:${scoreColor}">${scoreVal?scoreVal+'/100':'--'}</div>`;
+          try{
+            const cd=candleCache[s.t]?.data;
+            const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
+            const scoreVal=sc?Math.round(sc.score):null;
+            const scoreColor=scoreVal>=55?'var(--green)':scoreVal>=45?'var(--gold)':'var(--text2)';
+            return `<div class="card-stat-val" style="color:${scoreColor}">${scoreVal?scoreVal+'/100':'--'}</div>`;
+          }catch(e){
+            return `<div class="card-stat-val" style="color:var(--text2)">--</div>`;
+          }
         })()}
         <div class="card-stat-lbl">Buy Score</div>
       </div>
