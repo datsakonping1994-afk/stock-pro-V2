@@ -2031,23 +2031,7 @@ function makeCard(s){
     </div>
     <div class="card-stats">
       <div class="card-stat">
-        ${(()=>{
-          try{
-            // ใช้ cache ถ้ามี ไม่คำนวณซ้ำ
-            if(!window._buyScoreCache) window._buyScoreCache={};
-            const cacheKey=`${s.t}_${s.p}`;
-            if(window._buyScoreCache[cacheKey]===undefined){
-              const cd=candleCache[s.t]?.data;
-              const sc=(cd&&!cd._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
-              window._buyScoreCache[cacheKey]=sc?Math.round(sc.score):null;
-            }
-            const scoreVal=window._buyScoreCache[cacheKey];
-            const scoreColor=scoreVal>=55?'var(--green)':scoreVal>=45?'var(--gold)':'var(--text2)';
-            return `<div class="card-stat-val" style="color:${scoreColor}">${scoreVal?scoreVal+'/100':'--'}</div>`;
-          }catch(e){
-            return `<div class="card-stat-val" style="color:var(--text2)">--</div>`;
-          }
-        })()}
+        <div class="card-stat-val" id="bs-${s.t}" style="color:var(--text2)">--</div>
         <div class="card-stat-lbl">Buy Score</div>
       </div>
       <div class="card-stat">
@@ -2315,6 +2299,23 @@ function renderCards(){
             drawSpark(canvas,candleCache[s.t].data.c.slice(-30),s.c>=0);
           }
         });
+        // อัปเดต Buy Score แบบ async ไม่บล็อก UI
+        setTimeout(()=>{
+          list.forEach(s=>{
+            try{
+              const el=document.getElementById('bs-'+s.t);
+              if(!el) return;
+              const cd=candleCache[s.t]?.data;
+              if(!cd||cd._mock) return;
+              const s1=getS1(s.t,s.p), r1=getR1(s.t,s.p);
+              const sc=_calcBuyScore(s.t,s.p,s1,r1);
+              if(!sc) return;
+              const v=Math.round(sc.score);
+              el.textContent=v+'/100';
+              el.style.color=v>=55?'var(--green)':v>=45?'var(--gold)':'var(--text2)';
+            }catch(e){}
+          });
+        },200);
       },50);
     }
   }
