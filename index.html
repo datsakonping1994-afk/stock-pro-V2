@@ -3017,12 +3017,14 @@ function renderPeerComparison(ticker, containerId){
 
 
 function drawerTab(tab, btn){
+  try{
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   currentDrawerTab = tab;
   const s=stocks.find(x=>x.t===currentDrawerTicker);
   if(!s)return;
   const body=document.getElementById('drawerBody');
+  if(!body)return;
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
   const rsi=rsiData[s.t]||50;
   if(tab==='tech'){
@@ -3152,17 +3154,8 @@ function drawerTab(tab, btn){
       }
     },50));
     }; // end _renderTech
-    if(candleCache[s.t]?.data){
-      // มีข้อมูลแล้ว render เลย
-      _renderTech();
-    } else {
-      // แสดง loading ก่อน
-      body.innerHTML=`
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:12px;text-align:center">
-          <div style="font-size:28px">⏳</div>
-          <div style="font-size:13px;color:var(--text2)">กำลังโหลดข้อมูล ${s.t}...</div>
-        </div>`;
-    }
+    // render ทันทีเสมอ (ถ้าไม่มี candle ใช้ mock chart ไปก่อน)
+    _renderTech();
     // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator ทันที
     if(!candleCache[s.t]?.data){
       fetchCandles(s.t,60).then((data)=>{
@@ -3386,6 +3379,7 @@ function drawerTab(tab, btn){
       body.innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px">❌ Error: ' + (fundErr && fundErr.message ? fundErr.message : String(fundErr)) + '</div>';
     }
   }
+  }catch(err){console.warn('[drawerTab]',err);}
 }
 
 // ── AI Chat ──
