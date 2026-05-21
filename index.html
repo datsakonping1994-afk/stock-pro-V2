@@ -1006,7 +1006,7 @@ canvas.bigchart{width:100%;height:100%}
 
 <!-- DETAIL DRAWER -->
 <div id="drawer">
-  <div class="drawer-handle" onclick="closeDrawer()" style="cursor:pointer;padding:6px 0"></div>
+  <div class="drawer-handle" onclick="closeDrawer()" style="cursor:pointer;padding:8px 0 4px;margin-top:6px"></div>
   <div class="drawer-header">
     <div style="display:flex;align-items:center;gap:10px">
       <div id="drawerLogo" style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--bg3),var(--bg4));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);font-family:'Syne',sans-serif;flex-shrink:0;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,0.5),0 0 0 1.5px rgba(201,168,76,0.2);border:1.5px solid rgba(255,255,255,0.08)"></div>
@@ -1016,12 +1016,12 @@ canvas.bigchart{width:100%;height:100%}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <div class="drawer-price">
+      <div class="drawer-price" style="text-align:right">
         <div class="drawer-price-val" id="drawerPrice">--</div>
         <div class="card-chg" id="drawerChg">--</div>
         <div id="drawerExtPrice" style="display:none"></div>
       </div>
-      <div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="width:32px;height:32px;font-size:16px">☆</div>
+      <div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="width:32px;height:32px;font-size:16px;flex-shrink:0">☆</div>
       <div onclick="closeDrawer()" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);cursor:pointer;flex-shrink:0">✕</div>
     </div>
   </div>
@@ -2579,57 +2579,66 @@ function updateDashboard(){
 
 // ── Drawer ──
 function openDrawer(ticker){
-  // ปิด signal overlay ก่อนเปิด drawer
-  closeSignal();
-  // ปิด modal ทั้งหมดก่อนเปิด drawer
-  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
-  currentDrawerTicker=ticker;
-  const s=stocks.find(x=>x.t===ticker);
-  if(!s)return;
-  document.getElementById('drawerTicker').textContent=s.t;
-  document.getElementById('drawerName').textContent=s.n;
-  document.getElementById('drawerPrice').textContent=fmt(s.p);
-  const chg=document.getElementById('drawerChg');
-  chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
-  chg.className='card-chg '+(s.c>=0?'up':'dn');
-  // อัพเดท watchlist star ใน drawer
-  const dWlBtn=document.getElementById('drawerWlBtn');
-  if(dWlBtn){
-    dWlBtn.textContent=watchlist.has(ticker)?'⭐':'☆';
-    dWlBtn.classList.toggle('active', watchlist.has(ticker));
-  }
-  // Load drawer logo
-  const dLogo=document.getElementById('drawerLogo');
-  if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
-  loadLogo(ticker,'drawerLogo',40);
-  // render tech tab ครั้งเดียวตอนเปิด
-  _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
-  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
-  // ดึง analyst data ในพื้นหลัง
-  fetchAnalystData(ticker).then(()=>{
-    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
-  });
-  document.getElementById('drawer').classList.add('open');
-  // FIX: lock body scroll ตอนเปิด Drawer
-  document.body.style.overflow='hidden';
-  // snapshot ticker ณ เวลานี้ เพื่อกัน race condition
-  var _snapTicker = ticker;
-  function _reRenderTechIfActive(){
-    if(currentDrawerTicker === _snapTicker && currentDrawerTab === 'tech'){
-      updateRSIFromCandles(_snapTicker);
-      drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  try{
+    try{closeSignal();}catch{}
+    try{['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));}catch{}
+    currentDrawerTicker=ticker;
+    const s=stocks.find(x=>x.t===ticker);
+    if(!s)return;
+    const drawerEl=document.getElementById('drawer');
+    if(!drawerEl)return;
+    try{document.getElementById('drawerTicker').textContent=s.t;}catch{}
+    try{document.getElementById('drawerName').textContent=s.n;}catch{}
+    try{document.getElementById('drawerPrice').textContent=fmt(s.p);}catch{}
+    try{
+      const chg=document.getElementById('drawerChg');
+      if(chg){chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';chg.className='card-chg '+(s.c>=0?'up':'dn');}
+    }catch{}
+    try{
+      const dWlBtn=document.getElementById('drawerWlBtn');
+      if(dWlBtn){dWlBtn.textContent=watchlist.has(ticker)?'⭐':'☆';dWlBtn.classList.toggle('active',watchlist.has(ticker));}
+    }catch{}
+    try{
+      const dLogo=document.getElementById('drawerLogo');
+      if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
+      loadLogo(ticker,'drawerLogo',40);
+    }catch{}
+    // เปิด drawer ก่อน แล้วค่อย render (ให้ layout เสร็จก่อน)
+    drawerEl.classList.add('open');
+    document.body.style.overflow='hidden';
+    _currentChartDays=30;
+    setTimeout(()=>{
+      try{
+        const tabs=drawerEl.querySelectorAll('.drawer-tab');
+        drawerTab('tech', tabs[0]||null);
+      }catch(e){console.warn('[drawer tech tab]',e);}
+    },30);
+    try{
+      fetchAnalystData(ticker).then(()=>{
+        if(currentDrawerTab==='fund'){
+          try{drawerTab('fund',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[1]||null);}catch{}
+        }
+      }).catch(()=>{});
+    }catch{}
+    var _snapTicker=ticker;
+    function _reRenderTechIfActive(){
+      if(currentDrawerTicker===_snapTicker&&currentDrawerTab==='tech'){
+        try{updateRSIFromCandles(_snapTicker);}catch{}
+        try{drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null);}catch{}
+      }
     }
-  }
-  if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
-    // มี cache — refresh ใน background ถ้าเก่าเกิน 30 นาที
-    if(Date.now() - candleCache[ticker].ts > 1800000){
-      fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
-    }
-  } else {
-    // ไม่มี cache — โหลดแล้ว re-render เฉพาะถ้ายังอยู่ tech tab
-    fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
-  }
+    try{
+      if(candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock){
+        if(Date.now()-candleCache[ticker].ts>1800000){
+          fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
+        }
+      }else{
+        fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
+      }
+    }catch{}
+  }catch(err){console.warn('[openDrawer]',err);}
 }
+
 function closeDrawer(){
   document.getElementById('drawer').classList.remove('open');
   // FIX: unlock body scroll ตอนปิด Drawer
@@ -3171,7 +3180,7 @@ function drawerTab(tab, btn){
                   <div style="font-size:36px">📡</div>
                   <div style="font-size:14px;font-weight:700;color:var(--text)">โหลดข้อมูลไม่ได้</div>
                   <div style="font-size:12px;color:var(--text3);line-height:1.6">API ทุกตัวไม่ตอบสนอง<br>ลองใหม่หรือตรวจสอบ internet</div>
-                  <button onclick="drawerTab('tech',document.querySelector('.drawer-tab[onclick*=\\'tech\\']'))" style="background:var(--gold);border:none;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>
+                  <button onclick="drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null)" style="background:var(--gold);border:none;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>
                 </div>`;
             }
           }
@@ -5491,7 +5500,7 @@ async function _switchTF(btn, days){
       const timestamps=allTs?allTs.slice(-days):null;
       drawBigChartWithAxes(c,prices,timestamps,s?.c>=0);
     }
-    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
+    if(currentDrawerTab==='tech'){try{drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null);}catch{}}
   }catch(e){}
 }
 
@@ -8076,7 +8085,8 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
   let _swipeStartX=0, _swipeStartY=0, _swipeStartTime=0;
 
   function _getTabEl(tab){
-    return document.querySelector(`.drawer-tab[onclick*="${tab}"]`);
+    const _TABS=['tech','fund','ai','news'];const _i=_TABS.indexOf(tab);
+    return _i>=0?(document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[_i]||null):null;
   }
 
   function _goTab(dir){
