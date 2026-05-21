@@ -7908,8 +7908,11 @@ ${holdings}
     let reply = await _callClaude(sys,prompt,200);
     if(!reply) reply = await _callGemini15Pro(sys,prompt,200);
     if(!reply) reply = await _callGroq(sys,prompt,200);
-    reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'');
-    resultEl.innerHTML=reply||'ไม่สามารถวิเคราะห์ได้';
+    reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').replace(/[\u{1F000}-\u{1FFFF}]/gu,'').replace(/[\u{2600}-\u{26FF}]/gu,'').replace(/[\u{2700}-\u{27BF}]/gu,'').replace(/\d+\)\s*/g,'').trim();
+    // แต่ละประโยคขึ้นบรรทัดใหม่
+    reply = reply.split('|').join('\n').replace(/\s{2,}/g,' ').trim();
+    resultEl.style.whiteSpace='pre-line';
+    resultEl.textContent=reply||'ไม่สามารถวิเคราะห์ได้';
   }catch(e){
     resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
   }
