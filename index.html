@@ -11,11 +11,11 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg0:#04060c;
-  --bg1:#080c14;
-  --bg2:#0e1420;
-  --bg3:#141c2c;
-  --bg4:#1a2336;
+  --bg0:#060810;
+  --bg1:#0a0e15;
+  --bg2:#111620;
+  --bg3:#181f2e;
+  --bg4:#1e2738;
   --gold:#c9a84c;
   --gold2:#e8c87a;
   --ice:#64d2ff;
@@ -27,25 +27,17 @@
   --text:#f0f4fc;
   --text2:#a8b8d0;
   --text3:#6b7fa0;
-  --border:#1a2638;
-  --border2:#202e42;
-  --glow-gold:rgba(201,168,76,0.2);
-  --glow-ice:rgba(100,210,255,0.15);
-  --glow-green:rgba(0,230,118,0.15);
+  --border:#1e2a3a;
+  --border2:#243040;
+  --glow-gold:rgba(201,168,76,0.15);
+  --glow-ice:rgba(100,210,255,0.12);
+  --glow-green:rgba(0,230,118,0.12);
   --yellow:#ffd700;
   --accent:#c9a84c;
   --dim:#6b7fa0;
-  /* depth layers */
-  --depth-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
-  --depth-inset: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.4);
-  --glow-edge: 0 0 0 1px rgba(255,255,255,0.04);
 }
 html,body{height:100%;background:var(--bg0);color:var(--text);overflow:hidden}
-#app::before{content:'';position:fixed;inset:0;background:
-  radial-gradient(ellipse at 15% -10%, rgba(100,210,255,0.07) 0%,transparent 45%),
-  radial-gradient(ellipse at 85% 100%, rgba(201,168,76,0.08) 0%,transparent 45%),
-  radial-gradient(ellipse at 50% 50%, rgba(8,14,28,0.5) 0%, transparent 70%);
-  pointer-events:none;z-index:0}
+#app::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(100,210,255,0.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(201,168,76,0.04) 0%,transparent 50%);pointer-events:none;z-index:0}
 body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 
 /* ── LAYOUT ── */
@@ -56,19 +48,16 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 
 /* ── TOP BAR ── */
 #topbar{
-  background:linear-gradient(180deg,rgba(4,6,12,0.98) 0%,rgba(7,10,18,0.95) 100%);
-  border-bottom:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg,rgba(5,7,12,1.0) 0%,rgba(8,11,18,0.96) 100%);
+  border-bottom:1px solid rgba(255,255,255,0.06);
   padding:env(safe-area-inset-top) 16px 10px;
-  backdrop-filter:blur(40px) saturate(1.8) brightness(0.9);
-  -webkit-backdrop-filter:blur(40px) saturate(1.8) brightness(0.9);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.06),
-    0 4px 30px rgba(0,0,0,0.5),
-    0 0 60px rgba(100,210,255,0.03);
+  backdrop-filter:blur(30px) saturate(1.5);
+  -webkit-backdrop-filter:blur(30px) saturate(1.5);
+  box-shadow:0 1px 0 rgba(255,255,255,0.04),0 4px 20px rgba(0,0,0,0.3);
 }
 .topbar-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .logo-wrap{display:flex;align-items:center;gap:8px}
-.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#f5c842,#d4a030,#b8861f);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#080700;font-family:'Syne',sans-serif;box-shadow:0 0 20px rgba(212,168,67,0.55),0 2px 8px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,240,160,0.5)}
+.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#d4a843,#f0c860);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#080700;font-family:'Syne',sans-serif;box-shadow:0 0 12px rgba(212,168,67,0.4)}
 .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:2px;color:var(--text);text-transform:uppercase}
 .logo-ver{font-size:10px;color:var(--gold);letter-spacing:1px;font-family:'Inter',sans-serif;opacity:0.8}
 .topbar-stats{display:flex;gap:12px;align-items:center}
@@ -84,21 +73,18 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 
 /* ── BOTTOM NAV ── */
 #bottomnav{
-  background:linear-gradient(0deg,rgba(4,6,10,1.0) 0%,rgba(8,12,20,0.97) 100%);
-  border-top:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(0deg,rgba(5,7,11,1.0) 0%,rgba(9,12,19,0.97) 100%);
+  border-top:1px solid rgba(255,255,255,0.06);
   padding:8px 0 env(safe-area-inset-bottom);
   display:flex;
-  backdrop-filter:blur(40px) saturate(1.8) brightness(0.85);
-  -webkit-backdrop-filter:blur(40px) saturate(1.8) brightness(0.85);
-  box-shadow:
-    0 -8px 40px rgba(0,0,0,0.6),
-    0 -1px 0 rgba(255,255,255,0.06),
-    0 -2px 0 rgba(0,0,0,0.4);
+  backdrop-filter:blur(30px) saturate(1.5);
+  -webkit-backdrop-filter:blur(30px) saturate(1.5);
+  box-shadow:0 -4px 20px rgba(0,0,0,0.4),0 -1px 0 rgba(255,255,255,0.04);
 }
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;transition:all 0.2s;position:relative}
-.nav-item.active .nav-icon{color:var(--gold);filter:drop-shadow(0 0 6px rgba(212,168,67,0.7))}
+.nav-item.active .nav-icon{color:var(--gold)}
 .nav-item.active .nav-label{color:var(--gold)}
-.nav-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);border-radius:0 0 3px 3px;box-shadow:0 0 16px rgba(212,168,67,0.9),0 0 6px rgba(212,168,67,0.6)}
+.nav-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);border-radius:0 0 3px 3px;box-shadow:0 0 10px rgba(212,168,67,0.6)}
 .nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
 .nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
@@ -121,79 +107,49 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 
 /* Market Mood */
 .mood-card{
-  background:linear-gradient(160deg,rgba(24,34,52,0.99) 0%,rgba(10,15,26,1.0) 70%,rgba(8,12,22,1.0) 100%);
-  border:1px solid rgba(255,255,255,0.09);
-  border-top:1px solid rgba(255,255,255,0.13);
-  border-radius:20px;
+  background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:18px;
   padding:16px;
   margin-bottom:12px;
   position:relative;
   overflow:hidden;
-  box-shadow:
-    0 8px 40px rgba(0,0,0,0.6),
-    0 2px 12px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.09),
-    inset 0 -1px 0 rgba(0,0,0,0.5);
+  box-shadow:0 4px 24px rgba(0,0,0,0.4),0 1px 0 rgba(255,255,255,0.05) inset;
 }
-.mood-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);pointer-events:none}
-.mood-card::before{content:'';position:absolute;inset:0;background:
-  radial-gradient(circle at 85% 30%,rgba(212,168,67,0.18),transparent 55%),
-  radial-gradient(circle at 10% 80%,rgba(100,210,255,0.06),transparent 40%);
-  pointer-events:none}
+.mood-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);pointer-events:none}
+.mood-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 50%,rgba(212,168,67,0.12),transparent 60%);pointer-events:none}
 .mood-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .mood-label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3)}
-.mood-badge{background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;color:var(--green);letter-spacing:1px;font-family:'Syne',sans-serif;box-shadow:0 0 12px rgba(0,230,118,0.2),inset 0 1px 0 rgba(0,230,118,0.1)}
-.mood-badge.bear{background:rgba(255,77,106,0.12);border-color:rgba(255,77,106,0.35);color:var(--red);box-shadow:0 0 12px rgba(255,77,106,0.2),inset 0 1px 0 rgba(255,77,106,0.1)}
-.mood-badge.neutral{background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.35);color:var(--gold);box-shadow:0 0 12px rgba(201,168,76,0.2),inset 0 1px 0 rgba(201,168,76,0.1)}
+.mood-badge{background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;color:var(--green);letter-spacing:1px;font-family:'Syne',sans-serif}
+.mood-badge.bear{background:rgba(255,77,106,0.15);border-color:rgba(255,77,106,0.3);color:var(--red)}
+.mood-badge.neutral{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.3);color:var(--gold)}
 .mood-numbers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .mood-num{text-align:center}
-.mood-num-val{font-size:26px;font-weight:800;font-family:'Manrope',sans-serif;line-height:1;text-shadow:0 0 20px currentColor,0 2px 10px rgba(0,0,0,0.5)}
-.mood-num-val.up{color:var(--green);filter:drop-shadow(0 0 8px rgba(0,230,118,0.5))}
-.mood-num-val.dn{color:var(--red);filter:drop-shadow(0 0 8px rgba(255,77,106,0.5))}
+.mood-num-val{font-size:24px;font-weight:800;font-family:'Manrope',sans-serif;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.4)}
+.mood-num-val.up{color:var(--green)}
+.mood-num-val.dn{color:var(--red)}
 .mood-num-lbl{font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.5px}
 
 /* SPY/QQQ Row */
 .index-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.index-card{
-  background:linear-gradient(145deg,rgba(24,34,52,0.97) 0%,rgba(10,16,28,0.99) 100%);
-  border:1px solid rgba(255,255,255,0.08);
-  border-top:1px solid rgba(255,255,255,0.12);
-  border-radius:14px;
-  padding:12px 14px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  box-shadow:
-    0 6px 24px rgba(0,0,0,0.5),
-    0 1px 4px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    inset 0 -1px 0 rgba(0,0,0,0.4);
-}
+.index-card{background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset}
 .index-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text2)}
 .index-chg{font-size:13px;font-weight:600;font-family:'Manrope',sans-serif}
-.index-chg.up{color:var(--green);text-shadow:0 0 10px rgba(0,230,118,0.5)}
-.index-chg.dn{color:var(--red);text-shadow:0 0 10px rgba(255,77,106,0.5)}
+.index-chg.up{color:var(--green)}
+.index-chg.dn{color:var(--red)}
 
 /* Portfolio Summary */
 .port-card{
-  background:linear-gradient(160deg,rgba(24,34,52,0.99) 0%,rgba(10,15,26,1.0) 70%,rgba(8,12,22,1.0) 100%);
-  border:1px solid rgba(255,255,255,0.09);
-  border-top:1px solid rgba(255,255,255,0.13);
-  border-radius:20px;
+  background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:18px;
   padding:16px;
-  box-shadow:
-    0 8px 40px rgba(0,0,0,0.6),
-    0 2px 12px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.09),
-    inset 0 -1px 0 rgba(0,0,0,0.5);
+  box-shadow:0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(255,255,255,0.05) inset;
   margin-bottom:12px;
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:14px;
-  position:relative;
-  overflow:hidden;
 }
-.port-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(201,168,76,0.08),transparent 50%);pointer-events:none}
 .port-stat{display:flex;flex-direction:column;gap:3px}
 .port-stat-val{font-size:18px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)}
 .port-stat-val.gold{color:var(--gold)}
@@ -203,9 +159,8 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* Top Movers */
 .movers-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .mover-row{
-  background:linear-gradient(145deg,rgba(22,32,50,0.97) 0%,rgba(10,16,28,0.99) 100%);
+  background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));
   border:1px solid rgba(255,255,255,0.07);
-  border-top:1px solid rgba(255,255,255,0.1);
   border-radius:14px;
   padding:10px 14px;
   display:flex;
@@ -213,11 +168,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
   justify-content:space-between;
   cursor:pointer;
   transition:all 0.18s;
-  box-shadow:
-    0 4px 20px rgba(0,0,0,0.5),
-    0 1px 4px rgba(0,0,0,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.07),
-    inset 0 -1px 0 rgba(0,0,0,0.4);
+  box-shadow:0 2px 10px rgba(0,0,0,0.25),0 1px 0 rgba(255,255,255,0.04) inset;
 }
 .mover-row:active{background:rgba(255,255,255,0.06);transform:scale(0.98)}
 .mover-left{display:flex;align-items:center;gap:10px}
@@ -241,49 +192,43 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── STOCK CARD ── */
 .cards-grid{padding:0 12px;display:flex;flex-direction:column;gap:12px;padding-bottom:20px}
 .stock-card{
-  background:linear-gradient(160deg,rgba(22,32,50,0.99) 0%,rgba(10,16,28,1.0) 60%,rgba(7,11,20,1.0) 100%);
-  border:1px solid rgba(255,255,255,0.08);
-  border-top:1px solid rgba(255,255,255,0.13);
+  background:linear-gradient(160deg,rgba(22,30,45,0.98) 0%,rgba(14,20,32,0.99) 100%);
+  border:1px solid rgba(255,255,255,0.07);
   border-radius:20px;
   overflow:hidden;
   cursor:pointer;
   transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s ease;
   position:relative;
   box-shadow:
-    0 8px 32px rgba(0,0,0,0.6),
-    0 2px 8px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.09),
-    inset 0 -1px 0 rgba(0,0,0,0.5);
+    0 4px 24px rgba(0,0,0,0.4),
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 -1px 0 rgba(0,0,0,0.3) inset;
 }
 /* shimmer top edge */
 .stock-card::after{
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
   pointer-events:none;
 }
 .stock-card::before{content:'';position:absolute;inset:0;border-radius:20px;pointer-events:none;opacity:0;transition:opacity 0.25s}
-.stock-card:active{transform:scale(0.981);box-shadow:0 2px 8px rgba(0,0,0,0.6)}
+.stock-card:active{transform:scale(0.981);box-shadow:0 2px 8px rgba(0,0,0,0.5)}
 .stock-card.up-card{
-  border-color:rgba(0,230,118,0.2);
-  border-top-color:rgba(0,230,118,0.28);
+  border-color:rgba(0,230,118,0.18);
   box-shadow:
-    0 8px 32px rgba(0,0,0,0.6),
-    0 0 20px rgba(0,230,118,0.07),
-    inset 0 1px 0 rgba(0,230,118,0.12),
-    inset 0 -1px 0 rgba(0,0,0,0.5);
+    0 4px 24px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(0,230,118,0.08) inset,
+    0 -1px 0 rgba(0,0,0,0.3) inset;
 }
 .stock-card.up-card::before{
-  background:linear-gradient(145deg,rgba(0,230,118,0.07) 0%,transparent 50%);
+  background:linear-gradient(145deg,rgba(0,230,118,0.05) 0%,transparent 55%);
   opacity:1;
 }
 .stock-card.dn-card{
-  border-color:rgba(255,77,106,0.18);
-  border-top-color:rgba(255,77,106,0.24);
+  border-color:rgba(255,77,106,0.14);
   box-shadow:
-    0 8px 32px rgba(0,0,0,0.6),
-    0 0 20px rgba(255,77,106,0.06),
-    inset 0 1px 0 rgba(255,77,106,0.1),
-    inset 0 -1px 0 rgba(0,0,0,0.5);
+    0 4px 24px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,77,106,0.06) inset,
+    0 -1px 0 rgba(0,0,0,0.3) inset;
 }
 .stock-card.dn-card::before{
   background:linear-gradient(145deg,rgba(255,77,106,0.04) 0%,transparent 55%);
@@ -332,31 +277,29 @@ canvas.spark{width:100%;height:52px;display:block}
 /* Stats row */
 .card-stats{padding:0 12px 13px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .card-stat{
-  background:linear-gradient(145deg,rgba(255,255,255,0.05),rgba(0,0,0,0.3));
-  border:1px solid rgba(255,255,255,0.07);
-  border-top:1px solid rgba(255,255,255,0.1);
+  background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.2));
+  border:1px solid rgba(255,255,255,0.06);
   border-radius:10px;padding:7px 8px;
-  box-shadow:0 3px 10px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.06),inset 0 -1px 0 rgba(0,0,0,0.4);
+  box-shadow:0 2px 6px rgba(0,0,0,0.2),0 1px 0 rgba(255,255,255,0.04) inset;
 }
 .card-stat-val{font-size:11.5px;font-weight:700;color:var(--text)}
 .card-stat-lbl{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:0.4px;text-transform:uppercase}
 
 /* RSI bar */
-.rsi-bar{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));margin-top:5px;position:relative;box-shadow:0 0 8px rgba(100,210,255,0.15),0 1px 4px rgba(0,0,0,0.4)}
-.rsi-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#fff;border:1.5px solid var(--bg2);box-shadow:0 0 6px rgba(255,255,255,0.6),0 0 12px rgba(255,255,255,0.2)}
+.rsi-bar{height:3px;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));margin-top:5px;position:relative}
+.rsi-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#fff;border:1.5px solid var(--bg2);box-shadow:0 0 3px rgba(255,255,255,0.3)}
 
 /* ── DETAIL DRAWER ── */
 #drawer{
   position:fixed;inset:0;z-index:700;
   display:flex;flex-direction:column;
-  background:linear-gradient(180deg,rgba(10,16,26,1.0) 0%,rgba(6,10,18,1.0) 100%);
+  background:var(--bg1);
   transform:translateY(100%);
   transition:transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
   padding-bottom:env(safe-area-inset-bottom);
   will-change:transform;
   backface-visibility:hidden;
   -webkit-backface-visibility:hidden;
-  box-shadow:0 -20px 60px rgba(0,0,0,0.8);
 }
 #drawer.open{transform:translateY(0)}
 .drawer-handle{width:36px;height:4px;border-radius:2px;background:var(--bg4);margin:10px auto 0}
@@ -372,7 +315,7 @@ canvas.spark{width:100%;height:52px;display:block}
 .drawer-body{flex:1;overflow-y:auto;padding:16px;transition:opacity 0.18s ease;-webkit-overflow-scrolling:touch;will-change:scroll-position;transform:translateZ(0)}
 
 /* Chart area */
-.big-chart{height:220px;background:linear-gradient(180deg,rgba(12,18,30,1.0),rgba(7,11,20,1.0));border-radius:16px;overflow:hidden;position:relative;margin-bottom:16px;border:1px solid rgba(255,255,255,0.07);border-top:1px solid rgba(255,255,255,0.1);box-shadow:inset 0 2px 20px rgba(0,0,0,0.5),0 4px 20px rgba(0,0,0,0.4)}
+.big-chart{height:220px;background:var(--bg2);border-radius:16px;overflow:hidden;position:relative;margin-bottom:16px;border:1px solid var(--border)}
 canvas.bigchart{width:100%;height:100%}
 .chart-timeframes{display:flex;gap:6px;margin-bottom:12px}
 .tf-btn{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s}
@@ -380,7 +323,7 @@ canvas.bigchart{width:100%;height:100%}
 
 /* Indicator table */
 .ind-table{display:flex;flex-direction:column;gap:8px}
-.ind-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:linear-gradient(145deg,rgba(20,28,46,0.97),rgba(10,15,26,0.99));border-radius:10px;border:1px solid rgba(255,255,255,0.07);border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 3px 12px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)}
+.ind-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)}
 .ind-name{font-size:11px;color:var(--text3);letter-spacing:0.5px}
 .ind-val{font-size:12px;font-weight:600;color:var(--text)}
 .ind-val.bull{color:var(--green)}
@@ -414,17 +357,7 @@ canvas.bigchart{width:100%;height:100%}
 
 /* ── SETTINGS PAGE ── */
 .settings-page{padding:14px}
-.settings-section{
-  background:linear-gradient(160deg,rgba(22,32,50,0.99) 0%,rgba(10,15,26,1.0) 100%);
-  border:1px solid rgba(255,255,255,0.08);
-  border-top:1px solid rgba(255,255,255,0.12);
-  border-radius:20px;
-  box-shadow:
-    0 8px 32px rgba(0,0,0,0.55),
-    0 2px 8px rgba(0,0,0,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    inset 0 -1px 0 rgba(0,0,0,0.4);
-  margin-bottom:14px;overflow:hidden}
+.settings-section{background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,0.35),0 1px 0 rgba(255,255,255,0.05) inset;margin-bottom:14px;overflow:hidden}
 .settings-section-title{padding:12px 16px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)}
 .settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
 .settings-row:last-child{border-bottom:none}
@@ -451,18 +384,14 @@ canvas.bigchart{width:100%;height:100%}
 }
 .signal-card{
   width:100%;max-width:500px;
-  background:linear-gradient(180deg,rgba(18,26,42,0.99),rgba(7,11,20,1.0));
-  border-top:1px solid rgba(201,168,76,0.4);
-  border-left:1px solid rgba(255,255,255,0.07);
-  border-right:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg,var(--bg2),var(--bg1));
+  border-top:1px solid rgba(201,168,76,0.3);
+  border-left:1px solid var(--border2);
+  border-right:1px solid var(--border2);
   border-radius:28px 28px 0 0;
   overflow:hidden;
   animation:slideUp 0.35s cubic-bezier(0.32,0.72,0,1);
-  box-shadow:
-    0 -30px 80px rgba(0,0,0,0.8),
-    0 -8px 30px rgba(0,0,0,0.5),
-    0 -4px 20px rgba(201,168,76,0.1),
-    inset 0 1px 0 rgba(201,168,76,0.15);
+  box-shadow:0 -20px 60px rgba(0,0,0,0.6),0 -4px 20px rgba(201,168,76,0.08);
 }
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes slideDown{from{transform:translateY(0)}to{transform:translateY(100%)}}
@@ -769,7 +698,7 @@ canvas.bigchart{width:100%;height:100%}
       <button class="ctrl-btn active" onclick="sortStocks('chg',this)">% Change</button>
       <button class="ctrl-btn" onclick="sortStocks('name',this)">A–Z</button>
       <button class="ctrl-btn" onclick="sortStocks('rsi',this)">RSI</button>
-      <button class="ctrl-btn" onclick="sortStocks('score',this)">🎯 Buy Score</button>
+      <button class="ctrl-btn" onclick="sortStocks('mcap',this)">Market Cap</button>
       <button class="ctrl-btn" onclick="sortStocks('near',this)">ใกล้แนวรับ</button>
       <button class="ctrl-btn" onclick="sortStocks('div',this)">💰 ปันผล</button>
       <button class="ctrl-btn" onclick="sortStocks('fundscore',this)">⭐ Fund Score</button>
@@ -1034,9 +963,6 @@ canvas.bigchart{width:100%;height:100%}
 <!-- BUY SIGNAL POPUP (outside #app to fix iOS backdrop) -->
 <div id="signalOverlay" style="display:none"></div>
 
-<!-- Emergency overlay close button -->
-<div id="emergencyClose" onclick="closeSignal()" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;background:rgba(255,77,106,0.9);color:white;border-radius:50%;width:40px;height:40px;font-size:20px;line-height:40px;text-align:center;cursor:pointer">✕</div>
-
 <!-- TOAST (outside #app) -->
 <div id="toastEl" style="display:none" class="toast"></div>
 
@@ -1133,6 +1059,7 @@ const STOCKS_DEFAULT=[
   {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
   {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
   {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
+  {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
@@ -1151,7 +1078,7 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0};
+const rsiData={SMH:52.0,VIX:45.0,FPS:56.8,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0};
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -1174,6 +1101,7 @@ const fundExtra={
   RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
   IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
   NBIS:{de:0.18,fcf:'-$0.2B'},KTOS:{de:0.32,fcf:'$0.1B'},MP:{de:0.45,fcf:'-$0.2B'},
+  FPS:{de:0.30,fcf:null},
 };
 
 // ── คำนวณ Fundamental Score (0-100) ──
@@ -1235,21 +1163,7 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={
-  RKLB:7.50,  AAPL:188.0, NVDA:108.0, AMD:95.00,  MSFT:380.0,
-  GOOGL:155.0,META:480.0, AMZN:185.0, TSLA:220.0, PLTR:70.0,
-  ARM:118.0,  TSM:155.0,  AVGO:180.0, LLY:750.0,  JPM:190.0,
-  AXON:350.0, CRWD:290.0, NOW:700.0,  INTC:18.0,  HIMS:30.0,
-  HOOD:20.0,  SOFI:11.0,  IONQ:20.0,  OKLO:20.0,  KTOS:22.0,
-  ASTS:15.0,  IREN:8.0,   MU:85.0,    NFLX:550.0, ANET:280.0,
-  VRT:80.0,   CRWV:35.0,  NBIS:15.0,  RBRK:60.0,
-  SMH:200.0,  VIX:14.0,   EOSE:7.00,  SLNH:1.45,  NVTS:5.80,
-  ASML:640.0, TEM:48.00,  NVO:62.00,  CRDO:65.00, ISRG:510.0,
-  XOM:108.0,  SPGI:480.0, MP:17.00,   TMDX:58.00, MELI:1950.0,
-  QCOM:135.0, AMAT:152.0, LRCX:740.0, CRM:248.0,  ADBE:330.0,
-  SNOW:135.0, DDOG:95.00, MDB:165.0,  NET:92.00,  V:308.0,
-  MA:475.0,   WMT:88.00,
-};
+const sup0={SMH:200.0,VIX:14.0,FPS:38.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:71.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00};
 
 const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX'],
@@ -1261,7 +1175,7 @@ const sectorMap={'ETF':['SMH','VIX'],
   'EV':['TSLA'],
   'LatAm':['MELI'],
   'Consumer':['ELF','COST','UNH','CAVA','RDDT','AFRM','SEZL'],
-  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE'],
+  'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE','FPS'],
 };
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
@@ -1515,9 +1429,7 @@ window._clockTimer=setInterval(()=>{
 // ── Navigation ──
 function navTo(page, el){
   window._currentMainPage = page;
-  // ปิด signal overlay และ modal ทั้งหมดก่อน
   closeSignal();
-  // reset body scroll ที่อาจค้างจาก drawer
   document.body.style.overflow='';
   ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   const drawer=document.getElementById('drawer');
@@ -1946,10 +1858,8 @@ function getS1(t,p){
   const data=candleCache[t]?.data;
   if(data&&data.l&&data.l.length>=20&&!data._mock){
     const lows=data.l;
-    // หา swing low จาก 60 แท่งล่าสุด
     const n=Math.min(60,lows.length);
     const recentLows=lows.slice(-n);
-    // หา swing low points (ต่ำกว่าทั้งซ้ายและขวา)
     const swingLows=[];
     for(let i=2;i<recentLows.length-2;i++){
       if(recentLows[i]<recentLows[i-1]&&recentLows[i]<recentLows[i-2]&&
@@ -1957,17 +1867,14 @@ function getS1(t,p){
         swingLows.push(recentLows[i]);
       }
     }
-    // หา swing low ที่ใกล้ราคาปัจจุบันมากที่สุด และต่ำกว่าราคา 1-15%
     const valid=swingLows.filter(v=>v<p*0.99&&v>p*0.85).sort((a,b)=>b-a);
     if(valid.length>0) return +valid[0].toFixed(2);
-    // fallback: ใช้ low ต่ำสุดใน 20 แท่ง ถ้าต่ำกว่าราคา 1-15%
     const low20=Math.min(...lows.slice(-20));
     if(low20<p*0.99&&low20>p*0.85) return +low20.toFixed(2);
   }
   // hardcode fallback
   const hardcoded=sup0[t];
-  if(hardcoded && hardcoded < p*0.99 && hardcoded > p*0.85) return hardcoded;
-  // dynamic fallback
+  if(hardcoded&&hardcoded<p*0.99&&hardcoded>p*0.85) return hardcoded;
   const pct=p>500?0.06:p>100?0.07:p>20?0.08:p>5?0.10:0.12;
   return +(p*(1-pct)).toFixed(2);
 }
@@ -2008,6 +1915,7 @@ function makeCard(s){
 
   const div=document.createElement('div');
   div.className=`stock-card ${isUp?'up-card':'dn-card'}`;
+  div.onclick=()=>openDrawer(s.t);
   const fscore=calcFundScore(s);
   const frating=getFundRating(fscore);
   const shortVal=s.short?parseFloat(s.short):0;
@@ -2049,8 +1957,8 @@ function makeCard(s){
     </div>
     <div class="card-stats">
       <div class="card-stat">
-        <div class="card-stat-val" id="bs-${s.t}" style="color:var(--text2)">--</div>
-        <div class="card-stat-lbl">Buy Score</div>
+        <div class="card-stat-val">${s.mktcapLive||s.mktcap||'N/A'}${s.mktcapLive?'<span style="font-size:8px;color:var(--accent);margin-left:2px">●</span>':''}</div>
+        <div class="card-stat-lbl">Mkt Cap</div>
       </div>
       <div class="card-stat">
         <div class="card-stat-val" style="color:${parseFloat(s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.rev||'N/A'}</div>
@@ -2063,11 +1971,6 @@ function makeCard(s){
       </div>
     </div>
   `;
-  // ต้อง set onclick หลัง innerHTML ไม่งั้นจะหาย
-  div.onclick=(e)=>{
-    if(e.target.closest('.wl-btn')) return;
-    openDrawer(s.t);
-  };
   return div;
 }
 
@@ -2129,9 +2032,10 @@ function _loadLogoNow(ticker, elId, size){
 
   const sources = [
     `https://financialmodelingprep.com/image-stock/${ticker}.png`,
-    `https://logo.clearbit.com/${domain}`,
     `https://img.logo.dev/${domain}?token=pk_X-1ZkqaaQyiAbZeQVt-HMQ&size=128&format=png`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+    `https://logo.clearbit.com/${domain}`,
+    `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
   ];
 
   // ใช้ img tag ใน DOM โดยตรง — browser จัดการ CORS เอง ไม่ต้อง preflight
@@ -2139,7 +2043,7 @@ function _loadLogoNow(ticker, elId, size){
   const img = document.createElement('img');
   img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:50%;display:block;';
   img.onload = () => {
-    if(img.naturalWidth < 10){ img.onerror(); return; }
+    if(img.naturalWidth < 8){ img.onerror(); return; }
     _logoLoading.delete(ticker);
     _logoCache[ticker] = {url: img.src, ts: Date.now()};
     const target = document.getElementById(elId);
@@ -2256,18 +2160,6 @@ function getVisibleStocks(){
   if(currentSort==='chg') list.sort((a,b)=>b.c-a.c);
   else if(currentSort==='name') list.sort((a,b)=>a.t.localeCompare(b.t));
   else if(currentSort==='rsi') list.sort((a,b)=>(rsiData[a.t]||50)-(rsiData[b.t]||50));
-  else if(currentSort==='score'){
-    list.sort((a,b)=>{
-      const getScore=s=>{
-        const cd=candleCache[s.t]?.data;
-        if(!cd||cd._mock) return -1;
-        const s1=getS1(s.t,s.p), r1=getR1(s.t,s.p);
-        const sc=_calcBuyScore(s.t,s.p,s1,r1);
-        return sc?sc.score:-1;
-      };
-      return getScore(b)-getScore(a);
-    });
-  }
   else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcapLive||b.mktcap)-parseMcap(a.mktcapLive||a.mktcap));
   else if(currentSort==='near'){
     list.sort((a,b)=>{
@@ -2322,23 +2214,6 @@ function renderCards(){
             drawSpark(canvas,candleCache[s.t].data.c.slice(-30),s.c>=0);
           }
         });
-        // อัปเดต Buy Score แบบ async ไม่บล็อก UI
-        setTimeout(()=>{
-          list.forEach(s=>{
-            try{
-              const el=document.getElementById('bs-'+s.t);
-              if(!el) return;
-              const cd=candleCache[s.t]?.data;
-              if(!cd||cd._mock) return;
-              const s1=getS1(s.t,s.p), r1=getR1(s.t,s.p);
-              const sc=_calcBuyScore(s.t,s.p,s1,r1);
-              if(!sc) return;
-              const v=Math.round(sc.score);
-              el.textContent=v+'/100';
-              el.style.color=v>=55?'var(--green)':v>=45?'var(--gold)':'var(--text2)';
-            }catch(e){}
-          });
-        },200);
       },50);
     }
   }
@@ -2462,6 +2337,7 @@ function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
   const logoId=`${idPrefix}-${s.t}`;
   const div=document.createElement('div');
   div.className='mover-row';
+  div.onclick=()=>openDrawer(s.t);
   div.innerHTML=`
     <div class="mover-left">
       <div class="mover-logo" id="${logoId}" style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--bg3),var(--bg4));display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--text2);font-family:'Syne',sans-serif;flex-shrink:0;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.5),0 0 0 1px rgba(201,168,76,0.12);border:1px solid rgba(255,255,255,0.07)">${buildLogoFallback(s.t)}</div>
@@ -2475,7 +2351,6 @@ function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
       <div class="mover-chg ${isUp?'up':'dn'}">${isUp?'+':''}${(+s.c).toFixed(2)}%</div>
     </div>
   `;
-  div.onclick=()=>openDrawer(s.t);
   return {div, logoId};
 }
 // ── Port Size Editor — ใช้ modal แทน window.prompt (ป้องกัน iOS PWA block) ──
@@ -2590,10 +2465,6 @@ function updateDashboard(){
 
 // ── Drawer ──
 function openDrawer(ticker){
-  // reset body overflow ก่อน (ป้องกันค้างจากครั้งก่อน)
-  document.body.style.overflow='';
-  // ปิด signal overlay ก่อนเปิด drawer
-  closeSignal();
   // ปิด modal ทั้งหมดก่อนเปิด drawer
   ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   currentDrawerTicker=ticker;
@@ -3081,6 +2952,7 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
         <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
+        <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
         <div class="ind-row"><span class="ind-name">MACD Signal</span>${macdTxt}</div>
         <div class="ind-row"><span class="ind-name">MACD Histogram</span>${macdHistTxt}</div>
         <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
@@ -3090,6 +2962,10 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">Donchian Ch. (20)</span>${donchTxt}</div>
         <div class="ind-row"><span class="ind-name">CMF (20)</span>${cmfTxt}</div>
         <div class="ind-row"><span class="ind-name">ROC (10)</span>${rocTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Ichimoku Kijun</span>${kijunTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Tenkan/Kijun</span>${tenkanTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Cloud Position</span>${cloudTxt}</div>
+        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Chikou Span</span>${chikouTxt}</div>
         <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
         <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
@@ -4129,10 +4005,6 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   const overlay=document.getElementById('signalOverlay');
   overlay.className='signal-overlay';
   overlay.style.display='flex';
-  overlay.style.pointerEvents='auto';
-  overlay.style.zIndex='2000';
-  const ec=document.getElementById('emergencyClose');
-  if(ec) ec.style.display='block';
   overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
   // FIX: escape ticker & name เพื่อป้องกัน XSS จาก innerHTML
   const safeTicker=_escHtml(ticker);
@@ -4210,7 +4082,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
     signalCard.addEventListener('touchstart',e=>{_sigSwipeStartY=e.touches[0].clientY;},{passive:true});
     signalCard.addEventListener('touchend',e=>{
       const dy=e.changedTouches[0].clientY-_sigSwipeStartY;
-      if(dy>40) closeSignal();
+      if(dy>80) closeSignal();
     },{passive:true});
   }
   // เล่นเสียงแจ้งเตือน
@@ -4381,7 +4253,6 @@ ${shortFloat>15?'⚠️ Short Float สูง มีโอกาส Short Squeez
 }
 
 function closeSignal(){
-  if(window._signalAutoClose){ clearTimeout(window._signalAutoClose); window._signalAutoClose=null; }
   const overlay=document.getElementById('signalOverlay');
   if(overlay){
     overlay.style.display='none';
@@ -4390,8 +4261,7 @@ function closeSignal(){
     overlay.className='';
     overlay.innerHTML='';
   }
-  const ec=document.getElementById('emergencyClose');
-  if(ec) ec.style.display='none';
+  document.body.style.overflow='';
 }
 
 // ── Telegram ──
@@ -4552,9 +4422,269 @@ function saveSettings(){
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
 }
 
+async function testGroqKey(){
+  const btn=document.getElementById('testGroqBtn');
+  const statusEl=document.getElementById('groqKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('groqKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Groq API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Groq...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[{role:'user',content:'Reply with the single word: ok'}],
+        max_tokens:5
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      // บันทึก key ทันทีเมื่อทดสอบผ่าน
+      try{localStorage.setItem('groqKey',key);}catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Groq ใช้งานได้! — llama-3.3-70b-versatile พร้อม (บันทึกแล้ว)';
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ console.groq.com/keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Groq Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Groq ตอบกลับ ${r.status}`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Groq ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
+}
 
+async function testApiKey(){
+  const btn=document.getElementById('testApiBtn');
+  const statusEl=document.getElementById('apiKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('finnhubKeyInput')?.value?.trim()||FINNHUB_KEY||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Finnhub API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Finnhub...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.status===401||r.status===403){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ finnhub.io/dashboard';
+    } else if(r.ok){
+      const d=await r.json();
+      if(d&&d.c){
+        try{localStorage.setItem('finnhubKey',key); FINNHUB_KEY=key;}catch{}
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent=`✅ Finnhub ใช้งานได้! — AAPL $${d.c?.toFixed(2)||''} (บันทึกแล้ว)`;
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Finnhub ตอบกลับแต่ข้อมูลไม่สมบูรณ์ — ตรวจสอบ Key อีกครั้ง';
+      }
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Finnhub ตอบกลับ ${r.status}`;
+    }
+  } catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'
+      ?'⏱️ Finnhub ไม่ตอบสนอง'
+      :'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🔑 ทดสอบ';
+}
 
+async function testAnthropicKey(){
+  const btn=document.getElementById('testAnthropicBtn');
+  const statusEl=document.getElementById('anthropicKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('anthropicKeyInput')?.value?.trim()||localStorage.getItem('anthropicKey')||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Anthropic API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Claude...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    // ทดสอบผ่าน Worker แทน direct call (ปลอดภัยกว่า — key อยู่ที่ Worker)
+    const r=await fetch(ALERT_WORKER+'/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system:'You are a test assistant.',
+        messages:[{role:'user',content:'Reply with the single word: ok'}],
+        max_tokens:10
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      if(d.ok){
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='✅ AI Worker พร้อมใช้งาน! — Claude/Groq/Gemini ผ่าน Worker';
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Worker ตอบ แต่ AI ไม่ตอบสนอง — ตรวจสอบ key ใน Worker';
+      }
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ Worker ไม่อนุญาต — ตรวจสอบ CORS ของ Worker';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Worker ตอบกลับ ${r.status}`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Claude ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
+}
 
+async function testGeminiKey(){
+  const btn=document.getElementById('testGeminiBtn');
+  const statusEl=document.getElementById('geminiKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('geminiKeyInput')?.value?.trim()||localStorage.getItem('geminiKey')||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Gemini API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Gemini...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),10000);
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'gemini-2.0-flash',
+        contents:[{parts:[{text:'Reply with the single word: ok'}]}],
+        generationConfig:{maxOutputTokens:10}
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Gemini Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else if(r.ok){
+      try{localStorage.setItem('geminiKey',key);}catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Gemini ใช้งานได้! — gemini-2.0-flash พร้อม (บันทึกแล้ว)';
+    } else if(r.status===400||r.status===401||r.status===403){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ aistudio.google.com/app/apikey';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ Gemini ตอบกลับ ${r.status} — ตรวจสอบ API Key อีกครั้ง`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Gemini ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
+}
 
 function addStock(){
   const raw=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
@@ -5430,6 +5560,28 @@ function calcVolumeProfile(data, bins=10){
 }
 
 // ── _genMockCandles ──
+function _genMockCandles(ticker, currentPrice, days=60){
+  if(!currentPrice||currentPrice<=0) return null; // FIX: ป้องกัน price=0
+  const c=[],h=[],l=[],o=[],v=[],t=[];
+  let p=currentPrice*(0.75+Math.random()*0.1); // เริ่มที่ ~75-85% ของราคาปัจจุบัน
+  const now=Math.floor(Date.now()/1000);
+  const DAY=86400;
+  for(let i=days;i>=0;i--){
+    const chg=(Math.random()-0.46)*0.025; // bias ขึ้นเล็กน้อย
+    p=Math.max(p*(1+chg), currentPrice*0.5);
+    const hi=p*(1+Math.random()*0.012);
+    const lo=p*(1-Math.random()*0.012);
+    c.push(+p.toFixed(2));
+    h.push(+hi.toFixed(2));
+    l.push(+lo.toFixed(2));
+    o.push(+(p*(1+(Math.random()-0.5)*0.008)).toFixed(2));
+    v.push(Math.floor(500000+Math.random()*3000000));
+    t.push(now-i*DAY);
+  }
+  // ปรับจุดสุดท้ายให้ตรงกับราคาปัจจุบัน
+  c[c.length-1]=currentPrice;
+  return{c,h,l,o,v,t,_mock:true};
+}
 
 
 // ── Timeframe switcher ──
@@ -5480,8 +5632,130 @@ async function fetchPolygonQuote(ticker){
 }
 
 // ── testPolygonKey ──
+async function testPolygonKey(){
+  const btn=document.getElementById('testPolygonBtn');
+  const statusEl=document.getElementById('polygonKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('polygonKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ Polygon API Key ก่อน';
+    return;
+  }
+  btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Polygon...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`https://api.polygon.io/v2/aggs/ticker/AAPL/prev?adjusted=true&apiKey=${key}`,{signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      const price=d?.results?.[0]?.c;
+      if(price){
+        try{ localStorage.setItem('polygonKey',key); POLYGON_KEY=key; }catch{}
+        statusEl.style.background='rgba(0,230,118,0.1)';
+        statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='✅ Polygon ใช้งานได้! — AAPL prev close $'+price.toFixed(2)+' (บันทึกแล้ว)';
+      } else {
+        statusEl.style.background='rgba(255,215,0,0.1)';
+        statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+        statusEl.style.color='var(--yellow)';
+        statusEl.textContent='⚠️ Polygon ตอบกลับแต่ไม่มีข้อมูล';
+      }
+    } else if(r.status===403||r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ polygon.io/dashboard/api-keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Polygon Key ใช้ได้ แต่ Rate Limit — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Polygon ตอบกลับ '+r.status;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Polygon ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+}
 
 // ── testCohereKey ──
+async function testCohereKey(){
+  const statusEl=document.getElementById('cohereKeyStatus');
+  const btn=document.getElementById('testCohereBtn');
+  const key=document.getElementById('cohereKeyInput')?.value?.trim()||'';
+  if(!statusEl||!btn) return;
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.12)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='❌ กรุณาใส่ API Key ก่อน';
+    return;
+  }
+  btn.disabled=true; btn.textContent='⏳...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(255,255,255,0.05)';
+  statusEl.style.border='1px solid rgba(255,255,255,0.1)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='กำลังทดสอบ...';
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),8000);
+  try{
+    const r=await fetch('https://api.cohere.com/v2/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      try{ localStorage.setItem('cohereKey',key); COHERE_KEY=key; }catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ Cohere ใช้งานได้! — command-r-plus-08-2024 พร้อม (บันทึกแล้ว)';
+    } else if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ dashboard.cohere.com/api-keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Cohere Key ใช้ได้ แต่โควต้าหมด — ลองใหม่ภายหลัง';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ Cohere ตอบกลับ '+r.status;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ Cohere ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+}
 
 // ── Twelve Data config ──
 const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
@@ -5760,6 +6034,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   else if(emaSupport200) g1+=3;
 
   // ── Fibonacci Retracement ──
+  // หา swing high/low จาก 50 แท่งล่าสุด แล้วคำนวณ 38.2%, 50%, 61.8%
   if(closes.length>=20 && highs.length>=20 && lows.length>=20){
     const n=Math.min(50,closes.length);
     const recentHighs=highs.slice(-n), recentLows=lows.slice(-n);
@@ -5779,16 +6054,110 @@ function _calcBuyScore(ticker, price, s1, r1){
     }
   }
 
+  // ── Swing Low Support ──
+  // หา swing low ที่ใกล้ราคาปัจจุบันมากที่สุด (ห่างไม่เกิน 2%)
+  if(lows.length>=10){
+    const swingLows=[];
+    for(let i=2;i<lows.length-2;i++){
+      if(lows[i]<lows[i-1]&&lows[i]<lows[i-2]&&lows[i]<lows[i+1]&&lows[i]<lows[i+2]){
+        swingLows.push(lows[i]);
+      }
+    }
+    // หา swing low ที่ใกล้ราคาปัจจุบันมากที่สุดและต่ำกว่าราคา
+    const nearSwing=swingLows.filter(v=>v<=price).sort((a,b)=>b-a)[0];
+    if(nearSwing){
+      const pct=Math.abs(price-nearSwing)/nearSwing*100;
+      if(pct<=0.5)      g1+=6;
+      else if(pct<=1.5) g1+=3;
+    }
+  }
+
+  // ── Ichimoku Cloud — ครบ Kijun + Tenkan + Cloud ──
+  let kijun=null, tenkan=null, senkouA=null, senkouB=null;
+  let ichimokuSignal=0;
+  if(highs.length>=52 && lows.length>=52){
+    // Kijun-sen (26)
+    const kHigh=Math.max(...highs.slice(-26)), kLow=Math.min(...lows.slice(-26));
+    kijun=+((kHigh+kLow)/2).toFixed(3);
+    // Tenkan-sen (9)
+    const tHigh=Math.max(...highs.slice(-9)), tLow=Math.min(...lows.slice(-9));
+    tenkan=+((tHigh+tLow)/2).toFixed(3);
+    // Senkou Span A = (Tenkan + Kijun) / 2
+    senkouA=+((tenkan+kijun)/2).toFixed(3);
+    // Senkou Span B = (highest high + lowest low) / 2 ของ 52 แท่ง
+    const sHigh=Math.max(...highs.slice(-52)), sLow=Math.min(...lows.slice(-52));
+    senkouB=+((sHigh+sLow)/2).toFixed(3);
+    // คลาวด์ bullish = senkouA > senkouB
+    const cloudTop=Math.max(senkouA,senkouB);
+    const cloudBot=Math.min(senkouA,senkouB);
+    const aboveCloud = price > cloudTop;
+    const inCloud    = price >= cloudBot && price <= cloudTop;
+    const belowCloud = price < cloudBot;
+    // Tenkan > Kijun = bullish crossover
+    const tkBull = tenkan > kijun;
+    // ราคาชิด Kijun (แนวรับ)
+    const kPct=Math.abs(price-kijun)/kijun*100;
+    if(price>=kijun && kPct<=0.5)  { g1+=6; ichimokuSignal=2; }
+    else if(price>=kijun && kPct<=1.5){ g1+=3; ichimokuSignal=1; }
+    // Bonus: อยู่เหนือ cloud + Tenkan > Kijun
+    if(aboveCloud && tkBull)  g1+=4;
+    else if(inCloud && tkBull) g1+=2;
+  } else if(highs.length>=26 && lows.length>=26){
+    // fallback สำหรับข้อมูลน้อยกว่า 52 แท่ง
+    const kHigh=Math.max(...highs.slice(-26)), kLow=Math.min(...lows.slice(-26));
+    kijun=+((kHigh+kLow)/2).toFixed(3);
+    const tHigh=Math.max(...highs.slice(-9)), tLow=Math.min(...lows.slice(-9));
+    tenkan=+((tHigh+tLow)/2).toFixed(3);
+    const kPct=Math.abs(price-kijun)/kijun*100;
+    if(price>=kijun && kPct<=0.5)      g1+=6;
+    else if(price>=kijun && kPct<=1.5) g1+=3;
+  }
+
+  // ── Chikou Span (Ichimoku) — ยืนยัน trend ──
+  // Chikou = close ปัจจุบัน เปรียบเทียบกับ close 26 แท่งที่แล้ว
+  let chikouSignal = null;
+  if(closes.length >= 27){
+    const chikouCompare = closes[closes.length - 27]; // close 26 แท่งที่แล้ว
+    const chikouCurrent = closes[closes.length - 1];
+    chikouSignal = chikouCurrent > chikouCompare ? 'bull' : 'bear';
+    // Chikou อยู่เหนือราคาเก่า = bullish confirmation
+    if(chikouSignal === 'bull'){
+      const pctAbove = (chikouCurrent - chikouCompare) / chikouCompare * 100;
+      if(pctAbove > 5)  g1 += 5;
+      else if(pctAbove > 2) g1 += 3;
+      else g1 += 1;
+    }
+  }
+
   const score1 = Math.min(g1, 30);
   if(score1>0) scoreBreakdown.push(`📍 ชิดแนวรับ ${score1}/30`);
 
   // ════════════════════════════════════════════════
   // GROUP 2 — Oversold (25 คะแนน)
-  // indicator: RSI, MFI, Stoch RSI
+  // indicator: RSI, Williams %R, CCI, MFI, Stoch RSI
+  // ใช้ "voting" — แต่ละตัวให้ 0/1 แล้วแปลงเป็นคะแนนกลุ่ม
   // ════════════════════════════════════════════════
-  let osVotes=0, osMax=3;
+  let osVotes=0, osMax=5;
 
   if(rsi<=30) osVotes+=1.0; else if(rsi<=40) osVotes+=0.6; else if(rsi<=50) osVotes+=0.2;
+
+  // Williams %R
+  let williamsR=null;
+  if(highs.length>=14 && lows.length>=14){
+    const hh=Math.max(...highs.slice(-14)), ll=Math.min(...lows.slice(-14));
+    williamsR=hh>ll?+((hh-price)/(hh-ll)*-100).toFixed(1):null;
+  }
+  if(williamsR!==null){ if(williamsR<=-80) osVotes+=1.0; else if(williamsR<=-65) osVotes+=0.5; }
+
+  // CCI
+  let cci=null;
+  if(closes.length>=20 && highs.length>=20 && lows.length>=20){
+    const tpArr=Array.from({length:20},(_,j)=>{const idx=closes.length-20+j;return(highs[idx]+lows[idx]+closes[idx])/3;});
+    const tpMean=tpArr.reduce((a,b)=>a+b,0)/20;
+    const md=tpArr.reduce((a,b)=>a+Math.abs(b-tpMean),0)/20;
+    cci=md>0?+((tpArr[19]-tpMean)/(0.015*md)).toFixed(1):null;
+  }
+  if(cci!==null){ if(cci<=-100) osVotes+=1.0; else if(cci<=-80) osVotes+=0.5; }
 
   // MFI
   let mfi=null;
@@ -5863,25 +6232,21 @@ function _calcBuyScore(ticker, price, s1, r1){
   else if(adx!==null&&adx>=20&&diPlus>diMinus) g3+=4;
 
   // ── RSI Bullish Divergence ──
-  // ราคาทำ Low ใหม่ แต่ RSI ทำ Low สูงขึ้น = แรงขายหมด โอกาสดีดสูง
   let rsiDivergence=false, rsiDivStrength=0;
-  if(closes.length>=20 && lows.length>=20){
-    // เปรียบ Low 5 แท่งล่าสุด vs 5-15 แท่งก่อนหน้า
+  if(closes.length>=20&&lows.length>=20){
     const recentLow=Math.min(...lows.slice(-5));
     const prevLow=Math.min(...lows.slice(-15,-5));
-    // คำนวณ RSI ช่วงล่าสุด vs ช่วงก่อน
     const rsiRecent=calcRSI(closes.slice(-14));
     const rsiPrev=calcRSI(closes.slice(-24,-10));
-    if(rsiRecent!==null && rsiPrev!==null){
-      // Bullish Divergence: ราคา Low ใหม่ แต่ RSI สูงขึ้น
-      if(recentLow < prevLow*0.995 && rsiRecent > rsiPrev+2){
+    if(rsiRecent!==null&&rsiPrev!==null){
+      if(recentLow<prevLow*0.995&&rsiRecent>rsiPrev+2){
         rsiDivergence=true;
-        rsiDivStrength=rsiRecent-rsiPrev; // ความแรงของ divergence
+        rsiDivStrength=rsiRecent-rsiPrev;
       }
     }
   }
   if(rsiDivergence){
-    if(rsiDivStrength>=8)      g3+=12; // divergence แรงมาก
+    if(rsiDivStrength>=8)      g3+=12;
     else if(rsiDivStrength>=5) g3+=8;
     else                        g3+=5;
     scoreBreakdown.push(`🔀 RSI Divergence (+${rsiDivStrength.toFixed(1)})`);
@@ -6207,16 +6572,16 @@ function _calcBuyScore(ticker, price, s1, r1){
   let total = score1 + score2 + score3 + score4 + score5 + score6 + score7; // max = 125 → clamp 100
 
   if(inUptrend===true){
-    total = Math.round(total*1.05); // ขาขึ้น: บวกเพิ่ม 5%
+    total = Math.round(total*1.05);
     scoreBreakdown.push('📡 ขาขึ้น ×1.05');
   } else if(inUptrend===false){
-    total = Math.round(total*0.75); // ขาลง: หักออก 25%
+    total = Math.round(total*0.75);
     scoreBreakdown.push('📡 ขาลง ×0.75');
   }
 
-  // ── หักคะแนนถ้าหุ้นขึ้นมาเยอะวันนี้ (ป้องกันซื้อแพง) ──
-  const s=stocks.find(x=>x.t===ticker);
-  const todayChg=s?parseFloat(s.c||0):0;
+  // ── หักคะแนนถ้าหุ้นขึ้นมาเยอะวันนี้ ──
+  const _stk=stocks.find(x=>x.t===ticker);
+  const todayChg=_stk?parseFloat(_stk.c||0):0;
   if(todayChg>=10){
     total=Math.round(total*0.70);
     scoreBreakdown.push(`📛 ขึ้น ${todayChg.toFixed(1)}% ×0.70`);
@@ -6275,6 +6640,123 @@ async function fetchMarketContext(){
 }
 
 // ── fetchLiveNews — parallel proxy fetch, ข่าวใหม่ 3 วัน ──
+async function fetchLiveNews(ticker){
+  const cutoff=Date.now()-3*86400000; // 3 วันล่าสุด
+
+  // ── helper: race proxies พร้อมกัน เอาตัวแรกที่ตอบ ──
+  async function _raceProxies(proxies, timeout=6000){
+    return new Promise(resolve=>{
+      let done=false;
+      let pending=proxies.length;
+      proxies.forEach(async url=>{
+        try{
+          const ctrl=new AbortController();
+          const tid=setTimeout(()=>ctrl.abort(),timeout);
+          const r=await fetch(url,{signal:ctrl.signal});
+          clearTimeout(tid);
+          if(!done&&r&&r.ok){
+            done=true;
+            resolve(await r.text());
+          } else { if(--pending===0&&!done) resolve(null); }
+        }catch{ if(--pending===0&&!done) resolve(null); }
+      });
+    });
+  }
+
+  // ── helper: parse RSS XML → items ──
+  function _parseRSS(xml, defaultSource){
+    if(!xml||!xml.includes('<item>')) return null;
+    const doc=new DOMParser().parseFromString(xml,'text/xml');
+    const seen=new Set();
+    const results=[...doc.querySelectorAll('item')].map(item=>{
+      const title=item.querySelector('title')?.textContent?.trim()||'';
+      const link=item.querySelector('link')?.textContent?.trim()||'';
+      const pubDate=item.querySelector('pubDate')?.textContent?.trim()||'';
+      const source=item.querySelector('source')?.textContent?.trim()||defaultSource;
+      const desc=item.querySelector('description')?.textContent?.replace(/<[^>]+>/g,'').trim()||'';
+      const ts=pubDate?new Date(pubDate).getTime():0;
+      if(!title||seen.has(title.slice(0,60))) return null;
+      if(ts&&ts<cutoff) return null; // กรองข่าวเก่าเกิน 3 วัน
+      seen.add(title.slice(0,60));
+      const date=pubDate?new Date(pubDate).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+      return{h:title,s:source,d:date,u:link,x:desc.slice(0,300),ts};
+    }).filter(Boolean);
+    return results.length>=2?results.sort((a,b)=>(b.ts||0)-(a.ts||0)):null;
+  }
+
+  // ── 1. Google News RSS (parallel) ──
+  try{
+    const googleUrl=`https://news.google.com/rss/search?q=${ticker}+stock&hl=en-US&gl=US&ceid=US:en`;
+    const xml=await _raceProxies([
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(googleUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(googleUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(googleUrl)}`,
+    ]);
+    const items=_parseRSS(xml,'Google News');
+    if(items&&items.length>=3) return items.slice(0,20);
+  }catch{}
+
+  // ── 2. Yahoo Finance RSS (parallel) ──
+  try{
+    const rssUrl=`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${ticker}&region=US&lang=en-US`;
+    const xml=await _raceProxies([
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(rssUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`,
+    ]);
+    const items=_parseRSS(xml,'Yahoo Finance');
+    if(items&&items.length>=2) return items.slice(0,20);
+  }catch{}
+
+  // ── 3. Yahoo Search API (parallel) ──
+  try{
+    const yahooUrl=`https://query1.finance.yahoo.com/v1/finance/search?q=${ticker}&newsCount=20&enableFuzzyQuery=false`;
+    const txt=await _raceProxies([
+      `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(yahooUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,
+    ]);
+    if(txt){
+      const d=JSON.parse(txt);
+      if(d?.news?.length){
+        const seen=new Set();
+        return d.news.filter(n=>{
+          const key=n.title?.slice(0,60);
+          if(!key||seen.has(key)) return false;
+          if(n.providerPublishTime*1000<cutoff) return false;
+          seen.add(key); return true;
+        }).slice(0,20).map(n=>({
+          h:n.title,s:n.publisher||'Yahoo Finance',
+          d:new Date(n.providerPublishTime*1000).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}),
+          u:n.link||'',x:n.summary||'',ts:n.providerPublishTime*1000
+        }));
+      }
+    }
+  }catch{}
+
+  // ── 4. Finnhub (3 วัน) ──
+  try{
+    const to=new Date(),from=new Date();
+    from.setDate(from.getDate()-3);
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${from.toISOString().slice(0,10)}&to=${to.toISOString().slice(0,10)}&token=${FINNHUB_KEY}`,{mode:'cors',signal:ctrl.signal});
+    clearTimeout(tid);
+    if(!r.ok) return null;
+    const items=await r.json();
+    if(!Array.isArray(items)) return null;
+    const seen=new Set();
+    return items.filter(n=>{
+      const key=n.headline?.slice(0,60);
+      if(!key||seen.has(key)) return false;
+      if(n.datetime*1000<cutoff) return false;
+      seen.add(key); return true;
+    }).slice(0,20).sort((a,b)=>b.datetime-a.datetime).map(n=>({
+      h:n.headline,s:n.source,
+      d:new Date(n.datetime*1000).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}),
+      u:n.url,x:n.summary||'',ts:n.datetime*1000
+    }));
+  }catch{return null;}
+}
 
 // ── News localStorage helpers (TTL 30 นาที) ──
 const NEWS_TTL=1800000;
@@ -6337,6 +6819,72 @@ async function _renderNewsItems(pane, items, ticker, isStatic=false){
 }
 
 // ── renderNewsTab ──
+async function renderNewsTab(ticker){
+  const body=document.getElementById('drawerBody');
+  if(!body) return;
+  const pane=body.querySelector('.news-pane')||(()=>{const d=document.createElement('div');d.className='news-pane';body.appendChild(d);return d;})();
+  const now=Date.now();
+  const FETCH_TTL=300000;
+
+  // เพิ่มปุ่ม AI วิเคราะห์ข่าว ด้านบน
+  let aiBtn=body.querySelector('.news-ai-btn');
+  if(!aiBtn){
+    aiBtn=document.createElement('div');
+    aiBtn.className='news-ai-btn';
+    aiBtn.style.cssText='padding:0 0 10px 0';
+    aiBtn.innerHTML=`
+      <button onclick="analyzeNewsWithAI('${ticker}')" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">
+        🤖 <span>AI วิเคราะห์ข่าว ${ticker}</span>
+      </button>
+      <div id="aiNewsResult-${ticker}" style="margin-top:8px;display:none"></div>`;
+    body.insertBefore(aiBtn,pane);
+  }
+
+  const memCached=liveNewsCache[ticker];
+  if(memCached&&memCached.translated&&(now-memCached.ts<FETCH_TTL)){
+    _renderNewsItems(pane,memCached.items,ticker);
+    return;
+  }
+
+  const localCached=_loadNewsCache(ticker);
+  if(localCached){
+    liveNewsCache[ticker]={items:localCached,ts:now,translated:true};
+    _renderNewsItems(pane,localCached,ticker);
+    return;
+  }
+
+  pane.innerHTML=`<div style="color:var(--dim);font-size:12px;padding:14px 0;text-align:center">⏳ กำลังโหลดข่าว...</div>`;
+  const raw=await fetchLiveNews(ticker);
+  let items=null;
+  let isStatic=false;
+
+  if(raw&&raw.length){
+    _renderNewsItems(pane,raw,ticker);
+    pane.innerHTML+=`<div id="translateStatus" style="color:var(--gold);font-size:11px;padding:8px 0;text-align:center">⏳ กำลังแปลเป็นภาษาไทย...</div>`;
+
+    const translated=await translateNewsItems(raw);
+    const didTranslate=translated.some((n,i)=>n.h!==raw[i]?.h);
+
+    if(didTranslate) _saveNewsCache(ticker, translated);
+    translated.forEach(n=>{if(n.h) _translatedCache[n.h.slice(0,60)]=n;});
+    liveNewsCache[ticker]={items:translated,ts:now,translated:didTranslate};
+
+    const statusEl=document.getElementById('translateStatus');
+    if(statusEl) statusEl.remove();
+    items=translated;
+
+    if(!didTranslate){
+      pane.innerHTML=`<div style="color:var(--gold);font-size:11px;padding:6px 10px;text-align:center;background:rgba(201,168,76,0.1);border-radius:8px;margin-bottom:8px">⚠️ ไม่สามารถแปลได้ขณะนี้ — แสดงภาษาอังกฤษ</div>`;
+    } else {
+      pane.innerHTML='';
+    }
+    _renderNewsItems(pane,items,ticker,false);
+  } else {
+    items=memCached?.items||newsData[ticker]||[];
+    isStatic=!memCached?.items;
+    _renderNewsItems(pane,items,ticker,isStatic);
+  }
+}
 
 // ── AI วิเคราะห์ข่าว ──
 async function analyzeNewsWithAI(ticker){
@@ -6900,6 +7448,106 @@ async function refreshNewsManual(){
 }
 
 // ── loadEconNews: ดึงข่าว 3 วัน รวมเป็นฟีดเดียว คัด 8 สำคัญ ──
+async function loadEconNews(){
+  const body=document.getElementById('econNewsBody');
+  if(!body) return;
+  if(_econNewsCache['all']?.length&&_econNewsCache['all'][0]?.titleTH&&(Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL)){
+    renderEconNews(_econNewsCache['all'],body); return;
+  }
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
+
+  // ดึง 2 query แทน 5 เพื่อไม่ overwhelm worker
+  const mainQueries=[
+    'Federal Reserve inflation CPI GDP earnings trade war AI tech',
+    'stock market economy jobs recession tariff earnings results',
+  ];
+  const results=await Promise.allSettled(mainQueries.map(q=>_fetchEconNews(q)));
+
+  const seen=new Set();
+  let merged=[];
+  results.forEach(r=>{
+    if(r.status!=='fulfilled'||!Array.isArray(r.value)||!r.value.length) return;
+    r.value.forEach(item=>{
+      const key=(item.title||'').slice(0,60).toLowerCase();
+      if(seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
+    });
+  });
+
+  if(!merged.length){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังเรียก AI สร้างข่าว...<br><span style="font-size:10px;opacity:0.5;display:block;margin-top:6px">Server ข่าวไม่ตอบสนอง ใช้ AI สรุปแทน</span></div>';
+    const aiItems=await _fetchEconNewsAI();
+    if(aiItems.length){
+      _econNewsCache['all']=aiItems;
+      _econNewsCacheTime['all']=Date.now();
+      const tsEl=document.getElementById('newsLastUpdated');
+      if(tsEl){const d=new Date();tsEl.innerHTML=`<span style="background:rgba(100,210,255,0.12);border:1px solid rgba(100,210,255,0.25);border-radius:8px;padding:2px 7px;color:var(--ice);font-weight:600">🤖 AI</span> ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;}
+      renderEconNews(aiItems,body);
+    } else {
+      body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 16px"><div style="font-size:28px;margin-bottom:10px">📡</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">ไม่สามารถโหลดข่าวได้</div><div style="color:var(--text3);line-height:1.8">กด <span style="color:var(--gold)">🔄</span> เพื่อลองใหม่</div></div>';
+    }
+    return;
+  }
+
+  // score ความสำคัญ
+  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell',
+    'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
+    'earnings','beat','miss','trade war','tariff','sanction','war','conflict',
+    'nvidia','openai','ai','crash','surge','plunge','record high','bankruptcy','crisis'];
+  const _topSrc=['reuters','bloomberg','cnbc','wsj','financial times','marketwatch','ap','bbc'];
+  merged.forEach(item=>{
+    const txt=((item.title||'')+(item.source||'')).toLowerCase();
+    let s=0;
+    _highKw.forEach(kw=>{if(txt.includes(kw))s+=10;});
+    if(_topSrc.some(src=>txt.includes(src)))s+=15;
+    item._score=s;
+  });
+
+  // เรียง score ก่อน → ใหม่กว่าก่อน
+  merged.sort((a,b)=>{
+    if(b._score!==a._score) return b._score-a._score;
+    return (new Date(b.pubDate||0))-(new Date(a.pubDate||0));
+  });
+  merged=merged.slice(0,8);
+
+  // ถ้า Server ส่งข่าวน้อยกว่า 4 ใบ เติมด้วย AI
+  let usedAI=false;
+  if(merged.length<4){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 ข่าวจาก Server น้อยเกินไป เติมด้วย AI...</div>';
+    const aiExtra=await _fetchEconNewsAI();
+    const existKeys=new Set(merged.map(i=>i.title.slice(0,50).toLowerCase()));
+    const toAdd=aiExtra.filter(i=>!existKeys.has(i.title.slice(0,50).toLowerCase()));
+    merged=[...merged,...toAdd].slice(0,8);
+    usedAI=true;
+  }
+
+  // แยก: items ที่มี titleTH แล้ว (AI) vs ต้องแปล (Server)
+  const needsTrans=merged.filter(it=>!it.titleTH);
+  const alreadyTH=merged.filter(it=>!!it.titleTH);
+  let finalItems;
+  if(needsTrans.length>0){
+    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
+    let translated=await _translateNewsGemini(needsTrans);
+    // safety: ถ้าแปลไม่ได้ ใช้ title ภาษอังกฤษไปก่อน
+    if(!translated.length) translated=needsTrans.map(it=>({...it,titleTH:_escHtml(_stripNewsSource(it.title)),summaryTH:''}));
+    // รวมกับ AI items แล้วเรียง score
+    finalItems=[...translated,...alreadyTH].sort((a,b)=>((b._score||0)-(a._score||0))).slice(0,8);
+  } else {
+    finalItems=alreadyTH.slice(0,8);
+  }
+  _econNewsCache['all']=finalItems;
+  _econNewsCacheTime['all']=Date.now();
+  const tsEl=document.getElementById('newsLastUpdated');
+  if(tsEl){const d=new Date();const hh=d.getHours().toString().padStart(2,'0');const mm=d.getMinutes().toString().padStart(2,'0');
+    if(usedAI){
+      tsEl.innerHTML=`<span style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:2px 7px;color:var(--gold);font-weight:600">🌐+🤖 Mix</span> ${hh}:${mm}`;
+    } else {
+      tsEl.innerHTML=`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.25);border-radius:8px;padding:2px 7px;color:var(--green);font-weight:600">🌐 Server</span> ${hh}:${mm}`;
+    }
+  }
+  renderEconNews(finalItems,body);
+}
 
 // ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
 function _stripNewsSource(title){
@@ -7438,7 +8086,7 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(score>=BUY_SIGNAL_THRESHOLD){
-    // AI คัดก่อน popup
+    // AI คัดก่อน popup — ต้องผิด 2 ข้อขึ้นไปถึง SKIP
     let aiApproved = true;
     if(hasCandleData){
       try{
@@ -7452,23 +8100,21 @@ async function checkBuySignalFull(ticker,price){
       showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
     }
 
-    // ส่ง Telegram เสมอ พร้อมบอกว่า AI ผ่านไหม
     const aiTag = aiApproved ? '' : '\n⚠️ AI: ระวัง อาจเป็นสัญญาณหลอก';
     const tgMsg=`🟢 <b>Buy Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}${aiTag}`;
     sendTG(tgMsg);
     return;
   }
 
-  // ── Triple Condition: ชิด S1 + RSI ต่ำ + RSI Divergence = แจ้งเตือนทันที ──
+  // ── Triple Signal: ชิด S1 + RSI ต่ำ + RSI Divergence ──
   if(hasCandleData && sig){
-    const rsi = rsiData[ticker]||sig.rsi||50;
-    const nearS1 = pctFromS1 <= 2.0;
-    const rsiLow = rsi <= 45;
-    const hasDivergence = sig.scoreBreakdown?.some(s=>s.includes('Divergence'));
-    if(nearS1 && rsiLow && hasDivergence){
-      const tgMsg=`🎯 <b>Triple Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} (ห่าง ${pctFromS1.toFixed(1)}%) | R1 $${r1.toFixed(2)}\n✅ ชิดแนวรับ + RSI ${rsi} + Bullish Divergence`;
+    const rsi=rsiData[ticker]||sig.rsi||50;
+    const nearS1=pctFromS1<=2.0;
+    const rsiLow=rsi<=45;
+    const hasDivergence=sig.scoreBreakdown?.some(s=>s.includes('Divergence'));
+    if(nearS1&&rsiLow&&hasDivergence){
       showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
-      sendTG(tgMsg);
+      sendTG(`🎯 <b>Triple Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} (ห่าง ${pctFromS1.toFixed(1)}%) | R1 $${r1.toFixed(2)}\n✅ ชิดแนวรับ + RSI ${rsi} + Bullish Divergence`);
     }
   }
 }
@@ -7512,9 +8158,8 @@ function updateCardLive(s){
     if(stk&&stk.short&&parseFloat(stk.short)>15&&stk.c>3){
       const sqKey='sq_'+stk.t;
       const lastSent=parseInt(localStorage.getItem(sqKey)||'0');
-      const cooldown=8*3600*1000; // 8 ชั่วโมง
-      if(Date.now()-lastSent>cooldown){
-        localStorage.setItem(sqKey, Date.now().toString());
+      if(Date.now()-lastSent>28800000){ // 8 ชั่วโมง
+        localStorage.setItem(sqKey,Date.now().toString());
         toast(`🩳 Short Squeeze Alert! ${stk.t} — Short Float ${stk.short} ราคาขึ้น +${(+stk.c).toFixed(1)}%`,4000);
         sendTG(`🩳 Short Squeeze Risk!\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา ${fmt(stk.p)}`);
       }
