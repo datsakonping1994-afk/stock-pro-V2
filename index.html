@@ -389,7 +389,10 @@ canvas.bigchart{width:100%;height:100%}
   border-left:1px solid var(--border2);
   border-right:1px solid var(--border2);
   border-radius:28px 28px 0 0;
-  overflow:hidden;
+  overflow-y:auto;
+  overflow-x:hidden;
+  max-height:90vh;
+  -webkit-overflow-scrolling:touch;
   animation:slideUp 0.35s cubic-bezier(0.32,0.72,0,1);
   box-shadow:0 -20px 60px rgba(0,0,0,0.6),0 -4px 20px rgba(201,168,76,0.08);
 }
@@ -4111,14 +4114,15 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
     </div>`;
   // Load signal logo (ใช้ safeTicker ที่ escape แล้ว)
   loadLogo(ticker, 'sig-logo-'+ticker, 48);
-  // FIX: เพิ่ม swipe-to-close สำหรับ signal popup
+  // swipe-to-close เฉพาะตอนอยู่บนสุดของ card
   const signalCard=overlay.querySelector('.signal-card');
   if(signalCard){
     let _sigSwipeStartY=0;
     signalCard.addEventListener('touchstart',e=>{_sigSwipeStartY=e.touches[0].clientY;},{passive:true});
     signalCard.addEventListener('touchend',e=>{
       const dy=e.changedTouches[0].clientY-_sigSwipeStartY;
-      if(dy>80) closeSignal();
+      // ปิดเฉพาะตอน swipe ลง และ card อยู่บนสุดแล้ว
+      if(dy>80 && signalCard.scrollTop<=0) closeSignal();
     },{passive:true});
   }
   // เล่นเสียงแจ้งเตือน
@@ -5239,17 +5243,17 @@ async function loadWorkerPriceCache(){
         if(stEl) stEl.textContent=`✅ ${updated} ตัว (Worker Cache · อายุ ${d.age||0}s)`;
         _updateMarketStatusBadge(true);
       }
-      // fallback: ถ้า SPY/QQQ ยังเป็น 0 ดึงตรงจาก Finnhub
-      if(!marketCtx.SPY.price||!marketCtx.QQQ.price){
-        for(const sym of['SPY','QQQ']){
+      // fallback: ถ้า SPY/QQQ ยังเป็น 0 ดึงจาก Yahoo Finance
+      if(!marketCtx.SPY.change&&!marketCtx.QQQ.change){
+        for(const [sym,yhSym] of[['SPY','SPY'],['QQQ','QQQ']]){
           try{
-            const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(5000)});
+            const r=await fetch(`${ALERT_WORKER}/price?t=${sym}`,{signal:AbortSignal.timeout(5000)});
             if(r.ok){
               const fd=await r.json();
-              if(fd.c>0){
-                marketCtx[sym].price=fd.c;
-                marketCtx[sym].change=fd.dp||0;
-                marketCtx[sym].trend=fd.dp>0.5?'bullish':fd.dp<-0.5?'bearish':'neutral';
+              if(fd.ok&&fd.price>0){
+                marketCtx[sym].price=fd.price;
+                marketCtx[sym].change=fd.change||0;
+                marketCtx[sym].trend=fd.change>0.5?'bullish':fd.change<-0.5?'bearish':'neutral';
               }
             }
           }catch{}
