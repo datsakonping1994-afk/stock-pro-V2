@@ -887,6 +887,39 @@ canvas.bigchart{width:100%;height:100%}
           <div><div id="portTotalCost" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">$0.00</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">ต้นทุนรวม</div></div>
           <div><div id="portTotalPct" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">0.00%</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">% กำไร/ขาดทุน</div></div>
         </div>
+
+        <!-- Cash Section -->
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex:1">
+              <span style="font-size:16px">💵</span>
+              <div>
+                <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">เงินสดสำรอง</div>
+                <div id="portCashDisplay" style="font-size:16px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--gold)">$0</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input id="portCashInput" type="number" placeholder="0" style="width:100px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif;outline:none;text-align:right">
+              <button onclick="savePortCash()" style="background:var(--gold);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#000;cursor:pointer">บันทึก</button>
+            </div>
+          </div>
+          <!-- สัดส่วน หุ้น vs Cash -->
+          <div id="portAllocationBar" style="margin-top:10px;display:none">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">
+              <span>หุ้น <span id="portStockPct" style="color:var(--green)">0%</span></span>
+              <span>Cash <span id="portCashPct" style="color:var(--gold)">0%</span></span>
+            </div>
+            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div id="portStockBar" style="height:100%;background:linear-gradient(90deg,var(--green),var(--ice));border-radius:3px;transition:width 0.5s ease;width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI วิเคราะห์ -->
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🤖 AI วิเคราะห์พอร์ต</button>
+          <div id="portAIResult" style="display:none;margin-top:10px;padding:12px;background:var(--bg3);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6;font-family:'Inter',sans-serif"></div>
+        </div>
       </div>
 
       <!-- Add Position Form -->
@@ -7819,6 +7852,58 @@ function savePortfolio(){
   setTimeout(syncAlertsToWorker, 500);
 }
 
+// ── Cash สำรอง ──
+let _portCash = parseFloat(localStorage.getItem('_sp_cash')||'0');
+function savePortCash(){
+  const val=parseFloat(document.getElementById('portCashInput')?.value||'0');
+  _portCash=isNaN(val)?0:val;
+  localStorage.setItem('_sp_cash',_portCash.toString());
+  document.getElementById('portCashInput').value='';
+  renderPortfolio();
+  toast('💵 บันทึกเงินสดแล้ว');
+}
+
+async function analyzePortfolioAI(){
+  const resultEl=document.getElementById('portAIResult');
+  if(!resultEl) return;
+  resultEl.style.display='block';
+  resultEl.innerHTML='⏳ AI กำลังวิเคราะห์พอร์ต...';
+
+  try{
+    let port=[];
+    try{ port=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+    if(!port.length){ resultEl.innerHTML='⚠️ ยังไม่มีหุ้นในพอร์ต'; return; }
+
+    const holdings=port.map(p=>{
+      const s=stocks.find(x=>x.t===p.t);
+      const cur=s?.p||0;
+      const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
+      return `${p.t}: ${p.shares}หุ้น เข้าที่$${p.avgPrice} ปัจจุบัน$${cur} (${pnl}%)`;
+    }).join('\n');
+
+    const totalVal=port.reduce((s,p)=>{
+      const cur=stocks.find(x=>x.t===p.t)?.p||0;
+      return s+cur*p.shares;
+    },0);
+    const cashPct=_portCash>0?((_portCash/(totalVal+_portCash))*100).toFixed(1):0;
+    const fng=window._fngForAI;
+    const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`; 
+
+    const sys=`คุณคือที่ปรึกษาการลงทุนมืออาชีพ วิเคราะห์พอร์ตหุ้นเป็นภาษาไทย กระชับ ตรงประเด็น ไม่เกิน 5 บรรทัด`;
+    const prompt=`พอร์ตปัจจุบัน:
+${holdings}
+เงินสด: $${_portCash} (${cashPct}% ของพอร์ตรวม)
+ภาพรวมตลาด: ${mkt}
+
+วิเคราะห์: ความเสี่ยง, กระจุกตัวไหม, ควรถือ cash เท่าไหร่, และคำแนะนำสั้นๆ`;
+
+    const reply=await callAI_Quick(sys,prompt,200);
+    resultEl.innerHTML=reply||'ไม่สามารถวิเคราะห์ได้';
+  }catch(e){
+    resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
+  }
+}
+
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
   // sanitize: อนุญาตเฉพาะ A-Z, 0-9, .
@@ -8020,7 +8105,15 @@ function renderPortfolio(){
     const wEl=list.querySelector(`.port-weight-${pos.t}`);
     if(wEl) wEl.textContent=wPct;
     const barEl=list.querySelector(`.port-bar-${pos.t}`);
-    if(barEl&&totalVal>0) setTimeout(()=>{ barEl.style.width=(val/totalVal*100).toFixed(1)+'%'; },100);
+    if(barEl&&totalVal>0){
+      const newWidth=(val/totalVal*100).toFixed(1)+'%';
+      if(!barEl.dataset.initialized){
+        setTimeout(()=>{ barEl.style.width=newWidth; barEl.dataset.initialized='1'; },100);
+      } else {
+        barEl.style.transition='none';
+        barEl.style.width=newWidth;
+      }
+    }
     const logoEl=document.getElementById(`portlogo-${pos.t}`);
     if(logoEl) loadLogo(pos.t,`portlogo-${pos.t}`,40);
   });
@@ -8050,6 +8143,21 @@ function renderPortfolio(){
   const pctEl=document.getElementById('portTotalPct');
   pctEl.textContent=(pUp?'+':'')+totalPct.toFixed(2)+'%';
   pctEl.style.color=pUp?'var(--green)':'var(--red)';
+
+  // Cash display
+  const cash=_portCash||0;
+  const cashEl=document.getElementById('portCashDisplay');
+  if(cashEl) cashEl.textContent='$'+cash.toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const allocBar=document.getElementById('portAllocationBar');
+  if(allocBar&&(totalVal>0||cash>0)){
+    const total=totalVal+cash;
+    const sPct=total>0?(totalVal/total*100):0;
+    const cPct=total>0?(cash/total*100):0;
+    allocBar.style.display='block';
+    document.getElementById('portStockPct').textContent=sPct.toFixed(0)+'%';
+    document.getElementById('portCashPct').textContent=cPct.toFixed(0)+'%';
+    document.getElementById('portStockBar').style.width=sPct.toFixed(1)+'%';
+  }
 }
 
 
