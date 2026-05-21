@@ -901,6 +901,7 @@ canvas.bigchart{width:100%;height:100%}
             <div style="display:flex;align-items:center;gap:6px">
               <input id="portCashInput" type="number" placeholder="0" style="width:100px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif;outline:none;text-align:right">
               <button onclick="savePortCash()" style="background:var(--gold);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#000;cursor:pointer">บันทึก</button>
+              <button onclick="deletePortCash()" style="background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer">🗑️</button>
             </div>
           </div>
           <!-- สัดส่วน หุ้น vs Cash -->
@@ -4921,9 +4922,8 @@ function checkAllBuySignals(){
   (async()=>{
     try{
       for(const s of stocks){
-        if(s.p>0 && !_buyAlerted.has(s.t)){
-          _buyAlerted.add(s.t);
-          setTimeout(()=>_buyAlerted.delete(s.t), BUY_SIGNAL_COOLDOWN);
+        if(s.p>0 && !_isBuyAlerted(s.t)){
+          _setBuyAlerted(s.t);
           await checkBuySignalFull(s.t,s.p);
         }
         await new Promise(r=>setTimeout(r,150));
@@ -7863,6 +7863,13 @@ function savePortCash(){
   toast('💵 บันทึกเงินสดแล้ว');
 }
 
+function deletePortCash(){
+  _portCash=0;
+  localStorage.removeItem('_sp_cash');
+  renderPortfolio();
+  toast('🗑️ ลบเงินสดแล้ว');
+}
+
 async function analyzePortfolioAI(){
   const resultEl=document.getElementById('portAIResult');
   if(!resultEl) return;
@@ -7897,7 +7904,10 @@ ${holdings}
 
 วิเคราะห์: ความเสี่ยง, กระจุกตัวไหม, ควรถือ cash เท่าไหร่, และคำแนะนำสั้นๆ`;
 
-    const reply=await callAI_Quick(sys,prompt,200);
+    // ลองตามลำดับ Claude → Gemini → Groq
+    let reply = await _callClaude(sys,prompt,200);
+    if(!reply) reply = await _callGemini15Pro(sys,prompt,200);
+    if(!reply) reply = await _callGroq(sys,prompt,200);
     resultEl.innerHTML=reply||'ไม่สามารถวิเคราะห์ได้';
   }catch(e){
     resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
@@ -7983,14 +7993,21 @@ window._doSell = function(ticker, qty){
   if(!pos) return;
   const sell = Math.min(+qty.toFixed(4), pos.shares);
   if(sell<=0) return;
+  // คำนวณมูลค่าที่ขาย
+  const curPrice = stocks.find(x=>x.t===ticker)?.p || pos.avgPrice;
+  const saleValue = +(sell * curPrice).toFixed(2);
+  // เพิ่มเงินเข้า Cash
+  _portCash = +(_portCash + saleValue).toFixed(2);
+  localStorage.setItem('_sp_cash', _portCash.toString());
+
   if(sell >= pos.shares){
     removePortPosition(ticker);
-    toast(`✅ ขาย ${ticker} ออกทั้งหมดแล้ว`);
+    toast(`✅ ขาย ${ticker} ออกทั้งหมด +$${saleValue.toFixed(2)} เข้า Cash`);
   } else {
     pos.shares = +(pos.shares - sell).toFixed(4);
     savePortfolio();
     renderPortfolio();
-    toast(`✅ ขาย ${ticker} ${sell} หุ้น เหลือ ${pos.shares} หุ้น`);
+    toast(`✅ ขาย ${ticker} ${sell} หุ้น +$${saleValue.toFixed(2)} เข้า Cash`);
   }
 };
 
@@ -8230,6 +8247,17 @@ async function checkBuySignalFull(ticker,price){
 
 // ── Enhanced updateCardLive with buy signal check ──
 const _buyAlerted=new Set();
+function _isBuyAlerted(ticker){
+  const key='buy_alerted_'+ticker;
+  const last=parseInt(localStorage.getItem(key)||'0');
+  return Date.now()-last < BUY_SIGNAL_COOLDOWN;
+}
+function _setBuyAlerted(ticker){
+  const key='buy_alerted_'+ticker;
+  localStorage.setItem(key, Date.now().toString());
+  _buyAlerted.add(ticker);
+  setTimeout(()=>{ _buyAlerted.delete(ticker); localStorage.removeItem(key); }, BUY_SIGNAL_COOLDOWN);
+}
 let _dashUpdateTimer=null, _portUpdateTimer=null;
 function updateCardLive(s){
   // ใช้ direct getElementById (ไม่ cache เพราะ cards อาจ re-render)
@@ -8256,9 +8284,8 @@ function updateCardLive(s){
   if(s.p>0) checkPriceAlerts(s.t, s.p);
   // ตรวจ Exit Signal (เฉพาะหุ้นในพอร์ต)
   if(s.p>0) checkExitSignal(s.t, s.p);
-  if(!_buyAlerted.has(s.t)&&s.p>0){
-    _buyAlerted.add(s.t);
-    setTimeout(()=>_buyAlerted.delete(s.t), BUY_SIGNAL_COOLDOWN); // cooldown 15 นาที
+  if(!_isBuyAlerted(s.t)&&s.p>0){
+    _setBuyAlerted(s.t);
     checkBuySignalFull(s.t,s.p);
   }
   // Short Squeeze Alert เมื่อ Short Float >15% และราคาขึ้นแรง >3%
