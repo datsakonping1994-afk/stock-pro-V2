@@ -3052,7 +3052,6 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
         <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
-        <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
         <div class="ind-row"><span class="ind-name">MACD Signal</span>${macdTxt}</div>
         <div class="ind-row"><span class="ind-name">MACD Histogram</span>${macdHistTxt}</div>
         <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
@@ -3062,10 +3061,6 @@ function drawerTab(tab, btn){
         <div class="ind-row"><span class="ind-name">Donchian Ch. (20)</span>${donchTxt}</div>
         <div class="ind-row"><span class="ind-name">CMF (20)</span>${cmfTxt}</div>
         <div class="ind-row"><span class="ind-name">ROC (10)</span>${rocTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Ichimoku Kijun</span>${kijunTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Tenkan/Kijun</span>${tenkanTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Cloud Position</span>${cloudTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Chikou Span</span>${chikouTxt}</div>
         <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
         <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
