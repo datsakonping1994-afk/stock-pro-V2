@@ -1034,6 +1034,9 @@ canvas.bigchart{width:100%;height:100%}
 <!-- BUY SIGNAL POPUP (outside #app to fix iOS backdrop) -->
 <div id="signalOverlay" style="display:none"></div>
 
+<!-- Emergency overlay close button -->
+<div id="emergencyClose" onclick="closeSignal()" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;background:rgba(255,77,106,0.9);color:white;border-radius:50%;width:40px;height:40px;font-size:20px;line-height:40px;text-align:center;cursor:pointer">✕</div>
+
 <!-- TOAST (outside #app) -->
 <div id="toastEl" style="display:none" class="toast"></div>
 
@@ -1500,6 +1503,8 @@ function navTo(page, el){
   window._currentMainPage = page;
   // ปิด signal overlay และ modal ทั้งหมดก่อน
   closeSignal();
+  // reset body scroll ที่อาจค้างจาก drawer
+  document.body.style.overflow='';
   ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   const drawer=document.getElementById('drawer');
   if(drawer&&drawer.classList.contains('open')) drawer.classList.remove('open');
@@ -4110,6 +4115,8 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   overlay.style.display='flex';
   overlay.style.pointerEvents='auto';
   overlay.style.zIndex='2000';
+  const ec=document.getElementById('emergencyClose');
+  if(ec) ec.style.display='block';
   overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
   // FIX: escape ticker & name เพื่อป้องกัน XSS จาก innerHTML
   const safeTicker=_escHtml(ticker);
@@ -4367,6 +4374,8 @@ function closeSignal(){
     overlay.className='';
     overlay.innerHTML='';
   }
+  const ec=document.getElementById('emergencyClose');
+  if(ec) ec.style.display='none';
 }
 
 // ── Telegram ──
