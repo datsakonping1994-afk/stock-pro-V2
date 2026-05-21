@@ -4104,6 +4104,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
   overlay.className='signal-overlay';
   overlay.style.display='flex';
   overlay.style.pointerEvents='auto';
+  overlay.style.zIndex='2000';
   overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
   // FIX: escape ticker & name เพื่อป้องกัน XSS จาก innerHTML
   const safeTicker=_escHtml(ticker);
@@ -4357,6 +4358,8 @@ function closeSignal(){
   if(overlay){
     overlay.style.display='none';
     overlay.style.pointerEvents='none';
+    overlay.style.zIndex='-1';
+    overlay.className='';
     overlay.innerHTML='';
   }
 }
