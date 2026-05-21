@@ -591,7 +591,7 @@ canvas.bigchart{width:100%;height:100%}
 @media(min-width:600px){
   #app{max-width:480px;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border)}
   #bottomnav{max-width:480px;left:50%;transform:translateX(-50%)}
-  #drawer{max-width:480px;left:50%;right:auto;width:480px;transform:translateX(-50%) translateY(100%)}
+  #drawer{max-width:480px;left:50%;transform:translateX(-50%) translateY(100%)}
   #drawer.open{transform:translateX(-50%) translateY(0)}
   .mood-numbers{grid-template-columns:1fr 1fr 1fr}
   .index-row{grid-template-columns:1fr 1fr}
@@ -1006,7 +1006,7 @@ canvas.bigchart{width:100%;height:100%}
 
 <!-- DETAIL DRAWER -->
 <div id="drawer">
-  <div class="drawer-handle" onclick="closeDrawer()" style="cursor:pointer;padding:8px 0 4px;margin-top:6px"></div>
+  <div class="drawer-handle"></div>
   <div class="drawer-header">
     <div style="display:flex;align-items:center;gap:10px">
       <div id="drawerLogo" style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--bg3),var(--bg4));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);font-family:'Syne',sans-serif;flex-shrink:0;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,0.5),0 0 0 1.5px rgba(201,168,76,0.2);border:1.5px solid rgba(255,255,255,0.08)"></div>
@@ -1015,15 +1015,12 @@ canvas.bigchart{width:100%;height:100%}
         <div class="drawer-name" id="drawerName">--</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="drawer-price" style="text-align:right">
-        <div class="drawer-price-val" id="drawerPrice">--</div>
-        <div class="card-chg" id="drawerChg">--</div>
-        <div id="drawerExtPrice" style="display:none"></div>
-      </div>
-      <div class="wl-btn" id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="width:32px;height:32px;font-size:16px;flex-shrink:0">☆</div>
-      <div onclick="closeDrawer()" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);cursor:pointer;flex-shrink:0">✕</div>
+    <div class="drawer-price">
+      <div class="drawer-price-val" id="drawerPrice">--</div>
+      <div class="card-chg" id="drawerChg">--</div>
+      <div id="drawerExtPrice" style="display:none"></div>
     </div>
+
   </div>
   <div class="drawer-tabs">
     <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
@@ -2579,66 +2576,59 @@ function updateDashboard(){
 
 // ── Drawer ──
 function openDrawer(ticker){
-  try{
-    try{closeSignal();}catch{}
-    try{['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));}catch{}
-    currentDrawerTicker=ticker;
-    const s=stocks.find(x=>x.t===ticker);
-    if(!s)return;
-    const drawerEl=document.getElementById('drawer');
-    if(!drawerEl)return;
-    try{document.getElementById('drawerTicker').textContent=s.t;}catch{}
-    try{document.getElementById('drawerName').textContent=s.n;}catch{}
-    try{document.getElementById('drawerPrice').textContent=fmt(s.p);}catch{}
-    try{
-      const chg=document.getElementById('drawerChg');
-      if(chg){chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';chg.className='card-chg '+(s.c>=0?'up':'dn');}
-    }catch{}
-    try{
-      const dWlBtn=document.getElementById('drawerWlBtn');
-      if(dWlBtn){dWlBtn.textContent=watchlist.has(ticker)?'⭐':'☆';dWlBtn.classList.toggle('active',watchlist.has(ticker));}
-    }catch{}
-    try{
-      const dLogo=document.getElementById('drawerLogo');
-      if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
-      loadLogo(ticker,'drawerLogo',40);
-    }catch{}
-    // เปิด drawer ก่อน แล้วค่อย render (ให้ layout เสร็จก่อน)
-    drawerEl.classList.add('open');
-    document.body.style.overflow='hidden';
-    _currentChartDays=30;
-    setTimeout(()=>{
-      try{
-        const tabs=drawerEl.querySelectorAll('.drawer-tab');
-        drawerTab('tech', tabs[0]||null);
-      }catch(e){console.warn('[drawer tech tab]',e);}
-    },30);
-    try{
-      fetchAnalystData(ticker).then(()=>{
-        if(currentDrawerTab==='fund'){
-          try{drawerTab('fund',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[1]||null);}catch{}
-        }
-      }).catch(()=>{});
-    }catch{}
-    var _snapTicker=ticker;
-    function _reRenderTechIfActive(){
-      if(currentDrawerTicker===_snapTicker&&currentDrawerTab==='tech'){
-        try{updateRSIFromCandles(_snapTicker);}catch{}
-        try{drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null);}catch{}
-      }
+  // reset body overflow ก่อน (ป้องกันค้างจากครั้งก่อน)
+  document.body.style.overflow='';
+  // ปิด signal overlay ก่อนเปิด drawer
+  closeSignal();
+  // ปิด modal ทั้งหมดก่อนเปิด drawer
+  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
+  currentDrawerTicker=ticker;
+  const s=stocks.find(x=>x.t===ticker);
+  if(!s)return;
+  document.getElementById('drawerTicker').textContent=s.t;
+  document.getElementById('drawerName').textContent=s.n;
+  document.getElementById('drawerPrice').textContent=fmt(s.p);
+  const chg=document.getElementById('drawerChg');
+  chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
+  chg.className='card-chg '+(s.c>=0?'up':'dn');
+  // อัพเดท watchlist star ใน drawer
+  const dWlBtn=document.getElementById('drawerWlBtn');
+  if(dWlBtn){
+    dWlBtn.textContent=watchlist.has(ticker)?'⭐':'☆';
+    dWlBtn.classList.toggle('active', watchlist.has(ticker));
+  }
+  // Load drawer logo
+  const dLogo=document.getElementById('drawerLogo');
+  if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
+  loadLogo(ticker,'drawerLogo',40);
+  // render tech tab ครั้งเดียวตอนเปิด
+  _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
+  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  // ดึง analyst data ในพื้นหลัง
+  fetchAnalystData(ticker).then(()=>{
+    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
+  });
+  document.getElementById('drawer').classList.add('open');
+  // FIX: lock body scroll ตอนเปิด Drawer
+  document.body.style.overflow='hidden';
+  // snapshot ticker ณ เวลานี้ เพื่อกัน race condition
+  var _snapTicker = ticker;
+  function _reRenderTechIfActive(){
+    if(currentDrawerTicker === _snapTicker && currentDrawerTab === 'tech'){
+      updateRSIFromCandles(_snapTicker);
+      drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
     }
-    try{
-      if(candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock){
-        if(Date.now()-candleCache[ticker].ts>1800000){
-          fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
-        }
-      }else{
-        fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
-      }
-    }catch{}
-  }catch(err){console.warn('[openDrawer]',err);}
+  }
+  if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
+    // มี cache — refresh ใน background ถ้าเก่าเกิน 30 นาที
+    if(Date.now() - candleCache[ticker].ts > 1800000){
+      fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
+    }
+  } else {
+    // ไม่มี cache — โหลดแล้ว re-render เฉพาะถ้ายังอยู่ tech tab
+    fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
+  }
 }
-
 function closeDrawer(){
   document.getElementById('drawer').classList.remove('open');
   // FIX: unlock body scroll ตอนปิด Drawer
@@ -3017,21 +3007,18 @@ function renderPeerComparison(ticker, containerId){
 
 
 function drawerTab(tab, btn){
-  try{
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   currentDrawerTab = tab;
   const s=stocks.find(x=>x.t===currentDrawerTicker);
   if(!s)return;
   const body=document.getElementById('drawerBody');
-  if(!body)return;
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
   const rsi=rsiData[s.t]||50;
   if(tab==='tech'){
     // FIX: fetch candles ก่อนถ้ายังไม่มี แล้ว re-render indicator
     const _renderTech=()=>{
-      const _isMock=false;
-      const sig=candleCache[s.t]?.data ? _calcBuyScore(s.t,s.p,s1,r1) : null;
+      const sig=(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock) ? _calcBuyScore(s.t,s.p,s1,r1) : null;
     const macdTxt=sig?.macdLine!=null?(sig.macdLine>sig.macdSignal?'<span class="ind-val bull">Bullish Cross</span>':'<span class="ind-val bear">Bearish</span>'):'<span class="ind-val">--</span>';
     const adxTxt=sig?.adx!=null?`<span class="ind-val ${sig.adx>=25?'bull':'neut'}">${sig.adx} ${sig.adx>=25?'Strong':'Weak'} | DI+ ${sig.diPlus??'--'} / DI- ${sig.diMinus??'--'}</span>`:'<span class="ind-val">--</span>';
     const kijunTxt=sig?.kijun!=null?`<span class="ind-val ${s.p>=sig.kijun?'bull':'bear'}">${sig.kijun} ${s.p>=sig.kijun?'↑ above':'↓ below'}</span>`:'<span class="ind-val">--</span>';
@@ -3076,7 +3063,6 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
       <div class="big-chart"><canvas id="bigChartCanvas"></canvas></div>
-      ${sig?'':''}
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3131,7 +3117,7 @@ function drawerTab(tab, btn){
       const allTs=candleCache[s.t]?.data?.t||null;
       const timestamps=allTs?allTs.slice(-days):null;
       drawBigChartWithAxes(c,prices,timestamps,s.c>=0);
-      if(!hasCandleData){
+      if(!hasCandleData&&hasApiKey()){
         fetchCandles(s.t,days).then(()=>{
           const c2=document.getElementById('bigChartCanvas');
           if(c2&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock){
@@ -3154,30 +3140,11 @@ function drawerTab(tab, btn){
       }
     },50));
     }; // end _renderTech
-    // render ทันทีเสมอ (ถ้าไม่มี candle ใช้ mock chart ไปก่อน)
     _renderTech();
-    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator ทันที
-    if(!candleCache[s.t]?.data){
-      fetchCandles(s.t,60).then((data)=>{
-        if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
-          updateRSIFromCandles(s.t);
-          if(data){
-            _renderTech();
-            toast(`📊 โหลด indicator ${s.t} สำเร็จ (${candleCache[s.t]?.src||''})`,2000);
-          } else {
-            // แสดง error state พร้อมปุ่ม retry
-            const body=document.getElementById('drawerBody');
-            if(body){
-              body.innerHTML=`
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:16px;text-align:center">
-                  <div style="font-size:36px">📡</div>
-                  <div style="font-size:14px;font-weight:700;color:var(--text)">โหลดข้อมูลไม่ได้</div>
-                  <div style="font-size:12px;color:var(--text3);line-height:1.6">API ทุกตัวไม่ตอบสนอง<br>ลองใหม่หรือตรวจสอบ internet</div>
-                  <button onclick="drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null)" style="background:var(--gold);border:none;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>
-                </div>`;
-            }
-          }
-        }
+    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
+    if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
+      if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
+        if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _renderTech();
       }).catch(()=>{});
     }
   } else if(tab==='ai'){
@@ -3379,7 +3346,6 @@ function drawerTab(tab, btn){
       body.innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px">❌ Error: ' + (fundErr && fundErr.message ? fundErr.message : String(fundErr)) + '</div>';
     }
   }
-  }catch(err){console.warn('[drawerTab]',err);}
 }
 
 // ── AI Chat ──
@@ -4878,17 +4844,19 @@ const _YAHOO_ENDPOINTS = [
 ];
 
 const _YAHOO_PROXIES = [
-  // Workers ส่วนตัว (เร็วสุด)
-  url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
-  url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
-  // CORS proxies ที่ยังทำงานปี 2025
+  // CORS proxies สาธารณะ
   url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
   url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url=>`https://proxy.cors.sh/${url}`,
-  url=>`https://corsproxy.org/?${encodeURIComponent(url)}`,
-  url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   url=>`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+  url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url=>`https://cors-anywhere.herokuapp.com/${url}`,
+  url=>`https://crossorigin.me/${url}`,
+  url=>`https://yacdn.org/proxy/${url}`,
+  url=>`https://cors.sh/?${url}`,
+  // Workers ส่วนตัว
+  url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
+  url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
 ];
 
 let _workingProxy=null;
@@ -5448,29 +5416,7 @@ function calcVolumeProfile(data, bins=10){
 }
 
 // ── _genMockCandles ──
-function _genMockCandles(ticker, price, days=60){
-  if(!price||price<=0) return null;
-  const c=[],h=[],l=[],o=[],v=[],t=[];
-  let p=price*(0.85+Math.random()*0.1);
-  const now=Math.floor(Date.now()/1000);
-  const DAY=86400;
-  for(let i=days;i>=0;i--){
-    const chg=(Math.random()-0.48)*0.025;
-    const open=p;
-    p=Math.max(p*(1+chg), price*0.3);
-    const hi=Math.max(open,p)*(1+Math.random()*0.01);
-    const lo=Math.min(open,p)*(1-Math.random()*0.01);
-    o.push(+open.toFixed(2));
-    c.push(+p.toFixed(2));
-    h.push(+hi.toFixed(2));
-    l.push(+lo.toFixed(2));
-    v.push(Math.floor(1000000+Math.random()*5000000));
-    t.push(now-i*DAY);
-  }
-  // force last close = current price
-  c[c.length-1]=price;
-  return {c,h,l,o,v,t,_mock:true};
-}
+
 
 // ── Timeframe switcher ──
 async function _switchTF(btn, days){
@@ -5494,7 +5440,7 @@ async function _switchTF(btn, days){
       const timestamps=allTs?allTs.slice(-days):null;
       drawBigChartWithAxes(c,prices,timestamps,s?.c>=0);
     }
-    if(currentDrawerTab==='tech'){try{drawerTab('tech',document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[0]||null);}catch{}}
+    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){}
 }
 
@@ -5520,56 +5466,11 @@ async function fetchPolygonQuote(ticker){
 }
 
 // ── testPolygonKey ──
-async function testPolygonKey(key){
-  try{
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),5000);
-    const r=await fetch(`https://api.polygon.io/v2/aggs/ticker/AAPL/prev?adjusted=true&apiKey=${key}`,{signal:ctrl.signal});
-    if(!r.ok) return false;
-    const d=await r.json();
-    return !!(d?.results?.length);
-  }catch{ return false; }
-}
 
 // ── testCohereKey ──
-async function testCohereKey(key){
-  try{
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),5000);
-    const r=await fetch('https://api.cohere.com/v2/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'command-r-plus-08-2024',messages:[{role:'user',content:'hi'}],max_tokens:5}),
-      signal:ctrl.signal
-    });
-    return r.ok;
-  }catch{ return false; }
-}
 
 // ── Twelve Data config ──
-const TWELVE_KEY = '14088a80f9f9441da3a9fc316e25d2a2';
-
-// ── fetchCandlesFinnhub — ดึง candle จาก Finnhub (ใช้ key เดิม ไม่ต้อง proxy) ──
-async function fetchCandlesFinnhub(ticker, days=60){
-  try{
-    const to=Math.floor(Date.now()/1000);
-    const from=to - days*24*3600*2; // เผื่อวันหยุด x2
-    const url=`https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(url,{signal:ctrl.signal});
-    clearTimeout(tid);
-    if(!r.ok) return null;
-    const d=await r.json();
-    if(d.s==='no_data'||!d.c||d.c.length<5) return null;
-    // เอาแค่ days สุดท้าย
-    const n=Math.min(d.c.length, days);
-    return {
-      c:d.c.slice(-n), h:d.h.slice(-n), l:d.l.slice(-n),
-      o:d.o.slice(-n), v:d.v.slice(-n), t:d.t.slice(-n)
-    };
-  }catch{ return null; }
-}
+const TWELVE_KEY = 'b0e5127de9f24870a3a875d64add7688';
 
 // ── fetchCandlesTwelve — ดึง candle จาก Twelve Data (ไม่ต้อง proxy) ──
 async function fetchCandlesTwelve(ticker, days=60){
@@ -5649,9 +5550,9 @@ async function fetchCandlesPolygon(ticker, days=60){
 // ── fetchCandles — rate limit guard ──
 const _candleFetching=new Set(); // ป้องกัน concurrent fetch ตัวเดียวกัน
 async function fetchCandles(ticker, days=60){
-  // skip cache ถ้าเป็น mock เพื่อลอง real data ใหม่
-  if(candleCache[ticker]&&candleCache[ticker].ts>Date.now()-1800000&&(candleCache[ticker].days||0)>=days&&!candleCache[ticker].data?._mock) return candleCache[ticker].data;
-  if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null;
+  if(candleCache[ticker]&&candleCache[ticker].ts>Date.now()-1800000&&(candleCache[ticker].days||0)>=days) return candleCache[ticker].data;
+  if(candleCache[ticker]?.data?._mock && !hasApiKey()) return candleCache[ticker].data;
+  if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
   _candleFetching.add(ticker);
   try{
     // ── 0. ลอง Worker KV cache ก่อน (เร็วที่สุด ไม่เสีย quota) ──
@@ -5669,49 +5570,52 @@ async function fetchCandles(ticker, days=60){
       }
     }catch{}
 
-    // ── 1. Polygon.io — ใช้ได้ free tier ──
+    // ── 1. ลอง Polygon.io ก่อน (ข้อมูลแม่นยำ ไม่ต้อง proxy) ──
     let candleData=await fetchCandlesPolygon(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
       return candleData;
     }
-    // ── 2. Twelve Data — fallback ──
+    // ── 2. Fallback → Twelve Data ──
     candleData=await fetchCandlesTwelve(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
       return candleData;
     }
-    // ── 3. Yahoo Finance ผ่าน proxy ──
+    // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
     const range=days<=30?'1mo':days<=90?'3mo':days<=150?'6mo':days<=210?'1y':'2y';
-    const yahooUrls=[
-      `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`,
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`,
+    const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
+    // ใช้ working proxy ก่อน แล้วกรอง proxy ที่กำลัง cooldown ออก
+    const proxiesToUse = [
+      ...(_workingProxy ? [_workingProxy] : []),
+      ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy && !_isProxyCoolingDown(p))
     ];
-    for(const yahooUrl of yahooUrls){
-      if(candleData) break;
-      const proxiesToUse=[
-        ...(_workingProxy?[_workingProxy]:[]),
-        ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy&&!_isProxyCoolingDown(p))
-      ];
-      try{
-        candleData=await Promise.any(proxiesToUse.map(async mkProxy=>{
-          const r=await _tryProxy(mkProxy,yahooUrl,7000);
-          if(!r){_markProxyFailed(mkProxy);throw new Error('fail');}
-          const c=_extractCandleFromParsed(r.parsed);
-          if(!c){_markProxyFailed(mkProxy);throw new Error('no candle');}
-          _workingProxy=mkProxy;
-          _markProxySuccess(mkProxy);
-          return c;
-        }));
-      }catch{}
-    }
+    try{
+      candleData=await Promise.any(proxiesToUse.map(async mkProxy=>{
+        const r=await _tryProxy(mkProxy, yahooUrl, 6000);
+        if(!r){ _markProxyFailed(mkProxy); throw new Error('fail'); }
+        const c=_extractCandleFromParsed(r.parsed);
+        if(!c){ _markProxyFailed(mkProxy); throw new Error('no candle'); }
+        _workingProxy=mkProxy;
+        _markProxySuccess(mkProxy);
+        return c;
+      }));
+    }catch{}
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'yahoo'};
       return candleData;
     }
   }catch(e){}
   finally{ _candleFetching.delete(ticker); }
-  // ไม่มีข้อมูลจริง — คืน null ไม่ใช้ mock
+  // Fallback: mock data
+  const s=stocks.find(x=>x.t===ticker);
+  if(s&&s.p>0){
+    const data=_genMockCandles(ticker,s.p,days);
+    if(data){
+      candleCache[ticker]={data,ts:Date.now()-240000,days};
+      return data;
+    }
+  }
   return null;
 }
 
@@ -6357,66 +6261,6 @@ async function fetchMarketContext(){
 }
 
 // ── fetchLiveNews — parallel proxy fetch, ข่าวใหม่ 3 วัน ──
-async function fetchLiveNews(ticker){
-  // 1. Finnhub company news
-  try{
-    const to=new Date(); const from=new Date(); from.setDate(from.getDate()-7);
-    const fmtD=d=>d.toISOString().slice(0,10);
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${fmtD(from)}&to=${fmtD(to)}&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      if(Array.isArray(d)&&d.length){
-        const items=d.slice(0,8).map(n=>({
-          h:n.headline||'', x:n.summary||'',
-          s:n.source||'Finnhub', u:n.url||'#',
-          d:n.datetime?new Date(n.datetime*1000).toLocaleDateString('th-TH'):''
-        }));
-        liveNewsCache[ticker]={items,ts:Date.now()};
-        return items;
-      }
-    }
-  }catch{}
-  // 2. Marketaux
-  try{
-    const key=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
-    if(key){
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch(`https://api.marketaux.com/v1/news/all?symbols=${ticker}&language=en&limit=8&api_token=${key}`,{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(r.ok){
-        const d=await r.json();
-        if(d?.data?.length){
-          const items=d.data.map(n=>({h:n.title||'',x:n.description||'',s:n.source||'Marketaux',u:n.url||'#',d:n.published_at?new Date(n.published_at).toLocaleDateString('th-TH'):''}));
-          liveNewsCache[ticker]={items,ts:Date.now()};
-          return items;
-        }
-      }
-    }
-  }catch{}
-  // 3. GNews
-  try{
-    const key=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
-    if(key){
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(ticker)}&lang=en&max=8&apikey=${key}`,{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(r.ok){
-        const d=await r.json();
-        if(d?.articles?.length){
-          const items=d.articles.map(n=>({h:n.title||'',x:n.description||'',s:n.source?.name||'GNews',u:n.url||'#',d:n.publishedAt?new Date(n.publishedAt).toLocaleDateString('th-TH'):''}));
-          liveNewsCache[ticker]={items,ts:Date.now()};
-          return items;
-        }
-      }
-    }
-  }catch{}
-  return [];
-}
 
 // ── News localStorage helpers (TTL 30 นาที) ──
 const NEWS_TTL=1800000;
@@ -6479,22 +6323,6 @@ async function _renderNewsItems(pane, items, ticker, isStatic=false){
 }
 
 // ── renderNewsTab ──
-async function renderNewsTab(ticker){
-  const body=document.getElementById('drawerBody');
-  if(!body) return;
-  // ลอง cache ก่อน
-  const cached=_loadNewsCache(ticker);
-  if(cached&&cached.length){ await _renderNewsItems(body,cached,ticker,true); return; }
-  if(liveNewsCache[ticker]?.items?.length){ await _renderNewsItems(body,liveNewsCache[ticker].items,ticker); return; }
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
-  const items=await fetchLiveNews(ticker);
-  if(!items||!items.length){
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าวสำหรับ '+ticker+'</div>';
-    return;
-  }
-  _saveNewsCache(ticker,items);
-  await _renderNewsItems(body,items,ticker);
-}
 
 // ── AI วิเคราะห์ข่าว ──
 async function analyzeNewsWithAI(ticker){
@@ -7058,111 +6886,6 @@ async function refreshNewsManual(){
 }
 
 // ── loadEconNews: ดึงข่าว 3 วัน รวมเป็นฟีดเดียว คัด 8 สำคัญ ──
-async function loadEconNews(){
-  const body=document.getElementById('econNewsBody');
-  if(!body) return;
-
-  // ใช้ cache ถ้ายังไม่หมดอายุ
-  if(_econNewsCache['all']&&Date.now()-(_econNewsCacheTime['all']||0)<_ECON_NEWS_TTL){
-    _renderEconNews(_econNewsCache['all']);
-    return;
-  }
-
-  body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">⏳ กำลังโหลดข่าว...</div>';
-
-  let items=[];
-
-  // 1. ลอง Finnhub general news
-  try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_KEY}`,{signal:ctrl.signal});
-    clearTimeout(tid);
-    if(r.ok){
-      const d=await r.json();
-      if(Array.isArray(d)&&d.length){
-        items=d.slice(0,12).map(n=>({
-          h:_stripNewsSource(n.headline||''),
-          x:n.summary||'',
-          s:n.source||'Finnhub',
-          u:n.url||'#',
-          d:n.datetime?new Date(n.datetime*1000).toLocaleDateString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''
-        }));
-      }
-    }
-  }catch{}
-
-  // 2. Fallback: Marketaux
-  if(!items.length){
-    try{
-      const key=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
-      if(key){
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),6000);
-        const r=await fetch(`https://api.marketaux.com/v1/news/all?language=en&filter_entities=true&limit=12&api_token=${key}`,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(r.ok){
-          const d=await r.json();
-          if(d?.data?.length){
-            items=d.data.map(n=>({
-              h:_stripNewsSource(n.title||''),x:n.description||'',
-              s:n.source||'Marketaux',u:n.url||'#',
-              d:n.published_at?new Date(n.published_at).toLocaleDateString('th-TH',{day:'numeric',month:'short'}):''
-            }));
-          }
-        }
-      }
-    }catch{}
-  }
-
-  // 3. Fallback: GNews business headlines
-  if(!items.length){
-    try{
-      const key=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
-      if(key){
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),6000);
-        const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&max=12&apikey=${key}`,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if(r.ok){
-          const d=await r.json();
-          if(d?.articles?.length){
-            items=d.articles.map(n=>({
-              h:_stripNewsSource(n.title||''),x:n.description||'',
-              s:n.source?.name||'GNews',u:n.url||'#',
-              d:n.publishedAt?new Date(n.publishedAt).toLocaleDateString('th-TH',{day:'numeric',month:'short'}):''
-            }));
-          }
-        }
-      }
-    }catch{}
-  }
-
-  if(items.length){
-    _econNewsCache['all']=items;
-    _econNewsCacheTime['all']=Date.now();
-    _renderEconNews(items);
-    const upd=document.getElementById('newsLastUpdated');
-    if(upd) upd.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
-  } else {
-    body.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">ไม่พบข่าว — ลองกด 🔄</div>';
-  }
-}
-
-function _renderEconNews(items){
-  const body=document.getElementById('econNewsBody');
-  if(!body||!items?.length) return;
-  body.innerHTML=items.map(n=>`
-    <a href="${n.u||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block">
-      <div style="background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.3);margin-bottom:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:4px">${_escHtml(n.h||'')}</div>
-        ${n.x?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px">${_escHtml((n.x||'').slice(0,180))}</div>`:''}
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
-          <span>${_escHtml(n.s||'')}</span><span>${n.d||''}</span>
-        </div>
-      </div>
-    </a>`).join('');
-}
 
 // ── ตัด " - Source" ท้ายชื่อข่าว (Google News ติดชื่อสำนักข่าวมาด้วย) ──
 function _stripNewsSource(title){
@@ -8079,8 +7802,7 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
   let _swipeStartX=0, _swipeStartY=0, _swipeStartTime=0;
 
   function _getTabEl(tab){
-    const _TABS=['tech','fund','ai','news'];const _i=_TABS.indexOf(tab);
-    return _i>=0?(document.getElementById('drawer')?.querySelectorAll('.drawer-tab')?.[_i]||null):null;
+    return document.querySelector(`.drawer-tab[onclick*="${tab}"]`);
   }
 
   function _goTab(dir){
