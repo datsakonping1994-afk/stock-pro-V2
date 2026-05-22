@@ -2585,51 +2585,19 @@ function closeDrawer(){
 }
 
 // ── Drawer swipe to close — เฉพาะ handle และ header เท่านั้น ──
-let _drawerSwipeY=0, _drawerSwipeX=0, _drawerSwipeTarget=null;
+let _drawerSwipeY=0, _drawerSwipeTarget=null;
 let _currentChartDays=30; // default 1M
 document.getElementById('drawer').addEventListener('touchstart',e=>{
   _drawerSwipeY=e.touches[0].clientY;
-  _drawerSwipeX=e.touches[0].clientX;
   _drawerSwipeTarget=e.target;
 },{passive:true});
 document.getElementById('drawer').addEventListener('touchend',e=>{
   const dy=e.changedTouches[0].clientY-_drawerSwipeY;
+  // ปัดลงเกิน 100px และ touch เริ่มจาก handle หรือ header เท่านั้น
+  // ไม่ใช่จาก drawer-body (ป้องกัน scroll ปัดทิ้งโดยไม่ตั้งใจ)
   const fromBody=document.getElementById('drawerBody')?.contains(_drawerSwipeTarget);
-  const fromChart=document.getElementById('lwChartContainer')?.contains(_drawerSwipeTarget);
-  if(dy>100 && !fromBody && !fromChart) closeDrawer();
+  if(dy>100 && !fromBody) closeDrawer();
 },{passive:true});
-
-// ── กัน drawerBody scroll ชนกับ chart horizontal drag ──
-(function(){
-  let _stX=0,_stY=0,_lockAxis=null;
-  const getBody=()=>document.getElementById('drawerBody');
-  document.addEventListener('touchstart',e=>{
-    const chart=document.getElementById('lwChartContainer');
-    if(!chart||!chart.contains(e.target)) return;
-    _stX=e.touches[0].clientX;
-    _stY=e.touches[0].clientY;
-    _lockAxis=null;
-  },{passive:true});
-  document.addEventListener('touchmove',e=>{
-    const chart=document.getElementById('lwChartContainer');
-    if(!chart||!chart.contains(e.target)) return;
-    const dx=Math.abs(e.touches[0].clientX-_stX);
-    const dy=Math.abs(e.touches[0].clientY-_stY);
-    if(!_lockAxis) _lockAxis=(dx>dy)?'h':'v';
-    if(_lockAxis==='h'){
-      const body=getBody();
-      if(body) body.style.overflowY='hidden';
-      e.stopPropagation();
-    }
-  },{passive:true});
-  document.addEventListener('touchend',e=>{
-    const chart=document.getElementById('lwChartContainer');
-    if(!chart||!chart.contains(e.target)) return;
-    const body=getBody();
-    if(body) body.style.overflowY='auto';
-    _lockAxis=null;
-  },{passive:true});
-})();
 
 // ── renderEarningsChart — Canvas bar chart ──
 function renderEarningsChart(ticker, containerId){
@@ -3043,7 +3011,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:200px;border-radius:14px;overflow:hidden;margin-bottom:8px;background:#060b14;border:1px solid rgba(255,255,255,0.06);box-shadow:0 4px 20px rgba(0,0,0,0.5)"></div>
+      <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3088,191 +3056,127 @@ function drawerTab(tab, btn){
       const container=document.getElementById('lwChartContainer');
       if(!container) return;
       const days=_currentChartDays||30;
-      const hasCandleData=candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
-      const allPrices=hasCandleData?candleCache[s.t].data.c:null;
-      const allTs=candleCache[s.t]?.data?.t||null;
-
-      // สร้าง mock data ถ้าไม่มี candle
-      let prices, timestamps;
-      if(allPrices){
-        prices=allPrices.slice(-days);
-        timestamps=allTs?allTs.slice(-days):null;
-      } else {
-        // mock data
-        const now=Math.floor(Date.now()/1000);
-        prices=[]; timestamps=[];
-        let p=s.p*0.85;
-        for(let i=days;i>=0;i--){
-          p+=p*(Math.random()-0.47)*0.02;
-          prices.push(+Math.max(p,s.p*0.5).toFixed(2));
-          timestamps.push(now-i*86400);
-        }
-        prices[prices.length-1]=s.p;
-      }
+      const raw=candleCache[s.t]?.data;
+      const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
 
       const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p);
       const r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
 
       const _drawLW=()=>{
-        if(typeof LightweightCharts==='undefined'){
-          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">กำลังโหลดกราฟ...</div>';
-          return;
-        }
+        if(typeof LightweightCharts==='undefined') return;
         container.innerHTML='';
 
-        // ── Build candlestick data ──
-        const rawData=candleCache[s.t]?.data;
-        const hasFull=rawData?.o&&rawData?.h&&rawData?.l&&rawData?.c&&!rawData?._mock;
+        // ── สร้าง candleData ──
         let candleData=[];
-        if(hasFull){
-          const n=Math.min(rawData.c.length, days);
-          const os=rawData.o.slice(-n), hs=rawData.h.slice(-n), ls=rawData.l.slice(-n), cs=rawData.c.slice(-n), ts2=(rawData.t||[]).slice(-n);
-          for(let i=0;i<n;i++){
-            if(ts2[i]) candleData.push({time:ts2[i],open:os[i],high:hs[i],low:ls[i],close:cs[i]});
+        if(hasReal){
+          const n=Math.min(raw.c.length,days);
+          for(let i=raw.c.length-n;i<raw.c.length;i++){
+            const t=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
+            if(t&&!isNaN(o)&&!isNaN(h)&&!isNaN(l)&&!isNaN(c)&&h>=l)
+              candleData.push({time:t,open:o,high:h,low:l,close:c});
           }
         } else {
-          // mock candles from line prices
-          let prevP=prices[0]||s.p;
-          candleData=prices.map((p,i)=>{
-            const o=prevP, c=p;
-            const range=Math.abs(c-o)*0.5+s.p*0.005;
-            const h=Math.max(o,c)+range*Math.random();
-            const l=Math.min(o,c)-range*Math.random();
-            prevP=p;
-            return{time:timestamps[i],open:+o.toFixed(2),high:+h.toFixed(2),low:+l.toFixed(2),close:+c.toFixed(2)};
-          });
+          // mock OHLC
+          const now=Math.floor(Date.now()/1000);
+          let p=s.p*0.85;
+          for(let i=days;i>=0;i--){
+            p=Math.max(p*(1+(Math.random()-0.47)*0.025),s.p*0.4);
+            const o=+p.toFixed(2);
+            const chg=p*(Math.random()-0.5)*0.01;
+            const c=+(p+chg).toFixed(2);
+            const h=+(Math.max(o,c)*(1+Math.random()*0.008)).toFixed(2);
+            const l=+(Math.min(o,c)*(1-Math.random()*0.008)).toFixed(2);
+            candleData.push({time:now-i*86400,open:o,high:h,low:l,close:c});
+          }
+          candleData[candleData.length-1].close=s.p;
         }
-        // deduplicate & sort by time
+
+        // dedup + sort
         const seen=new Set();
         candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
+
+        // DEBUG — ลบออกหลัง fix
+        console.log('[CHART DEBUG]',s.t,'hasReal=',hasReal,'candleData.length=',candleData.length,'w=',container.getBoundingClientRect().width,'offsetW=',container.offsetWidth,'LW=',typeof LightweightCharts);
+        if(candleData.length>0) console.log('[CHART DEBUG] first=',JSON.stringify(candleData[0]),'last=',JSON.stringify(candleData[candleData.length-1]));
+
         if(!candleData.length) return;
 
+        const w=container.getBoundingClientRect().width||container.parentElement?.getBoundingClientRect().width||360;
         const chart=LightweightCharts.createChart(container,{
-          width:container.offsetWidth||360,
-          height:200,
-          layout:{
-            background:{color:'#060b14'},
-            textColor:'rgba(148,162,190,0.85)',
-            fontSize:10,
-            fontFamily:"'IBM Plex Mono',monospace",
-          },
-          grid:{
-            vertLines:{color:'rgba(255,255,255,0.025)'},
-            horzLines:{color:'rgba(255,255,255,0.025)'},
-          },
-          rightPriceScale:{
-            borderColor:'rgba(255,255,255,0.06)',
-            scaleMargins:{top:0.08,bottom:0.08},
-          },
-          timeScale:{
-            borderColor:'rgba(255,255,255,0.06)',
-            timeVisible:true,
-            secondsVisible:false,
-            fixLeftEdge:true,
-            fixRightEdge:true,
-          },
-          crosshair:{
-            mode:1,
-            vertLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
-            horzLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
-          },
+          width:w, height:220,
+          layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
+          grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
+          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)',scaleMargins:{top:0.1,bottom:0.1}},
+          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true,secondsVisible:false},
+          crosshair:{mode:1,vertLine:{color:'rgba(201,168,76,0.4)',width:1,style:2},horzLine:{color:'rgba(201,168,76,0.4)',width:1,style:2}},
           handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},
-          handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:{time:true,price:false}},
+          handleScale:{mouseWheel:true,pinch:true},
         });
 
-        // ── Candlestick Series ──
-        const candleSeries=chart.addCandlestickSeries({
-          upColor:'#00e676',
-          downColor:'#ff4d6a',
-          borderUpColor:'#00e676',
-          borderDownColor:'#ff4d6a',
-          wickUpColor:'rgba(0,230,118,0.7)',
-          wickDownColor:'rgba(255,77,106,0.7)',
-          priceLineVisible:false,
-          lastValueVisible:false,
+        const cs=chart.addCandlestickSeries({
+          upColor:'#00e676',downColor:'#ff4d6a',
+          borderUpColor:'#00e676',borderDownColor:'#ff4d6a',
+          wickUpColor:'rgba(0,230,118,0.6)',wickDownColor:'rgba(255,77,106,0.6)',
+          priceLineVisible:false,lastValueVisible:false,
         });
-        candleSeries.setData(candleData);
+        cs.setData(candleData);
 
-        // ── Volume histogram (subtle) ──
-        if(hasFull&&rawData.v&&rawData.v.length){
+        // volume
+        if(hasReal&&raw.v&&raw.v.length){
           try{
-            const vs=rawData.v.slice(-candleData.length);
-            const volSeries=chart.addHistogramSeries({
-              color:'rgba(100,210,255,0.12)',
-              priceFormat:{type:'volume'},
-              priceScaleId:'vol',
-              scaleMargins:{top:0.82,bottom:0},
-              lastValueVisible:false,
-              priceLineVisible:false,
-            });
-            volSeries.setData(candleData.map((d,i)=>({
-              time:d.time,
-              value:vs[i]||0,
-              color:d.close>=d.open?'rgba(0,230,118,0.18)':'rgba(255,77,106,0.18)',
-            })));
+            const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.85,bottom:0},lastValueVisible:false,priceLineVisible:false});
+            const n=Math.min(raw.c.length,days);
+            const vs=raw.v.slice(-n);
+            volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.15)':'rgba(255,77,106,0.15)'})));
           }catch(e){}
         }
 
-        // ── Support / Resistance price lines ──
-        const levels=[
-          [r2,'R2','#00c853',2],
-          [r1,'R1','#00e676',1.5],
-          [s.p,'●','rgba(201,168,76,0.9)',1],
-          [s1,'S1','#ff4d6a',1.5],
-          [s2,'S2','#cc2244',1],
-        ];
-        levels.forEach(([price,label,clr,lw])=>{
-          if(price>0) candleSeries.createPriceLine({
-            price,color:clr,
-            lineWidth:lw,
-            lineStyle:label==='●'?0:2,
-            axisLabelVisible:true,
-            title:label,
-          });
+        // S/R lines
+        const showS2=s.p<s1; // ราคาหลุด S1
+        const showR2=s.p>r1; // ราคาทะลุ R1
+        [[r2,'R2','#00c853',showR2],[r1,'R1','#00e676',true],[s1,'S1','#ff4d6a',true],[s2,'S2','#cc3344',showS2]].forEach(([price,label,clr,showLabel])=>{
+          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:showLabel,title:label});
         });
+        cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.9)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'●'});
 
         chart.timeScale().fitContent();
 
-        // ป้องกัน touch event bubble ไปที่ page swipe
-        container.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
-        container.addEventListener('touchmove',  e=>e.stopPropagation(), {passive:true});
-        container.addEventListener('touchend',   e=>e.stopPropagation(), {passive:true});
-
-        // Responsive resize
+        // ให้ touch บนกราฟไม่ bubble ไป page swipe
+        ['touchstart','touchmove','touchend'].forEach(ev=>
+          container.addEventListener(ev,e=>e.stopPropagation(),{passive:true})
+        );
+        // resize
         try{
-          const ro=new ResizeObserver(()=>{if(container.offsetWidth>0)chart.resize(container.offsetWidth,200);});
-          ro.observe(container);
-          container._lwRO=ro;
+          if(container._ro) container._ro.disconnect();
+          const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,220);});
+          ro.observe(container); container._ro=ro;
         }catch(e){}
       };
 
       if(typeof LightweightCharts!=='undefined'){
         _drawLW();
       } else {
-        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">กำลังโหลดกราฟ...</div>';
+        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
         const sc=document.createElement('script');
         sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
-        sc.onload=_drawLW;
-        document.head.appendChild(sc);
+        sc.onload=_drawLW; document.head.appendChild(sc);
       }
 
-      // fetch candles ถ้ายังไม่มี
-      if(!hasCandleData&&hasApiKey()){
+      // fetch candles จริงแล้ว redraw
+      if(!hasReal&&hasApiKey()){
         fetchCandles(s.t,days).then(()=>{
           if(currentDrawerTicker===s.t&&currentDrawerTab==='tech') _initLWChart();
         }).catch(()=>{});
       }
     };
-    requestAnimationFrame(()=>setTimeout(()=>{
+    requestAnimationFrame(()=>{
       if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
         _initLWChart();
-        // sync active tf-btn กับ _currentChartDays
         const dayMap={30:0,90:1,180:2,365:3};
         const idx=dayMap[_currentChartDays]??0;
-        const btns=document.querySelectorAll('.tf-btn');
-        btns.forEach((b,i)=>b.classList.toggle('active',i===idx));
+        document.querySelectorAll('.tf-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
       }
-    },50));
+    });
     }; // end _renderTech
     _renderTech();
     // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
@@ -5913,6 +5817,37 @@ async function _switchTF(btn, days){
     if(candleCache[ticker]) candleCache[ticker].days=0;
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
+    // วาด LW chart ใหม่
+    const containerId='lwChartContainer';
+    const container=document.getElementById(containerId);
+    if(container&&candleCache[ticker]?.data?.c&&typeof LightweightCharts!=='undefined'){
+      const s=stocks.find(x=>x.t===ticker);
+      const allPrices=candleCache[ticker].data.c;
+      const allTs=candleCache[ticker].data.t||null;
+      const prices=allPrices.slice(-days);
+      const timestamps=allTs?allTs.slice(-days):null;
+      const p=s?.p||prices[prices.length-1]||0;
+      container.innerHTML='';
+      const chart=LightweightCharts.createChart(container,{
+        width:container.offsetWidth||360,height:280,
+        layout:{background:{color:'#0a101a'},textColor:'#8b99b5'},
+        grid:{vertLines:{color:'rgba(255,255,255,0.04)'},horzLines:{color:'rgba(255,255,255,0.04)'}},
+        rightPriceScale:{borderColor:'rgba(255,255,255,0.1)'},
+        timeScale:{borderColor:'rgba(255,255,255,0.1)',timeVisible:true},
+      });
+      const isUp=s?.c>=0;
+      const lineSeries=chart.addLineSeries({color:isUp?'#00e676':'#ff4d6a',lineWidth:2,priceLineVisible:false});
+      lineSeries.setData(prices.map((pr,i)=>({time:timestamps[i],value:pr})));
+      const addLine=(price,label,clr)=>{
+        if(!price||price<=0) return;
+        lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:label});
+      };
+      addLine(getS1(ticker,p),'S1','rgba(255,100,100,0.9)');
+      addLine(getS2(ticker,p),'S2','rgba(200,60,60,0.7)');
+      addLine(getR1(ticker,p),'R1','rgba(0,230,118,0.9)');
+      addLine(getR2(ticker,p),'R2','rgba(0,180,90,0.7)');
+      chart.timeScale().fitContent();
+    }
     if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){}
 }
