@@ -3991,7 +3991,7 @@ Buy Score: ${score}/100
     _setAICache(cacheKey, decision);
     return decision === 'BUY';
   }catch{
-    return score >= 65;
+    return true; // AI timeout → BUY
   }
 }
 
@@ -5092,8 +5092,7 @@ function checkAllBuySignals(){
   (async()=>{
     try{
       for(const s of stocks){
-        if(s.p>0 && !_isBuyAlerted(s.t)){
-          _setBuyAlerted(s.t);
+        if(s.p>0){
           await checkBuySignalFull(s.t,s.p);
         }
         await new Promise(r=>setTimeout(r,150));
