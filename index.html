@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 
@@ -1334,7 +1333,7 @@ const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุ
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
-const BUY_SIGNAL_COOLDOWN  = 1800000; // 30 นาที cooldown ต่อ ticker
+const BUY_SIGNAL_COOLDOWN  = 14400000; // 4 ชั่วโมง cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -3011,7 +3010,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
+      <div id="lwChartContainer" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3103,7 +3102,7 @@ function drawerTab(tab, btn){
 
         const w=container.getBoundingClientRect().width||container.parentElement?.getBoundingClientRect().width||360;
         const chart=LightweightCharts.createChart(container,{
-          width:w, height:220,
+          width:w, height:200,
           layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
           grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
           rightPriceScale:{borderColor:'rgba(255,255,255,0.08)',scaleMargins:{top:0.1,bottom:0.1}},
@@ -3132,10 +3131,8 @@ function drawerTab(tab, btn){
         }
 
         // S/R lines
-        const showS2=s.p<s1; // ราคาหลุด S1
-        const showR2=s.p>r1; // ราคาทะลุ R1
-        [[r2,'R2','#00c853',showR2],[r1,'R1','#00e676',true],[s1,'S1','#ff4d6a',true],[s2,'S2','#cc3344',showS2]].forEach(([price,label,clr,showLabel])=>{
-          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:showLabel,title:label});
+        [[r2,'R2','#00c853'],[r1,'R1','#00e676'],[s1,'S1','#ff4d6a'],[s2,'S2','#cc3344']].forEach(([price,label,clr])=>{
+          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:label});
         });
         cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.9)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'●'});
 
@@ -3148,7 +3145,7 @@ function drawerTab(tab, btn){
         // resize
         try{
           if(container._ro) container._ro.disconnect();
-          const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,220);});
+          const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});
           ro.observe(container); container._ro=ro;
         }catch(e){}
       };
@@ -3844,7 +3841,7 @@ async function fetchRemoteHistory(){
   }catch{ return null; }
 }
 
-async function renderAlerts(){
+function renderAlerts(){
   updateTradeResults();
   const localLog = _loadTradeLog().reverse();
 
@@ -3853,14 +3850,15 @@ async function renderAlerts(){
   const list = document.getElementById('alertsList');
   if(statsEl) statsEl.innerHTML = '<div style="color:var(--text3)">⏳ กำลังโหลดประวัติ...</div>';
 
-  const remoteLog = await fetchRemoteHistory();
-  // รวม local + remote แล้ว deduplicate ด้วย ticker+time
   let merged = localLog;
-  if(remoteLog && remoteLog.length){
-    const localKeys = new Set(localLog.map(t => t.ticker + ':' + t.time?.slice(0,16)));
-    const newRemote = remoteLog.filter(t => !localKeys.has(t.ticker + ':' + (t.time||'')?.slice(0,16)));
-    merged = [...localLog, ...newRemote].sort((a,b) => new Date(b.time) - new Date(a.time));
-  }
+  // โหลด remote แบบ background ไม่บล็อก
+  fetchRemoteHistory().then(remoteLog=>{
+    if(!remoteLog||!remoteLog.length) return;
+    const localKeys=new Set(localLog.map(t=>t.ticker+':'+t.time?.slice(0,16)));
+    const newRemote=remoteLog.filter(t=>!localKeys.has(t.ticker+':'+(t.time||'')?.slice(0,16)));
+    if(!newRemote.length) return;
+    merged=[...localLog,...newRemote].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  }).catch(()=>{});
 
   const stats = merged.length ? (() => {
     const done = merged.filter(t => t.result !== null && t.pct != null);
@@ -4183,9 +4181,6 @@ function playAlertSound(){
 }
 
 function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong'){
-  // ถ้า popup เปิดอยู่แล้ว ไม่ต้องเปิดซ้ำ
-  const overlay=document.getElementById('signalOverlay');
-  if(overlay&&overlay.style.display==='flex') return;
   const levelConfig={
     strong:{emoji:'🟢',label:'ควรซื้อ',color:'rgba(0,200,130,0.3)',border:'rgba(0,200,130,0.5)'},
     good:  {emoji:'🟡',label:'น่าซื้อ', color:'rgba(255,200,0,0.2)', border:'rgba(255,200,0,0.4)'},
@@ -5091,11 +5086,13 @@ function isUSMarketOrPreMarket(){
 
 function checkAllBuySignals(){
   if(!hasApiKey()) return;
-  if(!isUSMarketOrPreMarket()) return;
+  if(!isUSMarketOrPreMarket()) return; // เช็คเฉพาะช่วงตลาด
+  // รัน async แบบ sequential ป้องกัน rate limit
   (async()=>{
     try{
       for(const s of stocks){
-        if(s.p>0){
+        if(s.p>0 && !_isBuyAlerted(s.t)){
+          _setBuyAlerted(s.t);
           await checkBuySignalFull(s.t,s.p);
         }
         await new Promise(r=>setTimeout(r,150));
@@ -8397,8 +8394,8 @@ async function checkBuySignalFull(ticker,price){
   const r1=getR1(ticker,price);
   const pctFromS1=(price-s1)/s1*100;
 
-  // Pre-filter: ชิด S1 ≤ 2% และ RSI < 55
-  if(pctFromS1>2) return;
+  // Pre-filter: ชิด S1 ≤ 3% และ RSI < 55
+  if(pctFromS1>3) return;
   const rsi=rsiData[ticker]||50;
   if(rsi>=55) return;
 
@@ -8418,9 +8415,6 @@ async function checkBuySignalFull(ticker,price){
     score=sig?.score||0;
   }
 
-  // Pre-filter score ≥ 35 ก่อนส่ง AI
-  if(score<35) return;
-
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
   if(hasCandleData){
@@ -8428,9 +8422,8 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(aiDecision==='BUY'||aiDecision===true){
-    _setBuyAlerted(ticker); // cooldown 30 นาที
-    const level=score>=50?'strong':score>=40?'good':score>=35?'watch':null;
-    if(!level) return; // ต่ำกว่า 35 ไม่แสดง
+    // กำหนด level ตาม score
+    const level=score>=50?'strong':score>=40?'good':'watch';
     const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
     const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
     showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData,level);
