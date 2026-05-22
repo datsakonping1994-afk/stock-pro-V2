@@ -3010,7 +3010,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:200px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#070d18"></div>
+      <div id="lwChartContainer" style="height:200px;border-radius:14px;overflow:hidden;margin-bottom:8px;background:#060b14;border:1px solid rgba(255,255,255,0.06);box-shadow:0 4px 20px rgba(0,0,0,0.5)"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3086,25 +3086,126 @@ function drawerTab(tab, btn){
           return;
         }
         container.innerHTML='';
+
+        // ── Build candlestick data ──
+        const rawData=candleCache[s.t]?.data;
+        const hasFull=rawData?.o&&rawData?.h&&rawData?.l&&rawData?.c&&!rawData?._mock;
+        let candleData=[];
+        if(hasFull){
+          const n=Math.min(rawData.c.length, days);
+          const os=rawData.o.slice(-n), hs=rawData.h.slice(-n), ls=rawData.l.slice(-n), cs=rawData.c.slice(-n), ts2=(rawData.t||[]).slice(-n);
+          for(let i=0;i<n;i++){
+            if(ts2[i]) candleData.push({time:ts2[i],open:os[i],high:hs[i],low:ls[i],close:cs[i]});
+          }
+        } else {
+          // mock candles from line prices
+          let prevP=prices[0]||s.p;
+          candleData=prices.map((p,i)=>{
+            const o=prevP, c=p;
+            const range=Math.abs(c-o)*0.5+s.p*0.005;
+            const h=Math.max(o,c)+range*Math.random();
+            const l=Math.min(o,c)-range*Math.random();
+            prevP=p;
+            return{time:timestamps[i],open:+o.toFixed(2),high:+h.toFixed(2),low:+l.toFixed(2),close:+c.toFixed(2)};
+          });
+        }
+        // deduplicate & sort by time
+        const seen=new Set();
+        candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
+        if(!candleData.length) return;
+
         const chart=LightweightCharts.createChart(container,{
           width:container.offsetWidth||360,
           height:200,
-          layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
-          grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
-          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)'},
-          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true},
-          crosshair:{vertLine:{color:'rgba(201,168,76,0.4)',width:1,style:1},horzLine:{color:'rgba(201,168,76,0.4)',width:1,style:1}},
+          layout:{
+            background:{color:'#060b14'},
+            textColor:'rgba(148,162,190,0.85)',
+            fontSize:10,
+            fontFamily:"'IBM Plex Mono',monospace",
+          },
+          grid:{
+            vertLines:{color:'rgba(255,255,255,0.025)'},
+            horzLines:{color:'rgba(255,255,255,0.025)'},
+          },
+          rightPriceScale:{
+            borderColor:'rgba(255,255,255,0.06)',
+            scaleMargins:{top:0.08,bottom:0.08},
+          },
+          timeScale:{
+            borderColor:'rgba(255,255,255,0.06)',
+            timeVisible:true,
+            secondsVisible:false,
+            fixLeftEdge:true,
+            fixRightEdge:true,
+          },
+          crosshair:{
+            mode:1,
+            vertLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
+            horzLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
+          },
+          handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:false},
+          handleScale:{mouseWheel:false,pinch:false,axisPressedMouseMove:false},
         });
 
-        const lineSeries=chart.addLineSeries({color:'#c9a84c',lineWidth:2,priceLineVisible:false,lastValueVisible:true});
-        lineSeries.setData(prices.map((p,i)=>({time:timestamps[i],value:p})));
+        // ── Candlestick Series ──
+        const candleSeries=chart.addCandlestickSeries({
+          upColor:'#00e676',
+          downColor:'#ff4d6a',
+          borderUpColor:'#00e676',
+          borderDownColor:'#ff4d6a',
+          wickUpColor:'rgba(0,230,118,0.7)',
+          wickDownColor:'rgba(255,77,106,0.7)',
+          priceLineVisible:false,
+          lastValueVisible:false,
+        });
+        candleSeries.setData(candleData);
 
-        // เส้น S1 S2 R1 R2
-        [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
-          if(price>0) lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
+        // ── Volume histogram (subtle) ──
+        if(hasFull&&rawData.v&&rawData.v.length){
+          try{
+            const vs=rawData.v.slice(-candleData.length);
+            const volSeries=chart.addHistogramSeries({
+              color:'rgba(100,210,255,0.12)',
+              priceFormat:{type:'volume'},
+              priceScaleId:'vol',
+              scaleMargins:{top:0.82,bottom:0},
+              lastValueVisible:false,
+              priceLineVisible:false,
+            });
+            volSeries.setData(candleData.map((d,i)=>({
+              time:d.time,
+              value:vs[i]||0,
+              color:d.close>=d.open?'rgba(0,230,118,0.18)':'rgba(255,77,106,0.18)',
+            })));
+          }catch(e){}
+        }
+
+        // ── Support / Resistance price lines ──
+        const levels=[
+          [r2,'R2','#00c853',2],
+          [r1,'R1','#00e676',1.5],
+          [s.p,'●','rgba(201,168,76,0.9)',1],
+          [s1,'S1','#ff4d6a',1.5],
+          [s2,'S2','#cc2244',1],
+        ];
+        levels.forEach(([price,label,clr,lw])=>{
+          if(price>0) candleSeries.createPriceLine({
+            price,color:clr,
+            lineWidth:lw,
+            lineStyle:label==='●'?0:2,
+            axisLabelVisible:true,
+            title:label,
+          });
         });
 
         chart.timeScale().fitContent();
+
+        // Responsive resize
+        try{
+          const ro=new ResizeObserver(()=>{if(container.offsetWidth>0)chart.resize(container.offsetWidth,200);});
+          ro.observe(container);
+          container._lwRO=ro;
+        }catch(e){}
       };
 
       if(typeof LightweightCharts!=='undefined'){
