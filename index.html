@@ -5088,13 +5088,11 @@ function isUSMarketOrPreMarket(){
 
 function checkAllBuySignals(){
   if(!hasApiKey()) return;
-  if(!isUSMarketOrPreMarket()) return; // เช็คเฉพาะช่วงตลาด
-  // รัน async แบบ sequential ป้องกัน rate limit
+  if(!isUSMarketOrPreMarket()) return;
   (async()=>{
     try{
       for(const s of stocks){
-        if(s.p>0 && !_isBuyAlerted(s.t)){
-          _setBuyAlerted(s.t);
+        if(s.p>0){
           await checkBuySignalFull(s.t,s.p);
         }
         await new Promise(r=>setTimeout(r,150));
@@ -8424,7 +8422,6 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(aiDecision==='BUY'||aiDecision===true){
-    // กำหนด level ตาม score
     const level=score>=50?'strong':score>=40?'good':'watch';
     const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
     const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
