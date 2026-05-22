@@ -2593,10 +2593,9 @@ document.getElementById('drawer').addEventListener('touchstart',e=>{
 },{passive:true});
 document.getElementById('drawer').addEventListener('touchend',e=>{
   const dy=e.changedTouches[0].clientY-_drawerSwipeY;
-  // ปัดลงเกิน 100px และ touch เริ่มจาก handle หรือ header เท่านั้น
-  // ไม่ใช่จาก drawer-body (ป้องกัน scroll ปัดทิ้งโดยไม่ตั้งใจ)
   const fromBody=document.getElementById('drawerBody')?.contains(_drawerSwipeTarget);
-  if(dy>100 && !fromBody) closeDrawer();
+  const fromChart=document.getElementById('lwChartContainer')?.contains(_drawerSwipeTarget);
+  if(dy>100 && !fromBody && !fromChart) closeDrawer();
 },{passive:true});
 
 // ── renderEarningsChart — Canvas bar chart ──
@@ -3011,7 +3010,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#0a101a"></div>
+      <div id="lwChartContainer" style="height:200px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#070d18"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3089,45 +3088,22 @@ function drawerTab(tab, btn){
         container.innerHTML='';
         const chart=LightweightCharts.createChart(container,{
           width:container.offsetWidth||360,
-          height:300,
+          height:200,
           layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
           grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
-          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)',scaleMargins:{top:0.1,bottom:0.1}},
-          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true,fixLeftEdge:true,fixRightEdge:true},
+          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)'},
+          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true},
           crosshair:{vertLine:{color:'rgba(201,168,76,0.4)',width:1,style:1},horzLine:{color:'rgba(201,168,76,0.4)',width:1,style:1}},
         });
 
-        // ใช้ candle data ถ้ามี ไม่งั้นใช้ line
-        const hasCandleOHLC=candleCache[s.t]?.data?.o&&candleCache[s.t]?.data?.h&&candleCache[s.t]?.data?.l&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
+        const lineSeries=chart.addLineSeries({color:'#c9a84c',lineWidth:2,priceLineVisible:false,lastValueVisible:true});
+        lineSeries.setData(prices.map((p,i)=>({time:timestamps[i],value:p})));
 
-        if(hasCandleOHLC){
-          const cd=candleCache[s.t].data;
-          const series=chart.addCandlestickSeries({
-            upColor:'#00e676', downColor:'#ff4d6a',
-            borderUpColor:'#00e676', borderDownColor:'#ff4d6a',
-            wickUpColor:'rgba(0,230,118,0.7)', wickDownColor:'rgba(255,77,106,0.7)',
-          });
-          const days=_currentChartDays||30;
-          const n=cd.c.length;
-          const from=Math.max(0,n-days);
-          const data=[];
-          for(let i=from;i<n;i++){
-            if(cd.t[i]&&cd.o[i]&&cd.h[i]&&cd.l[i]&&cd.c[i]){
-              data.push({time:cd.t[i],open:cd.o[i],high:cd.h[i],low:cd.l[i],close:cd.c[i]});
-            }
-          }
-          series.setData(data);
-          // เส้น S1 S2 R1 R2
-          [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
-            if(price>0) series.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
-          });
-        } else {
-          const lineSeries=chart.addLineSeries({color:s.c>=0?'#00e676':'#ff4d6a',lineWidth:2,priceLineVisible:false});
-          lineSeries.setData(prices.map((p,i)=>({time:timestamps[i],value:p})));
-          [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
-            if(price>0) lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
-          });
-        }
+        // เส้น S1 S2 R1 R2
+        [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
+          if(price>0) lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
+        });
+
         chart.timeScale().fitContent();
       };
 
@@ -5798,37 +5774,6 @@ async function _switchTF(btn, days){
     if(candleCache[ticker]) candleCache[ticker].days=0;
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
-    // วาด LW chart ใหม่
-    const containerId='lwChartContainer';
-    const container=document.getElementById(containerId);
-    if(container&&candleCache[ticker]?.data?.c&&typeof LightweightCharts!=='undefined'){
-      const s=stocks.find(x=>x.t===ticker);
-      const allPrices=candleCache[ticker].data.c;
-      const allTs=candleCache[ticker].data.t||null;
-      const prices=allPrices.slice(-days);
-      const timestamps=allTs?allTs.slice(-days):null;
-      const p=s?.p||prices[prices.length-1]||0;
-      container.innerHTML='';
-      const chart=LightweightCharts.createChart(container,{
-        width:container.offsetWidth||360,height:280,
-        layout:{background:{color:'#0a101a'},textColor:'#8b99b5'},
-        grid:{vertLines:{color:'rgba(255,255,255,0.04)'},horzLines:{color:'rgba(255,255,255,0.04)'}},
-        rightPriceScale:{borderColor:'rgba(255,255,255,0.1)'},
-        timeScale:{borderColor:'rgba(255,255,255,0.1)',timeVisible:true},
-      });
-      const isUp=s?.c>=0;
-      const lineSeries=chart.addLineSeries({color:isUp?'#00e676':'#ff4d6a',lineWidth:2,priceLineVisible:false});
-      lineSeries.setData(prices.map((pr,i)=>({time:timestamps[i],value:pr})));
-      const addLine=(price,label,clr)=>{
-        if(!price||price<=0) return;
-        lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:label});
-      };
-      addLine(getS1(ticker,p),'S1','rgba(255,100,100,0.9)');
-      addLine(getS2(ticker,p),'S2','rgba(200,60,60,0.7)');
-      addLine(getR1(ticker,p),'R1','rgba(0,230,118,0.9)');
-      addLine(getR2(ticker,p),'R2','rgba(0,180,90,0.7)');
-      chart.timeScale().fitContent();
-    }
     if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){}
 }
