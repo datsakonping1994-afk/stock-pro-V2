@@ -1333,7 +1333,7 @@ const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุ
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
-const BUY_SIGNAL_COOLDOWN  = 300000; // 5 นาที cooldown ต่อ ticker
+const BUY_SIGNAL_COOLDOWN  = 900000; // 15 นาที cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -8394,10 +8394,11 @@ async function checkBuySignalFull(ticker,price){
   const r1=getR1(ticker,price);
   const pctFromS1=(price-s1)/s1*100;
 
-  // Pre-filter: ชิด S1 ≤ 3% และ RSI < 55
-  if(pctFromS1>2) return;
+  console.log(`[BUY] ${ticker} price=${price} s1=${s1.toFixed(2)} pct=${pctFromS1.toFixed(2)}%`);
+
+  if(pctFromS1>2){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 2%`); return; }
   const rsi=rsiData[ticker]||50;
-  if(rsi>=55) return;
+  if(rsi>=55){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 55`); return; }
 
   // โหลด candle
   if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
@@ -8416,13 +8417,15 @@ async function checkBuySignalFull(ticker,price){
   }
 
   // Pre-filter score ≥ 35
-  if(score<35) return;
+  console.log(`[BUY] ${ticker} score=${score}`);
+  if(score<35){ console.log(`[BUY] ${ticker} SKIP: score ${score} < 35`); return; }
 
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
   if(hasCandleData){
     try{ aiDecision=await _aiPreScreenSignal(ticker,price,s1,r1,score); }catch{}
   }
+  console.log(`[BUY] ${ticker} AI=${aiDecision}`);
 
   if(aiDecision==='BUY'||aiDecision===true){
     _setBuyAlerted(ticker); // cooldown 5 นาที
