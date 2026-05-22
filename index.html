@@ -3143,8 +3143,8 @@ function drawerTab(tab, btn){
             vertLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
             horzLine:{color:'rgba(201,168,76,0.35)',width:1,style:2,labelBackgroundColor:'#1e2738'},
           },
-          handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:false},
-          handleScale:{mouseWheel:false,pinch:false,axisPressedMouseMove:false},
+          handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},
+          handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:{time:true,price:false}},
         });
 
         // ── Candlestick Series ──
@@ -3199,6 +3199,11 @@ function drawerTab(tab, btn){
         });
 
         chart.timeScale().fitContent();
+
+        // ป้องกัน touch event bubble ไปที่ page swipe
+        container.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
+        container.addEventListener('touchmove',  e=>e.stopPropagation(), {passive:true});
+        container.addEventListener('touchend',   e=>e.stopPropagation(), {passive:true});
 
         // Responsive resize
         try{
