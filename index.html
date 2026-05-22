@@ -3089,28 +3089,45 @@ function drawerTab(tab, btn){
         container.innerHTML='';
         const chart=LightweightCharts.createChart(container,{
           width:container.offsetWidth||360,
-          height:280,
-          layout:{background:{color:'#0a101a'},textColor:'#8b99b5'},
-          grid:{vertLines:{color:'rgba(255,255,255,0.04)'},horzLines:{color:'rgba(255,255,255,0.04)'}},
-          rightPriceScale:{borderColor:'rgba(255,255,255,0.1)'},
-          timeScale:{borderColor:'rgba(255,255,255,0.1)',timeVisible:true},
+          height:300,
+          layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
+          grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
+          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)',scaleMargins:{top:0.1,bottom:0.1}},
+          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true,fixLeftEdge:true,fixRightEdge:true},
+          crosshair:{vertLine:{color:'rgba(201,168,76,0.4)',width:1,style:1},horzLine:{color:'rgba(201,168,76,0.4)',width:1,style:1}},
         });
-        const isUp=s.c>=0;
-        const color=isUp?'#00e676':'#ff4d6a';
-        const lineSeries=chart.addLineSeries({color,lineWidth:2,lastValueVisible:true,priceLineVisible:false});
-        const data=prices.map((p,i)=>({time:timestamps[i],value:p}));
-        lineSeries.setData(data);
 
-        // เส้น S1 S2 R1 R2
-        const LineStyle={Dashed:1};
-        const addLine=(price,label,clr)=>{
-          if(!price||price<=0) return;
-          lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:true,title:label});
-        };
-        addLine(s1,'S1','rgba(255,100,100,0.9)');
-        addLine(s2,'S2','rgba(200,60,60,0.7)');
-        addLine(r1,'R1','rgba(0,230,118,0.9)');
-        addLine(r2,'R2','rgba(0,180,90,0.7)');
+        // ใช้ candle data ถ้ามี ไม่งั้นใช้ line
+        const hasCandleOHLC=candleCache[s.t]?.data?.o&&candleCache[s.t]?.data?.h&&candleCache[s.t]?.data?.l&&candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
+
+        if(hasCandleOHLC){
+          const cd=candleCache[s.t].data;
+          const series=chart.addCandlestickSeries({
+            upColor:'#00e676', downColor:'#ff4d6a',
+            borderUpColor:'#00e676', borderDownColor:'#ff4d6a',
+            wickUpColor:'rgba(0,230,118,0.7)', wickDownColor:'rgba(255,77,106,0.7)',
+          });
+          const days=_currentChartDays||30;
+          const n=cd.c.length;
+          const from=Math.max(0,n-days);
+          const data=[];
+          for(let i=from;i<n;i++){
+            if(cd.t[i]&&cd.o[i]&&cd.h[i]&&cd.l[i]&&cd.c[i]){
+              data.push({time:cd.t[i],open:cd.o[i],high:cd.h[i],low:cd.l[i],close:cd.c[i]});
+            }
+          }
+          series.setData(data);
+          // เส้น S1 S2 R1 R2
+          [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
+            if(price>0) series.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
+          });
+        } else {
+          const lineSeries=chart.addLineSeries({color:s.c>=0?'#00e676':'#ff4d6a',lineWidth:2,priceLineVisible:false});
+          lineSeries.setData(prices.map((p,i)=>({time:timestamps[i],value:p})));
+          [[s1,'S1','#ff6b6b'],[s2,'S2','#cc4444'],[r1,'R1','#00e676'],[r2,'R2','#00a854']].forEach(([price,label,clr])=>{
+            if(price>0) lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:label});
+          });
+        }
         chart.timeScale().fitContent();
       };
 
