@@ -2585,10 +2585,11 @@ function closeDrawer(){
 }
 
 // ── Drawer swipe to close — เฉพาะ handle และ header เท่านั้น ──
-let _drawerSwipeY=0, _drawerSwipeTarget=null;
+let _drawerSwipeY=0, _drawerSwipeX=0, _drawerSwipeTarget=null;
 let _currentChartDays=30; // default 1M
 document.getElementById('drawer').addEventListener('touchstart',e=>{
   _drawerSwipeY=e.touches[0].clientY;
+  _drawerSwipeX=e.touches[0].clientX;
   _drawerSwipeTarget=e.target;
 },{passive:true});
 document.getElementById('drawer').addEventListener('touchend',e=>{
@@ -2597,6 +2598,38 @@ document.getElementById('drawer').addEventListener('touchend',e=>{
   const fromChart=document.getElementById('lwChartContainer')?.contains(_drawerSwipeTarget);
   if(dy>100 && !fromBody && !fromChart) closeDrawer();
 },{passive:true});
+
+// ── กัน drawerBody scroll ชนกับ chart horizontal drag ──
+(function(){
+  let _stX=0,_stY=0,_lockAxis=null;
+  const getBody=()=>document.getElementById('drawerBody');
+  document.addEventListener('touchstart',e=>{
+    const chart=document.getElementById('lwChartContainer');
+    if(!chart||!chart.contains(e.target)) return;
+    _stX=e.touches[0].clientX;
+    _stY=e.touches[0].clientY;
+    _lockAxis=null;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    const chart=document.getElementById('lwChartContainer');
+    if(!chart||!chart.contains(e.target)) return;
+    const dx=Math.abs(e.touches[0].clientX-_stX);
+    const dy=Math.abs(e.touches[0].clientY-_stY);
+    if(!_lockAxis) _lockAxis=(dx>dy)?'h':'v';
+    if(_lockAxis==='h'){
+      const body=getBody();
+      if(body) body.style.overflowY='hidden';
+      e.stopPropagation();
+    }
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    const chart=document.getElementById('lwChartContainer');
+    if(!chart||!chart.contains(e.target)) return;
+    const body=getBody();
+    if(body) body.style.overflowY='auto';
+    _lockAxis=null;
+  },{passive:true});
+})();
 
 // ── renderEarningsChart — Canvas bar chart ──
 function renderEarningsChart(ticker, containerId){
