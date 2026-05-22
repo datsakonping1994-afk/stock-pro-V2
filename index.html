@@ -835,9 +835,22 @@ canvas.bigchart{width:100%;height:100%}
           <div class="settings-label">Export Trade Log</div>
           <button class="settings-btn" onclick="exportCSV()">📥 CSV</button>
         </div>
-        <div class="settings-row" style="border-bottom:none">
+        <div class="settings-row">
           <div class="settings-label">ล้าง Trade Log</div>
           <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){localStorage.removeItem('_tl_v2');loadAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
+        </div>
+        <div class="settings-row" style="border-bottom:none">
+          <div>
+            <div class="settings-label">ล้าง Signal Cooldown</div>
+            <div class="settings-sublabel">บังคับเช็ค Buy Signal ใหม่ทันที</div>
+          </div>
+          <button class="settings-btn" onclick="
+            const keys=Object.keys(localStorage).filter(k=>k.startsWith('buy_alerted_'));
+            keys.forEach(k=>localStorage.removeItem(k));
+            _buyAlerted.clear();
+            toast('🔄 ล้าง Cooldown '+keys.length+' ตัวแล้ว — กำลังเช็ค Signal ใหม่...');
+            setTimeout(()=>{try{checkAllBuySignals();}catch{}},500);
+          ">🔄 รีเซ็ต</button>
         </div>
       </div>
 
@@ -8405,7 +8418,7 @@ async function checkBuySignalFull(ticker,price){
 
   if(pctFromS1>1.5){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 1.5%`); return; }
   const rsi=rsiData[ticker]||50;
-  if(rsi>=55){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 55`); return; }
+  if(rsi>=60){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 60`); return; }
 
   // โหลด candle
   if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
