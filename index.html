@@ -735,12 +735,12 @@ canvas.bigchart{width:100%;height:100%}
     <div class="alerts-page">
       <!-- Tab switcher -->
       <div class="alert-tab-row">
-        <div class="alert-tab active" id="tabPriceAlert" onclick="switchAlertTab('price',this)">🔔 Price Alert</div>
-        <div class="alert-tab" id="tabTradeLog" onclick="switchAlertTab('trade',this)">📋 Trade Log</div>
+        <div class="alert-tab active" id="tabTradeLog" onclick="switchAlertTab('trade',this)">📋 Trade Log</div>
+        <div class="alert-tab" id="tabPriceAlert" onclick="switchAlertTab('price',this)">🔔 Price Alert</div>
       </div>
 
       <!-- Price Alert Panel -->
-      <div id="panelPriceAlert">
+      <div id="panelPriceAlert" style="display:none">
         <div class="pa-add-form">
           <div class="pa-form-title">ตั้งแจ้งเตือนราคา</div>
           <div class="pa-form-row">
@@ -757,7 +757,7 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <!-- Trade Log Panel -->
-      <div id="panelTradeLog" style="display:none">
+      <div id="panelTradeLog">
         <div id="alertsStats" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2)">
           ยังไม่มีสัญญาณ
         </div>
@@ -1612,7 +1612,7 @@ ${ticker} ${a.dir==='above'?'↑ ขึ้นถึง':'↓ ลงถึง'} $
 ราคาปัจจุบัน ${fmt(price)}`);
     updateAlertBadge();
     // refresh list ถ้าอยู่หน้า alerts
-    if(document.getElementById('panelPriceAlert')?.style.display!=='none') renderPriceAlerts();
+    if(document.getElementById('panelTradeLog')?.style.display!=='none') loadAlerts();
   });
 }
 
@@ -3680,13 +3680,12 @@ function _saveTradeLog(log){try{localStorage.setItem('_tl_v2',JSON.stringify(log
 const SIGNAL_WORKER = ALERT_WORKER; // ใช้ Worker เดียวกัน
 
 // ── บันทึก signal ทั้ง localStorage และ Worker KV ──
-function logTrade(ticker, price, score){
+function logTrade(ticker, price, score, aiAnalysis=''){
   const s1 = getS1(ticker, price);
   const s2 = getS2(ticker, price);
   const r1 = getR1(ticker, price);
-  // บันทึก localStorage (เหมือนเดิม)
   const log = _loadTradeLog();
-  log.push({ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null});
+  log.push({ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null, aiAnalysis});
   _saveTradeLog(log);
   // บันทึก Worker KV (background) — FIX: เพิ่ม timeout 5s กัน hang
   const _ltCtrl=new AbortController();
@@ -3771,8 +3770,8 @@ async function renderAlerts(){
      </div>` :
     '<div style="color:var(--text3)">ยังไม่มีสัญญาณที่มีผลแล้ว</div>';
 
-  if(list) list.innerHTML = merged.length ? merged.map(t=>`
-    <div class="alert-item ${t.result||'pending'}">
+  if(list) list.innerHTML = merged.length ? merged.map((t,i)=>`
+    <div class="alert-item ${t.result||'pending'}" onclick="_showSignalDetail(${i})" style="cursor:pointer">
       <div class="alert-ticker">${t.ticker}</div>
       <div class="alert-detail">เข้า ${t.price} · Score ${t.score||'--'} · ${new Date(t.time).toLocaleDateString('th-TH')}</div>
       <div class="alert-detail" style="margin-top:2px;color:var(--text3)">S1 ${t.s1||'--'} · R1 ${t.r1||'--'}</div>
@@ -3780,6 +3779,44 @@ async function renderAlerts(){
       <div class="alert-result ${t.result||'pending'}">${t.result==='win'?`✅ +${t.pct}%`:t.result==='loss'?`❌ ${t.pct}%`:'⏳ รอผล'}</div>
     </div>
   `).join('') : '<div class="alert-empty">🔔 ยังไม่มีสัญญาณ<br><br>รอ Buy Signal จากระบบครับ</div>';
+
+  // เก็บ merged log ไว้ใช้ตอนกด
+  window._mergedSignalLog = merged;
+}
+
+function _showSignalDetail(idx){
+  const t=window._mergedSignalLog?.[idx];
+  if(!t) return;
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;padding-bottom:env(safe-area-inset-bottom)';
+  const card=document.createElement('div');
+  card.style.cssText='width:100%;max-width:500px;background:var(--bg2);border-top:1px solid var(--border);border-radius:24px 24px 0 0;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px';
+  card.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif">${t.ticker}</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:var(--bg3);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;font-size:13px;color:var(--text2);cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
+      เข้าที่ $${t.price} · Score ${t.score||'--'} · ${new Date(t.time).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">S1 $${t.s1||'--'}</div>
+        <div style="font-size:10px;color:var(--text3)">แนวรับ</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">R1 $${t.r1||'--'}</div>
+        <div style="font-size:10px;color:var(--text3)">แนวต้าน</div>
+      </div>
+    </div>
+    ${t.aiAnalysis
+      ? '<div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg3);border-radius:10px;padding:12px">'+mdToHtml(t.aiAnalysis)+'</div>'
+      : '<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px">ยังไม่มีบทวิเคราะห์ AI สำหรับ signal นี้</div>'
+    }
+  `;
+  modal.appendChild(card);
+  modal.onclick=e=>{ if(e.target===modal) modal.remove(); };
+  document.body.appendChild(modal);
 }
 
 function exportCSV(){
@@ -4036,7 +4073,13 @@ function playAlertSound(){
   }catch(e){}
 }
 
-function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
+function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong'){
+  const levelConfig={
+    strong:{emoji:'🟢',label:'ควรซื้อ',color:'rgba(0,200,130,0.3)',border:'rgba(0,200,130,0.5)'},
+    good:  {emoji:'🟡',label:'น่าซื้อ', color:'rgba(255,200,0,0.2)', border:'rgba(255,200,0,0.4)'},
+    watch: {emoji:'🔵',label:'น่าสนใจ',color:'rgba(100,200,255,0.15)',border:'rgba(100,200,255,0.3)'},
+  };
+  const lv=levelConfig[level]||levelConfig.strong;
   const s=stocks.find(x=>x.t===ticker);
   const r1=getR1(ticker,price);
   const s2=getS2(ticker,price);
@@ -4053,10 +4096,10 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false){
     :`<span style="font-size:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);color:var(--yellow);border-radius:8px;padding:2px 8px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px">⚠️ BASIC ONLY</span>`;
   overlay.innerHTML=`
     <div class="signal-card">
-      <div class="signal-glow"></div>
+      <div class="signal-glow" style="background:linear-gradient(90deg,transparent,${lv.border},transparent)"></div>
       <div class="signal-handle"></div>
       <div class="signal-header">
-        <div class="signal-title">🔔 Buy Signal Detected</div>
+        <div class="signal-title">${lv.emoji} ${lv.label.toUpperCase()}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="signal-close" onclick="closeSignal()">✕</div>
@@ -4227,6 +4270,10 @@ Buy Score: ${score}/100
   if(!el2) return;
   if(reply){
     el2.innerHTML=mdToHtml(reply);
+    // บันทึก AI analysis ลงใน trade log
+    const log=_loadTradeLog();
+    const idx=log.findLastIndex(t=>t.ticker===ticker&&!t.aiAnalysis);
+    if(idx>=0){ log[idx].aiAnalysis=reply; _saveTradeLog(log); }
   } else {
     if(score>=70) el2.textContent=`📈 Score ${score}/100 — สัญญาณแข็งแกร่ง เป้าหมาย R1 ${r1.toFixed(2)}`;
     else if(score>=55) el2.textContent=`⚡ Score ${score}/100 — สัญญาณปานกลาง S1 ${s1.toFixed(2)} เป้า R1 ${r1.toFixed(2)}`;
@@ -8210,69 +8257,40 @@ async function checkBuySignalFull(ticker,price){
   const r1=getR1(ticker,price);
   const pctFromS1=(price-s1)/s1*100;
 
-  // Pre-filter: ราคาต้องอยู่ใกล้ S1 ไม่เกิน 3%
+  // Pre-filter: ชิด S1 ≤ 3% และ RSI < 55
   if(pctFromS1>3) return;
+  const rsi=rsiData[ticker]||50;
+  if(rsi>=55) return;
 
-  // โหลด candle ให้ครบก่อนเสมอ — retry 1 ครั้งถ้าล้มเหลว
-  if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+  // โหลด candle
+  if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
     try{ await fetchCandles(ticker,60); }catch{}
-    // retry ถ้ายังไม่ได้
-    if(!candleCache[ticker]?.data || candleCache[ticker]?.data?._mock){
+    if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
       try{ await fetchCandles(ticker,60); }catch{}
     }
     await updateRSIFromCandles(ticker);
   }
 
-  const hasCandleData = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock;
-
-  let score=0, sig=null;
+  const hasCandleData=candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock;
+  let sig=null, score=0;
   if(hasCandleData){
     sig=_calcBuyScore(ticker,price,s1,r1);
-    score=sig.score||0;
-  } else {
-    // Basic score ถ้า candle ยังโหลดไม่ได้จริงๆ
-    const rsi=rsiData[ticker]||50;
-    score=
-      (pctFromS1<=0.5?35:pctFromS1<=1.5?25:pctFromS1<=3?12:0)+
-      (rsi<=30?30:rsi<=40?20:rsi<=50?10:rsi<=60?5:0);
+    score=sig?.score||0;
   }
 
-  if(score>=BUY_SIGNAL_THRESHOLD){
-    // ── เกณฑ์กรองแทน AI ──
-    const rsi=rsiData[ticker]||sig?.rsi||50;
-    const todayChg=stocks.find(x=>x.t===ticker)?.c||0;
-    const supertrendBull=sig?.supertrendBull!==false;
-    const spy=marketCtx?.SPY?.change||0;
-    const qqq=marketCtx?.QQQ?.change||0;
-
-    let fails=0;
-    if(rsi>65) fails++;
-    if(!supertrendBull && pctFromS1>3) fails++;
-    if(parseFloat(todayChg)>=10) fails++;
-    if(spy<=-2.5 && qqq<=-2.5) fails++;
-
-    const approved = fails < 2;
-
-    if(approved){
-      showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
-    }
-
-    const aiTag = approved ? '' : '\n⚠️ ระวัง อาจเป็นสัญญาณหลอก';
-    const tgMsg=`🟢 <b>Buy Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} | R1 $${r1.toFixed(2)}${aiTag}`;
-    sendTG(tgMsg);
-    return;
+  // ── AI ตัดสินใจ ──
+  let aiDecision='BUY';
+  if(hasCandleData){
+    try{ aiDecision=await _aiPreScreenSignal(ticker,price,s1,r1,score); }catch{}
   }
 
-  // ── Triple Signal: ชิด S1 + RSI ต่ำ + RSI Divergence ──
-  if(hasCandleData && sig){
-    const rsi=rsiData[ticker]||sig.rsi||50;
-    const nearS1=pctFromS1<=2.0;
-    const rsiLow=rsi<=45;
-    const hasDivergence=sig.scoreBreakdown?.some(s=>s.includes('Divergence'));
-    if(nearS1&&rsiLow&&hasDivergence){
-      showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData);
-      sendTG(`🎯 <b>Triple Signal: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} (ห่าง ${pctFromS1.toFixed(1)}%) | R1 $${r1.toFixed(2)}\n✅ ชิดแนวรับ + RSI ${rsi} + Bullish Divergence`);
-    }
+  if(aiDecision==='BUY'||aiDecision===true){
+    // กำหนด level ตาม score
+    const level=score>=50?'strong':score>=40?'good':'watch';
+    const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
+    const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
+    showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData,level);
+    sendTG(`${emoji} <b>${label}: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} (ห่าง ${pctFromS1.toFixed(1)}%) | R1 $${r1.toFixed(2)}\n📉 RSI ${rsiData[ticker]?.toFixed(0)||rsi}`);
   }
 }
 
