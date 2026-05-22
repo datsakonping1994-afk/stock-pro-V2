@@ -4193,6 +4193,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
   const overlay=document.getElementById('signalOverlay');
+  if(!overlay) return;
   overlay.className='signal-overlay';
   overlay.style.display='flex';
   overlay.onclick=function(e){if(e.target===overlay)closeSignal();};
@@ -6594,7 +6595,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   let g5=0;
   if(closes.length>=4&&highs.length>=4&&lows.length>=4){
     const i=closes.length-1;
-    const c=closes[i],o=closes[i-1]||c,h=highs[i],l=lows[i];
+    const c=closes[i],o=(data?.o?.[i])||closes[i-1]||c,h=highs[i],l=lows[i];
     const body=Math.abs(c-o),range=h-l;
     const lw=Math.min(c,o)-l, uw=h-Math.max(c,o);
     if(range>0&&lw>=body*2&&uw<body*0.5) hammerPattern=true;
@@ -6810,6 +6811,12 @@ function _calcBuyScore(ticker, price, s1, r1){
   // รวมคะแนน + Trend multiplier
   // ════════════════════════════════════════════════
   let total = score1 + score2 + score3 + score4 + score5 + score6 + score7; // max = 125 → clamp 100
+
+  // ── หักคะแนนถ้าไม่มี momentum เลย (G3 < 5) ป้องกัน signal ตอนหุ้นร่วง ──
+  if(score3 < 5){
+    total = Math.round(total * 0.80);
+    scoreBreakdown.push('⚠️ ไม่มี momentum ×0.80');
+  }
 
   if(inUptrend===true){
     total = Math.round(total*1.05);
@@ -8396,7 +8403,7 @@ async function checkBuySignalFull(ticker,price){
 
   console.log(`[BUY] ${ticker} price=${price} s1=${s1.toFixed(2)} pct=${pctFromS1.toFixed(2)}%`);
 
-  if(pctFromS1>2){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 2%`); return; }
+  if(pctFromS1>1.5){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 1.5%`); return; }
   const rsi=rsiData[ticker]||50;
   if(rsi>=55){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 55`); return; }
 
@@ -8418,7 +8425,7 @@ async function checkBuySignalFull(ticker,price){
 
   // Pre-filter score ≥ 35
   console.log(`[BUY] ${ticker} score=${score}`);
-  if(score<35){ console.log(`[BUY] ${ticker} SKIP: score ${score} < 35`); return; }
+  if(score<BUY_SIGNAL_THRESHOLD){ console.log(`[BUY] ${ticker} SKIP: score ${score} < ${BUY_SIGNAL_THRESHOLD}`); return; }
 
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
@@ -8477,7 +8484,6 @@ function updateCardLive(s){
   // ตรวจ Exit Signal (เฉพาะหุ้นในพอร์ต)
   if(s.p>0) checkExitSignal(s.t, s.p);
   if(!_isBuyAlerted(s.t)&&s.p>0){
-    _setBuyAlerted(s.t);
     checkBuySignalFull(s.t,s.p);
   }
   // Short Squeeze Alert เมื่อ Short Float >15% และราคาขึ้นแรง >3%
