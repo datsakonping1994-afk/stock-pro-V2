@@ -1346,7 +1346,7 @@ const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุ
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
-const BUY_SIGNAL_COOLDOWN  = 900000; // 15 นาที cooldown ต่อ ticker
+const BUY_SIGNAL_COOLDOWN  = 300000; // 5 นาที cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -8416,9 +8416,9 @@ async function checkBuySignalFull(ticker,price){
 
   console.log(`[BUY] ${ticker} price=${price} s1=${s1.toFixed(2)} pct=${pctFromS1.toFixed(2)}%`);
 
-  if(pctFromS1>1.5){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 1.5%`); return; }
+  if(pctFromS1>1.5){ console.log(`[BUY] ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% > 1.5%`); toast(`⏭️ ${ticker} SKIP: ห่าง S1 ${pctFromS1.toFixed(2)}% (เกิน 1.5%)`,2500); return; }
   const rsi=rsiData[ticker]||50;
-  if(rsi>=60){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 60`); return; }
+  if(rsi>=60){ console.log(`[BUY] ${ticker} SKIP: RSI ${rsi} >= 60`); toast(`⏭️ ${ticker} SKIP: RSI ${rsi.toFixed(1)} (เกิน 60)`,2500); return; }
 
   // โหลด candle
   if(!candleCache[ticker]?.data||candleCache[ticker]?.data?._mock){
@@ -8438,7 +8438,7 @@ async function checkBuySignalFull(ticker,price){
 
   // Pre-filter score ≥ 35
   console.log(`[BUY] ${ticker} score=${score}`);
-  if(score<BUY_SIGNAL_THRESHOLD){ console.log(`[BUY] ${ticker} SKIP: score ${score} < ${BUY_SIGNAL_THRESHOLD}`); return; }
+  if(score<BUY_SIGNAL_THRESHOLD){ console.log(`[BUY] ${ticker} SKIP: score ${score} < ${BUY_SIGNAL_THRESHOLD}`); toast(`⏭️ ${ticker} SKIP: Score ${score}/100 (ต่ำกว่า ${BUY_SIGNAL_THRESHOLD})`,2500); return; }
 
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
@@ -8448,12 +8448,14 @@ async function checkBuySignalFull(ticker,price){
   console.log(`[BUY] ${ticker} AI=${aiDecision}`);
 
   if(aiDecision==='BUY'||aiDecision===true){
-    _setBuyAlerted(ticker); // cooldown 5 นาที
+    _setBuyAlerted(ticker);
     const level=score>=50?'strong':score>=40?'good':'watch';
     const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
     const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
     showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData,level);
     sendTG(`${emoji} <b>${label}: ${ticker}</b>\n💰 $${price.toFixed(2)} | Score ${Math.round(score)}/100\n📍 S1 $${s1.toFixed(2)} (ห่าง ${pctFromS1.toFixed(1)}%) | R1 $${r1.toFixed(2)}\n📉 RSI ${rsiData[ticker]?.toFixed(0)||rsi}`);
+  } else {
+    toast(`🤖 ${ticker} AI SKIP: Score ${Math.round(score)}/100 — สัญญาณไม่น่าเชื่อถือพอ`,3000);
   }
 }
 
