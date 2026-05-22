@@ -3011,7 +3011,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChart_${s.t.replace(/[^a-zA-Z0-9]/g,'_')}" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#0a101a"></div>
+      <div id="lwChartContainer" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3053,8 +3053,7 @@ function drawerTab(tab, btn){
       </div>`;
     // Draw Lightweight Chart
     const _initLWChart=()=>{
-      const containerId='lwChart_'+s.t.replace(/[^a-zA-Z0-9]/g,'_');
-      const container=document.getElementById(containerId);
+      const container=document.getElementById('lwChartContainer');
       if(!container) return;
       const days=_currentChartDays||30;
       const hasCandleData=candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
@@ -5767,7 +5766,7 @@ async function _switchTF(btn, days){
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
     // วาด LW chart ใหม่
-    const containerId='lwChart_'+ticker.replace(/[^a-zA-Z0-9]/g,'_');
+    const containerId='lwChartContainer';
     const container=document.getElementById(containerId);
     if(container&&candleCache[ticker]?.data?.c&&typeof LightweightCharts!=='undefined'){
       const s=stocks.find(x=>x.t===ticker);
