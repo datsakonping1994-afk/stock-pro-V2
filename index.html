@@ -3010,7 +3010,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:8px;background:#0a101a"></div>
+      <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3131,8 +3131,9 @@ function drawerTab(tab, btn){
         }
 
         // S/R lines
-        [[r2,'R2','#00c853'],[r1,'R1','#00e676'],[s1,'S1','#ff4d6a'],[s2,'S2','#cc3344']].forEach(([price,label,clr])=>{
-          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:label});
+        const showS2=s.p<s1,showR2=s.p>r1;
+        [[r2,'R2','#00c853',showR2],[r1,'R1','#00e676',true],[s1,'S1','#ff4d6a',true],[s2,'S2','#cc3344',showS2]].forEach(([price,label,clr,showLabel])=>{
+          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:showLabel,title:label});
         });
         cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.9)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'●'});
 
@@ -8395,7 +8396,7 @@ async function checkBuySignalFull(ticker,price){
   const pctFromS1=(price-s1)/s1*100;
 
   // Pre-filter: ชิด S1 ≤ 3% และ RSI < 55
-  if(pctFromS1>3) return;
+  if(pctFromS1>2) return;
   const rsi=rsiData[ticker]||50;
   if(rsi>=55) return;
 
@@ -8414,6 +8415,9 @@ async function checkBuySignalFull(ticker,price){
     sig=_calcBuyScore(ticker,price,s1,r1);
     score=sig?.score||0;
   }
+
+  // Pre-filter score ≥ 35
+  if(score<35) return;
 
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
