@@ -1334,7 +1334,7 @@ const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุ
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
-const BUY_SIGNAL_COOLDOWN  = 14400000; // 4 ชั่วโมง cooldown ต่อ ticker
+const BUY_SIGNAL_COOLDOWN  = 1800000; // 30 นาที cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -4183,6 +4183,9 @@ function playAlertSound(){
 }
 
 function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong'){
+  // ถ้า popup เปิดอยู่แล้ว ไม่ต้องเปิดซ้ำ
+  const overlay=document.getElementById('signalOverlay');
+  if(overlay&&overlay.style.display==='flex') return;
   const levelConfig={
     strong:{emoji:'🟢',label:'ควรซื้อ',color:'rgba(0,200,130,0.3)',border:'rgba(0,200,130,0.5)'},
     good:  {emoji:'🟡',label:'น่าซื้อ', color:'rgba(255,200,0,0.2)', border:'rgba(255,200,0,0.4)'},
@@ -8394,8 +8397,8 @@ async function checkBuySignalFull(ticker,price){
   const r1=getR1(ticker,price);
   const pctFromS1=(price-s1)/s1*100;
 
-  // Pre-filter: ชิด S1 ≤ 3% และ RSI < 55
-  if(pctFromS1>3) return;
+  // Pre-filter: ชิด S1 ≤ 2% และ RSI < 55
+  if(pctFromS1>2) return;
   const rsi=rsiData[ticker]||50;
   if(rsi>=55) return;
 
@@ -8415,6 +8418,9 @@ async function checkBuySignalFull(ticker,price){
     score=sig?.score||0;
   }
 
+  // Pre-filter score ≥ 35 ก่อนส่ง AI
+  if(score<35) return;
+
   // ── AI ตัดสินใจ ──
   let aiDecision='BUY';
   if(hasCandleData){
@@ -8422,7 +8428,9 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(aiDecision==='BUY'||aiDecision===true){
-    const level=score>=50?'strong':score>=40?'good':'watch';
+    _setBuyAlerted(ticker); // cooldown 30 นาที
+    const level=score>=50?'strong':score>=40?'good':score>=35?'watch':null;
+    if(!level) return; // ต่ำกว่า 35 ไม่แสดง
     const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
     const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
     showSignalPopup(ticker,price,s1,Math.round(score),hasCandleData,level);
