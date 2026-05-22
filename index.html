@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 
@@ -3059,14 +3059,33 @@ function drawerTab(tab, btn){
       const hasCandleData=candleCache[s.t]?.data?.c&&!candleCache[s.t]?.data?._mock;
       const allPrices=hasCandleData?candleCache[s.t].data.c:null;
       const allTs=candleCache[s.t]?.data?.t||null;
-      const prices=allPrices?allPrices.slice(-days):null;
-      const timestamps=allTs?allTs.slice(-days):null;
+
+      // สร้าง mock data ถ้าไม่มี candle
+      let prices, timestamps;
+      if(allPrices){
+        prices=allPrices.slice(-days);
+        timestamps=allTs?allTs.slice(-days):null;
+      } else {
+        // mock data
+        const now=Math.floor(Date.now()/1000);
+        prices=[]; timestamps=[];
+        let p=s.p*0.85;
+        for(let i=days;i>=0;i--){
+          p+=p*(Math.random()-0.47)*0.02;
+          prices.push(+Math.max(p,s.p*0.5).toFixed(2));
+          timestamps.push(now-i*86400);
+        }
+        prices[prices.length-1]=s.p;
+      }
 
       const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p);
       const r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
 
       const _drawLW=()=>{
-        if(typeof LightweightCharts==='undefined') return;
+        if(typeof LightweightCharts==='undefined'){
+          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">กำลังโหลดกราฟ...</div>';
+          return;
+        }
         container.innerHTML='';
         const chart=LightweightCharts.createChart(container,{
           width:container.offsetWidth||360,
@@ -3075,35 +3094,32 @@ function drawerTab(tab, btn){
           grid:{vertLines:{color:'rgba(255,255,255,0.04)'},horzLines:{color:'rgba(255,255,255,0.04)'}},
           rightPriceScale:{borderColor:'rgba(255,255,255,0.1)'},
           timeScale:{borderColor:'rgba(255,255,255,0.1)',timeVisible:true},
-          crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
         });
         const isUp=s.c>=0;
         const color=isUp?'#00e676':'#ff4d6a';
         const lineSeries=chart.addLineSeries({color,lineWidth:2,lastValueVisible:true,priceLineVisible:false});
-
-        if(prices&&timestamps){
-          const data=prices.map((p,i)=>({time:timestamps[i],value:p}));
-          lineSeries.setData(data);
-        }
+        const data=prices.map((p,i)=>({time:timestamps[i],value:p}));
+        lineSeries.setData(data);
 
         // เส้น S1 S2 R1 R2
+        const LineStyle={Dashed:1};
         const addLine=(price,label,clr)=>{
           if(!price||price<=0) return;
-          lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:label});
+          lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LineStyle.Dashed,axisLabelVisible:true,title:label});
         };
         addLine(s1,'S1','rgba(255,100,100,0.9)');
         addLine(s2,'S2','rgba(200,60,60,0.7)');
         addLine(r1,'R1','rgba(0,230,118,0.9)');
         addLine(r2,'R2','rgba(0,180,90,0.7)');
-
         chart.timeScale().fitContent();
       };
 
       if(typeof LightweightCharts!=='undefined'){
         _drawLW();
       } else {
+        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">กำลังโหลดกราฟ...</div>';
         const sc=document.createElement('script');
-        sc.src='https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js';
+        sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
         sc.onload=_drawLW;
         document.head.appendChild(sc);
       }
