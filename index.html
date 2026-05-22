@@ -1333,7 +1333,7 @@ const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุ
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
-const BUY_SIGNAL_COOLDOWN  = 14400000; // 4 ชั่วโมง cooldown ต่อ ticker
+const BUY_SIGNAL_COOLDOWN  = 300000; // 5 นาที cooldown ต่อ ticker
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -5092,7 +5092,7 @@ function checkAllBuySignals(){
   (async()=>{
     try{
       for(const s of stocks){
-        if(s.p>0){
+        if(s.p>0 && !_isBuyAlerted(s.t)){
           await checkBuySignalFull(s.t,s.p);
         }
         await new Promise(r=>setTimeout(r,150));
@@ -8425,7 +8425,7 @@ async function checkBuySignalFull(ticker,price){
   }
 
   if(aiDecision==='BUY'||aiDecision===true){
-    // กำหนด level ตาม score
+    _setBuyAlerted(ticker); // cooldown 5 นาที
     const level=score>=50?'strong':score>=40?'good':'watch';
     const emoji=level==='strong'?'🟢':level==='good'?'🟡':'🔵';
     const label=level==='strong'?'ควรซื้อ':level==='good'?'น่าซื้อ':'น่าสนใจ';
