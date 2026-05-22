@@ -8346,7 +8346,27 @@ function updateCardLive(s){
       if(Date.now()-lastSent>28800000){ // 8 ชั่วโมง
         localStorage.setItem(sqKey,Date.now().toString());
         toast(`🩳 Short Squeeze Alert! ${stk.t} — Short Float ${stk.short} ราคาขึ้น +${(+stk.c).toFixed(1)}%`,4000);
-        sendTG(`🩳 Short Squeeze Risk!\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา ${fmt(stk.p)}`);
+
+        // ดึงข่าวล่าสุดและแปลเป็นไทย
+        let newsText='';
+        try{
+          const nr=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${stk.t}&from=${new Date(Date.now()-86400000).toISOString().slice(0,10)}&to=${new Date().toISOString().slice(0,10)}&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(5000)});
+          if(nr.ok){
+            const nd=await nr.json();
+            if(nd&&nd.length>0){
+              const top=nd[0];
+              // แปลเป็นไทยด้วย AI
+              const translated=await callAI_Quick(
+                'แปลหัวข้อข่าวหุ้นเป็นภาษาไทยกระชับ ไม่เกิน 1 ประโยค ห้ามใช้ ** หรือ markdown',
+                top.headline, 80
+              );
+              newsText=translated||top.headline;
+            }
+          }
+        }catch{}
+
+        const msg=`🩳 <b>Short Squeeze Risk!</b>\n${stk.t} | Short Float ${stk.short}\nราคาขึ้น +${(+stk.c).toFixed(1)}% | ราคา $${fmt(stk.p)}${newsText?`\n📰 ${newsText}`:''}`;
+        sendTG(msg);
       }
     }
   }
