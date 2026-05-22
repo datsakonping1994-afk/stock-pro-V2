@@ -3443,7 +3443,8 @@ async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
     clearTimeout(tid);
     if(r.ok){
       const d=await r.json();
-      return d?.content?.[0]?.text||null;
+      // รองรับทั้ง 2 format: {content:[{text}]} และ {text}
+      return d?.content?.[0]?.text || d?.text || null;
     }
   }catch(e){console.warn('Claude Worker error:',e.message);}
   return null;
