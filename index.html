@@ -796,6 +796,13 @@ canvas.bigchart{width:100%;height:100%}
           </div>
         </div>
         <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">User Token</div>
+            <div class="settings-sublabel">รับจากแอดมิน — ใช้รับ Signal เฉพาะของคุณ</div>
+            <input class="settings-input full" id="userToken" type="text" placeholder="sp_xxx...">
+          </div>
+        </div>
+        <div class="settings-row">
           <div class="settings-label">เปิดแจ้งเตือน</div>
           <div class="toggle" id="tgToggle" onclick="toggleTG()"></div>
         </div>
@@ -850,6 +857,56 @@ canvas.bigchart{width:100%;height:100%}
             toast('🔄 ล้าง Cooldown '+keys.length+' ตัวแล้ว — กำลังเช็ค Signal ใหม่...');
             setTimeout(()=>{try{checkAllBuySignals();}catch{}},500);
           ">🔄 รีเซ็ต</button>
+        </div>
+      </div>
+
+      <!-- Friends Management -->
+      <div class="settings-section">
+        <div class="settings-section-title">👥 จัดการเพื่อน</div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Admin Key</div>
+            <div class="settings-sublabel">รหัสที่ตั้งไว้ใน Cloudflare</div>
+            <input class="settings-input full" id="adminKeyInput" type="password" placeholder="••••••••">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">ชื่อเพื่อน</div>
+            <input class="settings-input full" id="friendName" type="text" placeholder="เช่น สมชาย">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Bot Token ของเพื่อน</div>
+            <input class="settings-input full" id="friendTgToken" type="text" placeholder="123456:ABCdef...">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Chat ID ของเพื่อน</div>
+            <input class="settings-input full" id="friendTgChatId" type="text" placeholder="เช่น 1234567890">
+          </div>
+        </div>
+        <div class="settings-row" style="border-bottom:none">
+          <div></div>
+          <button class="settings-btn" onclick="registerFriend()">➕ สร้าง Token</button>
+        </div>
+        <div id="friendResult" style="padding:0 16px 12px;font-size:12px;color:var(--text2);display:none">
+          <div style="background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);border-radius:10px;padding:10px 12px">
+            <div style="color:var(--green);font-weight:700;margin-bottom:4px">✅ สร้างสำเร็จ!</div>
+            <div style="margin-bottom:6px">ส่ง User Token นี้ให้เพื่อน:</div>
+            <div id="friendTokenDisplay" style="font-family:monospace;font-size:13px;color:var(--gold);word-break:break-all;margin-bottom:8px"></div>
+            <button onclick="
+              navigator.clipboard?.writeText(document.getElementById('friendTokenDisplay').textContent);
+              toast('📋 คัดลอกแล้ว');
+            " style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">📋 คัดลอก</button>
+          </div>
+        </div>
+        <!-- รายชื่อเพื่อนที่ลงทะเบียนแล้ว -->
+        <div style="padding:0 16px 12px">
+          <button onclick="loadFriendList()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:8px;font-size:12px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">👥 ดูรายชื่อเพื่อนทั้งหมด</button>
+          <div id="friendList" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -1114,6 +1171,8 @@ const STOCKS_DEFAULT=[
   {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
   {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
   {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
+  {t:"NOK",n:"Nokia",p:4.5,c:0,pe:12.3,mktcap:"25B",rev:"3%",earn:"ก.ค. 2026",div:"3.2%",beta:0.7,short:"1.2%",target:6.0},
+  {t:"DELL",n:"Dell Technologies",p:115.0,c:0,pe:18.5,mktcap:"80B",rev:"8%",earn:"ส.ค. 2026",div:"1.5%",beta:1.1,short:"1.8%",target:145.0},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
@@ -1132,7 +1191,7 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0};
+const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0,NOK:45.0,DELL:48.0};
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -1151,6 +1210,8 @@ const fundExtra={
   LRCX:{de:1.02,fcf:'$4.0B'},AXON:{de:0.21,fcf:'$0.8B'},VRT:{de:0.89,fcf:'$1.1B'},
   ANET:{de:0.00,fcf:'$2.1B'},MELI:{de:1.34,fcf:'$2.8B'},RBRK:{de:0.12,fcf:'$0.5B'},
   HOOD:{de:0.00,fcf:'$0.6B'},
+  NOK:{de:0.35,fcf:'$1.2B'},
+  DELL:{de:null,fcf:'$3.5B'},
   WMT:{de:0.57,fcf:'$19B'},SPGI:{de:0.74,fcf:'$4.7B'},
   RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
   IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
@@ -4479,9 +4540,11 @@ function closeSignal(){
 function saveTG(){
   const t=document.getElementById('tgToken')?.value?.trim();
   const c=document.getElementById('tgChatId')?.value?.trim();
+  const u=document.getElementById('userToken')?.value?.trim();
   try{
     if(t) localStorage.setItem('tgToken',t);
     if(c) localStorage.setItem('tgChatId',c);
+    if(u) localStorage.setItem('userToken',u);
   }catch{}
   toast('✅ บันทึก Telegram แล้ว');
 }
@@ -4520,13 +4583,33 @@ async function testTG(){
 }
 
 async function sendTG(msg){
-  let token,chatId,enabled;
+  let token,chatId,enabled,userToken;
   try{
     token=localStorage.getItem('tgToken');
     chatId=localStorage.getItem('tgChatId');
     enabled=localStorage.getItem('tgEnabled')==='true';
+    userToken=localStorage.getItem('userToken')||'';
   }catch{ return; }
-  if(!token||!chatId||!enabled)return;
+  if(!enabled) return;
+
+  // ถ้ามี userToken — ส่งผ่าน Worker /signal/send (multi-user mode)
+  if(userToken && userToken.startsWith('sp_')){
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),8000);
+      await fetch(ALERT_WORKER+'/signal/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userToken,message:msg}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+    }catch{}
+    return;
+  }
+
+  // fallback — ส่งตรงผ่าน Bot Token เหมือนเดิม
+  if(!token||!chatId) return;
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
@@ -4557,11 +4640,77 @@ function unlockSection(){}
 function applyLockState(){}
 
 // ── Settings ──
+async function registerFriend(){
+  const adminKey=document.getElementById('adminKeyInput')?.value?.trim();
+  const name=document.getElementById('friendName')?.value?.trim();
+  const tgToken=document.getElementById('friendTgToken')?.value?.trim();
+  const tgChatId=document.getElementById('friendTgChatId')?.value?.trim();
+  if(!adminKey||!name||!tgToken||!tgChatId){ toast('❌ กรอกข้อมูลให้ครบ'); return; }
+  try{
+    toast('⏳ กำลังสร้าง Token...');
+    const r=await fetch(ALERT_WORKER+'/user/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({adminKey,name,tgToken,tgChatId})
+    });
+    const d=await r.json();
+    if(d.ok){
+      document.getElementById('friendResult').style.display='block';
+      document.getElementById('friendTokenDisplay').textContent=d.token;
+      document.getElementById('friendName').value='';
+      document.getElementById('friendTgToken').value='';
+      document.getElementById('friendTgChatId').value='';
+      toast('✅ สร้าง Token สำเร็จ');
+    } else {
+      toast('❌ '+(d.error||'เกิดข้อผิดพลาด'));
+    }
+  }catch(e){ toast('❌ '+e.message); }
+}
+
+async function loadFriendList(){
+  const adminKey=document.getElementById('adminKeyInput')?.value?.trim();
+  if(!adminKey){ toast('❌ ใส่ Admin Key ก่อน'); return; }
+  try{
+    const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey));
+    const d=await r.json();
+    const el=document.getElementById('friendList');
+    if(!d.ok){ el.innerHTML=`<div style="color:var(--red);font-size:12px">${d.error}</div>`; return; }
+    if(!d.users.length){ el.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">ยังไม่มีเพื่อน</div>'; return; }
+    el.innerHTML=d.users.map(u=>`
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${u.name}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:monospace">${u.token}</div>
+        </div>
+        <button onclick="removeFriend('${u.token}','${u.name}')" style="background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">ลบ</button>
+      </div>
+    `).join('');
+  }catch(e){ toast('❌ '+e.message); }
+}
+
+async function removeFriend(token, name){
+  if(!confirm(`ลบ ${name} ออกจากระบบ?`)) return;
+  const adminKey=document.getElementById('adminKeyInput')?.value?.trim();
+  if(!adminKey){ toast('❌ ใส่ Admin Key ก่อน'); return; }
+  try{
+    const r=await fetch(ALERT_WORKER+'/user/remove',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({adminKey,token})
+    });
+    const d=await r.json();
+    if(d.ok){ toast('✅ ลบแล้ว'); loadFriendList(); }
+    else toast('❌ '+(d.error||'เกิดข้อผิดพลาด'));
+  }catch(e){ toast('❌ '+e.message); }
+}
+
 function loadSettings(){
   document.getElementById('portSizeInput').value=PORT_SIZE;
   try{
     document.getElementById('tgToken').value=localStorage.getItem('tgToken')||'';
     document.getElementById('tgChatId').value=localStorage.getItem('tgChatId')||'';
+    const utEl=document.getElementById('userToken');
+    if(utEl) utEl.value=localStorage.getItem('userToken')||'';
     if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
     // โหลด Finnhub key
     const fk=localStorage.getItem('finnhubKey')||'';
