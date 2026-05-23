@@ -845,6 +845,13 @@ canvas.bigchart{width:100%;height:100%}
           <div class="settings-label">ล้าง Trade Log</div>
           <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){localStorage.removeItem('_tl_v2');loadAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">ลบ Signal ซ้ำ</div>
+            <div class="settings-sublabel">เก็บแค่ signal แรกของแต่ละตัวในช่วง 5 นาที</div>
+          </div>
+          <button class="settings-btn" onclick="dedupeTradeLog()">🧹 ล้างซ้ำ</button>
+        </div>
         <div class="settings-row" style="border-bottom:none">
           <div>
             <div class="settings-label">ล้าง Signal Cooldown</div>
@@ -3858,6 +3865,26 @@ async function sendAI(ticker){
 function _loadTradeLog(){try{return JSON.parse(localStorage.getItem('_tl_v2')||'[]');}catch{return[];}}
 function _saveTradeLog(log){try{localStorage.setItem('_tl_v2',JSON.stringify(log.slice(-100)));}catch{}}
 
+// ── ล้าง signal ซ้ำ — เก็บแค่ตัวแรกของแต่ละ ticker ในช่วง 5 นาที ──
+function dedupeTradeLog(){
+  const log = _loadTradeLog();
+  const seen = {};
+  const clean = log.filter(t => {
+    const key = t.ticker;
+    const t1 = new Date(t.time).getTime();
+    if(seen[key] && (t1 - seen[key]) < 5*60*1000) return false;
+    seen[key] = t1;
+    return true;
+  });
+  if(clean.length < log.length){
+    _saveTradeLog(clean);
+    toast(`🧹 ลบ signal ซ้ำ ${log.length - clean.length} รายการ`);
+    renderAlerts();
+  } else {
+    toast('✅ ไม่มี signal ซ้ำ');
+  }
+}
+
 const SIGNAL_WORKER = ALERT_WORKER; // ใช้ Worker เดียวกัน
 
 // ── บันทึก signal ทั้ง localStorage และ Worker KV ──
@@ -3866,6 +3893,10 @@ function logTrade(ticker, price, score, aiAnalysis=''){
   const s2 = getS2(ticker, price);
   const r1 = getR1(ticker, price);
   const log = _loadTradeLog();
+  // ป้องกัน signal ซ้ำภายใน 5 นาที
+  const now = Date.now();
+  const dup = log.find(t => t.ticker===ticker && (now - new Date(t.time).getTime()) < 5*60*1000);
+  if(dup){ console.log(`[LOG] ${ticker} SKIP ซ้ำ`); return; }
   log.push({ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null, aiAnalysis});
   _saveTradeLog(log);
   // บันทึก Worker KV (background) — FIX: เพิ่ม timeout 5s กัน hang
@@ -5281,6 +5312,18 @@ updateDashWatchlist();
 updateAlertBadge();
 buildTickerSelect();
 _updateMarketStatusBadge(false);
+// ล้าง signal ซ้ำอัตโนมัติตอนโหลด (เงียบๆ)
+try{
+  const log=_loadTradeLog();
+  const seen={};
+  const clean=log.filter(t=>{
+    const t1=new Date(t.time).getTime();
+    if(seen[t.ticker]&&(t1-seen[t.ticker])<5*60*1000) return false;
+    seen[t.ticker]=t1;
+    return true;
+  });
+  if(clean.length<log.length) _saveTradeLog(clean);
+}catch{}
 
 // ── Auto-start — key อยู่ที่ Worker ไม่ต้องตรวจ localStorage ──
 function _tryStartLive(attempt=0){
