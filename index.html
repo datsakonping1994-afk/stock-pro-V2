@@ -866,6 +866,16 @@ canvas.bigchart{width:100%;height:100%}
           </div>
           <button class="settings-btn" onclick="dedupeTradeLog()">🧹 ล้างซ้ำ</button>
         </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">ล้าง Chart Cache</div>
+            <div class="settings-sublabel">บังคับดึงข้อมูลกราฟใหม่ทั้งหมด</div>
+          </div>
+          <button class="settings-btn" onclick="
+            Object.keys(candleCache).forEach(k=>delete candleCache[k]);
+            toast('🔄 ล้าง Chart Cache แล้ว — เปิดหุ้นแล้วกด tab กราฟใหม่ครับ');
+          ">🔄 ล้าง Cache</button>
+        </div>
         <div class="settings-row" style="border-bottom:none">
           <div>
             <div class="settings-label">ล้าง Signal Cooldown</div>
