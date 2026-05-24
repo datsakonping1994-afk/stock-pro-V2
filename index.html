@@ -3735,16 +3735,17 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 
 // 🔬 วิเคราะห์หุ้นลึก — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Gemini Flash
 // 🧠 Analyze — คุณภาพสูง: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
+// 🔬 Analyze — คุณภาพสูงสุด: Claude Direct → Claude Worker → Gemini Pro → Groq → OpenRouter → Gemini Flash → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const _s=window._aiStatusHook||(()=>{});
-  // 1. Worker (Gemini/Groq/Claude ฝั่ง server)
-  _s('🤖 Worker AI กำลังวิเคราะห์...');
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  // 2. Claude Direct (key จาก Settings)
-  _s('🤖 Claude Direct กำลังวิเคราะห์...');
+  // 1. Claude Direct (key ของตัวเอง — ดีสุด ไม่ผ่าน Worker)
+  _s('🤖 Claude กำลังวิเคราะห์...');
   const rcd = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(rcd) return rcd;
+  // 2. Claude Worker (fallback ถ้าไม่มี key)
+  _s('🤖 Claude Worker กำลังวิเคราะห์...');
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
   // 3. Gemini Pro
   _s('✨ Gemini Pro กำลังวิเคราะห์...');
   const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
@@ -3768,14 +3769,14 @@ async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
-// 💬 Chat — ต้องการความเร็ว → Groq → Claude → Gemini Flash → Pollinations
+// 💬 Chat — เร็ว + ฉลาด: Groq → Claude Direct → Claude Worker → Gemini Flash → Pollinations
 async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
   const _setStatus=(label)=>{
     const el=document.getElementById('aiStatusLbl')||document.getElementById('aiLoading');
     if(el) el.textContent=label;
   };
   const _trim=(s,n)=>s.slice(0,n);
-  // 1) Groq — เร็วที่สุด
+  // 1) Groq — เร็วที่สุด ฟรี
   try{
     const groqKey=localStorage.getItem('groqKey')||'';
     if(groqKey){
@@ -3792,60 +3793,82 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
       if(r.ok){const d=await r.json();const txt=d?.choices?.[0]?.message?.content;if(txt)return txt;}
     }
   }catch(e){console.warn('Groq:',e.message);}
-  // 2) Claude Worker
+  // 2) Claude Direct (key ของตัวเอง)
   _setStatus('🤖 Claude กำลังวิเคราะห์...');
+  const rcd=await _callClaudeDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(rcd) return rcd;
+  // 3) Claude Worker
+  _setStatus('🤖 Claude Worker กำลังวิเคราะห์...');
   const r1=await _callClaude(systemPrompt,_trim(userPrompt,10000),maxTokens);
   if(r1) return r1;
-  // 3) Gemini Flash
+  // 4) Gemini Flash
   _setStatus('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r2=await _callGeminiDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
   if(r2) return r2;
-  // 4) Pollinations — ฟรี 100%
+  // 5) Pollinations — ฟรี 100%
   _setStatus('🌐 กำลังเชื่อมต่อ...');
   const r3=await _callPollinationsAI(systemPrompt,_trim(userPrompt,8000),maxTokens);
   if(r3) return r3;
   return null;
 }
 
-// ⚡ Quick — ต้องการความเร็ว → Groq → Claude → Gemini Flash
-// ⚡ Quick — เร็ว: Groq → Claude → Gemini Flash → Pollinations
+// ⚡ Quick — เร็วสุด ประหยัด token: Groq → Gemini Flash → Pollinations → Claude Direct
 async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
+  // 1. Groq — เร็วสุด ฟรี
   const r0 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
+  // 2. Gemini Flash — ฟรี เร็ว
+  const r1 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  // 3. Pollinations — ฟรี 100%
+  const r2 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  // 4. Claude Direct — สำรองสุดท้าย
+  const r3 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  return null;
+}
+
+// ☀️ Brief — คุณภาพ + เร็วพอ: Claude Direct → Claude Worker → Groq → Gemini Pro → Pollinations
+async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
+  // 1. Claude Direct (key ของตัวเอง — คุณภาพดีสุด)
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  // 2. Claude Worker (fallback)
   const r1 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  return null;
-}
-
-// ☀️ Morning Brief — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Pollinations
-async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
+  // 3. Groq — เร็ว ฟรี
   const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  const r3 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  // 4. Gemini Pro
+  const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  return null;
-}
-
-// 🔄 callGemini — ทั่วไป: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
-async function callGemini(systemPrompt, userPrompt, maxTokens=800){
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
-  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
+  // 5. Pollinations — ฟรี 100%
   const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
+  return null;
+}
+
+// 🔄 callGemini — ทั่วไป: Claude Direct → Claude Worker → Gemini Pro → Groq → Gemini Flash → Pollinations
+async function callGemini(systemPrompt, userPrompt, maxTokens=800){
+  // 1. Claude Direct (key ของตัวเอง)
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  // 2. Claude Worker
+  const r1 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  // 3. Gemini Pro
+  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  // 4. Groq
+  const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  // 5. Gemini Flash
+  const r4 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
+  // 6. Pollinations
+  const r5 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r5) return r5;
   return null;
 }
 function buildFullIndicatorContext(ticker, price){
