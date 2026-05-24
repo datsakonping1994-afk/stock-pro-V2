@@ -1180,6 +1180,7 @@ const STOCKS_DEFAULT=[
   {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
   {t:"NOK",n:"Nokia",p:4.5,c:0,pe:12.3,mktcap:"25B",rev:"3%",earn:"ก.ค. 2026",div:"3.2%",beta:0.7,short:"1.2%",target:6.0},
   {t:"DELL",n:"Dell Technologies",p:115.0,c:0,pe:18.5,mktcap:"80B",rev:"8%",earn:"ส.ค. 2026",div:"1.5%",beta:1.1,short:"1.8%",target:145.0},
+  {t:"ONDS",n:"Ondas Holdings",p:3.5,c:0,pe:null,mktcap:"0.3B",rev:"25%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"8.5%",target:8.0},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
   {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
@@ -1198,7 +1199,7 @@ function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
 }
 
-const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0,NOK:45.0,DELL:48.0};
+const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0,NOK:45.0,DELL:48.0,ONDS:42.0};
 
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
 const fundExtra={
@@ -5105,15 +5106,40 @@ async function testGeminiKey(){
   btn.textContent='🧪 ทดสอบ';
 }
 
-function addStock(){
+async function addStock(){
   const raw=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
-  // sanitize: อนุญาตเฉพาะตัวอักษร A-Z, ตัวเลข, และ . (เช่น BRK.B)
   const t=(raw||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   if(!t){toast('⚠️ ใส่ ticker');return;}
   if(stocks.find(x=>x.t===t)){toast('มี '+t+' อยู่แล้ว');return;}
-  stocks.push({t,n:t,p:0,c:0,pe:null,mktcap:'N/A',rev:'N/A',earn:null});
+
+  toast('⏳ กำลังดึงข้อมูล '+t+'...');
+
+  // ดึงข้อมูล Fundamental จาก Finnhub
+  let name=t, pe=null, mktcap='N/A', beta=null, target=null, earn=null, div=null;
+  try{
+    const [profileRes, metricRes] = await Promise.all([
+      fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${t}&token=${FINNHUB_KEY}`).then(r=>r.json()).catch(()=>({})),
+      fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${t}&metric=all&token=${FINNHUB_KEY}`).then(r=>r.json()).catch(()=>({}))
+    ]);
+
+    if(profileRes?.name) name = profileRes.name;
+    if(profileRes?.marketCapitalization){
+      const mc = profileRes.marketCapitalization;
+      mktcap = mc >= 1000 ? (mc/1000).toFixed(1)+'T' : mc.toFixed(0)+'B';
+    }
+
+    const m = metricRes?.metric || {};
+    if(m.peBasicExclExtraTTM) pe = parseFloat(m.peBasicExclExtraTTM.toFixed(1));
+    if(m.beta) beta = parseFloat(m.beta.toFixed(2));
+    if(m.dividendYieldIndicatedAnnual) div = (m.dividendYieldIndicatedAnnual).toFixed(1)+'%';
+    if(profileRes?.ipo) earn = null;
+  }catch(e){
+    console.warn('[addStock] Finnhub error:', e.message);
+  }
+
+  stocks.push({t, n:name, p:0, c:0, pe, mktcap, rev:'N/A', earn, div, beta, short:null, target});
   document.getElementById('addTickerInput').value='';
-  toast('✅ เพิ่ม '+t+' แล้ว');
+  toast('✅ เพิ่ม '+t+' แล้ว'+(name!==t ? ' ('+name+')' : ''));
   saveStocks();
   renderCards();
   renderStockManager();
