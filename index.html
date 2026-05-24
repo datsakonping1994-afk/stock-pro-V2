@@ -3534,16 +3534,11 @@ async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
       signal:ctrl.signal
     });
     clearTimeout(tid);
-    // อ่าน body เสมอ ไม่ว่า HTTP status จะเป็นเท่าไหร่
-    try{
-      const d=await r.json();
-      if(d?.ok && (d?.content?.[0]?.text || d?.text)){
-        return d.content?.[0]?.text || d.text;
-      }
-      // Worker ตอบกลับแต่ AI ทุกตัวล้มเหลว — log error จริง
-      if(d?.error) console.warn('Worker /ai error:', d.error);
-    }catch(je){console.warn('Worker response parse error:',je.message);}
-  }catch(e){console.warn('Claude Worker fetch error:',e.message);}
+    const d=await r.json(); // อ่าน body เสมอ ป้องกัน deadlock
+    if(d?.ok && (d?.content?.[0]?.text || d?.text)){
+      return d.content?.[0]?.text || d.text;
+    }
+  }catch(e){console.warn('Claude Worker error:',e.message);}
   return null;
 }
 
@@ -3666,20 +3661,14 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 // 🔬 วิเคราะห์หุ้นลึก — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Gemini Flash
 // 🧠 Analyze — คุณภาพสูง: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
-  const _s=window._aiStatusHook||(()=>{});
-  _s('🤖 Worker AI (Claude/Gemini/Groq) กำลังวิเคราะห์...');
   const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  _s('✨ Gemini Pro กำลังวิเคราะห์...');
   const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  _s('⚡ Groq (Llama) กำลังวิเคราะห์...');
   const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  _s('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  _s('🌐 Pollinations AI (ฟรี) กำลังวิเคราะห์...');
   const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
   return null;
@@ -3880,7 +3869,7 @@ async function sendAI(ticker){
 - ใช้ emoji แทน bullet ห้ามใช้ ## ** --- ห้ามใช้ศัพท์อังกฤษ
 - ถ้าหุ้นน่าซื้อ บอกตรงๆ ถ้าไม่น่าซื้อ บอกตรงๆ พร้อมเหตุผล`;
     const userPrompt=`${context}\n\nประวัติการสนทนา:\n${aiHistory[ticker].slice(-4).map(m=>`${m.role==='user'?'คำถาม':'ตอบ'}: ${m.content}`).join('\n')}\n\nคำถาม: ${msg}`;
-    const reply=await callAI_Chat(systemPrompt, userPrompt, 800);
+    const reply=await callAI_Analyze(systemPrompt, userPrompt, 800);
     const replyText=reply||'❌ ไม่ได้รับคำตอบ กรุณาลองใหม่';
     aiHistory[ticker].push({role:'assistant',content:replyText});
     _saveAiHistory();
@@ -8340,30 +8329,10 @@ async function triggerAISummary(){
   const btn=document.getElementById("aiSummaryBtn");
   const body=document.getElementById("aiSummaryBody");
   if(btn){btn.disabled=true;btn.textContent="⏳ กำลังวิเคราะห์...";}
-
-  // แสดง status แบบ live ระหว่างรอ
-  const _setStatus=(msg)=>{ body.innerHTML=`<div style='color:var(--text3);font-size:12px'>${msg}</div>`; };
-  _setStatus("🔌 กำลังเชื่อมต่อ Worker AI...");
-
-  // Hook status ให้ callAI_Analyze แสดง progress
-  window._aiStatusHook=_setStatus;
+  body.innerHTML="<div style='color:var(--text3)'>🤖 AI กำลังวิเคราะห์ตลาด...</div>";
   const result=await runAIMarketSummaryV2();
-  window._aiStatusHook=null;
-
-  if(result){
-    body.innerHTML=mdToHtml(result);
-  } else {
-    // แสดง error พร้อมคำแนะนำแก้ไข
-    body.innerHTML=`
-      <div style='color:var(--red);margin-bottom:12px'>❌ AI ไม่ตอบสนอง</div>
-      <div style='color:var(--text3);font-size:12px;line-height:1.8'>
-        ตรวจสอบใน <b style='color:var(--gold)'>Cloudflare Worker → Settings → Variables and Secrets</b>:<br>
-        • <code>GEMINI_KEY</code> — Google AI Studio (ฟรี)<br>
-        • <code>GROQ_KEY</code> — Groq.com (ฟรี เร็วมาก)<br>
-        • <code>CLAUDE_KEY</code> — Anthropic (ถ้ามี)<br><br>
-        ชื่อ secret ต้องตรงตามนี้เป๊ะ (case-sensitive)
-      </div>`;
-  }
+  // FIX: ผ่าน mdToHtml เพื่อ sanitize และ format
+  body.innerHTML=result?mdToHtml(result):"❌ ไม่สามารถเชื่อมต่อ AI ได้";
   if(btn){btn.disabled=false;btn.textContent="🤖 วิเคราะห์ใหม่";}
 }
 
@@ -8442,8 +8411,8 @@ ${holdings}
 
 สรุปใน 4 บรรทัด: 1)ความเสี่ยงรวม 2)หุ้นที่น่าจับตา 3)ควรถือ cash เท่าไหร่ 4)คำแนะนำสั้นๆ`;
 
-    // เรียกผ่าน Worker — Gemini → Groq อัตโนมัติ
-    let reply = await _callClaude(sys,prompt,200);
+    // เรียกผ่าน callAI_Analyze — Worker → Gemini → Groq → Pollinations
+    let reply = await callAI_Analyze(sys,prompt,200);
     if(!reply){ resultEl.innerHTML='❌ ไม่สามารถวิเคราะห์ได้'; return; }
     reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').replace(/[\u{1F000}-\u{1FFFF}]/gu,'').replace(/[\u{2600}-\u{26FF}]/gu,'').replace(/[\u{2700}-\u{27BF}]/gu,'').replace(/\d+\)\s*/g,'').trim();
     // แต่ละประโยคขึ้นบรรทัดใหม่
