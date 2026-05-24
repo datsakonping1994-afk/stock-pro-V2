@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 
 <title>STOCK PRO ◈</title>
+
+<!-- App Icon -->
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png">
+<link rel="apple-touch-icon" sizes="120x120" href="https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png">
+
+<!-- PWA Meta -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stock Pro V2">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#060810">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
@@ -6074,16 +6088,18 @@ async function _switchTF(btn, days){
     const ticker=currentDrawerTicker;
     if(!ticker) return;
     _currentChartDays=days;
-    if(candleCache[ticker]) candleCache[ticker].days=0;
+    // ไม่ล้าง cache เดิม แค่ขอข้อมูลใหม่ตาม days
     await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
-    // วาด LW chart ใหม่
+    // วาด LW chart ใหม่ — ใช้ข้อมูลตาม cacheKey ที่แยกตาม days
+    const cacheKey=`${ticker}_${days}`;
+    const chartData = candleCache[cacheKey]?.data || candleCache[ticker]?.data;
     const containerId='lwChartContainer';
     const container=document.getElementById(containerId);
-    if(container&&candleCache[ticker]?.data?.c&&typeof LightweightCharts!=='undefined'){
+    if(container&&chartData?.c&&typeof LightweightCharts!=='undefined'){
       const s=stocks.find(x=>x.t===ticker);
-      const allPrices=candleCache[ticker].data.c;
-      const allTs=candleCache[ticker].data.t||null;
+      const allPrices=chartData.c;
+      const allTs=chartData.t||null;
       const prices=allPrices.slice(-days);
       const timestamps=allTs?allTs.slice(-days):null;
       const p=s?.p||prices[prices.length-1]||0;
@@ -6340,10 +6356,13 @@ async function fetchCandlesPolygon(ticker, days=60){
 // ── fetchCandles — rate limit guard ──
 const _candleFetching=new Set(); // ป้องกัน concurrent fetch ตัวเดียวกัน
 async function fetchCandles(ticker, days=60){
+  const cacheKey = `${ticker}_${days}`;
+  // เช็ค cache แยกตาม days
+  if(candleCache[cacheKey]&&candleCache[cacheKey].ts>Date.now()-1800000) return candleCache[cacheKey].data;
   if(candleCache[ticker]&&candleCache[ticker].ts>Date.now()-1800000&&(candleCache[ticker].days||0)>=days) return candleCache[ticker].data;
   if(candleCache[ticker]?.data?._mock && !hasApiKey()) return candleCache[ticker].data;
-  if(_candleFetching.has(ticker)) return candleCache[ticker]?.data||null; // ถ้ากำลัง fetch อยู่ คืน cache เดิม
-  _candleFetching.add(ticker);
+  if(_candleFetching.has(cacheKey)) return candleCache[cacheKey]?.data||candleCache[ticker]?.data||null;
+  _candleFetching.add(cacheKey);
   try{
     // ── 0. ลอง Worker KV cache ก่อน (เร็วที่สุด ไม่เสีย quota) ──
     try{
@@ -6364,12 +6383,14 @@ async function fetchCandles(ticker, days=60){
     let candleData=await fetchCandlesPolygon(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
+      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'polygon'};
       return candleData;
     }
     // ── 2. Fallback → Twelve Data ──
     candleData=await fetchCandlesTwelve(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
+      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'twelve'};
       return candleData;
     }
     // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
@@ -6393,16 +6414,18 @@ async function fetchCandles(ticker, days=60){
     }catch{}
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'yahoo'};
+      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'yahoo'};
       return candleData;
     }
   }catch(e){}
-  finally{ _candleFetching.delete(ticker); }
+  finally{ _candleFetching.delete(cacheKey); }
   // Fallback: mock data
   const s=stocks.find(x=>x.t===ticker);
   if(s&&s.p>0){
     const data=_genMockCandles(ticker,s.p,days);
     if(data){
       candleCache[ticker]={data,ts:Date.now()-240000,days};
+      candleCache[cacheKey]={data,ts:Date.now()-240000};
       return data;
     }
   }
