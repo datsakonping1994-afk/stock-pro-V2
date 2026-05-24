@@ -795,13 +795,22 @@ canvas.bigchart{width:100%;height:100%}
         </div>
       </div>
 
-      <!-- AI API Keys Section -->
+      <!-- AI API Keys -->
       <div class="settings-section">
         <div class="settings-section-title">🤖 AI API Keys</div>
         <div class="settings-row">
           <div style="width:100%">
+            <div class="settings-label">Claude API Key <span style="font-size:10px;color:var(--ice)">(Anthropic)</span></div>
+            <div class="settings-sublabel">console.anthropic.com → API Keys → sk-ant-...</div>
+            <input class="settings-input full" id="anthropicKeyInput" type="password" placeholder="sk-ant-...">
+            <div id="anthropicKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
+            <button id="testAnthropicBtn" class="settings-btn" style="margin-top:6px" onclick="testAnthropicKey()">🧪 ทดสอบ</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
             <div class="settings-label">Groq API Key <span style="font-size:10px;color:var(--green)">(ฟรี เร็วมาก)</span></div>
-            <div class="settings-sublabel">groq.com → API Keys</div>
+            <div class="settings-sublabel">console.groq.com → API Keys → gsk_...</div>
             <input class="settings-input full" id="groqKeyInput" type="password" placeholder="gsk_...">
             <div id="groqKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGroqBtn" class="settings-btn" style="margin-top:6px" onclick="testGroqKey()">🧪 ทดสอบ</button>
@@ -810,7 +819,7 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--green)">(ฟรี)</span></div>
-            <div class="settings-sublabel">aistudio.google.com → Get API Key</div>
+            <div class="settings-sublabel">aistudio.google.com → Get API Key → AIza...</div>
             <input class="settings-input full" id="geminiKeyInput" type="password" placeholder="AIza...">
             <div id="geminiKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGeminiBtn" class="settings-btn" style="margin-top:6px" onclick="testGeminiKey()">🧪 ทดสอบ</button>
@@ -819,28 +828,10 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">OpenRouter API Key <span style="font-size:10px;color:var(--green)">(ฟรี หลายโมเดล)</span></div>
-            <div class="settings-sublabel">openrouter.ai → Keys → Create Key</div>
+            <div class="settings-sublabel">openrouter.ai → Keys → sk-or-...</div>
             <input class="settings-input full" id="openrouterKeyInput" type="password" placeholder="sk-or-...">
             <div id="openrouterKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testOpenRouterBtn" class="settings-btn" style="margin-top:6px" onclick="testOpenRouterKey()">🧪 ทดสอบ</button>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">Anthropic API Key <span style="font-size:10px;color:var(--text3)">(ถ้ามี)</span></div>
-            <div class="settings-sublabel">console.anthropic.com → API Keys</div>
-            <input class="settings-input full" id="anthropicKeyInput" type="password" placeholder="sk-ant-...">
-            <div id="anthropicKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
-            <button id="testAnthropicBtn" class="settings-btn" style="margin-top:6px" onclick="testAnthropicKey()">🧪 ทดสอบ</button>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div style="width:100%">
-            <div class="settings-label">Finnhub API Key</div>
-            <div class="settings-sublabel">finnhub.io → Dashboard</div>
-            <input class="settings-input full" id="finnhubKeyInput" type="password" placeholder="d83v...">
-            <div id="apiKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
-            <button id="testApiBtn" class="settings-btn" style="margin-top:6px" onclick="testApiKey()">🔑 ทดสอบ</button>
           </div>
         </div>
         <div class="settings-row" style="border-bottom:none">
@@ -3596,6 +3587,36 @@ async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
+// ── Claude Direct — ใช้ key จาก Settings โดยตรง ──
+async function _callClaudeDirect(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    const key=localStorage.getItem('anthropicKey')||'';
+    if(!key) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),30000);
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:maxTokens,
+        system:systemPrompt,
+        messages:[{role:'user',content:userPrompt}]
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    const d=await r.json();
+    if(r.ok) return d?.content?.[0]?.text||null;
+    console.warn('Claude Direct error:',r.status, d?.error?.message||'');
+  }catch(e){console.warn('Claude Direct error:',e.message);}
+  return null;
+}
+
 async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
   try{
     const geminiKey=localStorage.getItem('geminiKey')||'';
@@ -3708,73 +3729,6 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
-// ── OpenRouter AI — ฟรี หลายโมเดล ──
-async function _callOpenRouter(systemPrompt, userPrompt, maxTokens=800){
-  try{
-    const key=localStorage.getItem('openrouterKey')||'';
-    if(!key) return null;
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),25000);
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+key,
-        'HTTP-Referer':'https://stockpro.app'
-      },
-      body:JSON.stringify({
-        model:'meta-llama/llama-3.3-70b-instruct:free',
-        messages:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}],
-        max_tokens:maxTokens,
-        temperature:0.7
-      }),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    const d=await r.json();
-    return d?.choices?.[0]?.message?.content||null;
-  }catch(e){console.warn('OpenRouter error:',e.message);}
-  return null;
-}
-
-async function testOpenRouterKey(){
-  const btn=document.getElementById('testOpenRouterBtn');
-  const statusEl=document.getElementById('openrouterKeyStatus');
-  if(!statusEl) return;
-  const key=document.getElementById('openrouterKeyInput')?.value?.trim()||'';
-  if(!key){
-    statusEl.style.cssText='display:block;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--yellow)';
-    statusEl.textContent='⚠️ กรุณาใส่ OpenRouter API Key ก่อน'; return;
-  }
-  btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
-  statusEl.style.cssText='display:block;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);color:var(--text2)';
-  statusEl.textContent='⏳ กำลังทดสอบ OpenRouter...';
-  try{
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),12000);
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://stockpro.app'},
-      body:JSON.stringify({model:'meta-llama/llama-3.3-70b-instruct:free',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
-      signal:ctrl.signal
-    });
-    const d=await r.json();
-    const txt=d?.choices?.[0]?.message?.content||'';
-    if(r.ok&&txt){
-      try{localStorage.setItem('openrouterKey',key);}catch{}
-      statusEl.style.cssText='display:block;background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);color:var(--green)';
-      statusEl.textContent='✅ OpenRouter ใช้งานได้! — Llama-3.3-70b พร้อม (บันทึกแล้ว)';
-    } else {
-      statusEl.style.cssText='display:block;background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);color:var(--red)';
-      statusEl.textContent='❌ Key ไม่ถูกต้อง — ตรวจสอบที่ openrouter.ai/keys';
-    }
-  }catch(e){
-    statusEl.style.cssText='display:block;background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);color:var(--red)';
-    statusEl.textContent=e.name==='AbortError'?'⏱️ Timeout':'❌ เชื่อมต่อล้มเหลว';
-  }
-  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
-}
-
 // ══════════════════════════════════════════════════════
 // ── AI เฉพาะทาง — เรียงตาม speed vs quality ──
 // ══════════════════════════════════════════════════════
@@ -3783,24 +3737,34 @@ async function testOpenRouterKey(){
 // 🧠 Analyze — คุณภาพสูง: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const _s=window._aiStatusHook||(()=>{});
+  // 1. Worker (Gemini/Groq/Claude ฝั่ง server)
   _s('🤖 Worker AI กำลังวิเคราะห์...');
   const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
+  // 2. Claude Direct (key จาก Settings)
+  _s('🤖 Claude Direct กำลังวิเคราะห์...');
+  const rcd = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(rcd) return rcd;
+  // 3. Gemini Pro
   _s('✨ Gemini Pro กำลังวิเคราะห์...');
   const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
+  // 4. Groq
   _s('⚡ Groq (Llama) กำลังวิเคราะห์...');
   const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
+  // 5. OpenRouter
   _s('🌐 OpenRouter กำลังวิเคราะห์...');
-  const r3 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
+  const ror = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
+  if(ror) return ror;
+  // 6. Gemini Flash
   _s('⚡ Gemini Flash กำลังวิเคราะห์...');
-  const r4 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  // 7. Pollinations (ฟรี ไม่มี limit)
+  _s('🌐 Pollinations AI กำลังวิเคราะห์...');
+  const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
-  _s('🌐 Pollinations AI (ฟรี) กำลังวิเคราะห์...');
-  const r5 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
-  if(r5) return r5;
   return null;
 }
 
@@ -4934,13 +4898,17 @@ function loadSettings(){
     const gmk=localStorage.getItem('geminiKey')||'';
     const gmkEl=document.getElementById('geminiKeyInput');
     if(gmkEl) gmkEl.value=gmk;
-    // โหลด Anthropic key
+    // โหลด Claude/Anthropic key
     const ank=localStorage.getItem('anthropicKey')||'';
     const ankEl=document.getElementById('anthropicKeyInput');
     if(ankEl) ankEl.value=ank;
     // โหลด Groq key
     const gk=localStorage.getItem('groqKey')||'';
-    if(gk) document.getElementById('groqKeyInput').value=gk;
+    const gkEl=document.getElementById('groqKeyInput');
+    if(gkEl) gkEl.value=gk;
+    // โหลด Gemini key (อาจซ้ำกับด้านบน — ใช้ค่าเดิม)
+    const gmkEl2=document.getElementById('geminiKeyInput');
+    if(gmkEl2) gmkEl2.value=localStorage.getItem('geminiKey')||'';
     // โหลด OpenRouter key
     const ork=localStorage.getItem('openrouterKey')||'';
     const orkEl=document.getElementById('openrouterKeyInput');
@@ -4972,7 +4940,7 @@ function saveSettings(){
     if(gmk) localStorage.setItem('geminiKey',gmk);
     else localStorage.removeItem('geminiKey');
   }catch{}
-  // บันทึก Anthropic key
+  // บันทึก Claude/Anthropic key
   try{
     const ank=document.getElementById('anthropicKeyInput')?.value?.trim()||'';
     if(ank) localStorage.setItem('anthropicKey',ank);
@@ -4983,6 +4951,12 @@ function saveSettings(){
     const gk=document.getElementById('groqKeyInput')?.value?.trim()||'';
     if(gk) localStorage.setItem('groqKey',gk);
     else localStorage.removeItem('groqKey');
+  }catch{}
+  // บันทึก Gemini key
+  try{
+    const gmk=document.getElementById('geminiKeyInput')?.value?.trim()||'';
+    if(gmk) localStorage.setItem('geminiKey',gmk);
+    else localStorage.removeItem('geminiKey');
   }catch{}
   // บันทึก OpenRouter key
   try{
@@ -8551,7 +8525,6 @@ ${holdings}
 
 สรุปใน 4 บรรทัด: 1)ความเสี่ยงรวม 2)หุ้นที่น่าจับตา 3)ควรถือ cash เท่าไหร่ 4)คำแนะนำสั้นๆ`;
 
-    // เรียกผ่าน callAI_Analyze — Worker → Gemini → Groq → OpenRouter → Pollinations
     let reply = await callAI_Analyze(sys,prompt,200);
     if(!reply){ resultEl.innerHTML='❌ ไม่สามารถวิเคราะห์ได้'; return; }
     reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').replace(/[\u{1F000}-\u{1FFFF}]/gu,'').replace(/[\u{2600}-\u{26FF}]/gu,'').replace(/[\u{2700}-\u{27BF}]/gu,'').replace(/\d+\)\s*/g,'').trim();
