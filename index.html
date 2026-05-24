@@ -873,6 +873,7 @@ canvas.bigchart{width:100%;height:100%}
           </div>
           <button class="settings-btn" onclick="
             Object.keys(candleCache).forEach(k=>delete candleCache[k]);
+            fetch(ALERT_WORKER+'/candles/clear',{method:'POST'}).catch(()=>{});
             toast('🔄 ล้าง Chart Cache แล้ว — เปิดหุ้นแล้วกด tab กราฟใหม่ครับ');
           ">🔄 ล้าง Cache</button>
         </div>
