@@ -4585,13 +4585,41 @@ function toggleTG(){
   try{ localStorage.setItem('tgEnabled',on?'true':'false'); }catch{}
 }
 async function testTG(){
-  // อ่านจาก input โดยตรง ไม่ต้องกด บันทึก ก่อน
-  let _tgToken='',_tgChatId='';
-  try{ _tgToken=localStorage.getItem('tgToken')||''; _tgChatId=localStorage.getItem('tgChatId')||''; }catch{}
+  let _tgToken='',_tgChatId='',_userToken='';
+  try{
+    _tgToken=localStorage.getItem('tgToken')||'';
+    _tgChatId=localStorage.getItem('tgChatId')||'';
+    _userToken=localStorage.getItem('userToken')||'';
+  }catch{}
   const token=document.getElementById('tgToken')?.value?.trim()||_tgToken;
   const chatId=document.getElementById('tgChatId')?.value?.trim()||_tgChatId;
+  const userToken=document.getElementById('userToken')?.value?.trim()||_userToken;
+
+  // ถ้ามี User Token ส่งผ่าน Worker แทน
+  if(userToken && userToken.startsWith('sp_')){
+    toast('📤 กำลังส่งทดสอบผ่าน Worker...');
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),10000);
+      const r=await fetch(ALERT_WORKER+'/signal/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userToken,message:'🧪 Stock Pro v2 — ทดสอบแจ้งเตือน ✅'}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tid);
+      const d=await r.json();
+      if(d.ok) toast('✅ ส่ง Telegram สำเร็จ!');
+      else toast('❌ '+(d.error||'ส่งไม่สำเร็จ'));
+    }catch(e){
+      toast('❌ เชื่อมต่อไม่ได้');
+    }
+    return;
+  }
+
+  // fallback — ส่งตรง
   if(!token||!chatId){
-    toast('⚠️ กรุณาใส่ Bot Token และ Chat ID ก่อน');
+    toast('⚠️ กรุณาใส่ Bot Token และ Chat ID ก่อน หรือใส่ User Token');
     return;
   }
   toast('📤 กำลังส่งทดสอบ...');
@@ -4607,7 +4635,7 @@ async function testTG(){
     clearTimeout(tid);
     const d=await r.json();
     if(d.ok) toast('✅ ส่ง Telegram สำเร็จ!');
-    else toast('❌ '+( d.description||'ส่งไม่สำเร็จ'));
+    else toast('❌ '+(d.description||'ส่งไม่สำเร็จ'));
   }catch(e){
     toast('❌ เชื่อมต่อไม่ได้ ตรวจสอบ Token/Chat ID');
   }
