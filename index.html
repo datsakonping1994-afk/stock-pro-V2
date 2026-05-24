@@ -8739,7 +8739,7 @@ function _setBuyAlerted(ticker){
   const key='buy_alerted_'+ticker;
   localStorage.setItem(key, Date.now().toString());
   _buyAlerted.add(ticker);
-  setTimeout(()=>{ _buyAlerted.delete(ticker); localStorage.removeItem(key); }, BUY_SIGNAL_COOLDOWN);
+  setTimeout(()=>{ _buyAlerted.delete(ticker); }, BUY_SIGNAL_COOLDOWN);
 }
 let _dashUpdateTimer=null, _portUpdateTimer=null;
 function updateCardLive(s){
