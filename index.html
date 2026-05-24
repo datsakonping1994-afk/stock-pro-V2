@@ -3866,17 +3866,17 @@ async function sendAI(ticker){
 function _loadTradeLog(){try{return JSON.parse(localStorage.getItem('_tl_v2')||'[]');}catch{return[];}}
 function _saveTradeLog(log){try{localStorage.setItem('_tl_v2',JSON.stringify(log.slice(-100)));}catch{}}
 
-// ── ล้าง signal ซ้ำ — เก็บแค่ตัวแรกของแต่ละ ticker ในช่วง 5 นาที ──
+// ── ล้าง signal ซ้ำ — เก็บแค่ตัวล่าสุด 1 ตัวต่อ ticker ──
 function dedupeTradeLog(){
   const log = _loadTradeLog();
+  // เก็บตัวล่าสุดของแต่ละ ticker
   const seen = {};
-  const clean = log.filter(t => {
-    const key = t.ticker;
-    const t1 = new Date(t.time).getTime();
-    if(seen[key] && (t1 - seen[key]) < 5*60*1000) return false;
-    seen[key] = t1;
-    return true;
+  // วนจากหลังไปหน้า เพื่อเก็บตัวล่าสุด
+  [...log].reverse().forEach(t => {
+    if(!seen[t.ticker]) seen[t.ticker] = t;
   });
+  // เรียงกลับตามเวลาเดิม
+  const clean = log.filter(t => seen[t.ticker] === t || t.result !== null);
   if(clean.length < log.length){
     _saveTradeLog(clean);
     toast(`🧹 ลบ signal ซ้ำ ${log.length - clean.length} รายการ`);
