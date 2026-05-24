@@ -3102,6 +3102,8 @@ function drawerTab(tab, btn){
       <div class="chart-timeframes">
         <button class="tf-btn active" onclick="_switchTF(this,30)">1M</button>
         <button class="tf-btn" onclick="_switchTF(this,90)">3M</button>
+        <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
+        <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
       <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
       <div class="ind-table">
@@ -6377,18 +6379,18 @@ async function fetchCandles(ticker, days=60){
       }
     }catch{}
 
-    // ── 1. ลอง Polygon.io ก่อน (ข้อมูลแม่นยำ ไม่ต้อง proxy) ──
-    let candleData=await fetchCandlesPolygon(ticker, days);
-    if(candleData){
-      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
-      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'polygon'};
-      return candleData;
-    }
-    // ── 2. Fallback → Twelve Data ──
-    candleData=await fetchCandlesTwelve(ticker, days);
+    // ── 1. ลอง Twelve Data ก่อน (ข้อมูลย้อนหลังมากกว่า) ──
+    let candleData=await fetchCandlesTwelve(ticker, days);
     if(candleData){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'twelve'};
       candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'twelve'};
+      return candleData;
+    }
+    // ── 2. Fallback → Polygon.io ──
+    candleData=await fetchCandlesPolygon(ticker, days);
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
+      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'polygon'};
       return candleData;
     }
     // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
