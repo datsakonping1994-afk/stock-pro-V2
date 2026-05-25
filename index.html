@@ -8900,6 +8900,8 @@ async function checkBuySignalFull(ticker,price){
   }
   console.log(`[BUY] ${ticker} AI=${aiDecision}`);
 
+  // เช็คตลาดเปิดก่อนส่ง Signal
+  if(!_isMarketOpen()){ console.log('[BUY] ตลาดปิด ไม่ส่ง Signal'); return; }
   if(aiDecision==='BUY'||aiDecision===true){
     _setBuyAlerted(ticker);
     const level=score>=50?'strong':score>=40?'good':'watch';
