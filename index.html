@@ -801,7 +801,7 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Claude API Key <span style="font-size:10px;color:var(--ice)">(Anthropic)</span></div>
-            <div class="settings-sublabel">console.anthropic.com → API Keys → sk-ant-...</div>
+            <div class="settings-sublabel"><a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--ice);text-decoration:underline">console.anthropic.com</a> → API Keys → sk-ant-...</div>
             <input class="settings-input full" id="anthropicKeyInput" type="password" placeholder="sk-ant-...">
             <div id="anthropicKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testAnthropicBtn" class="settings-btn" style="margin-top:6px" onclick="testAnthropicKey()">🧪 ทดสอบ</button>
@@ -810,7 +810,7 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Groq API Key <span style="font-size:10px;color:var(--green)">(ฟรี เร็วมาก)</span></div>
-            <div class="settings-sublabel">console.groq.com → API Keys → gsk_...</div>
+            <div class="settings-sublabel"><a href="https://console.groq.com/keys" target="_blank" style="color:var(--green);text-decoration:underline">console.groq.com</a> → API Keys → gsk_...</div>
             <input class="settings-input full" id="groqKeyInput" type="password" placeholder="gsk_...">
             <div id="groqKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGroqBtn" class="settings-btn" style="margin-top:6px" onclick="testGroqKey()">🧪 ทดสอบ</button>
@@ -819,7 +819,7 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--green)">(ฟรี)</span></div>
-            <div class="settings-sublabel">aistudio.google.com → Get API Key → AIza...</div>
+            <div class="settings-sublabel"><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--green);text-decoration:underline">aistudio.google.com</a> → Get API Key → AIza...</div>
             <input class="settings-input full" id="geminiKeyInput" type="password" placeholder="AIza...">
             <div id="geminiKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGeminiBtn" class="settings-btn" style="margin-top:6px" onclick="testGeminiKey()">🧪 ทดสอบ</button>
@@ -828,7 +828,7 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">OpenRouter API Key <span style="font-size:10px;color:var(--green)">(ฟรี หลายโมเดล)</span></div>
-            <div class="settings-sublabel">openrouter.ai → Keys → sk-or-...</div>
+            <div class="settings-sublabel"><a href="https://openrouter.ai/settings/keys" target="_blank" style="color:var(--green);text-decoration:underline">openrouter.ai</a> → Keys → sk-or-...</div>
             <input class="settings-input full" id="openrouterKeyInput" type="password" placeholder="sk-or-...">
             <div id="openrouterKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testOpenRouterBtn" class="settings-btn" style="margin-top:6px" onclick="testOpenRouterKey()">🧪 ทดสอบ</button>
@@ -3735,48 +3735,52 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 
 // 🔬 วิเคราะห์หุ้นลึก — ต้องการคุณภาพ → Claude → Gemini Pro → Groq → Gemini Flash
 // 🧠 Analyze — คุณภาพสูง: Claude → Gemini Pro → Groq → Gemini Flash → Pollinations
-// 🔬 Analyze — คุณภาพสูงสุด: Claude Direct → Claude Worker → Gemini Pro → Groq → OpenRouter → Gemini Flash → Pollinations
+// 🔬 Analyze — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const _s=window._aiStatusHook||(()=>{});
-  // 1. Claude Direct (key ของตัวเอง — ดีสุด ไม่ผ่าน Worker)
+  // 1. Claude Direct (anthropicKey จาก Settings)
   _s('🤖 Claude กำลังวิเคราะห์...');
-  const rcd = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
-  if(rcd) return rcd;
-  // 2. Claude Worker (fallback ถ้าไม่มี key)
-  _s('🤖 Claude Worker กำลังวิเคราะห์...');
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  // 3. Gemini Pro
-  _s('✨ Gemini Pro กำลังวิเคราะห์...');
-  const r1 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  // 2. Groq (groqKey จาก Settings)
+  _s('⚡ Groq กำลังวิเคราะห์...');
+  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 4. Groq
-  _s('⚡ Groq (Llama) กำลังวิเคราะห์...');
-  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  // 3. Gemini Pro (geminiKey จาก Settings)
+  _s('✨ Gemini Pro กำลังวิเคราะห์...');
+  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  // 5. OpenRouter
-  _s('🌐 OpenRouter กำลังวิเคราะห์...');
-  const ror = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
-  if(ror) return ror;
-  // 6. Gemini Flash
+  // 4. Gemini Flash (geminiKey จาก Settings)
   _s('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  // 7. Pollinations (ฟรี ไม่มี limit)
-  _s('🌐 Pollinations AI กำลังวิเคราะห์...');
-  const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  // 5. OpenRouter (openrouterKey จาก Settings)
+  _s('🌐 OpenRouter กำลังวิเคราะห์...');
+  const r4 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
+  // 6. Claude Worker (ไม่ต้องมี key)
+  _s('🤖 Claude Worker กำลังวิเคราะห์...');
+  const r5 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r5) return r5;
+  // 7. Pollinations (ฟรี 100%)
+  _s('🌐 Pollinations AI กำลังวิเคราะห์...');
+  const r6 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r6) return r6;
   return null;
 }
 
-// 💬 Chat — เร็ว + ฉลาด: Groq → Claude Direct → Claude Worker → Gemini Flash → Pollinations
+// 💬 Chat — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
 async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
   const _setStatus=(label)=>{
     const el=document.getElementById('aiStatusLbl')||document.getElementById('aiLoading');
     if(el) el.textContent=label;
   };
   const _trim=(s,n)=>s.slice(0,n);
-  // 1) Groq — เร็วที่สุด ฟรี
+  // 1. Claude Direct (anthropicKey จาก Settings)
+  _setStatus('🤖 Claude กำลังวิเคราะห์...');
+  const r0=await _callClaudeDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r0) return r0;
+  // 2. Groq (groqKey จาก Settings)
   try{
     const groqKey=localStorage.getItem('groqKey')||'';
     if(groqKey){
@@ -3793,82 +3797,94 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
       if(r.ok){const d=await r.json();const txt=d?.choices?.[0]?.message?.content;if(txt)return txt;}
     }
   }catch(e){console.warn('Groq:',e.message);}
-  // 2) Claude Direct (key ของตัวเอง)
-  _setStatus('🤖 Claude กำลังวิเคราะห์...');
-  const rcd=await _callClaudeDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
-  if(rcd) return rcd;
-  // 3) Claude Worker
-  _setStatus('🤖 Claude Worker กำลังวิเคราะห์...');
-  const r1=await _callClaude(systemPrompt,_trim(userPrompt,10000),maxTokens);
-  if(r1) return r1;
-  // 4) Gemini Flash
+  // 3. Gemini Flash (geminiKey จาก Settings)
   _setStatus('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r2=await _callGeminiDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
   if(r2) return r2;
-  // 5) Pollinations — ฟรี 100%
+  // 4. OpenRouter (openrouterKey จาก Settings)
+  _setStatus('🌐 OpenRouter กำลังวิเคราะห์...');
+  const r3=await _callOpenRouter(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r3) return r3;
+  // 5. Claude Worker (ไม่ต้องมี key)
+  _setStatus('🤖 Claude Worker กำลังวิเคราะห์...');
+  const r4=await _callClaude(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r4) return r4;
+  // 6. Pollinations (ฟรี 100%)
   _setStatus('🌐 กำลังเชื่อมต่อ...');
-  const r3=await _callPollinationsAI(systemPrompt,_trim(userPrompt,8000),maxTokens);
-  if(r3) return r3;
+  const r5=await _callPollinationsAI(systemPrompt,_trim(userPrompt,8000),maxTokens);
+  if(r5) return r5;
   return null;
 }
 
-// ⚡ Quick — เร็วสุด ประหยัด token: Groq → Gemini Flash → Pollinations → Claude Direct
+// ⚡ Quick — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
 async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
-  // 1. Groq — เร็วสุด ฟรี
-  const r0 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  // 2. Gemini Flash — ฟรี เร็ว
-  const r1 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
-  // 3. Pollinations — ฟรี 100%
-  const r2 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  // 4. Claude Direct — สำรองสุดท้าย
-  const r3 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  return null;
-}
-
-// ☀️ Brief — คุณภาพ + เร็วพอ: Claude Direct → Claude Worker → Groq → Gemini Pro → Pollinations
-async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
-  // 1. Claude Direct (key ของตัวเอง — คุณภาพดีสุด)
+  // 1. Claude Direct (anthropicKey จาก Settings)
   const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  // 2. Claude Worker (fallback)
-  const r1 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  // 2. Groq (groqKey จาก Settings)
+  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 3. Groq — เร็ว ฟรี
-  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  // 3. Gemini Flash (geminiKey จาก Settings)
+  const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  // 4. Gemini Pro
-  const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  // 4. OpenRouter (openrouterKey จาก Settings)
+  const r3 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  // 5. Pollinations — ฟรี 100%
-  const r4 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  // 5. Claude Worker (ไม่ต้องมี key)
+  const r4 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
-  return null;
-}
-
-// 🔄 callGemini — ทั่วไป: Claude Direct → Claude Worker → Gemini Pro → Groq → Gemini Flash → Pollinations
-async function callGemini(systemPrompt, userPrompt, maxTokens=800){
-  // 1. Claude Direct (key ของตัวเอง)
-  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  // 2. Claude Worker
-  const r1 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r1) return r1;
-  // 3. Gemini Pro
-  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
-  // 4. Groq
-  const r3 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r3) return r3;
-  // 5. Gemini Flash
-  const r4 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
-  if(r4) return r4;
-  // 6. Pollinations
+  // 6. Pollinations (ฟรี 100%)
   const r5 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(r5) return r5;
+  return null;
+}
+
+// ☀️ Brief — key จากแอปก่อนเสมอ: Claude → Groq → Gemini Pro → OpenRouter → Claude Worker → Pollinations
+async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
+  // 1. Claude Direct (anthropicKey จาก Settings)
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  // 2. Groq (groqKey จาก Settings)
+  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  // 3. Gemini Pro (geminiKey จาก Settings)
+  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  // 4. OpenRouter (openrouterKey จาก Settings)
+  const r3 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  // 5. Claude Worker (ไม่ต้องมี key)
+  const r4 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
+  // 6. Pollinations (ฟรี 100%)
+  const r5 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r5) return r5;
+  return null;
+}
+
+// 🔄 callGemini — key จากแอปก่อนเสมอ: Claude → Groq → Gemini Pro → Gemini Flash → OpenRouter → Claude Worker → Pollinations
+async function callGemini(systemPrompt, userPrompt, maxTokens=800){
+  // 1. Claude Direct (anthropicKey จาก Settings)
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
+  // 2. Groq (groqKey จาก Settings)
+  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r1) return r1;
+  // 3. Gemini Pro (geminiKey จาก Settings)
+  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
+  // 4. Gemini Flash (geminiKey จาก Settings)
+  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  if(r3) return r3;
+  // 5. OpenRouter (openrouterKey จาก Settings)
+  const r4 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
+  if(r4) return r4;
+  // 6. Claude Worker (ไม่ต้องมี key)
+  const r5 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r5) return r5;
+  // 7. Pollinations (ฟรี 100%)
+  const r6 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
+  if(r6) return r6;
   return null;
 }
 function buildFullIndicatorContext(ticker, price){
