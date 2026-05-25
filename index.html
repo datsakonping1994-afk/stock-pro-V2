@@ -3597,9 +3597,8 @@ async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
     });
     clearTimeout(tid);
     const d=await r.json(); // อ่าน body เสมอ ป้องกัน deadlock
-    if(d?.ok && (d?.content?.[0]?.text || d?.text)){
-      return d.content?.[0]?.text || d.text;
-    }
+    const txt2=d?.content?.[0]?.text||d?.text;
+    if(txt2) return txt2;
   }catch(e){console.warn('Claude Worker error:',e.message);}
   return null;
 }
@@ -3755,29 +3754,29 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 // 🔬 Analyze — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const _s=window._aiStatusHook||(()=>{});
-  // 1. Claude Direct (anthropicKey จาก Settings)
-  _s('🤖 Claude กำลังวิเคราะห์...');
-  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  // 1. MY_WORKER (Worker ส่วนตัว — ลำดับแรกเสมอ)
+  _s('🤖 MY Worker กำลังวิเคราะห์...');
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  // 2. Groq (groqKey จาก Settings)
-  _s('⚡ Groq กำลังวิเคราะห์...');
-  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  // 2. Claude Direct (anthropicKey จาก Settings)
+  _s('🤖 Claude กำลังวิเคราะห์...');
+  const r1 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 3. Gemini Pro (geminiKey จาก Settings)
-  _s('✨ Gemini Pro กำลังวิเคราะห์...');
-  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  // 3. Groq (groqKey จาก Settings)
+  _s('⚡ Groq กำลังวิเคราะห์...');
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  // 4. Gemini Flash (geminiKey จาก Settings)
-  _s('⚡ Gemini Flash กำลังวิเคราะห์...');
-  const r3 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
+  // 4. Gemini Pro (geminiKey จาก Settings)
+  _s('✨ Gemini Pro กำลังวิเคราะห์...');
+  const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  // 5. OpenRouter (openrouterKey จาก Settings)
-  _s('🌐 OpenRouter กำลังวิเคราะห์...');
-  const r4 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
+  // 5. Gemini Flash (geminiKey จาก Settings)
+  _s('⚡ Gemini Flash กำลังวิเคราะห์...');
+  const r4 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
-  // 6. Claude Worker (ไม่ต้องมี key)
-  _s('🤖 Claude Worker กำลังวิเคราะห์...');
-  const r5 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  // 6. OpenRouter (openrouterKey จาก Settings)
+  _s('🌐 OpenRouter กำลังวิเคราะห์...');
+  const r5 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
   if(r5) return r5;
   // 7. Pollinations (ฟรี 100%)
   _s('🌐 Pollinations AI กำลังวิเคราะห์...');
@@ -3858,22 +3857,22 @@ async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
 
 // ☀️ Brief — key จากแอปก่อนเสมอ: Claude → Groq → Gemini Pro → OpenRouter → Claude Worker → Pollinations
 async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
-  // 1. Claude Direct (anthropicKey จาก Settings)
-  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  // 1. MY_WORKER (Worker ส่วนตัว)
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
   if(r0) return r0;
-  // 2. Groq (groqKey จาก Settings)
-  const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  // 2. Claude Direct
+  const r1 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 3. Gemini Pro (geminiKey จาก Settings)
-  const r2 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
+  // 3. Groq
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
-  // 4. OpenRouter (openrouterKey จาก Settings)
-  const r3 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
+  // 4. Gemini Pro
+  const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
-  // 5. Claude Worker (ไม่ต้องมี key)
-  const r4 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  // 5. OpenRouter
+  const r4 = await _callOpenRouter(systemPrompt, userPrompt, maxTokens);
   if(r4) return r4;
-  // 6. Pollinations (ฟรี 100%)
+  // 6. Pollinations
   const r5 = await _callPollinationsAI(systemPrompt, userPrompt, maxTokens);
   if(r5) return r5;
   return null;
