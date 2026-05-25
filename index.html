@@ -9118,10 +9118,32 @@ async function runMorningBrief(){
     localStorage.setItem(_MB_KEY,thNow.toDateString());
   }catch{}
 
-  toast('☀️ กำลังสรุป Morning Brief...', 4000);
 
-  // รอให้ราคาโหลดก่อน
-  await new Promise(r=>setTimeout(r,3000));
+
+
+
+
+  toast('☀️ รอราคาหุ้นอัปเดต...', 5000);
+
+  // รอให้ราคาหุ้นในพอร์ตอัปเดตครบก่อน (สูงสุด 60 วินาที)
+  await (async()=>{
+    const portTickers=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]').map(p=>p.t);}catch{return[];}})();
+    if(!portTickers.length) return;
+    const maxWait=60000, step=2000;
+    let waited=0;
+    while(waited<maxWait){
+      const allReady=portTickers.every(t=>{
+        const s=stocks.find(x=>x.t===t);
+        return s && s.p>0 && s.c!==undefined;
+      });
+      if(allReady){ console.log('[Brief] ราคาพร้อมแล้ว รอ',waited,'ms'); break; }
+      await new Promise(r=>setTimeout(r,step));
+      waited+=step;
+    }
+    await new Promise(r=>setTimeout(r,1000));
+  })();
+
+  toast('☀️ กำลังสรุป Morning Brief...', 4000);
 
   // ดึงข้อมูลพอร์ต
   let portfolio=[];
