@@ -1539,6 +1539,7 @@ function _saveAiHistory(){
 // ══════════════════════════════════════════════════════════
 const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
 const ALERT_WORKER='https://stock-alert.datsakonping1994.workers.dev';
+const MY_WORKER='https://my-ai-proxy.datsakonpppp1994.workers.dev';
 
 // ── Sync พอร์ต + alerts + trailing high ขึ้น Worker KV ──
 function syncAlertsToWorker(){
@@ -3565,6 +3566,22 @@ function _getGeminiUrl(key){ return `${WORKER}/api/gemini`; }
 
 // ── Claude AI ผ่าน Worker (เร็ว ปลอดภัย key ไม่โผล่ browser) ──
 async function _callClaude(systemPrompt, userPrompt, maxTokens=800){
+  // ลอง MY_WORKER (Worker ส่วนตัว) ก่อน
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),25000);
+    const r=await fetch(MY_WORKER+'/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system:systemPrompt,messages:[{role:'user',content:userPrompt}],max_tokens:maxTokens}),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    const d=await r.json();
+    const txt=d?.content?.[0]?.text||d?.text;
+    if(txt) return txt;
+  }catch(e){console.warn('MY_WORKER error:',e.message);}
+  // fallback ALERT_WORKER
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),25000);
@@ -8044,7 +8061,12 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 3) ⚠️ หุ้นที่ต้องระวัง: ระบุชื่อชัดๆ ว่าเสี่ยงเรื่องอะไร
 4) 📋 สรุปกลยุทธ์: ประโยคเดียว ชัดเจน actionable
 ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet ห้ามพูดกลางๆ`;
-  return callAI_Analyze('คุณคือนักเทรดมืออาชีพ ตัดสินใจชัดเจนเสมอ ระบุชื่อหุ้นและตัวเลขจริงๆ ไม่พูดว่า "ขึ้นอยู่กับความเสี่ยง" ตอบภาษาไทยชาวบ้านเข้าใจ', prompt, 900);
+  // Timeout รวม 30 วินาที ป้องกันค้าง
+  const _aiResult = await Promise.race([
+    callAI_Analyze('คุณคือนักเทรดมืออาชีพ ตัดสินใจชัดเจนเสมอ ระบุชื่อหุ้นและตัวเลขจริงๆ ไม่พูดว่า "ขึ้นอยู่กับความเสี่ยง" ตอบภาษาไทยชาวบ้านเข้าใจ', prompt, 900),
+    new Promise(r=>setTimeout(()=>r('⚠️ AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'), 30000))
+  ]);
+  return _aiResult;
 }
 
 
