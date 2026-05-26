@@ -4825,7 +4825,20 @@ async function sendTG(msg){
   }catch{ return; }
   if(!enabled) return;
 
-  // ถ้ามี userToken — ส่งผ่าน Worker /signal/send (multi-user mode)
+  // ส่งให้ตัวเอง
+  const _sendOneTG=async(tok,cid,txt)=>{
+    try{
+      const ctrl=new AbortController();
+      setTimeout(()=>ctrl.abort(),8000);
+      await fetch('https://api.telegram.org/bot'+tok+'/sendMessage',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:cid,text:txt,parse_mode:'HTML'}),
+        signal:ctrl.signal
+      });
+    }catch{}
+  };
+
   if(userToken && userToken.startsWith('sp_')){
     try{
       const ctrl=new AbortController();
@@ -4838,24 +4851,21 @@ async function sendTG(msg){
       });
       clearTimeout(tid);
     }catch{}
-    return;
+  } else if(token && chatId){
+    await _sendOneTG(token,chatId,msg);
+    toast('📲 ส่ง Telegram แล้ว');
   }
 
-  // fallback — ส่งตรงผ่าน Bot Token เหมือนเดิม
-  if(!token||!chatId) return;
+  // ส่งให้เพื่อนทุกคนพร้อมกัน (ดึงจาก Worker)
   try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:chatId,text:msg,parse_mode:'HTML'}),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    const d=await r.json();
-    if(d.ok)toast('📲 ส่ง Telegram แล้ว');
-    else toast('❌ '+d.description);
+    const adminKey=localStorage.getItem('adminKey')||'';
+    if(adminKey){
+      const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey));
+      const d=await r.json();
+      if(d.ok && d.users && d.users.length){
+        await Promise.all(d.users.filter(u=>u.tgToken&&u.tgChatId).map(u=>_sendOneTG(u.tgToken,u.tgChatId,msg)));
+      }
+    }
   }catch{}
 }
 
@@ -4879,6 +4889,8 @@ async function registerFriend(){
   const tgToken=document.getElementById('friendTgToken')?.value?.trim();
   const tgChatId=document.getElementById('friendTgChatId')?.value?.trim();
   if(!adminKey||!name||!tgToken||!tgChatId){ toast('❌ กรอกข้อมูลให้ครบ'); return; }
+  // บันทึก adminKey ไว้ใช้ส่งข่าว
+  try{ localStorage.setItem('adminKey', adminKey); }catch{}
   try{
     toast('⏳ กำลังสร้าง Token...');
     const r=await fetch(ALERT_WORKER+'/user/register',{
@@ -9121,8 +9133,8 @@ function _shouldSendMorningBrief(){
   const now=new Date();
   const thTime=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Bangkok'}));
   const h=thTime.getHours(), m=thTime.getMinutes();
-  // ช่วง 07:30–08:30 เวลาไทย
-  const inWindow=(h===7&&m>=30)||(h===8&&m<=30);
+  // ช่วง 03:15–04:15 เวลาไทย (หลังตลาดปิด)
+  const inWindow=(h===3&&m>=15)||(h===4&&m<=15);
   if(!inWindow) return false;
   // FIX: เช็คว่าส่งวันนี้แล้วหรือยัง — ใช้วันที่ไทยเช่นกัน
   const today=thTime.toDateString();
