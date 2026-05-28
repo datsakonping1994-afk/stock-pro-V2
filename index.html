@@ -556,6 +556,14 @@ canvas.bigchart{width:100%;height:100%}
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:0.01ms !important;transition-duration:0.01ms !important}
 }
+
+/* ── AI PICKS PAGE ── */
+.aipick-tab{flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:6px 14px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;transition:all 0.2s;letter-spacing:0.3px}
+.aipick-tab.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.5);color:var(--gold)}
+.aipick-card{background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:16px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.35)}
+.aipick-card:active{transform:scale(0.98)}
+.aipick-score-bar{height:5px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:5px}
+.aipick-score-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
 </style>
 </head>
 <body>
@@ -859,6 +867,8 @@ canvas.bigchart{width:100%;height:100%}
             <div class="settings-label">User Token</div>
             <div class="settings-sublabel">รับจากแอดมิน — ใช้รับ Signal เฉพาะของคุณ</div>
             <input class="settings-input full" id="userToken" type="text" placeholder="sp_xxx...">
+            <button class="settings-btn" style="margin-top:6px;width:100%;background:rgba(0,230,118,0.12);border-color:rgba(0,230,118,0.3);color:var(--green)" onclick="syncPortfolioNow()">☁️ Sync พอร์ตของฉันขึ้น Worker</button>
+            <div id="syncPortStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
           </div>
         </div>
         <div class="settings-row">
@@ -1094,6 +1104,48 @@ canvas.bigchart{width:100%;height:100%}
       </div>
     </div>
   </div>
+
+  <!-- AI PICKS PAGE -->
+  <div class="page" id="page-aipicks">
+    <div style="padding:16px 14px 0">
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">STOCKPRO · AI ENGINE</div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--text);line-height:1.1;margin:0 0 4px">กลายเป็น<br><span style="background:linear-gradient(90deg,var(--gold),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ตำนาน</span></h2>
+        <p style="color:var(--text3);font-size:12px;margin:0">AI คัดหุ้นเด่น · อัปเดตทุกวัน</p>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:16px;padding-bottom:2px">
+        <button class="aipick-tab active" onclick="switchAIPickTab('ai',this)">🤖 AI คัดเลือก</button>
+        <button class="aipick-tab" onclick="switchAIPickTab('value',this)">💎 มูลค่าต่ำกว่าพื้นฐาน</button>
+        <button class="aipick-tab" onclick="switchAIPickTab('growth',this)">🚀 Growth สูง</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="aiPickScanCount">75</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:2px">หุ้นที่สแกน</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--gold)" id="aiPickTopScore">--</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:2px">Top Score</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--green)" id="aiPickAvgUpside">--</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:2px">Avg Upside</div>
+        </div>
+      </div>
+      <button onclick="runAIPicks()" id="aiPicksBtn" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.18),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+        🤖 AI วิเคราะห์และคัดหุ้น
+      </button>
+      <div id="aiPicksAIResult" style="display:none;background:var(--bg2);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.8;font-family:'Inter',sans-serif"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)" id="aiPicksLabel">⭐ หุ้นที่คัดเลือกโดย AI</div>
+        <div style="font-size:10px;color:var(--text3)" id="aiPicksCount"></div>
+      </div>
+      <div id="aiPicksGrid" style="display:flex;flex-direction:column;gap:10px;padding-bottom:100px">
+        <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">⏳ กด "AI วิเคราะห์และคัดหุ้น" เพื่อเริ่ม</div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /content -->
 
 <!-- BOTTOM NAV -->
@@ -1113,6 +1165,10 @@ canvas.bigchart{width:100%;height:100%}
   <div class="nav-item" onclick="navTo('alerts',this)" role="button" aria-label="หน้าสัญญาณ">
     <div class="nav-icon" aria-hidden="true">🔔</div>
     <div class="nav-label">Signals</div>
+  </div>
+  <div class="nav-item" onclick="navTo('aipicks',this)" role="button" aria-label="AI คัดหุ้น">
+    <div class="nav-icon" aria-hidden="true">🤖</div>
+    <div class="nav-label">AI Picks</div>
   </div>
   <div class="nav-item" onclick="navTo('settings',this)" role="button" aria-label="หน้าตั้งค่า">
     <div class="nav-icon" aria-hidden="true">⚙</div>
@@ -1546,22 +1602,34 @@ function syncAlertsToWorker(){
   try{
     const portfolio=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return[];}})();
     const trailingHigh=(()=>{try{return JSON.parse(localStorage.getItem('_sp_trailHigh')||'{}');}catch{return{};}})();
+    const portMapped=portfolio.map(p=>({
+      t:p.ticker||p.t||'',
+      avgPrice:p.avgPrice||p.cost||p.avg||0,
+      shares:p.shares||p.qty||1,
+      earn:p.earn||null
+    })).filter(p=>p.t);
     const body={
-      portfolio: portfolio.map(p=>({
-        t: p.ticker||p.t||'',
-        avgPrice: p.avgPrice||p.cost||p.avg||0,
-        shares: p.shares||p.qty||1,
-        earn: p.earn||null
-      })).filter(p=>p.t),
-      priceAlerts: priceAlerts,
-      trailingHigh: trailingHigh,
-      stocks: stocks.map(s=>({t:s.t,short:s.short||null,earn:s.earn||null}))
+      portfolio:portMapped,
+      priceAlerts:priceAlerts,
+      trailingHigh:trailingHigh,
+      stocks:stocks.map(s=>({t:s.t,short:s.short||null,earn:s.earn||null}))
     };
+    // sync แบบเดิม (owner)
     fetch(ALERT_WORKER+'/sync',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     }).catch(()=>{});
+    // ถ้ามี userToken ให้ sync พอร์ตแยกต่างหาก
+    let userToken='';
+    try{userToken=localStorage.getItem('userToken')||'';}catch{}
+    if(userToken&&userToken.startsWith('sp_')){
+      fetch(ALERT_WORKER+'/portfolio/sync',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userToken,portfolio:portMapped})
+      }).catch(()=>{});
+    }
   }catch{}
 }
 const _GNEWS_KEY='04e902741e046e76b09896b84f17b83b';
@@ -9266,7 +9334,7 @@ if(window._earnCheckInterval) clearInterval(window._earnCheckInterval);
 window._earnCheckInterval = setInterval(()=>{try{checkEarningsAlert();}catch{}}, 1800000);
 setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอนเปิดแอป
 (function(){
-  const PAGES = ['dash','stocks','news','alerts','port','settings'];
+  const PAGES = ['dash','stocks','news','alerts','port','aipicks','settings'];
   let _pgSwipeX=0, _pgSwipeY=0, _pgSwipeTime=0;
   let _currentPageIdx = 0;
 
@@ -9359,6 +9427,187 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
     _goTab(dx < 0 ? 1 : -1);
   }, {passive:true});
 })();
+
+// ── Sync Portfolio ขึ้น Worker ──
+async function syncPortfolioNow(){
+  const statusEl = document.getElementById('syncPortStatus');
+  let userToken = '';
+  try{ userToken = localStorage.getItem('userToken')||''; }catch{}
+
+  // ถ้าไม่มีใน localStorage ลองดูจาก input
+  if(!userToken) userToken = document.getElementById('userToken')?.value?.trim()||'';
+
+  if(!userToken || !userToken.startsWith('sp_')){
+    if(statusEl){ statusEl.style.display='block'; statusEl.style.background='rgba(255,77,106,0.15)'; statusEl.style.color='var(--red)'; statusEl.textContent='❌ กรุณากรอก User Token ที่ขึ้นต้นด้วย sp_ ก่อน'; }
+    return;
+  }
+
+  if(statusEl){ statusEl.style.display='block'; statusEl.style.background='rgba(255,255,255,0.06)'; statusEl.style.color='var(--text2)'; statusEl.textContent='⏳ กำลัง Sync...'; }
+
+  try{
+    const port = (()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return[];}})();
+    const portMapped = port.map(p=>({
+      t:p.ticker||p.t||'',
+      avgPrice:p.avgPrice||p.cost||p.avg||0,
+      shares:p.shares||p.qty||1,
+      earn:p.earn||null
+    })).filter(p=>p.t);
+
+    const r = await fetch(ALERT_WORKER+'/portfolio/sync',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userToken, portfolio:portMapped})
+    });
+    const d = await r.json();
+    if(d.ok){
+      if(statusEl){ statusEl.style.background='rgba(0,230,118,0.12)'; statusEl.style.color='var(--green)'; statusEl.textContent='✅ Sync สำเร็จ! พอร์ตของคุณถูกบันทึกแล้ว ('+portMapped.length+' หุ้น)'; }
+      toast('✅ Sync พอร์ตสำเร็จ!');
+    } else {
+      throw new Error(d.error||'ไม่สำเร็จ');
+    }
+  }catch(e){
+    if(statusEl){ statusEl.style.background='rgba(255,77,106,0.15)'; statusEl.style.color='var(--red)'; statusEl.textContent='❌ Sync ไม่สำเร็จ: '+e.message; }
+  }
+}
+
+// ── AI PICKS ──
+let _aiPickTab = 'ai';
+
+function switchAIPickTab(tab, el){
+  _aiPickTab = tab;
+  document.querySelectorAll('.aipick-tab').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const labels = {ai:'⭐ หุ้นที่คัดเลือกโดย AI', value:'💎 หุ้นมูลค่าต่ำกว่าพื้นฐาน', growth:'🚀 หุ้น Growth สูง'};
+  const el2 = document.getElementById('aiPicksLabel');
+  if(el2) el2.textContent = labels[tab]||'';
+  renderAIPickCards();
+}
+
+function _getAIPickStocks(tab){
+  if(!stocks || !stocks.length) return [];
+  return stocks
+    .filter(s => s.p > 0)
+    .map(s => {
+      const score = calcFundScore(s);
+      const upside = s.target && s.p > 0 ? Math.round((s.target - s.p)/s.p*100) : 0;
+      const rev = parseFloat(s.rev)||0;
+      return {...s, _score:score, _upside:upside, _rev:rev};
+    })
+    .filter(s => {
+      if(tab==='ai') return s._score >= 45;
+      if(tab==='value') return s.pe && s.pe < 25 && s._upside > 10;
+      if(tab==='growth') return s._rev >= 25;
+      return true;
+    })
+    .sort((a,b) => {
+      if(tab==='growth') return b._rev - a._rev;
+      if(tab==='value') return b._upside - a._upside;
+      return b._score - a._score;
+    })
+    .slice(0, 10);
+}
+
+function renderAIPickCards(){
+  const grid = document.getElementById('aiPicksGrid');
+  const countEl = document.getElementById('aiPicksCount');
+  if(!grid) return;
+  const list = _getAIPickStocks(_aiPickTab);
+  if(!list.length){
+    grid.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ไม่พบหุ้นที่ตรงเกณฑ์</div>';
+    return;
+  }
+  if(countEl) countEl.textContent = list.length + ' ตัว';
+  // update stats
+  const topScore = document.getElementById('aiPickTopScore');
+  const avgUpside = document.getElementById('aiPickAvgUpside');
+  if(topScore) topScore.textContent = list[0]?._score || '--';
+  if(avgUpside){
+    const avg = Math.round(list.reduce((s,x)=>s+x._upside,0)/list.length);
+    avgUpside.textContent = avg > 0 ? '+'+avg+'%' : avg+'%';
+  }
+
+  const tagMap = {ai:'🤖 AI Score', value:'💎 มูลค่าต่ำ', growth:'🚀 Growth'};
+  const colors = ['var(--gold)','var(--green)','var(--ice)','var(--red2)','#a78bfa','var(--gold2)','var(--green2)','var(--ice2)','#fb923c','#f472b6'];
+
+  grid.innerHTML = list.map((s,i) => {
+    const color = colors[i % colors.length];
+    const rev = s._rev || 0;
+    const revBar = Math.min(100, Math.max(0, rev + 20));
+    const upsideBar = Math.min(100, Math.max(0, s._upside));
+    const scoreBar = s._score;
+    return `<div class="aipick-card" onclick="openDrawer('${s.t}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color}"></div>
+            <span style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text)">${s.t}</span>
+            <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${tagMap[_aiPickTab]||''}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3)">${s.n}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:${color}">Score ${s._score}</div>
+          ${s._upside > 0 ? `<div style="font-size:11px;color:var(--green);margin-top:2px">▲ Upside +${s._upside}%</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;color:var(--text3)">Fund Score</span>
+            <span style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace">${scoreBar}/100</span>
+          </div>
+          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${scoreBar}%;background:${color}88"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;color:var(--text3)">Revenue Growth</span>
+            <span style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace">${rev >= 0 ? '+' : ''}${rev}%</span>
+          </div>
+          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${revBar}%;background:var(--green)88"></div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">$${s.p}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:1px">ราคา</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
+          <div style="font-size:11px;font-weight:600;color:${s.pe?'var(--text)':'var(--text3)'};font-family:'Manrope',sans-serif">${s.pe||'N/A'}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:1px">P/E</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
+          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">${s.mktcap||'--'}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:1px">Mkt Cap</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function runAIPicks(){
+  const btn = document.getElementById('aiPicksBtn');
+  const resultEl = document.getElementById('aiPicksAIResult');
+  if(btn) btn.textContent = '⏳ กำลังวิเคราะห์...';
+
+  // render cards ก่อนเลย
+  renderAIPickCards();
+
+  // ขอ AI summary
+  if(resultEl){
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '⏳ AI กำลังวิเคราะห์หุ้นเด่น...';
+    const topList = _getAIPickStocks(_aiPickTab).slice(0,5);
+    const summary = topList.map(s=>`${s.t}(Score:${s._score} Rev:${s._rev}% Upside:${s._upside}%)`).join(', ');
+    const prompt = `หุ้นที่ AI คัดเลือกวันนี้: ${summary}\nสรุปทำไมหุ้นเหล่านี้น่าสนใจ และหุ้นตัวไหนเด่นที่สุด ตอบ 3-4 ประโยคภาษาไทย ใช้ emoji`;
+    try{
+      const reply = await callAI_Brief('คุณคือที่ปรึกษาการลงทุน วิเคราะห์หุ้นกระชับตรงประเด็น', prompt, 300);
+      resultEl.innerHTML = reply ? mdToHtml(reply) : '✅ คัดหุ้นเสร็จแล้ว ดูด้านล่างได้เลย';
+    }catch(e){
+      resultEl.innerHTML = '✅ คัดหุ้นเสร็จแล้ว ดูด้านล่างได้เลย';
+    }
+  }
+  if(btn) btn.textContent = '🔄 รีเฟรช AI คัดหุ้น';
+}
 
 </script>
 </body>
