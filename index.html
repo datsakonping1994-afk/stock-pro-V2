@@ -1732,7 +1732,11 @@ function navTo(page, el){
   if(content) content.scrollTop=0;
   // ทำงานหนักใน requestAnimationFrame ถัดไป (หลัง UI repaint)
   requestAnimationFrame(()=>{
-    if(page==='stocks') renderCards();
+    if(page==='stocks'){
+      const content=document.getElementById('content');
+      if(content) content.scrollTop=0;
+      requestAnimationFrame(()=>renderCards());
+    }
     else if(page==='alerts'){buildTickerSelect();renderPriceAlerts();renderAlerts();}
     else if(page==='dash') updateDashboard();
     else if(page==='settings') loadSettings();
@@ -2811,14 +2815,18 @@ function openDrawer(ticker){
       drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
     }
   }
+  // โหลด candles เสมอ ไม่ว่าราคาจะเป็น 0 หรือไม่
   if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
-    // มี cache — refresh ใน background ถ้าเก่าเกิน 30 นาที
     if(Date.now() - candleCache[ticker].ts > 1800000){
       fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
     }
   } else {
-    // ไม่มี cache — โหลดแล้ว re-render เฉพาะถ้ายังอยู่ tech tab
-    fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
+    // timeout 10 วินาที ไม่ให้ค้างนาน
+    const fetchPromise = fetchCandles(ticker, 60);
+    const timeoutPromise = new Promise((_,reject) => setTimeout(()=>reject(new Error('timeout')), 10000));
+    Promise.race([fetchPromise, timeoutPromise])
+      .then(_reRenderTechIfActive)
+      .catch(()=>{ _reRenderTechIfActive(); }); // render แม้ไม่มี candle
   }
 }
 function closeDrawer(){
