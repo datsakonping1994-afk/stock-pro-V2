@@ -6069,6 +6069,7 @@ async function _pollPortfolioLive(){
   finally{ _portPollInFlight=false; }
 }
 
+async function initYahooPrices(){
   if(_yahooLoading) return;
   _yahooLoading=true;
   let loaded=0, failed=0;
