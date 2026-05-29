@@ -6011,6 +6011,7 @@ let _yahooLoading=false;
 // ใช้ /prices/live endpoint → Finnhub direct → bypass KV cache
 // ทำให้พอร์ตอัปเดตเร็วกว่า cron Worker (60 วินาที) มาก
 let _portPollInFlight=false;
+let _pollBatchIdx=0; // สำหรับ rotate batch หุ้นทั้งหมด
 async function _pollPortfolioLive(){
   if(_portPollInFlight||!isLive) return;
   // ดึงเฉพาะตอนตลาดเปิด + pre/after hours
@@ -6022,11 +6023,21 @@ async function _pollPortfolioLive(){
   })();
   if(!isActive) return;
 
-  // รวม tickers จากพอร์ต + watchlist top 5 + SPY/QQQ (max 10)
+  // รวม tickers: พอร์ต + watchlist ก่อน แล้ว rotate หุ้นที่เหลือ
   let portTickers=[];
   try{ portTickers=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]').map(p=>p.t); }catch{}
   const wlTop=[...watchlist].slice(0,3);
-  const allTickers=[...new Set([...portTickers,...wlTop,'SPY','QQQ'])].slice(0,10);
+  const priority=[...new Set([...portTickers,...wlTop,'SPY','QQQ'])];
+
+  // หุ้นที่เหลือ rotate ทีละ 8 ตัว
+  const rest=stocks.map(s=>s.t).filter(t=>!priority.includes(t));
+  const BATCH_SIZE=8;
+  const restBatch=rest.slice(_pollBatchIdx % Math.max(1,rest.length) * 0, 
+    Math.min(rest.length, BATCH_SIZE));
+  // rotate index ครั้งต่อไป
+  _pollBatchIdx=(_pollBatchIdx+BATCH_SIZE)%Math.max(1,rest.length);
+
+  const allTickers=[...new Set([...priority,...restBatch])].slice(0,10);
   if(!allTickers.length) return;
 
   _portPollInFlight=true;
