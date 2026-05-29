@@ -8718,6 +8718,18 @@ function removePortPosition(ticker){
   portfolio = portfolio.filter(p=>p.t!==ticker);
   savePortfolio();
   renderPortfolio();
+  toast('🗑️ ลบ '+ticker+' ออกจากพอร์ตแล้ว');
+}
+
+// ลบหุ้นที่มี shares = 0 ออกอัตโนมัติ
+function cleanZeroShares(){
+  const before = portfolio.length;
+  portfolio = portfolio.filter(p=>p.shares>0);
+  if(portfolio.length < before){
+    savePortfolio();
+    renderPortfolio();
+    toast('🧹 ลบหุ้นที่ขายหมดแล้วออกครับ');
+  }
 }
 
 
@@ -8870,7 +8882,10 @@ function renderPortfolio(){
               <div style="font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:${pnlColor}">${curPrice>0?(isUp?'+':'')+pnlPct.toFixed(2)+'%':'--'}</div>
             </div>
           </div>
-          <button data-sell-ticker="${safeTicker}" class="port-sell-btn" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.3px">💰 ขายหุ้น</button>
+          <div style="display:flex;gap:8px">
+            <button data-sell-ticker="${safeTicker}" class="port-sell-btn" style="flex:1;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.3px">💰 ขายหุ้น</button>
+            <button onclick="if(confirm('ลบ ${safeTicker} ออกจากพอร์ต?')) removePortPosition('${safeTicker}')" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:12px;padding:10px 14px;font-size:16px;cursor:pointer">🗑️</button>
+          </div>
         </div>
       </div>
     </div>`;
