@@ -2798,35 +2798,32 @@ function openDrawer(ticker){
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
   loadLogo(ticker,'drawerLogo',40);
   // render tech tab ครั้งเดียวตอนเปิด
-  _currentChartDays=30; // reset เป็น 1M ทุกครั้งที่เปิด drawer ใหม่
+  _currentChartDays=30;
   drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
   // ดึง analyst data ในพื้นหลัง
   fetchAnalystData(ticker).then(()=>{
     if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
   });
   document.getElementById('drawer').classList.add('open');
-  // FIX: lock body scroll ตอนเปิด Drawer
   document.body.style.overflow='hidden';
-  // snapshot ticker ณ เวลานี้ เพื่อกัน race condition
+
+  // โหลด candles background — ไม่บล็อก drawer เปิด
   var _snapTicker = ticker;
   function _reRenderTechIfActive(){
-    if(currentDrawerTicker === _snapTicker && currentDrawerTab === 'tech'){
+    if(currentDrawerTicker===_snapTicker&&currentDrawerTab==='tech'){
       updateRSIFromCandles(_snapTicker);
       drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
     }
   }
-  // โหลด candles เสมอ ไม่ว่าราคาจะเป็น 0 หรือไม่
-  if(candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock){
-    if(Date.now() - candleCache[ticker].ts > 1800000){
-      fetchCandles(ticker, 60).then(_reRenderTechIfActive).catch(()=>{});
+  if(candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock){
+    if(Date.now()-candleCache[ticker].ts>1800000){
+      fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
     }
   } else {
-    // timeout 10 วินาที ไม่ให้ค้างนาน
-    const fetchPromise = fetchCandles(ticker, 60);
-    const timeoutPromise = new Promise((_,reject) => setTimeout(()=>reject(new Error('timeout')), 10000));
-    Promise.race([fetchPromise, timeoutPromise])
-      .then(_reRenderTechIfActive)
-      .catch(()=>{ _reRenderTechIfActive(); }); // render แม้ไม่มี candle
+    // เปิด drawer ทันที แล้วค่อยโหลด candle ข้างหลัง
+    setTimeout(()=>{
+      fetchCandles(ticker,60).then(_reRenderTechIfActive).catch(()=>{});
+    }, 100);
   }
 }
 function closeDrawer(){
