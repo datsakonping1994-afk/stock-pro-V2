@@ -19,6 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Stock Pro V2">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060810">
+<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
@@ -893,6 +894,36 @@ canvas.bigchart{width:100%;height:100%}
         <div class="settings-row" style="border-bottom:none">
           <div></div>
           <button class="settings-btn" onclick="saveSettings()">💾 บันทึก Keys</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">🔔 Push Notification</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">แจ้งเตือนบนมือถือ</div>
+            <div class="settings-sublabel">แจ้งเตือน Buy Signal, Exit Signal และข่าวสำคัญ</div>
+          </div>
+          <button id="pushToggleBtn" class="settings-btn" onclick="
+            if(Notification.permission==='granted'){
+              _lsDel('push_enabled');
+              this.textContent='เปิดใช้งาน';
+              this.className='settings-btn';
+              toast('🔕 ปิด Push Notification แล้ว');
+            } else {
+              initPushNotification().then(ok=>{
+                if(ok){
+                  this.textContent='✅ เปิดอยู่';
+                  this.className='settings-btn';
+                  this.style.color='var(--green)';
+                  toast('🔔 เปิด Push Notification แล้ว');
+                  showLocalNotification('✅ Stock Pro','Push Notification พร้อมใช้งานแล้วครับ');
+                } else {
+                  toast('❌ ไม่สามารถเปิด Push ได้ — กรุณาอนุญาตใน Settings');
+                }
+              });
+            }
+          ">เปิดใช้งาน</button>
         </div>
       </div>
 
@@ -4581,6 +4612,7 @@ ${exitReason}
 📊 P&L: ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}% | ถือ ${pos.shares} หุ้น${portValue>0?` | สัดส่วนพอร์ต ${portPct.toFixed(0)}%`:''}`;
 
   toast(`🚨 ${ticker} — ${exitReason} | ${sellAction}`, 6000);
+  _sendPushAlert(`🚨 Exit Signal: ${ticker}`, `${exitReason} | ${sellAction} | P&L: ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%`);
   sendTG(tgMsg);
 }
 
@@ -4662,6 +4694,12 @@ function playAlertSound(){
 }
 
 function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong'){
+  // ── Push Notification ──
+  const lvLabel={strong:'🟢 ควรซื้อ',good:'🟡 น่าซื้อ',watch:'🔵 น่าสนใจ'};
+  _sendPushAlert(
+    `${lvLabel[level]||'📈'} ${ticker} — Buy Signal Score ${score}`,
+    `ราคา $${price.toFixed(2)} | แนวรับ S1 $${s1.toFixed(2)}`
+  );
   const levelConfig={
     strong:{emoji:'🟢',label:'ควรซื้อ',color:'rgba(0,200,130,0.3)',border:'rgba(0,200,130,0.5)'},
     good:  {emoji:'🟡',label:'น่าซื้อ', color:'rgba(255,200,0,0.2)', border:'rgba(255,200,0,0.4)'},
@@ -9865,36 +9903,58 @@ function renderAIPickCards(){
   }
 
   const tagMap = {ai:'🤖 AI Score', value:'💎 มูลค่าต่ำ', growth:'🚀 Growth'};
-  const colors = ['var(--gold)','var(--green)','var(--ice)','var(--red2)','#a78bfa','var(--gold2)','var(--green2)','var(--ice2)','#fb923c','#f472b6'];
 
   grid.innerHTML = list.map((s,i) => {
-    const color = colors[i % colors.length];
     const rev = s._rev || 0;
     const revBar = Math.min(100, Math.max(0, rev + 20));
     const upsideBar = Math.min(100, Math.max(0, s._upside));
     const scoreBar = s._score;
+
+    // สีตาม Score
+    const scoreColor = s._score >= 75 ? 'var(--green)' : s._score >= 55 ? 'var(--gold)' : 'var(--red2)';
+    const scoreLabel = s._score >= 75 ? '✅ ดีมาก' : s._score >= 55 ? '⚠️ พอได้' : '❌ ระวัง';
+
+    // Buy Signal จาก S1
+    const s1 = getS1(s.t, s.p);
+    const distS1 = s1 > 0 ? ((s.p - s1)/s1*100).toFixed(1) : null;
+    const buySignal = distS1 !== null ?
+      (parseFloat(distS1) <= 2 ? '🟢 ใกล้แนวรับ น่าซื้อ' :
+       parseFloat(distS1) <= 5 ? '🟡 ใกล้แนวรับ รอก่อน' : '⚪ ยังห่างแนวรับ') : '';
+
+    // เหตุผลสั้นๆ ว่าทำไมถึงติดลิสต์
+    const reasons = [];
+    if(rev >= 25) reasons.push(`รายได้โต ${rev}%`);
+    if(s._upside >= 30) reasons.push(`ราคาถูกกว่าเป้า ${s._upside}%`);
+    if(s.pe && s.pe < 20) reasons.push(`P/E ต่ำ ${s.pe}`);
+    if(s.short && parseFloat(s.short) > 15) reasons.push(`⚠️ Short สูง ${s.short}`);
+    const reasonText = reasons.slice(0,2).join(' · ');
+
     return `<div class="aipick-card" onclick="openDrawer('${s.t}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div>
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color}"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:${scoreColor};box-shadow:0 0 6px ${scoreColor}"></div>
             <span style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text)">${s.t}</span>
             <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${tagMap[_aiPickTab]||''}</span>
           </div>
           <div style="font-size:11px;color:var(--text3)">${s.n}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:${color}">Score ${s._score}</div>
-          ${s._upside > 0 ? `<div style="font-size:11px;color:var(--green);margin-top:2px">▲ Upside +${s._upside}%</div>` : ''}
+          <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:${scoreColor}">Score ${s._score}</div>
+          <div style="font-size:10px;color:${scoreColor};margin-top:1px">${scoreLabel}</div>
         </div>
       </div>
+
+      ${reasonText ? `<div style="font-size:11px;color:var(--ice);margin-bottom:8px;padding:4px 8px;background:rgba(100,200,255,0.06);border-radius:6px;border-left:2px solid var(--ice)">📌 ${reasonText}</div>` : ''}
+      ${buySignal ? `<div style="font-size:11px;margin-bottom:8px">${buySignal}${distS1 ? ` (ห่างแนวรับ ${distS1}%)` : ''}</div>` : ''}
+
       <div style="display:flex;flex-direction:column;gap:8px">
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
             <span style="font-size:10px;color:var(--text3)">Fund Score</span>
             <span style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace">${scoreBar}/100</span>
           </div>
-          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${scoreBar}%;background:${color}88"></div></div>
+          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${scoreBar}%;background:${scoreColor}88"></div></div>
         </div>
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -9917,6 +9977,9 @@ function renderAIPickCards(){
           <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">${s.mktcap||'--'}</div>
           <div style="font-size:9px;color:var(--text3);margin-top:1px">Mkt Cap</div>
         </div>
+      </div>
+      <div style="margin-top:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:10px;color:var(--text3)">
+        ⚡ Score สูง ≠ ซื้อได้เลย — กดดูกราฟและ Buy Signal ประกอบก่อนตัดสินใจ
       </div>
     </div>`;
   }).join('');
@@ -9946,6 +10009,86 @@ async function runAIPicks(){
   }
   if(btn) btn.textContent = '🔄 รีเฟรช AI คัดหุ้น';
 }
+
+// ── Push Notification Setup ──
+let _swReg = null;
+
+async function initPushNotification(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    console.log('Push not supported');
+    return false;
+  }
+  try{
+    // ลงทะเบียน Service Worker
+    _swReg = await navigator.serviceWorker.register('/sw.js');
+    console.log('SW registered ✅');
+
+    // เช็ค permission
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted'){
+      console.log('Push permission denied');
+      return false;
+    }
+    console.log('Push permission granted ✅');
+    _lsSet('push_enabled','1');
+    return true;
+  }catch(e){
+    console.error('Push init error:', e);
+    return false;
+  }
+}
+
+// ── แสดง Push Notification ในเครื่อง (local) ──
+async function showLocalNotification(title, body, options={}){
+  if(!_swReg){
+    try{ _swReg = await navigator.serviceWorker.ready; }catch{ return; }
+  }
+  try{
+    await _swReg.showNotification(title, {
+      body,
+      icon: 'https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png',
+      badge: 'https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png',
+      tag: options.tag || 'stockpro-alert',
+      renotify: true,
+      ...options
+    });
+  }catch(e){
+    // fallback: Notification API ตรง
+    try{ new Notification(title, {body, icon:'https://raw.githubusercontent.com/datsakonping1994-afk/stockpro/main/icon.png'}); }catch{}
+  }
+}
+
+// ── เรียกใช้ Push ใน toast แทน (เสริม) ──
+const _origToast = window.toast;
+window.toast = function(msg, dur=3000){
+  if(_origToast) _origToast(msg, dur);
+  // ถ้าแอปอยู่ background ส่ง push
+  if(document.visibilityState === 'hidden' && _lsGet('push_enabled')==='1'){
+    showLocalNotification('📈 Stock Pro Alert', msg.replace(/<[^>]*>/g,''));
+  }
+};
+
+// ── Hook Buy Signal + Exit Signal → Push ──
+const _origSendTGLocal = window._sendBuyAlertLocal;
+function _sendPushAlert(title, body){
+  if(_lsGet('push_enabled')==='1'){
+    showLocalNotification(title, body, {tag: 'signal-'+Date.now(), requireInteraction: true});
+  }
+}
+
+// init เมื่อโหลดแอป
+window.addEventListener('load', ()=>{
+  setTimeout(async ()=>{
+    if('serviceWorker' in navigator){
+      try{
+        _swReg = await navigator.serviceWorker.register('/sw.js');
+        if(Notification.permission === 'granted'){
+          _lsSet('push_enabled','1');
+        }
+      }catch{}
+    }
+  }, 2000);
+});
 
 </script>
 </body>
