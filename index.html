@@ -2892,9 +2892,9 @@ function updateDashboard(){
   // Portfolio stats
   const stats=getTradeStats();
   document.getElementById('portSize').textContent=PORT_SIZE.toLocaleString();
-  document.getElementById('dashWinRate').textContent=stats?stats.winRate+'%':'--';
-  document.getElementById('dashSignals').textContent=stats?stats.total+'x':'--';
-  document.getElementById('dashAvgPct').textContent=stats?(stats.avgPct>=0?'+':'')+stats.avgPct+'%':'--';
+  document.getElementById('dashWinRate').textContent=stats&&stats.total>0?stats.winRate+'%':'--';
+  document.getElementById('dashSignals').textContent=stats?stats.total+'x'+(stats.pending>0?` (${stats.pending} รอ)`:''):'--';
+  document.getElementById('dashAvgPct').textContent=stats&&stats.total>0?(stats.avgPct>=0?'+':'')+stats.avgPct+'%':'--';
   // Top movers
   const movers=[...stocks].sort((a,b)=>Math.abs(b.c)-Math.abs(a.c)).slice(0,5);
   const topMoversEl=document.getElementById('topMovers');
@@ -4333,25 +4333,50 @@ function updateTradeResults(){
   const log=_loadTradeLog();let changed=false;
   const now=Date.now();
   log.forEach(t=>{
-    if(t.result!==null)return;
+    if(t.result!==null) return;
     const age=(now-new Date(t.time).getTime())/86400000;
-    if(age<1)return;
+    if(age<1) return;
     const s=stocksMap.get(t.ticker);
-    if(!s||s.p<=0)return;
-    t.result=s.p>t.price?'win':'loss';
-    t.exitPrice=s.p;
-    t.pct=+((s.p-t.price)/t.price*100).toFixed(2);
-    changed=true;
+    if(!s||s.p<=0) return;
+
+    const curPrice = s.p;
+    const entryPrice = t.price;
+    const s1 = t.s1 || getS1(t.ticker, entryPrice);
+    const r1 = t.r1 || getR1(t.ticker, entryPrice);
+
+    // Win: ราคาถึง R1 (เป้าหมาย) หรือกำไร >= 3%
+    // Loss: ราคาต่ำกว่า S1 (Stop Loss) หรือขาดทุน >= 5%
+    // Pending: ยังอยู่ระหว่าง S1-R1 และไม่เกิน 10 วัน
+    const pct = (curPrice - entryPrice) / entryPrice * 100;
+
+    if(curPrice >= r1 || pct >= 3){
+      // ราคาถึงเป้าหมาย = Win
+      t.result = 'win';
+    } else if(curPrice <= s1 || pct <= -5){
+      // ราคาต่ำกว่า Stop Loss = Loss
+      t.result = 'loss';
+    } else if(age >= 10){
+      // ถือมา 10 วันแล้วยังไม่ถึงเป้า — ตัดสินจากราคาปัจจุบัน
+      t.result = pct >= 0 ? 'win' : 'loss';
+    } else {
+      return; // ยังรอผลอยู่
+    }
+
+    t.exitPrice = curPrice;
+    t.pct = +pct.toFixed(2);
+    changed = true;
   });
-  if(changed)_saveTradeLog(log);
+  if(changed) _saveTradeLog(log);
 }
 
 function getTradeStats(){
-  const log=_loadTradeLog().filter(t=>t.result!==null&&t.pct!=null);
-  if(!log.length)return null;
+  const all=_loadTradeLog();
+  const log=all.filter(t=>t.result!==null&&t.pct!=null);
+  const pending=all.filter(t=>t.result===null).length;
+  if(!log.length) return pending>0?{total:0,wins:0,losses:0,winRate:0,avgPct:0,pending}:null;
   const wins=log.filter(t=>t.result==='win').length;
   const avgPct=log.reduce((a,t)=>a+(t.pct||0),0)/log.length;
-  return{total:log.length,wins,losses:log.length-wins,winRate:+(wins/log.length*100).toFixed(1),avgPct:+avgPct.toFixed(2)};
+  return{total:log.length,wins,losses:log.length-wins,winRate:+(wins/log.length*100).toFixed(1),avgPct:+avgPct.toFixed(2),pending};
 }
 
 // ── ดึง Score History จาก Worker KV ──
