@@ -5123,7 +5123,7 @@ function loadSettings(){
     if(utEl) utEl.value=localStorage.getItem('userToken')||'';
     if(localStorage.getItem('tgEnabled')==='true') document.getElementById('tgToggle').classList.add('on');
     // โหลด Finnhub key
-    const fk=localStorage.getItem('finnhubKey')||'';
+    const fk=localStorage.getItem('finnhubKey')||FINNHUB_KEY||'';
     const fkEl=document.getElementById('finnhubKeyInput');
     if(fkEl) fkEl.value=fk;
     // โหลด Gemini key
@@ -5146,7 +5146,7 @@ function loadSettings(){
     const orkEl=document.getElementById('openrouterKeyInput');
     if(orkEl) orkEl.value=ork;
     // โหลด Polygon key
-    const pk=localStorage.getItem('polygonKey')||'';
+    const pk=localStorage.getItem('polygonKey')||POLYGON_KEY||'';
     const pkEl=document.getElementById('polygonKeyInput');
     if(pkEl) pkEl.value=pk;
     // โหลด Cohere key
@@ -6582,7 +6582,7 @@ async function testPolygonKey(){
   const btn=document.getElementById('testPolygonBtn');
   const statusEl=document.getElementById('polygonKeyStatus');
   if(!statusEl) return;
-  const key=document.getElementById('polygonKeyInput')?.value?.trim()||'';
+  const key=document.getElementById('polygonKeyInput')?.value?.trim()||POLYGON_KEY||'';
   if(!key){
     statusEl.style.display='block';
     statusEl.style.background='rgba(255,215,0,0.1)';
