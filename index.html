@@ -1438,8 +1438,9 @@ let stocks=(()=>{
         const merged=arr.map(s=>{
           const def=defMap[s.t];
           if(!def) return s;
-          // อัปเดต metadata แต่คง price/change จาก saved ถ้าไม่เป็น 0
-          return {...def, p:s.p>0?s.p:def.p, c:s.c!==undefined?s.c:def.c};
+          // Reset ราคาถ้าห่างจาก default มากเกินไป (>80%) = ราคาเก่าผิดพลาด
+          const priceOk = s.p>0 && def.p>0 && Math.abs(s.p-def.p)/def.p <= 0.8;
+          return {...def, p:priceOk?s.p:def.p, c:priceOk?s.c:0};
         });
         STOCKS_DEFAULT.forEach(d=>{
           if(!savedTickers.has(d.t)) merged.push(JSON.parse(JSON.stringify(d)));
@@ -1567,7 +1568,7 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:60.00,AAOI:25.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:17.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00,ELF:28.00,AMSC:18.00,APP:280.0,COST:920.0,UNH:260.0,"BRK.B":420.0,FPS:38.00,NOK:4.00,DELL:105.0,ONDS:3.00,OSS:7.00,AEHR:10.00,SNDK:42.00,AVAV:165.0,STX:82.00,VST:120.0,AMBA:55.00};
+const sup0={SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:60.00,AAOI:25.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:18.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00,ELF:28.00,AMSC:18.00,APP:280.0,COST:920.0,UNH:260.0,"BRK.B":420.0,FPS:38.00,NOK:4.00,DELL:105.0,ONDS:3.00,OSS:7.00,AEHR:10.00,SNDK:42.00,AVAV:165.0,STX:82.00,VST:120.0,AMBA:55.00};
 
 const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX','AAOI'],
@@ -8900,7 +8901,7 @@ let portfolio = (()=>{
   try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) return JSON.parse(ss); }catch{}
   try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
   return [];
-})();
+})().filter(p => p.t !== 'BRK.B' || p.shares > 0); // ลบ BRK.B ที่ไม่มีหุ้นออก
 
 function savePortfolio(){
   const data = JSON.stringify(portfolio);

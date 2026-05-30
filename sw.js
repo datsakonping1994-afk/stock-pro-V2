@@ -41,15 +41,15 @@ self.addEventListener('push', e => {
 // ── Notification Click ──
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = e.notification.data?.url || '/';
+  const url = e.notification.data?.url || '/stock-pro-V2/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
+        if (client.url.includes('stock-pro-V2') && 'focus' in client) {
           return client.focus();
         }
       }
-      if (clients.openWindow) return clients.openWindow(url);
+      if (clients.openWindow) return clients.openWindow('/stock-pro-V2/');
     })
   );
 });
