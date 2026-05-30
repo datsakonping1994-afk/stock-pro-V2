@@ -9166,9 +9166,8 @@ window._doSellCustom = function(ticker){
 // ── _updatePortfolioRow — อัปเดต P&L ใน portfolio row แบบ in-place ──
 // เรียกทุกครั้งที่ราคาเปลี่ยน ไม่ต้อง re-render ทั้งหน้า
 function _updatePortfolioRow(ticker, price, changePct){
-  // หา position ในพอร์ต
-  let pos=null;
-  try{ const port=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); pos=port.find(p=>p.t===ticker); }catch{}
+  // ใช้ portfolio array ใน memory แทน localStorage
+  const pos = portfolio.find(p=>p.t===ticker);
   if(!pos||!pos.avgPrice||!pos.shares) return;
 
   const cost=pos.avgPrice*pos.shares;
@@ -9227,8 +9226,7 @@ function _updatePortfolioRow(ticker, price, changePct){
 
 // ── อัปเดต summary totals ด้านล่างพอร์ต ──
 function _updatePortfolioSummary(){
-  let port=[];
-  try{ port=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+  const port = portfolio; // ใช้ memory แทน localStorage
   if(!port.length) return;
   let totalCost=0,totalVal=0;
   for(const pos of port){
