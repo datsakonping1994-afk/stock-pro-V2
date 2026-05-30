@@ -1414,6 +1414,31 @@ let stocks=(()=>{
 
 function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
+  _rebuildStocksMap();
+}
+
+// ── stocksMap: O(1) lookup แทน stocks.find() ──
+let stocksMap = new Map();
+function _rebuildStocksMap(){
+  stocksMap.clear();
+  stocks.forEach(s => stocksMap.set(s.t, s));
+}
+_rebuildStocksMap();
+
+// ── localStorage cache: ลด disk reads ──
+const _lsCache = {};
+function _lsGet(key){
+  if(key in _lsCache) return _lsCache[key];
+  try{ _lsCache[key] = localStorage.getItem(key); }catch{ _lsCache[key] = null; }
+  return _lsCache[key];
+}
+function _lsSet(key, val){
+  _lsCache[key] = val;
+  try{ localStorage.setItem(key, val); }catch{}
+}
+function _lsDel(key){
+  delete _lsCache[key];
+  try{ localStorage.removeItem(key); }catch{}
 }
 
 const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0,NOK:45.0,DELL:48.0,ONDS:42.0,EOSE:38.0,SLNH:44.0,NVTS:41.0,IREN:46.0,KTOS:54.0,RBRK:51.0,HOOD:58.0,TEM:49.0,CRDO:56.0,ANET:53.0,VRT:57.0,SOFI:46.0,SPGI:52.0,MP:40.0,ELF:43.0,AMSC:48.0,APP:62.0,COST:55.0,UNH:38.0,NBIS:44.0,TMDX:47.0,CRWV:52.0,MELI:54.0,WMT:56.0,FPS:45.0,OSS:40.0,AEHR:36.0,SNDK:49.0,AVAV:55.0,STX:51.0,VST:58.0,AMBA:46.0};
@@ -1839,7 +1864,7 @@ function addPriceAlert(){
   // ตรวจซ้ำ
   const dup=priceAlerts.find(a=>a.ticker===ticker&&a.dir===dir&&a.price===price&&!a.triggered);
   if(dup){toast('มี alert นี้อยู่แล้ว');return;}
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   priceAlerts.push({ticker,price,dir,triggered:false,addedAt:Date.now(),currentAtAdd:s?.p||0});
   savePriceAlerts();
   document.getElementById('paPriceInput').value='';
@@ -1865,7 +1890,7 @@ function renderPriceAlerts(){
     return;
   }
   const renderRow=(a,i)=>{
-    const s=stocks.find(x=>x.t===a.ticker);
+    const s=stocksMap.get(a.ticker);
     const cur=s?.p||a.currentAtAdd||0;
     const target=a.price;
     const isAbove=a.dir==='above';
@@ -1968,7 +1993,7 @@ function addAlertFromDrawer(){
   if(!price||price<=0){toast('⚠️ ใส่ราคาเป้าหมาย');return;}
   const dup=priceAlerts.find(a=>a.ticker===ticker&&a.dir===dir&&a.price===price&&!a.triggered);
   if(dup){toast('มี alert นี้อยู่แล้ว');return;}
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   priceAlerts.push({ticker,price,dir,triggered:false,addedAt:Date.now(),currentAtAdd:s?.p||0});
   savePriceAlerts();
   document.getElementById('drawerAlertPrice').value='';
@@ -2787,7 +2812,7 @@ function updateDashboard(){
   if(breadthPct) breadthPct.textContent=bullPct+'%';
 
   // VIX
-  const vixStock=stocks.find(s=>s.t==='VIX');
+  const vixStock=stocksMap.get('VIX');
   const vixEl=document.getElementById('vixVal');
   if(vixEl&&vixStock&&vixStock.p>0){
     vixEl.textContent=vixStock.p.toFixed(1);
@@ -2847,7 +2872,7 @@ function openDrawer(ticker){
   // ปิด modal ทั้งหมดก่อนเปิด drawer
   ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   currentDrawerTicker=ticker;
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   if(!s)return;
   document.getElementById('drawerTicker').textContent=s.t;
   document.getElementById('drawerName').textContent=s.n;
@@ -3047,7 +3072,7 @@ async function fetchAnalystData(ticker){
         const holdPct = Math.round((latest.hold||0)/total*100);
         const sellPct = Math.round(((latest.sell||0)+(latest.strongSell||0))/total*100);
         const consensus = buyPct>=50?'Buy':sellPct>=40?'Sell':'Hold';
-        const s = stocks.find(x=>x.t===ticker);
+        const s = stocksMap.get(ticker);
         if(s){
           s.analystBuy = buyPct;
           s.analystHold = holdPct;
@@ -3058,7 +3083,7 @@ async function fetchAnalystData(ticker){
       }
     }
     // ดึง basic financials — Finnhub ก่อน ถ้าไม่ได้ fallback Polygon
-    const s = stocks.find(x=>x.t===ticker);
+    const s = stocksMap.get(ticker);
     let metricOk=false;
     try{
       const metricRes = await safeFetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`,{},1);
@@ -3141,7 +3166,7 @@ async function fetchAnalystData(ticker){
           .sort((a,b)=>new Date(b.transactionDate)-new Date(a.transactionDate))
           .slice(0,5);
         if(sorted.length>0){
-          const s2=stocks.find(x=>x.t===ticker);
+          const s2=stocksMap.get(ticker);
           if(s2) s2.insiderLive=sorted
             .filter(t=>Math.abs(t.share)<=100000000&&(t.transactionPrice||0)<=100000) // กรอง outlier
             .map(t=>({
@@ -3189,7 +3214,7 @@ function triggerFundAI(ticker){
 function renderInsider(ticker, containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   const data=s?.insiderLive||insiderData[ticker];
   const isLive=!!s?.insiderLive;
   if(!data||!data.length){
@@ -3225,7 +3250,7 @@ function renderPeerComparison(ticker, containerId){
   if(!el) return;
   const peers=peerGroups[ticker]||[];
   const tickers=[ticker,...peers.slice(0,3)];
-  const peerStocks=tickers.map(t=>stocks.find(s=>s.t===t)).filter(Boolean);
+  const peerStocks=tickers.map(t=>stocksMap.get(t)).filter(Boolean);
   if(peerStocks.length<2){
     el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">ไม่พบ Peer</div>';
     return;
@@ -3275,7 +3300,7 @@ function drawerTab(tab, btn){
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   currentDrawerTab = tab;
-  const s=stocks.find(x=>x.t===currentDrawerTicker);
+  const s=stocksMap.get(currentDrawerTicker);
   if(!s)return;
   const body=document.getElementById('drawerBody');
   const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
@@ -3660,7 +3685,7 @@ function drawerTab(tab, btn){
     }
     // Peer data
     const peers=(peerGroups[s.t]||[]).slice(0,3);
-    const peerStocksData=peers.map(t=>stocks.find(x=>x.t===t)).filter(Boolean);
+    const peerStocksData=peers.map(t=>stocksMap.get(t)).filter(Boolean);
     const peerSummary=peerStocksData.length
       ? peerStocksData.map(p=>`${p.t}(PE:${p.pe||'N/A'} RevG:${p.rev||'N/A'} MCap:${p.mktcap||'N/A'})`).join(', ')
       : 'N/A';
@@ -4069,7 +4094,7 @@ async function callGemini(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 function buildFullIndicatorContext(ticker, price){
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   if(!s) return '';
   const s1=getS1(ticker,price), r1=getR1(ticker,price);
   const ind = candleCache[ticker]?.data && !candleCache[ticker]?.data?._mock
@@ -4159,7 +4184,7 @@ async function sendAI(ticker){
   const sendBtn=input?.nextElementSibling;
   if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.5';}
   input.value='';
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   if(!aiHistory[ticker])aiHistory[ticker]=[];
   aiHistory[ticker].push({role:'user',content:msg});
   _saveAiHistory();
@@ -4256,7 +4281,7 @@ function updateTradeResults(){
     if(t.result!==null)return;
     const age=(now-new Date(t.time).getTime())/86400000;
     if(age<1)return;
-    const s=stocks.find(x=>x.t===t.ticker);
+    const s=stocksMap.get(t.ticker);
     if(!s||s.p<=0)return;
     t.result=s.p>t.price?'win':'loss';
     t.exitPrice=s.p;
@@ -4450,7 +4475,7 @@ function _saveTrailingHigh(){
 }
 
 async function checkExitSignal(ticker, price){
-  const s = stocks.find(x=>x.t===ticker);
+  const s = stocksMap.get(ticker);
   if(!s||price<=0) return;
   const r1 = getR1(ticker, price);
   const r2 = getR2(ticker, price);
@@ -4479,7 +4504,7 @@ async function checkExitSignal(ticker, price){
   let portValue = 0;
   try{
     portfolio.forEach(p=>{
-      const st=stocks.find(x=>x.t===p.t);
+      const st=stocksMap.get(p.t);
       if(st&&st.p>0&&p.shares) portValue += st.p * p.shares;
     });
   }catch{}
@@ -4568,7 +4593,7 @@ function checkEarningsAlert(){
   if(!portfolio.length) return;
 
   portfolio.forEach(pos=>{
-    const s = stocks.find(x=>x.t===pos.t);
+    const s = stocksMap.get(pos.t);
     if(!s||!s.earn) return;
     const daysLeft = _getEarningsDaysLeft(s.earn);
     if(daysLeft===null) return;
@@ -4644,7 +4669,7 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong
     watch: {emoji:'🔵',label:'น่าสนใจ',color:'rgba(100,200,255,0.15)',border:'rgba(100,200,255,0.3)'},
   };
   const lv=levelConfig[level]||levelConfig.strong;
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   const r1=getR1(ticker,price);
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
@@ -4842,7 +4867,7 @@ async function _analyzeRiskReward(ticker,price,s1,r1,score){
 
   const s2=getS2(ticker,price);
   const r2=getR2(ticker,price);
-  const s=stocks.find(x=>x.t===ticker)||{};
+  const s=stocksMap.get(ticker)||{};
   const ind=candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock
     ?_calcBuyScore(ticker,price,s1,r1):null;
 
@@ -5480,7 +5505,7 @@ async function addStock(){
   const raw=document.getElementById('addTickerInput')?.value?.trim().toUpperCase();
   const t=(raw||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   if(!t){toast('⚠️ ใส่ ticker');return;}
-  if(stocks.find(x=>x.t===t)){toast('มี '+t+' อยู่แล้ว');return;}
+  if(stocksMap.get(t)){toast('มี '+t+' อยู่แล้ว');return;}
 
   toast('⏳ กำลังดึงข้อมูล '+t+'...');
 
@@ -5507,7 +5532,7 @@ async function addStock(){
     console.warn('[addStock] Finnhub error:', e.message);
   }
 
-  stocks.push({t, n:name, p:0, c:0, pe, mktcap, rev:'N/A', earn, div, beta, short:null, target});
+  stocks.push({t, n:name, p:0, c:0, pe, mktcap, rev:'N/A', earn, div, beta, short:null, target}); _rebuildStocksMap();
   document.getElementById('addTickerInput').value='';
   toast('✅ เพิ่ม '+t+' แล้ว'+(name!==t ? ' ('+name+')' : ''));
   saveStocks();
@@ -5519,7 +5544,7 @@ async function addStock(){
 function removeStock(t){
   const idx=stocks.findIndex(x=>x.t===t);
   if(idx===-1) return;
-  stocks.splice(idx,1);
+  stocks.splice(idx,1); _rebuildStocksMap();
   toast('🗑 ลบ '+t+' แล้ว');
   saveStocks();
   renderCards();
@@ -5630,7 +5655,7 @@ async function wsConnect() {
       const d = JSON.parse(e.data);
       if (d.type === 'trade' && d.data) {
         d.data.forEach(tick => {
-          const s = stocks.find(x => x.t === tick.s);
+          const s = stocksMap.get(tick.s);
           if (s && tick.p > 0) {
             s.p = tick.p;
             // คำนวณ % เฉพาะเมื่อมี prevClose จริงๆ จาก Finnhub httpPoll
@@ -5690,7 +5715,7 @@ async function httpPoll(){
             else if(!s.prevClose) s.prevClose=d.c;
             liveCache[s.t]=Date.now();
             updateCardLive(s);
-            try{ localStorage.setItem('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
+            try{ _lsSet('_sp_px_'+s.t, JSON.stringify({p:s.p,c:s.c,t:Date.now()})); }catch{}
           }
         }catch{}
       }));
@@ -6525,7 +6550,7 @@ async function _switchTF(btn, days){
     const containerId='lwChartContainer';
     const container=document.getElementById(containerId);
     if(container&&chartData?.c&&typeof LightweightCharts!=='undefined'){
-      const s=stocks.find(x=>x.t===ticker);
+      const s=stocksMap.get(ticker);
       const allPrices=chartData.c;
       const allTs=chartData.t||null;
       const prices=allPrices.slice(-days);
@@ -6848,7 +6873,7 @@ async function fetchCandles(ticker, days=60){
   }catch(e){}
   finally{ _candleFetching.delete(cacheKey); }
   // Fallback: mock data
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   if(s&&s.p>0){
     const data=_genMockCandles(ticker,s.p,days);
     if(data){
@@ -7539,7 +7564,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   }
 
   // ── หักคะแนนถ้าหุ้นขึ้นมาเยอะวันนี้ ──
-  const _stk=stocks.find(x=>x.t===ticker);
+  const _stk=stocksMap.get(ticker);
   const todayChg=_stk?parseFloat(_stk.c||0):0;
   if(todayChg>=10){
     total=Math.round(total*0.70);
@@ -7871,7 +7896,7 @@ async function analyzeNewsWithAI(ticker){
 
   // รวบรวมข่าว
   const newsContext=newsItems.slice(0,5).map((n,i)=>`${i+1}. ${n.h||n.title||''}`).join('\n');
-  const curPrice=stocks.find(s=>s.t===ticker)?.p||0;
+  const curPrice=stocksMap.get(ticker)?.p||0;
 
   const sys='คุณคือนักวิเคราะห์หุ้นมืออาชีพ วิเคราะห์ข่าวและบอกผลกระทบต่อราคาหุ้น ตอบภาษาไทยกระชับ ห้ามใช้ ** # หรือ Markdown ใช้แค่ emoji และข้อความธรรมดา';
   const prompt=`หุ้น: ${ticker} ราคาปัจจุบัน $${curPrice.toFixed(2)}
@@ -8061,7 +8086,7 @@ async function fetchAndRenderEarnings(){
             const isPast=dt<now;
             const diffDays=(dt-now)/86400000;
             const st=isPast?'done':diffDays<=7?'soon':'future';
-            const s=stocks.find(x=>x.t===e.symbol);
+            const s=stocksMap.get(e.symbol);
             return{
               t:e.symbol,
               n:s?.n||e.symbol,
@@ -8812,14 +8837,14 @@ async function analyzePortfolioAI(){
     if(!port.length){ resultEl.innerHTML='⚠️ ยังไม่มีหุ้นในพอร์ต'; return; }
 
     const holdings=port.map(p=>{
-      const s=stocks.find(x=>x.t===p.t);
+      const s=stocksMap.get(p.t);
       const cur=s?.p||0;
       const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
       return `${p.t}: ${p.shares}หุ้น เข้าที่$${p.avgPrice} ปัจจุบัน$${cur} (${pnl}%)`;
     }).join('\n');
 
     const totalVal=port.reduce((s,p)=>{
-      const cur=stocks.find(x=>x.t===p.t)?.p||0;
+      const cur=stocksMap.get(p.t)?.p||0;
       return s+cur*p.shares;
     },0);
     const cashPct=_portCash>0?((_portCash/(totalVal+_portCash))*100).toFixed(1):0;
@@ -8864,12 +8889,12 @@ function addPortPosition(){
   } else {
     portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
     // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
-    if(!stocks.find(s=>s.t===ticker)){
-      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
+    if(!stocksMap.get(ticker)){
+      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null}); _rebuildStocksMap();
       // ดึงราคาทันที
       fetchSingleQuoteFast({t:ticker}).then(q=>{
         if(q&&q.p>0){
-          const s=stocks.find(x=>x.t===ticker);
+          const s=stocksMap.get(ticker);
           if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
         }
       }).catch(()=>{});
@@ -8938,7 +8963,7 @@ window._doSell = function(ticker, qty){
   const sell = Math.min(+qty.toFixed(4), pos.shares);
   if(sell<=0) return;
   // คำนวณมูลค่าที่ขาย
-  const curPrice = stocks.find(x=>x.t===ticker)?.p || pos.avgPrice;
+  const curPrice = stocksMap.get(ticker)?.p || pos.avgPrice;
   const saleValue = +(sell * curPrice).toFixed(2);
   // เพิ่มเงินเข้า Cash
   _portCash = +(_portCash + saleValue).toFixed(2);
@@ -9031,7 +9056,7 @@ function _updatePortfolioSummary(){
   if(!port.length) return;
   let totalCost=0,totalVal=0;
   for(const pos of port){
-    const s=stocks.find(x=>x.t===pos.t);
+    const s=stocksMap.get(pos.t);
     const p=s?.p||0;
     if(p>0&&pos.avgPrice&&pos.shares){
       totalCost+=pos.avgPrice*pos.shares;
@@ -9067,13 +9092,13 @@ function renderPortfolio(){
   let html='';
   // เรียงตามมูลค่าจากมากไปน้อย
   const sortedPortfolio = [...portfolio].sort((a,b)=>{
-    const sA=stocks.find(s=>s.t===a.t); const sB=stocks.find(s=>s.t===b.t);
+    const sA=stocksMap.get(a.t); const sB=stocksMap.get(b.t);
     return ((sB?.p||0)*b.shares) - ((sA?.p||0)*a.shares);
   });
   sortedPortfolio.forEach(pos=>{
-    const stockData = stocks.find(s=>s.t===pos.t);
+    const stockData = stocksMap.get(pos.t);
     // ถ้าไม่อยู่ใน stocks array ให้ดึงราคาจาก liveCache
-    const curPrice = stockData?.p || (liveCache[pos.t] ? (stocks.find(s=>s.t===pos.t)?.p||0) : 0) || pos.lastPrice || 0;
+    const curPrice = stockData?.p || (liveCache[pos.t] ? (stocksMap.get(pos.t)?.p||0) : 0) || pos.lastPrice || 0;
     const cost = pos.avgPrice * pos.shares;
     const val = curPrice * pos.shares;
     const pnl = val - cost;
@@ -9150,7 +9175,7 @@ function renderPortfolio(){
   list.innerHTML=html;
   // โหลดโลโก้และคำนวณ weight หลัง render
   sortedPortfolio.forEach(pos=>{
-    const stockData=stocks.find(s=>s.t===pos.t);
+    const stockData=stocksMap.get(pos.t);
     const curPrice=stockData?.p||0;
     const val=curPrice*pos.shares;
     const wPct=totalVal>0?(val/totalVal*100).toFixed(1)+'%':'--';
@@ -9268,12 +9293,12 @@ async function checkBuySignalFull(ticker,price){
 const _buyAlerted=new Set();
 function _isBuyAlerted(ticker){
   const key='buy_alerted_'+ticker;
-  const last=parseInt(localStorage.getItem(key)||'0');
+  const last=parseInt(_lsGet(key)||'0');
   return Date.now()-last < BUY_SIGNAL_COOLDOWN;
 }
 function _setBuyAlerted(ticker){
   const key='buy_alerted_'+ticker;
-  localStorage.setItem(key, Date.now().toString());
+  _lsSet(key, Date.now().toString());
   _buyAlerted.add(ticker);
   setTimeout(()=>{ _buyAlerted.delete(ticker); }, BUY_SIGNAL_COOLDOWN);
 }
@@ -9287,6 +9312,26 @@ function _triggerFlash(el, dir){
   void el.offsetWidth; // force reflow
   el.classList.add(dir==='up'?'price-flash-up':'price-flash-dn');
   setTimeout(()=>{ try{ el.classList.remove('price-flash-up','price-flash-dn'); }catch{} }, 800);
+}
+
+// ── throttle queue สำหรับ signal checks ──
+const _signalQueue=new Set();
+let _signalQueueTimer=null;
+function _queueSignalCheck(ticker){
+  _signalQueue.add(ticker);
+  if(!_signalQueueTimer){
+    _signalQueueTimer=setTimeout(()=>{
+      _signalQueueTimer=null;
+      const tickers=[..._signalQueue]; _signalQueue.clear();
+      tickers.forEach(t=>{
+        const stk=stocksMap.get(t);
+        if(!stk||stk.p<=0) return;
+        try{checkPriceAlerts(t,stk.p);}catch{}
+        try{checkExitSignal(t,stk.p);}catch{}
+        if(!_isBuyAlerted(t)) try{checkBuySignalFull(t,stk.p);}catch{}
+      });
+    }, 3000); // batch signal checks ทุก 3 วินาที
+  }
 }
 
 function updateCardLive(s){
@@ -9319,16 +9364,12 @@ function updateCardLive(s){
   if(dashActive && !_dashUpdateTimer){
     _dashUpdateTimer=setTimeout(()=>{_dashUpdateTimer=null;updateDashboard();},2000);
   }
-  // ตรวจ price alerts
-  if(s.p>0) checkPriceAlerts(s.t, s.p);
-  // ตรวจ Exit Signal (เฉพาะหุ้นในพอร์ต)
-  if(s.p>0) checkExitSignal(s.t, s.p);
-  if(!_isBuyAlerted(s.t)&&s.p>0){
-    checkBuySignalFull(s.t,s.p);
-  }
-  // Short Squeeze Alert เมื่อ Short Float >15% และราคาขึ้นแรง >3%
-  if(s.p>0){
-    const stk=stocks.find(x=>x.t===s.t);
+
+  // ── Signal checks — batch ทุก 3 วินาที แทนที่จะรันทันที ──
+  if(s.p>0) _queueSignalCheck(s.t);
+  // Short Squeeze Alert — throttle ด้วย setTimeout
+  if(s.p>0) setTimeout(()=>{
+    const stk=stocksMap.get(s.t);
     if(stk&&stk.short&&parseFloat(stk.short)>15&&stk.c>3){
       const sqKey='sq_'+stk.t;
       const lastSent=parseInt(localStorage.getItem(sqKey)||'0');
@@ -9355,7 +9396,7 @@ function updateCardLive(s){
         })();
       }
     }
-  }
+  },100);
 }
 
 // ── Fetch RSI from candles ──
@@ -9370,7 +9411,7 @@ async function updateRSIFromCandles(ticker){
 // ── Smart Candle Preloader — โหลดเร็วขึ้น ความแม่นยำเท่าเดิม ──
 async function _smartPreloadCandles(){
   // Priority 1: Watchlist ก่อนเลย
-  const wlTickers=[...watchlist].filter(t=>stocks.find(s=>s.t===t));
+  const wlTickers=[...watchlist].filter(t=>stocksMap.has(t));
   // Priority 2: ใกล้ S1 มากที่สุด (โอกาส signal สูง)
   const nearS1=stocks
     .filter(s=>s.p>0&&!candleCache[s.t]?.data)
@@ -9424,7 +9465,7 @@ async function runEarningsPreview(ticker){
   if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังวิเคราะห์...'; }
   el.innerHTML='<span style="color:var(--yellow)">🤖 AI กำลังสรุป Earnings Preview...</span>';
 
-  const s=stocks.find(x=>x.t===ticker);
+  const s=stocksMap.get(ticker);
   if(!s){ el.textContent='ไม่พบข้อมูลหุ้น'; if(btn){btn.disabled=false;btn.textContent='⚡ AI Preview';} return; }
 
   const eData=(window.earningsData||[]).find(e=>e.t===ticker);
@@ -9528,7 +9569,7 @@ async function runMorningBrief(){
     let waited=0;
     while(waited<maxWait){
       const allReady=portTickers.every(t=>{
-        const s=stocks.find(x=>x.t===t);
+        const s=stocksMap.get(t);
         return s && s.p>0 && s.c!==undefined;
       });
       if(allReady){ console.log('[Brief] ราคาพร้อมแล้ว รอ',waited,'ms'); break; }
@@ -9554,7 +9595,7 @@ async function runMorningBrief(){
   let portSummary='ไม่มีหุ้นในพอร์ต';
   if(portfolio.length){
     const portDetails=portfolio.map(pos=>{
-      const s=stocks.find(x=>x.t===pos.t);
+      const s=stocksMap.get(pos.t);
       if(!s) return null;
       const pnlPct=pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
       const rsi=rsiData[pos.t]||50;
@@ -9567,7 +9608,7 @@ async function runMorningBrief(){
   const portTickers=new Set(portfolio.map(p=>p.t));
   const wlTickers=watchlist;
   const earnSoon=[...new Set([...portTickers,...wlTickers])]
-    .map(t=>stocks.find(s=>s.t===t))
+    .map(t=>stocksMap.get(t))
     .filter(s=>s&&s.earn)
     .filter(s=>{const d=_getEarningsDaysLeft(s.earn);return d!==null&&d>=0&&d<=3;})
     .map(s=>`${s.t}(อีก ${_getEarningsDaysLeft(s.earn)}d)`);
