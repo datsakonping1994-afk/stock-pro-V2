@@ -828,6 +828,29 @@ canvas.bigchart{width:100%;height:100%}
         </div>
       </div>
 
+      <!-- Data API Keys -->
+      <div class="settings-section">
+        <div class="settings-section-title">📊 Data API Keys</div>
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Finnhub API Key <span style="font-size:10px;color:var(--ice)">(<a href="https://finnhub.io" target="_blank" style="color:var(--ice)">finnhub.io</a>)</span></div>
+            <div class="settings-sublabel">ราคาหุ้น real-time</div>
+            <input class="settings-input" id="finnhubKeyInput" type="password" placeholder="d83v..." style="width:100%;margin-top:6px">
+            <div id="finnhubKeyStatus" style="margin-top:6px;font-size:12px;color:var(--text3)"></div>
+            <button class="settings-btn" id="testFinnhubBtn" onclick="testFinnhubKey()" style="margin-top:6px">🔑 ทดสอบ Finnhub</button>
+          </div>
+        </div>
+        <div class="settings-row" style="border-bottom:none">
+          <div style="width:100%">
+            <div class="settings-label">Polygon API Key <span style="font-size:10px;color:var(--ice)">(<a href="https://polygon.io" target="_blank" style="color:var(--ice)">polygon.io</a>)</span></div>
+            <div class="settings-sublabel">ข้อมูลกราฟ candles</div>
+            <input class="settings-input" id="polygonKeyInput" type="password" placeholder="H4aN..." style="width:100%;margin-top:6px">
+            <div id="polygonKeyStatus" style="margin-top:6px;font-size:12px;color:var(--text3)"></div>
+            <button class="settings-btn" id="testPolygonBtn" onclick="testPolygonKey()" style="margin-top:6px">🔑 ทดสอบ Polygon</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AI API Keys -->
       <div class="settings-section">
         <div class="settings-section-title">🤖 AI API Keys</div>
@@ -977,11 +1000,13 @@ canvas.bigchart{width:100%;height:100%}
           </div>
           <button class="settings-btn danger" onclick="
             if(confirm('รีเซ็ตข้อมูลหุ้นทั้งหมด? ราคาและรายการหุ้นจะโหลดใหม่จากค่า default')){
-              localStorage.removeItem('_sp_stocks');
-              Object.keys(candleCache).forEach(k=>delete candleCache[k]);
-              fetch(ALERT_WORKER+'/candles/clear',{method:'POST'}).catch(()=>{});
-              toast('🔄 รีเซ็ตแล้ว กำลังโหลดใหม่...');
-              setTimeout(()=>location.reload(),1200);
+              try{localStorage.removeItem('_sp_stocks');}catch{}
+              try{Object.keys(candleCache).forEach(k=>delete candleCache[k]);}catch{}
+              try{fetch(ALERT_WORKER+'/candles/clear',{method:'POST'}).catch(()=>{});}catch{}
+              stocks=JSON.parse(JSON.stringify(STOCKS_DEFAULT));
+              try{saveStocks();}catch{}
+              toast('✅ รีเซ็ตข้อมูลหุ้นแล้ว — กำลังโหลดใหม่...');
+              setTimeout(()=>{try{renderStocks();renderOverview();}catch{}},500);
             }
           ">🔄 รีเซ็ต</button>
         </div>
