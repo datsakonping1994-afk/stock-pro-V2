@@ -41,15 +41,18 @@ self.addEventListener('push', e => {
 // ── Notification Click ──
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = e.notification.data?.url || '/stock-pro-V2/';
+  const notifUrl = e.notification.data?.url || '/stock-pro-V2/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
         if (client.url.includes('stock-pro-V2') && 'focus' in client) {
-          return client.focus();
+          client.focus();
+          // ส่ง message ให้แอปเปิด drawer หุ้นที่ถูกต้อง
+          client.postMessage({ type: 'OPEN_TICKER', url: notifUrl });
+          return;
         }
       }
-      if (clients.openWindow) return clients.openWindow('/stock-pro-V2/');
+      if (clients.openWindow) return clients.openWindow(notifUrl);
     })
   );
 });

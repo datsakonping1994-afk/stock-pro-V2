@@ -2610,8 +2610,11 @@ function filterStocks(){
   renderCards();
 }
 
+// ── หุ้นที่ซ่อนไว้ใช้ภายใน ไม่แสดงการ์ด ──
+const HIDDEN_TICKERS = new Set(['SPY','QQQ','SMH','VIX']);
+
 function getVisibleStocks(){
-  let list=[...stocks];
+  let list=[...stocks].filter(s=>!HIDDEN_TICKERS.has(s.t));
   if(showWatchlistOnly) list=list.filter(s=>watchlist.has(s.t));
   if(searchQuery) list=list.filter(s=>s.t.includes(searchQuery)||s.n.toUpperCase().includes(searchQuery));
   if(currentSector!=='all'){
@@ -3225,7 +3228,7 @@ async function fetchAnalystData(ticker){
         if(sorted.length>0){
           const s2=stocksMap.get(ticker);
           if(s2) s2.insiderLive=sorted
-            .filter(t=>Math.abs(t.share)<=100000000&&(t.transactionPrice||0)<=100000) // กรอง outlier
+            .filter(t=>Math.abs(t.share)<=100000000&&(t.transactionPrice||0)<=100000)
             .map(t=>({
               name:t.name||'Unknown',
               role:'Insider',
@@ -3241,6 +3244,28 @@ async function fetchAnalystData(ticker){
                 return 'N/A';
               })()
             })).filter(t=>t.val!=='N/A');
+
+          // ── Push Notification สำหรับ Insider ที่มูลค่าสูง ──
+          const insiderKey = `_insider_alerted_${ticker}`;
+          const recentBig = (s2?.insiderLive||[]).filter(t=>{
+            const val = Math.abs((t.shares||0)*(t.price||0));
+            return val >= 500000; // $500K+
+          });
+          if(recentBig.length && !sessionStorage.getItem(insiderKey)){
+            sessionStorage.setItem(insiderKey,'1');
+            recentBig.forEach(t=>{
+              const val = Math.abs((t.shares||0)*(t.price||0));
+              const fmtVal = val>=1e6?`$${(val/1e6).toFixed(1)}M`:`$${(val/1e3).toFixed(0)}K`;
+              const emoji = t.type==='buy'?'🟢':'🔴';
+              const action = t.type==='buy'?'ซื้อ':'ขาย';
+              const dateStr = t.date ? new Date(t.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) : '';
+              _sendPushAlert(
+                `${emoji} Insider ${action}: ${ticker}`,
+                `${t.name} ${action} ${fmtVal}${dateStr?' เมื่อ '+dateStr:''}`,
+                {tag:`insider-${ticker}`, data:{url:`/stock-pro-V2/?open=${ticker}`}}
+              );
+            });
+          }
         }
       }
     }catch(e){}
@@ -5674,8 +5699,9 @@ function renderStockManager(){
   const el=document.getElementById('stockListManager');
   const countEl=document.getElementById('stockListCount');
   if(!el) return;
-  if(countEl) countEl.textContent=`(${stocks.length} ตัว)`;
-  el.innerHTML=stocks.map(s=>`
+  const visible = stocks.filter(s=>!HIDDEN_TICKERS.has(s.t));
+  if(countEl) countEl.textContent=`(${visible.length} ตัว)`;
+  el.innerHTML=visible.map(s=>`
     <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px 8px;">
       <span style="font-size:12px;font-weight:600;color:var(--text)">${s.t}</span>
       <button onclick="removeStock('${s.t}')" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:0 2px;line-height:1">✕</button>
@@ -9166,7 +9192,9 @@ window._doSellCustom = function(ticker){
 
 // ── _updatePortfolioRow — อัปเดต P&L ใน portfolio row แบบ in-place ──
 // เรียกทุกครั้งที่ราคาเปลี่ยน ไม่ต้อง re-render ทั้งหน้า
+function _escapeTicker(t){ return t.replace(/\./g,'\\\\2E'); }
 function _updatePortfolioRow(ticker, price, changePct){
+  const safeCss = _escapeTicker(ticker);
   // ใช้ portfolio array ใน memory แทน localStorage
   const pos = portfolio.find(p=>p.t===ticker);
   if(!pos||!pos.avgPrice||!pos.shares) return;
@@ -9180,28 +9208,28 @@ function _updatePortfolioRow(ticker, price, changePct){
   const fmt2=v=>v.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   // อัปเดต element ที่มี id เฉพาะ (ถ้า DOM ยังอยู่)
-  const rowEl=document.querySelector(`.port-row[data-ticker="${ticker}"]`);
+  const rowEl=document.querySelector(`.port-row[data-ticker="${ticker}"]`) || document.querySelector(`.port-row[data-ticker='${ticker}']`);
   if(!rowEl) return;
 
   // มูลค่ารวม
-  const valEl=rowEl.querySelector('.port-val-'+ticker);
+  const valEl=rowEl.querySelector('.port-val-'+safeCss);
   if(valEl) valEl.textContent=price>0?'$'+fmt2(val):'--';
 
   // % P&L badge
-  const pctEl=rowEl.querySelector('.port-pct-'+ticker);
+  const pctEl=rowEl.querySelector('.port-pct-'+safeCss);
   if(pctEl){
     pctEl.textContent=price>0?(isUp?'▲':'▼')+Math.abs(pnlPct).toFixed(2)+'%':'--';
     pctEl.style.color=pnlColor;
   }
 
   // P&L detail
-  const pnlEl=rowEl.querySelector('.port-pnl-'+ticker);
+  const pnlEl=rowEl.querySelector('.port-pnl-'+safeCss);
   if(pnlEl){ pnlEl.textContent=price>0?(isUp?'+':'')+fmt2(pnl):'--'; pnlEl.style.color=pnlColor; }
-  const pnlPctEl=rowEl.querySelector('.port-pnlpct-'+ticker);
+  const pnlPctEl=rowEl.querySelector('.port-pnlpct-'+safeCss);
   if(pnlPctEl){ pnlPctEl.textContent=price>0?(isUp?'+':'')+pnlPct.toFixed(2)+'%':'--'; pnlPctEl.style.color=pnlColor; }
 
   // ราคาปัจจุบัน (detail)
-  const curPriceEl=rowEl.querySelector('.port-curprice-'+ticker);
+  const curPriceEl=rowEl.querySelector('.port-curprice-'+safeCss);
   if(curPriceEl) curPriceEl.textContent=price>0?'$'+price.toFixed(2):'--';
 
   // Flash บน row card
@@ -10281,6 +10309,17 @@ function _sendPushAlert(title, body){
     showLocalNotification(title, body, {tag: 'signal-'+Date.now(), requireInteraction: true});
   }
 }
+
+// ── รับ message จาก Service Worker (กด Notification) ──
+navigator.serviceWorker?.addEventListener('message', e => {
+  if(e.data?.type === 'OPEN_TICKER' && e.data?.url){
+    const match = e.data.url.match(/[?&]open=([A-Z.]+)/);
+    if(match){
+      const ticker = match[1];
+      setTimeout(()=>{ try{ openDrawer(ticker); }catch{} }, 500);
+    }
+  }
+});
 
 // init เมื่อโหลดแอป
 window.addEventListener('load', ()=>{
