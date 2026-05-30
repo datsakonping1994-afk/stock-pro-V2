@@ -905,21 +905,29 @@ canvas.bigchart{width:100%;height:100%}
             <div class="settings-sublabel">แจ้งเตือน Buy Signal, Exit Signal และข่าวสำคัญ</div>
           </div>
           <button id="pushToggleBtn" class="settings-btn" onclick="
-            if(Notification.permission==='granted'){
+            if(Notification.permission==='granted' && _lsGet('push_enabled')==='1'){
               _lsDel('push_enabled');
               this.textContent='เปิดใช้งาน';
-              this.className='settings-btn';
+              this.style.color='';
               toast('🔕 ปิด Push Notification แล้ว');
+            } else if(Notification.permission==='granted'){
+              _lsSet('push_enabled','1');
+              this.textContent='✅ เปิดอยู่';
+              this.style.color='var(--green)';
+              if('serviceWorker' in navigator && !_swReg){
+                navigator.serviceWorker.register('/stock-pro-V2/sw.js',{scope:'/stock-pro-V2/'}).then(r=>{_swReg=r;}).catch(()=>{});
+              }
+              toast('🔔 เปิด Push Notification แล้ว');
+              showLocalNotification('✅ Stock Pro','Push Notification พร้อมใช้งานแล้วครับ');
             } else {
               initPushNotification().then(ok=>{
                 if(ok){
                   this.textContent='✅ เปิดอยู่';
-                  this.className='settings-btn';
                   this.style.color='var(--green)';
                   toast('🔔 เปิด Push Notification แล้ว');
                   showLocalNotification('✅ Stock Pro','Push Notification พร้อมใช้งานแล้วครับ');
                 } else {
-                  toast('❌ ไม่สามารถเปิด Push ได้ — กรุณาอนุญาตใน Settings');
+                  toast('❌ ไปเปิดอนุญาตใน iPhone Settings → การแจ้งเตือน → STOCK PRO ก่อนครับ');
                 }
               });
             }
@@ -5216,6 +5224,27 @@ function loadSettings(){
     const ckEl=document.getElementById('cohereKeyInput');
     if(ckEl) ckEl.value=ck;
   }catch{}
+
+  // ── เช็คสถานะ Push Notification ──
+  try{
+    const pushBtn=document.getElementById('pushToggleBtn');
+    if(pushBtn){
+      if(typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+        _lsSet('push_enabled','1');
+        pushBtn.textContent='✅ เปิดอยู่';
+        pushBtn.style.color='var(--green)';
+        // ลงทะเบียน SW ถ้ายังไม่ได้ลง
+        if('serviceWorker' in navigator && !_swReg){
+          navigator.serviceWorker.register('/stock-pro-V2/sw.js',{scope:'/stock-pro-V2/'})
+            .then(r=>{ _swReg=r; }).catch(()=>{});
+        }
+      } else {
+        pushBtn.textContent='เปิดใช้งาน';
+        pushBtn.style.color='';
+      }
+    }
+  }catch{}
+
   renderStockManager();
 }
 function saveSettings(){
