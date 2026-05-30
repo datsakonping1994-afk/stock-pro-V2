@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Stock Pro V2">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060810">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/stock-pro-V2/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
@@ -10020,7 +10020,7 @@ async function initPushNotification(){
   }
   try{
     // ลงทะเบียน Service Worker
-    _swReg = await navigator.serviceWorker.register('/sw.js');
+    _swReg = await navigator.serviceWorker.register('/stock-pro-V2/sw.js', {scope: '/stock-pro-V2/'});
     console.log('SW registered ✅');
 
     // เช็ค permission
@@ -10081,7 +10081,7 @@ window.addEventListener('load', ()=>{
   setTimeout(async ()=>{
     if('serviceWorker' in navigator){
       try{
-        _swReg = await navigator.serviceWorker.register('/sw.js');
+        _swReg = await navigator.serviceWorker.register('/stock-pro-V2/sw.js', {scope: '/stock-pro-V2/'});
         if(Notification.permission === 'granted'){
           _lsSet('push_enabled','1');
         }
