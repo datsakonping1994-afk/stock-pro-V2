@@ -11305,13 +11305,16 @@ affected_stocks 2-5 ตัว direction คือ up/down/neutral
     });
     const data = await response.json();
     const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    console.log('[ELITE SCAN] Raw response:', text.slice(0,500));
+    console.log('[ELITE SCAN] API error:', data.error);
     try{
       const arr = JSON.parse(text.replace(/```json|```/g,'').trim());
+      console.log('[ELITE SCAN] Parsed results:', arr.length);
       results = arr.map(item=>{
         const person = ELITE_PEOPLE.find(p=>p.id===item.id);
         return person ? {person, news:item} : null;
       }).filter(Boolean);
-    }catch{}
+    }catch(e){ console.log('[ELITE SCAN] Parse error:', e.message); }
 
     _eliteScanResults = results;
     if(results.length > 0) saveEliteCache(results);
