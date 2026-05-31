@@ -11255,37 +11255,13 @@ async function runEliteScan(forceRefresh=false){
     const nameList = ELITE_PEOPLE.map(p=>`${p.name}(${p.id}/${p.role})`).join(', ');
 
     const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-    const searchTerms = ELITE_PEOPLE.slice(0,10).map(p=>`"${p.name}" news today`).join(', ');
-    const prompt = `Today is ${today}. Search for the latest news (last 24 hours) about these key figures and their market impact:
+    const prompt = `Today is ${today}. Search for latest market-moving news about these people:
 
-Search queries to use: ${searchTerms}
+Donald Trump (trump), Jerome Powell (powell), Jensen Huang (jensen), Tim Cook (cook), Elon Musk (musk), Satya Nadella (nadella), Mark Zuckerberg (zuck), Sam Altman (altman), Xi Jinping (xi), Vladimir Putin (putin), Christine Lagarde (lagarde), OPEC+ (opec)
 
-Also search: "stock market news today", "Fed news today", "oil price news today"
-
-For each person who has significant market-moving news today, return a JSON array. No markdown, no backtick:
-[{
-  "id":"trump",
-  "headline":"สรุปหัวข้อข่าวภาษาไทย 1 ประโยค",
-  "summary":"อธิบายเนื้อหาข่าวและบริบทที่สำคัญ 2-3 ประโยคภาษาไทย",
-  "impact":8,
-  "pros":["ผลดีต่อตลาด/นักลงทุน อธิบายชัดเจน"],
-  "cons":["ผลเสียต่อตลาด/นักลงทุน อธิบายชัดเจน"],
-  "why":"เพราะอะไรถึงเกิดข่าวนี้ context เบื้องหลัง 1-2 ประโยค",
-  "watch":"สิ่งที่ต้องจับตาดูต่อจากนี้ 1-2 ประโยค",
-  "tags":["สหรัฐ","เศรษฐกิจ"],
-  "markets":["USD","SP500"],
-  "stocks_buy":["AAL","DAL"],
-  "stocks_watch":["XOM","CVX"],
-  "affected_stocks":[
-    {"ticker":"NVDA","direction":"up","reason":"เหตุผลสั้นๆ"},
-    {"ticker":"XOM","direction":"down","reason":"เหตุผล"}
-  ],
-  "read_game":"วิเคราะห์กลยุทธ์เบื้องหลังของผู้นำ ทำไมถึงทำแบบนี้ 1-2 ประโยค",
-  "response":"คาดการณ์ว่าอีกฝ่ายหรือตลาดจะตอบโต้ยังไง 1 ประโยค"
-}]
-stocks_buy = หุ้นน่าจับตา/น่าสนใจ, stocks_watch = หุ้นต้องระวัง
-affected_stocks 2-5 ตัว direction คือ up/down/neutral
-เฉพาะคนที่มีข่าวสำคัญ impact ≥ 6 เท่านั้น`;
+Search for each one. Return ONLY a JSON array, no text before or after, no markdown:
+[{"id":"trump","headline":"headline in Thai","summary":"2-3 sentences in Thai","impact":8,"pros":["benefit"],"cons":["risk"],"why":"context in Thai","watch":"what to watch in Thai","tags":["US"],"markets":["USD"],"stocks_buy":["AAL"],"stocks_watch":["XOM"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"reason"}],"read_game":"strategy analysis in Thai","response":"expected response in Thai"}]
+Only include people who have significant market-moving news today. If no news, return [].`;
 
     let results = [];
     const response = await fetch('https://api.anthropic.com/v1/messages',{
