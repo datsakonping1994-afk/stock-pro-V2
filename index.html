@@ -11244,43 +11244,97 @@ async function runEliteScan(forceRefresh=false){
   if(pins) pins.innerHTML = '';
 
   try{
-    // ── เรียก Elite Worker (Claude Web Search) ──
-    if(overlay) overlay.innerHTML = `
-      <div style="font-size:22px">🌍</div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ผ่าน Worker · รอ ~20 วินาที</div>
-      <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+    const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── เรียก Elite Worker ──
-    let workerResp;
-    try{
-      workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(58000)
+    // ── ถ้ามี Anthropic Key → ใช้ Claude API โดยตรง (web_search) ──
+    if(_ank){
+      if(overlay) overlay.innerHTML = `
+        <div style="font-size:22px">🌍</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Web Search · รอ ~30 วินาที</div>
+        <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+
+      const today = new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+      const prompt = `วันนี้คือ ${today} ค้นหาข่าวล่าสุดและวิเคราะห์เชิงลึกสำหรับบุคคลสำคัญที่มีผลกระทบต่อตลาดการเงินโลก:\nTrump/US policy, Powell/Fed rates, Jensen Huang/NVIDIA, Elon Musk/Tesla/SpaceX/xAI, Zuckerberg/Meta, Xi Jinping/China, Putin/Russia, Lagarde/ECB, OPEC+ oil, Tim Cook/Apple, Satya Nadella/Microsoft, Sam Altman/OpenAI\n\nค้นหาข่าวจริงล่าสุดแล้ววิเคราะห์อย่างละเอียด ตอบเป็น JSON array เท่านั้น ไม่มี markdown:\n[{"id":"trump","headline":"หัวข้อข่าวชัดเจนระบุตัวเลขและชื่อ","summary":"วิเคราะห์เชิงลึก 3-4 ประโยค","impact":8,"pros":["ผลดีเฉพาะเจาะจง"],"cons":["ผลเสียเฉพาะเจาะจง"],"why":"บริบทเชิงลึก 2-3 ประโยค","watch":"สิ่งที่ต้องติดตาม","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์เบื้องหลัง 2-3 ประโยค","response":"การตอบสนองที่คาดการณ์"}]\nเฉพาะ impact>=6 เท่านั้น ถ้าไม่มีข่าวสำคัญสำหรับคนนั้นให้ข้าม`;
+
+      const apiResp = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':_ank,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:4000,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          system:'You are a financial intelligence analyst. Use web_search to find real latest news. Return ONLY a raw JSON array starting with [ and ending with ]. No prose, no markdown, no preamble. All text fields in Thai except ticker symbols.',
+          messages:[{role:'user',content:prompt}]
+        }),
+        signal: AbortSignal.timeout(60000)
       });
-    }catch(fetchErr){
-      throw new Error('Worker fetch error: ' + fetchErr.message);
-    }
 
-    if(!workerResp.ok){
-      const errText = await workerResp.text().catch(()=>'unknown');
-      throw new Error('Worker ' + workerResp.status + ': ' + errText.slice(0,100));
-    }
+      if(!apiResp.ok){
+        const errData = await apiResp.json().catch(()=>({}));
+        throw new Error('Claude API: ' + (errData.error?.message || apiResp.status));
+      }
 
-    const workerData = await workerResp.json();
-    let results = [];
+      const apiData = await apiResp.json();
+      const fullText = (apiData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      const match = fullText.match(/\[[\s\S]*\]/);
+      if(!match) throw new Error('ไม่พบ JSON ในผลลัพธ์');
 
-    if(workerData.ok && Array.isArray(workerData.results)){
-      results = workerData.results.map(item=>{
+      let rawResults = JSON.parse(match[0]);
+      if(!Array.isArray(rawResults)) rawResults = [];
+
+      const results = rawResults.map(item=>{
         const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-        return person ? {person, news:item.news} : null;
-      }).filter(Boolean);
-    }
+        return person ? {person, news:item} : null;
+      }).filter(Boolean).sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
 
-    _eliteScanResults = results;
-    if(results.length > 0) saveEliteCache(results);
-    renderEliteScanResults(results, 0);
+      _eliteScanResults = results;
+      if(results.length > 0) saveEliteCache(results);
+      renderEliteScanResults(results, 0);
+
+    } else {
+      // ── Fallback: เรียก Elite Worker ──
+      if(overlay) overlay.innerHTML = `
+        <div style="font-size:22px">🌍</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ผ่าน Worker · รอ ~20 วินาที</div>
+        <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+
+      let workerResp;
+      try{
+        workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(58000)
+        });
+      }catch(fetchErr){
+        throw new Error('Worker fetch error: ' + fetchErr.message);
+      }
+
+      if(!workerResp.ok){
+        const errText = await workerResp.text().catch(()=>'unknown');
+        throw new Error('Worker ' + workerResp.status + ': ' + errText.slice(0,100));
+      }
+
+      const workerData = await workerResp.json();
+      let results = [];
+
+      if(workerData.ok && Array.isArray(workerData.results)){
+        results = workerData.results.map(item=>{
+          const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+          return person ? {person, news:item.news} : null;
+        }).filter(Boolean);
+      }
+
+      _eliteScanResults = results;
+      if(results.length > 0) saveEliteCache(results);
+      renderEliteScanResults(results, 0);
+    }
 
   }catch(e){
     console.log('[ELITE] Error:', e.message);
