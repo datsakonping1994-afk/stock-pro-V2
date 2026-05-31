@@ -11247,41 +11247,61 @@ async function runEliteScan(forceRefresh=false){
     const groqKey = localStorage.getItem('groqKey') || '';
     const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── Step 1: Finnhub ดึงข่าวหุ้น ──
+    // ── Step 1: ดึงข่าวจาก Finnhub ──
     if(overlay) overlay.innerHTML = `
       <div style="font-size:22px">📡</div>
       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังดึงข่าว...</div>
-      <div style="font-size:11px;color:var(--text3)">Finnhub + Claude Web Search</div>
+      <div style="font-size:11px;color:var(--text3)">Finnhub กำลังโหลดข่าวล่าสุด</div>
       <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
     const now = Math.floor(Date.now()/1000);
     const from = now - 24*3600;
+    const dateFrom = new Date(from*1000).toISOString().split('T')[0];
+    const dateTo = new Date(now*1000).toISOString().split('T')[0];
+
+    // ดึงข่าว Company + General News พร้อมกัน
     const uniqueTickers = [...new Set(ELITE_PEOPLE.flatMap(p=>p.tickers||[]))];
     const newsMap = {};
-    await Promise.all(uniqueTickers.map(async ticker=>{
-      try{
-        const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${new Date(from*1000).toISOString().split('T')[0]}&to=${new Date(now*1000).toISOString().split('T')[0]}&token=${fk}`);
-        const data = await r.json();
-        if(Array.isArray(data)) newsMap[ticker] = data.slice(0,3);
-      }catch{}
-    }));
 
+    await Promise.all([
+      // Company news ทุก ticker
+      ...uniqueTickers.map(async ticker=>{
+        try{
+          const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${dateFrom}&to=${dateTo}&token=${fk}`);
+          const data = await r.json();
+          if(Array.isArray(data)) newsMap[ticker] = data.slice(0,3);
+        }catch{}
+      }),
+      // General news — ข่าวมาโคร/การเมือง
+      (async()=>{
+        try{
+          const r = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${fk}`);
+          const data = await r.json();
+          if(Array.isArray(data)) newsMap['_general'] = data.slice(0,15);
+        }catch{}
+      })()
+    ]);
+
+    // จับคู่ข่าวกับแต่ละคน
+    const generalNews = newsMap['_general'] || [];
     const peopleWithNews = ELITE_PEOPLE.map(p=>{
-      const articles = (p.tickers||[]).flatMap(t=>newsMap[t]||[]);
-      if(!articles.length) return null;
-      // กรองเฉพาะข่าวที่มีชื่อคนหรือบริษัทในหัวข้อ
-      const nameKeywords = p.name.toLowerCase().split(' ');
-      const roleKeywords = (p.role||'').toLowerCase().replace('ceo ','').split('/');
-      const relevant = articles.filter(a=>{
+      // Company news จาก ticker
+      const companyArticles = (p.tickers||[]).flatMap(t=>newsMap[t]||[]);
+
+      // General news ที่มีชื่อคนนี้
+      const nameKeywords = p.name.toLowerCase().split(' ').filter(k=>k.length>3);
+      const roleKeywords = (p.role||'').toLowerCase().replace('ceo ','').split('/').filter(k=>k.length>3);
+      const generalMatched = generalNews.filter(a=>{
         const h = (a.headline||'').toLowerCase();
         const s = (a.summary||'').toLowerCase();
-        return nameKeywords.some(k=>k.length>3&&(h.includes(k)||s.includes(k))) ||
-               roleKeywords.some(k=>k.length>3&&(h.includes(k)||s.includes(k))) ||
-               (p.tickers||[]).some(t=>h.includes(t.toLowerCase()));
+        return nameKeywords.some(k=>h.includes(k)||s.includes(k)) ||
+               roleKeywords.some(k=>h.includes(k)||s.includes(k));
       });
-      const finalArticles = relevant.length ? relevant : articles;
-      finalArticles.sort((a,b)=>b.datetime-a.datetime);
-      return { person:p, articles:finalArticles.slice(0,2) };
+
+      const allArticles = [...generalMatched, ...companyArticles];
+      if(!allArticles.length) return null;
+      allArticles.sort((a,b)=>b.datetime-a.datetime);
+      return { person:p, articles:allArticles.slice(0,3) };
     }).filter(Boolean);
 
     // ── Step 2: Groq วิเคราะห์ข่าว ──
