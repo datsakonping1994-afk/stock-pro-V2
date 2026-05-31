@@ -103,6 +103,46 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
 .nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
+/* ── ELITE PAGE ── */
+.elite-subtab{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;padding:5px 10px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);transition:all 0.2s;background:rgba(255,255,255,0.04)}
+.elite-subtab.active{background:rgba(255,107,53,0.15);border-color:rgba(255,107,53,0.4);color:#ff6b35}
+.elite-leader-card{background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.elite-leader-card:active{transform:scale(0.97)}
+.elite-leader-card.selected{border-color:rgba(255,107,53,0.4);box-shadow:0 0 16px rgba(255,107,53,0.12)}
+.elite-leader-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2a3550,#1a2535);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:2px solid rgba(255,255,255,0.1);overflow:hidden}
+.elite-leader-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.elite-leader-role{font-size:10px;color:var(--text3);line-height:1.3}
+.elite-leader-loc{font-size:9px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:3px}
+.elite-impact-badge{position:absolute;top:8px;right:8px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid}
+.elite-event-card{background:linear-gradient(145deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px;position:relative;overflow:hidden}
+.elite-event-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0}
+.elite-event-card.urgent::before{background:linear-gradient(90deg,var(--red),transparent)}
+.elite-event-card.soon::before{background:linear-gradient(90deg,var(--gold),transparent)}
+.elite-event-card.later::before{background:linear-gradient(90deg,var(--ice),transparent)}
+.elite-event-emoji{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.elite-event-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.elite-event-date{font-size:11px;color:var(--text3)}
+.elite-countdown{border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:0.5px}
+.elite-countdown.urgent{background:rgba(255,77,106,0.2);border:1px solid rgba(255,77,106,0.4);color:var(--red)}
+.elite-countdown.soon{background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:var(--gold)}
+.elite-countdown.later{background:rgba(100,210,255,0.15);border:1px solid rgba(100,210,255,0.3);color:var(--ice)}
+.elite-tag{border-radius:20px;padding:2px 8px;font-size:9px;font-weight:600;font-family:'Syne',sans-serif;letter-spacing:0.5px;border:1px solid}
+.elite-ai-loading{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:12px;padding:8px 0}
+.elite-ai-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse-dot-gold 0.8s infinite}
+.elite-ai-dot:nth-child(2){animation-delay:0.2s}
+.elite-ai-dot:nth-child(3){animation-delay:0.4s}
+.elite-news-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.elite-news-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4}
+.elite-pros-cons{border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.elite-pros-cons.pros{background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2)}
+.elite-pros-cons.cons{background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2)}
+.elite-pros-cons-label{font-size:10px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:5px}
+.elite-pros-cons.pros .elite-pros-cons-label{color:var(--green)}
+.elite-pros-cons.cons .elite-pros-cons-label{color:var(--red)}
+.elite-pros-cons-item{font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:6px}
+.pin-pulse{animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
+@keyframes pin-appear{from{opacity:0;transform:scale(0) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
@@ -656,7 +696,7 @@ canvas.bigchart{width:100%;height:100%}
 
       <!-- Quick Actions -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button onclick="openModal('heatmapModal');renderHeatmapV2()" style="flex:1;background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;transition:all 0.15s;letter-spacing:0.3px">🌡️ Heatmap</button>
+        <button onclick="navTo('elite',this)" style="flex:1;background:linear-gradient(145deg,rgba(255,107,53,0.12),rgba(200,70,20,0.08));border:1px solid rgba(255,107,53,0.3);border-radius:14px;padding:11px 6px;font-size:11px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 8px rgba(255,107,53,0.1);transition:all 0.15s;letter-spacing:0.3px">👁 ELITE</button>
         <button onclick="openModal('earningsModal');fetchAndRenderEarnings()" style="flex:1;background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.04) inset;transition:all 0.15s;letter-spacing:0.3px">📅 Earnings</button>
         <button onclick="openModal('aiSummaryModal');setTimeout(triggerAISummary,300)" style="flex:1;background:linear-gradient(145deg,rgba(201,168,76,0.12),rgba(150,120,40,0.08));border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:11px 6px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.3),0 0 8px rgba(201,168,76,0.1);transition:all 0.15s;letter-spacing:0.3px">🤖 AI Summary</button>
       </div>
@@ -1105,20 +1145,6 @@ canvas.bigchart{width:100%;height:100%}
   </div>
 
 
-<!-- Heatmap Modal -->
-<div id="heatmapModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);flex-direction:column;overflow:hidden;height:100%;height:100dvh">
-  <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
-    <button onclick="closeModal('heatmapModal')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text)">🌡️ HEATMAP</div>
-    <div style="display:flex;gap:6px;margin-left:auto">
-      <button class="hm-mode-btn active" id="hmModePct" onclick="setHeatmapMode('pct',this)" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">% Change</button>
-      <button class="hm-mode-btn" id="hmModeBeta" onclick="setHeatmapMode('beta',this)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">Beta</button>
-      <button class="hm-mode-btn" id="hmModeShort" onclick="setHeatmapMode('short',this)" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">Short %</button>
-    </div>
-  </div>
-  <div id="heatmapGrid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 100px;min-height:0"></div>
-</div>
-
 <!-- Earnings Modal -->
 <div id="earningsModal" style="display:none;position:fixed;inset:0;z-index:600;background:var(--bg0);flex-direction:column;overflow:hidden">
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
@@ -1253,6 +1279,103 @@ canvas.bigchart{width:100%;height:100%}
 </div><!-- /content -->
 
 <!-- BOTTOM NAV -->
+<!-- ══════════════════════════════════════════ -->
+<!-- ELITE INTELLIGENCE PAGE — Dynamic News Map -->
+<!-- ══════════════════════════════════════════ -->
+<div class="page" id="page-elite" style="min-height:100%;background:var(--bg0)">
+
+  <!-- Header -->
+  <div style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 14px rgba(255,107,53,0.4)">👁</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;letter-spacing:1px;color:var(--text)">ELITE</div>
+        <div style="font-size:9px;color:var(--text3);letter-spacing:1px">จับตากลุ่มคนที่ขยับโลก</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <div id="eliteLiveIndicator" style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:3px 10px;cursor:pointer" onclick="toggleEliteNotification()">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--text3)" id="eliteLiveDot"></div>
+        <span style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px" id="eliteLiveText">SCAN</span>
+      </div>
+      <div style="display:flex;gap:5px">
+        <div id="eliteSubTab-map" class="elite-subtab active" onclick="switchEliteTab('map')">🗺️</div>
+        <div id="eliteSubTab-events" class="elite-subtab" onclick="switchEliteTab('events')">📅</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP TAB -->
+  <div id="elite-tab-map" style="display:block">
+
+    <!-- World Map -->
+    <div style="position:relative;margin:10px 10px 0;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);background:#060b14">
+      <svg id="eliteMap" viewBox="0 0 1000 500" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">
+        <rect width="1000" height="500" fill="#060b14"/>
+        <!-- subtle grid -->
+        <g stroke="rgba(100,210,255,0.035)" stroke-width="0.5">
+          <line x1="0" y1="125" x2="1000" y2="125"/><line x1="0" y1="250" x2="1000" y2="250"/>
+          <line x1="0" y1="375" x2="1000" y2="375"/>
+          <line x1="250" y1="0" x2="250" y2="500"/><line x1="500" y1="0" x2="500" y2="500"/>
+          <line x1="750" y1="0" x2="750" y2="500"/>
+        </g>
+        <!-- North America -->
+        <path d="M75 70 L130 55 L195 50 L235 65 L248 95 L255 135 L238 175 L218 215 L195 252 L165 280 L135 298 L98 278 L78 240 L68 195 L60 155 L68 112Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Greenland -->
+        <path d="M275 25 L335 15 L365 35 L355 72 L325 92 L290 82 L272 55Z" fill="#0e1825" stroke="rgba(255,255,255,0.05)" stroke-width="0.6"/>
+        <!-- South America -->
+        <path d="M170 298 L215 283 L250 298 L260 348 L255 408 L230 465 L196 492 L172 472 L152 425 L148 375 L152 328Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Europe -->
+        <path d="M425 55 L475 45 L515 50 L535 75 L525 105 L505 125 L475 135 L448 125 L428 105 L418 82Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Africa -->
+        <path d="M435 152 L485 138 L535 148 L555 192 L550 252 L535 312 L505 360 L470 380 L440 365 L415 312 L410 252 L420 192Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Russia/N.Asia -->
+        <path d="M525 45 L645 30 L775 35 L848 50 L875 75 L865 115 L825 138 L765 148 L695 142 L635 152 L595 142 L555 122 L535 92Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Middle East -->
+        <path d="M540 138 L585 132 L615 152 L610 188 L580 198 L550 188 L535 168Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- South Asia -->
+        <path d="M615 148 L675 142 L715 152 L725 192 L705 232 L675 248 L645 238 L622 208 L612 178Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- SE Asia -->
+        <path d="M715 162 L775 152 L815 168 L825 202 L795 222 L755 218 L718 198Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- China -->
+        <path d="M685 92 L765 88 L815 108 L825 148 L795 162 L745 158 L695 148 L675 122Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Japan -->
+        <path d="M838 92 L858 88 L872 105 L862 125 L842 118Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.6"/>
+        <!-- Australia -->
+        <path d="M755 288 L835 272 L885 292 L895 348 L865 388 L815 402 L770 382 L745 342 L743 308Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Dynamic pins rendered here -->
+        <g id="elitePins"></g>
+      </svg>
+      <div style="position:absolute;bottom:6px;left:8px;font-size:8px;color:rgba(255,255,255,0.15);font-family:'IBM Plex Mono',monospace">ELITE INTELLIGENCE MAP</div>
+      <!-- Scan overlay -->
+      <div id="eliteScanOverlay" style="position:absolute;inset:0;background:rgba(6,8,20,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:16px">
+        <div style="font-size:22px">👁</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
+        <button onclick="runEliteScan()" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>
+      </div>
+    </div>
+
+    <!-- News Feed (populated after scan) -->
+    <div id="eliteNewsFeed" style="padding:10px 10px 0;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span id="eliteNewsCount">0</span> รายการ</div>
+        <button onclick="runEliteScan()" id="eliteRescanBtn" style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:3px 10px;font-size:9px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 RESCAN</button>
+      </div>
+      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:8px;padding-bottom:20px"></div>
+    </div>
+
+  </div>
+
+  <!-- EVENTS TAB -->
+  <div id="elite-tab-events" style="display:none;padding:12px 12px 0">
+    <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;color:var(--text3);margin-bottom:10px;opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
+    <div id="eliteEventsGrid" style="display:flex;flex-direction:column;gap:10px;padding-bottom:100px"></div>
+  </div>
+
+  <div style="height:30px"></div>
+</div>
+
 <div id="bottomnav" role="navigation" aria-label="เมนูหลัก">
   <div class="nav-item active" onclick="navTo('dash',this)" role="button" aria-label="หน้าภาพรวม">
     <div class="nav-icon" aria-hidden="true">◈</div>
@@ -1890,7 +2013,7 @@ document.addEventListener('keydown',e=>{
   const drawer=document.getElementById('drawer');
   if(drawer&&drawer.classList.contains('open')){closeDrawer();return;}
   // ปิด Modal ต่างๆ
-  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>{
+  ['earningsModal','aiSummaryModal'].forEach(id=>{
     const m=document.getElementById(id);
     if(m&&m.style.display!=='none'){closeModal(id);}
   });
@@ -1911,7 +2034,7 @@ function navTo(page, el){
   window._currentMainPage = page;
   closeSignal();
   document.body.style.overflow='';
-  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
+  ['earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   const drawer=document.getElementById('drawer');
   if(drawer&&drawer.classList.contains('open')) drawer.classList.remove('open');
 
@@ -1920,7 +2043,7 @@ function navTo(page, el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const targetPage=document.getElementById('page-'+page);
   if(targetPage) targetPage.classList.add('active');
-  el.classList.add('active');
+  if(el && el.closest && el.closest('#bottomnav')) el.classList.add('active');
   // scroll กลับขึ้นบน
   const content=document.getElementById('content');
   if(content) content.scrollTop=0;
@@ -1936,6 +2059,7 @@ function navTo(page, el){
     else if(page==='settings') loadSettings();
     else if(page==='port') renderPortfolio();
     else if(page==='news') loadEconNews();
+    else if(page==='elite') initElitePage();
   });
 }
 
@@ -2976,7 +3100,7 @@ function updateDashboard(){
 // ── Drawer ──
 function openDrawer(ticker){
   // ปิด modal ทั้งหมดก่อนเปิด drawer
-  ['heatmapModal','earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
+  ['earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   currentDrawerTicker=ticker;
   const s=stocksMap.get(ticker);
   if(!s)return;
@@ -9027,67 +9151,6 @@ function _timeAgo(date){
   return `<span style="color:${d<=2?'var(--text3)':'var(--red2)'}">${d} วันที่แล้ว</span>`;
 }
 
-// ── Heatmap V2 ──
-let _heatmapMode='pct'; // 'pct' | 'beta' | 'short'
-function setHeatmapMode(mode, btn){
-  _heatmapMode=mode;
-  document.querySelectorAll('.hm-mode-btn').forEach(b=>{
-    b.style.background='var(--bg3)';b.style.borderColor='var(--border)';b.style.color='var(--text3)';
-  });
-  if(btn){btn.style.background='rgba(201,168,76,0.15)';btn.style.borderColor='rgba(201,168,76,0.35)';btn.style.color='var(--gold)';}
-  renderHeatmapV2();
-}
-function renderHeatmapV2(){
-  const grid=document.getElementById("heatmapGrid");
-  if(!grid) return;
-  const sectorTickerMap={};
-  Object.entries(sectorMap).forEach(([sec,tickers])=>tickers.forEach(t=>{sectorTickerMap[t]=sec;}));
-  const groups={};
-  Object.keys(sectorMap).forEach(s=>{groups[s]=[];});
-  stocks.forEach(s=>{const sec=sectorTickerMap[s.t]||"อื่นๆ";if(!groups[sec])groups[sec]=[];groups[sec].push(s);});
-  let html="";
-  const mode=_heatmapMode;
-  Object.entries(groups).forEach(([sec,list])=>{
-    if(!list.length) return;
-    html+=`<div style="margin-bottom:16px"><div style="font-size:10px;color:var(--text3);font-family:Syne,sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">${sec}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">`;
-    list.forEach(s=>{
-      let val, valLabel, bg, border, valColor;
-      if(mode==='beta'){
-        const b=s.beta;
-        val=b!=null?b.toFixed(2):'N/A';
-        valLabel='β'+val;
-        const intensity=b!=null?Math.min(1,Math.abs(b-1)/1.5):0;
-        bg=b!=null?(b>1.5?`rgba(255,77,106,${0.1+intensity*0.35})`:`rgba(100,210,255,${0.08+intensity*0.25})`):'var(--bg3)';
-        border=b!=null?(b>1.5?`rgba(255,77,106,${0.3+intensity*0.3})`:`rgba(100,210,255,${0.15+intensity*0.25})`):'var(--border)';
-        valColor=b!=null?(b>2?'var(--red)':b>1.2?'var(--gold)':'var(--ice)'):'var(--text3)';
-      } else if(mode==='short'){
-        const sh=s.short?parseFloat(s.short):null;
-        val=s.short||'N/A';
-        valLabel=val;
-        const intensity=sh!=null?Math.min(1,sh/20):0;
-        bg=sh!=null?(sh>15?`rgba(255,77,106,${0.12+intensity*0.35})`:sh>8?`rgba(255,215,0,${0.08+intensity*0.2})`:`rgba(0,230,118,${0.06+intensity*0.15})`):'var(--bg3)';
-        border=sh!=null?(sh>15?`rgba(255,77,106,${0.35})`:sh>8?`rgba(255,215,0,${0.25})`:`rgba(0,230,118,${0.2})`):'var(--border)';
-        valColor=sh!=null?(sh>15?'var(--red)':sh>8?'var(--yellow)':'var(--green)'):'var(--text3)';
-      } else {
-        const isUp=s.c>=0;
-        const intensity=Math.min(1,Math.abs(s.c)/10);
-        bg=isUp?`rgba(0,230,118,${0.1+intensity*0.35})`:`rgba(255,77,106,${0.1+intensity*0.35})`;
-        border=isUp?`rgba(0,230,118,${0.2+intensity*0.4})`:`rgba(255,77,106,${0.2+intensity*0.4})`;
-        valLabel=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
-        valColor=isUp?'var(--green)':'var(--red)';
-      }
-      html+=`<div data-ticker="${_escHtml(s.t)}" class="hm-cell" style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:var(--text)">${_escHtml(s.t)}</div><div style="font-size:11px;font-weight:600;color:${valColor};margin-top:2px">${valLabel}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${s.p.toFixed(0)}</div></div>`;
-    });
-    html+="</div></div>";
-  });
-  grid.innerHTML=html;
-  // FIX: ใช้ event delegation แทน inline onclick ป้องกัน XSS
-  grid.onclick=(e)=>{
-    const cell=e.target.closest('.hm-cell');
-    if(cell&&cell.dataset.ticker) openDrawer(cell.dataset.ticker);
-  };
-}
-
 async function triggerAISummary(){
   const btn=document.getElementById("aiSummaryBtn");
   const body=document.getElementById("aiSummaryBody");
@@ -10530,6 +10593,489 @@ navigator.serviceWorker?.addEventListener('message', e => {
   }
 });
 
+
+// ══════════════════════════════════════════
+// ELITE INTELLIGENCE ENGINE — Dynamic News Scan
+// ══════════════════════════════════════════
+
+// รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
+const ELITE_PEOPLE = [
+  // การเมืองสหรัฐ
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',     emoji:'🇺🇸', logo:'https://logo.clearbit.com/whitehouse.gov',      x:148, y:155, color:'#e74c3c' },
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',              emoji:'🏛️', logo:'https://logo.clearbit.com/federalreserve.gov',  x:158, y:162, color:'#9b59b6' },
+  // CEO Tech
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',             emoji:'🟢', logo:'https://logo.clearbit.com/nvidia.com',          x:135, y:170, color:'#76b900' },
+  { id:'cook',    name:'Tim Cook',          role:'CEO Apple',              emoji:'🍎', logo:'https://logo.clearbit.com/apple.com',           x:125, y:175, color:'#555' },
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/SpaceX/xAI',   emoji:'🚀', logo:'https://logo.clearbit.com/tesla.com',           x:142, y:178, color:'#e31937' },
+  { id:'nadella', name:'Satya Nadella',     role:'CEO Microsoft',          emoji:'🪟', logo:'https://logo.clearbit.com/microsoft.com',      x:152, y:172, color:'#00a4ef' },
+  { id:'bezos',   name:'Jeff Bezos',        role:'CEO Amazon',             emoji:'📦', logo:'https://logo.clearbit.com/amazon.com',         x:130, y:165, color:'#ff9900' },
+  { id:'zuck',    name:'Mark Zuckerberg',   role:'CEO Meta',               emoji:'👤', logo:'https://logo.clearbit.com/meta.com',           x:160, y:168, color:'#1877f2' },
+  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google',             emoji:'🔍', logo:'https://logo.clearbit.com/google.com',         x:138, y:158, color:'#4285f4' },
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',             emoji:'🤖', logo:'https://logo.clearbit.com/openai.com',         x:128, y:160, color:'#10a37f' },
+  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'https://logo.clearbit.com/jpmorganchase.com',  x:163, y:155, color:'#005eb8' },
+  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire',          emoji:'💰', logo:'https://logo.clearbit.com/berkshirehathaway.com', x:145, y:162, color:'#c9a84c' },
+  // ผู้นำโลก
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',        emoji:'🇨🇳', logo:'https://logo.clearbit.com/gov.cn',             x:755, y:130, color:'#e74c3c' },
+  { id:'putin',   name:'Vladimir Putin',    role:'ประธานาธิบดีรัสเซีย',   emoji:'🇷🇺', logo:'https://logo.clearbit.com/kremlin.ru',         x:560, y:72,  color:'#c0392b' },
+  { id:'lagarde', name:'Christine Lagarde', role:'ECB President',          emoji:'🇪🇺', logo:'https://logo.clearbit.com/ecb.europa.eu',      x:478, y:100, color:'#2980b9' },
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน',    emoji:'🛢️', logo:'https://logo.clearbit.com/opec.org',           x:570, y:168, color:'#f39c12' },
+  { id:'modi',    name:'Narendra Modi',     role:'นายกฯ อินเดีย',          emoji:'🇮🇳', logo:'https://logo.clearbit.com/india.gov.in',       x:648, y:185, color:'#e67e22' },
+];
+
+const ELITE_EVENTS = [
+  { title:'World Bank รายงาน Global Economic Prospects', emoji:'🌍', date:'2026-06-01', time:null,      tags:['Forex','🇹🇭 ไทย','🇺🇸 สหรัฐ'], markets:['USD','THB','SET'],  detail:'รายงานแนวโน้มเศรษฐกิจโลก คาดการณ์ GDP และความเสี่ยง'},
+  { title:'OPEC+ ประชุมใหญ่',                            emoji:'🛢️', date:'2026-06-07', time:'17:00',   tags:['Forex','🇹🇭 ไทย','🇺🇸 สหรัฐ'], markets:['Oil','Energy'],     detail:'กำหนดโควต้าผลิตน้ำมัน กระทบราคาน้ำมันโลกโดยตรง'},
+  { title:'ECB ประกาศดอกเบี้ย (มิ.ย.)',                  emoji:'🇪🇺', date:'2026-06-11', time:'19:15',   tags:['Forex'],                        markets:['EUR','European'],   detail:'คณะกรรมการ ECB ลงมติอัตราดอกเบี้ย กระทบค่าเงินยูโร'},
+  { title:'Fed ประชุม FOMC (มิ.ย.)',                      emoji:'🏛️', date:'2026-06-18', time:'01:00',   tags:['Forex','🇺🇸 สหรัฐ'],           markets:['USD','S&P500'],     detail:'Fed ประกาศนโยบายการเงิน ตลาดจับตาทิศทางดอกเบี้ย'},
+  { title:'G7 Summit 2026',                               emoji:'🌐', date:'2026-06-25', time:null,      tags:['Forex','🇺🇸 สหรัฐ','🇪🇺'],    markets:['USD','EUR','Gold'], detail:'ผู้นำ G7 หารือเศรษฐกิจโลก การค้า และความมั่นคง'},
+  { title:'US CPI Inflation (มิ.ย.)',                     emoji:'📊', date:'2026-07-15', time:'19:30',   tags:['🇺🇸 สหรัฐ','Forex'],           markets:['USD','Gold'],       detail:'ตัวเลขเงินเฟ้อสหรัฐ ชี้ทิศทาง Fed Rate ต่อไป'},
+];
+
+let _eliteTab = 'map';
+let _eliteScanResults = []; // { person, news: {headline, impact, pros, cons, tags, markets} }
+let _eliteScanning = false;
+
+function switchEliteTab(tab){
+  _eliteTab = tab;
+  document.querySelectorAll('.elite-subtab').forEach(el=>{
+    el.classList.toggle('active', el.id === 'eliteSubTab-'+tab);
+  });
+  document.getElementById('elite-tab-map').style.display = tab==='map' ? 'block' : 'none';
+  document.getElementById('elite-tab-events').style.display = tab==='events' ? 'block' : 'none';
+}
+
+function initElitePage(){
+  renderEliteEvents();
+  updateEliteNotifUI();
+  // ถ้าเคยเปิด scan ไว้ → เริ่มใหม่
+  if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
+    startEliteBackgroundScan();
+  }
+  // ถ้ามีผลการ scan อยู่แล้ว ให้แสดงเลย
+  if(_eliteScanResults.length > 0){
+    renderEliteScanResults(_eliteScanResults);
+  }
+}
+
+// ── MAIN SCAN FUNCTION ──
+async function runEliteScan(){
+  if(_eliteScanning) return;
+  _eliteScanning = true;
+
+  // UI: show scanning state
+  const overlay = document.getElementById('eliteScanOverlay');
+  const dot = document.getElementById('eliteLiveDot');
+  const liveText = document.getElementById('eliteLiveText');
+  const pins = document.getElementById('elitePins');
+
+  if(overlay) overlay.innerHTML = `
+    <div style="font-size:22px">🔍</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลัง SCAN ข่าว...</div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.8;padding:0 20px">AI กำลังค้นหาข่าวล่าสุดของผู้นำโลกและ CEO<br>รอสักครู่...</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div>
+    </div>`;
+
+  if(dot){ dot.style.background='var(--gold)'; dot.style.animation='pulse-dot-gold 1s infinite'; }
+  if(liveText) liveText.textContent = 'SCANNING';
+  if(pins) pins.innerHTML = '';
+
+  try{
+    // เรียก AI scan ข่าวทีเดียวทุกคน
+    const nameList = ELITE_PEOPLE.map(p=>`${p.name} (${p.role})`).join(', ');
+    const prompt = `วันนี้ ${new Date().toLocaleDateString('th-TH')} ค้นหาข่าวล่าสุด 24 ชั่วโมงที่ผ่านมาของบุคคลต่อไปนี้ที่มีผลกระทบต่อตลาดหุ้น:
+
+${nameList}
+
+ตอบเฉพาะคนที่มีข่าวสำคัญเท่านั้น ในรูปแบบ JSON array ไม่มี markdown:
+[
+  {
+    "id": "trump",
+    "headline": "หัวข้อข่าวภาษาไทย 1 ประโยค",
+    "impact": 8,
+    "pros": ["ผลดีต่อตลาด 1"],
+    "cons": ["ผลเสียต่อตลาด 1"],
+    "tags": ["สหรัฐ","Forex"],
+    "markets": ["USD","Oil"]
+  }
+]
+
+ถ้าไม่มีข่าวสำคัญของใคร อย่าใส่คนนั้น ตอบ JSON เท่านั้น`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    let results = [];
+    try{
+      const clean = text.replace(/```json|```/g,'').trim();
+      const arr = JSON.parse(clean);
+      results = arr.map(item=>{
+        const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+        return person ? {person, news:item} : null;
+      }).filter(Boolean);
+    }catch(e){ results = []; }
+
+    _eliteScanResults = results;
+    renderEliteScanResults(results);
+
+  }catch(e){
+    if(overlay) overlay.innerHTML = `
+      <div style="font-size:20px">⚠️</div>
+      <div style="font-size:12px;color:var(--text3);text-align:center">เชื่อมต่อไม่ได้<br>ลองใหม่อีกครั้ง</div>
+      <button onclick="runEliteScan()" style="margin-top:8px;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);border-radius:10px;padding:8px 20px;font-size:11px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>`;
+  }
+
+  _eliteScanning = false;
+  if(dot){ dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite'; }
+  if(liveText) liveText.textContent = 'LIVE';
+}
+
+function renderEliteScanResults(results){
+  const overlay = document.getElementById('eliteScanOverlay');
+  const pins = document.getElementById('elitePins');
+  const feed = document.getElementById('eliteNewsFeed');
+  const cards = document.getElementById('eliteNewsCards');
+  const count = document.getElementById('eliteNewsCount');
+
+  // Hide overlay
+  if(overlay) overlay.style.display = 'none';
+
+  // Render pins on map
+  if(pins){
+    pins.innerHTML = results.map((r,i) => {
+      const {person:p, news:n} = r;
+      const impactColor = n.impact>=9 ? '#e74c3c' : n.impact>=7 ? '#f39c12' : '#3498db';
+      return `
+      <g style="cursor:pointer;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*100}ms both" onclick="scrollToEliteCard('${p.id}')">
+        <ellipse cx="${p.x}" cy="${p.y+14}" rx="4" ry="1.5" fill="rgba(0,0,0,0.4)"/>
+        <path d="M${p.x} ${p.y+13} Q${p.x-7} ${p.y+4} ${p.x-7} ${p.y-3} A7 7 0 1 1 ${p.x+7} ${p.y-3} Q${p.x+7} ${p.y+4} ${p.x} ${p.y+13}Z"
+          fill="${impactColor}" stroke="rgba(255,255,255,0.25)" stroke-width="0.7"/>
+        <text x="${p.x}" y="${p.y+1}" text-anchor="middle" font-size="7" fill="white" font-weight="800" font-family="Manrope,sans-serif">${n.impact}</text>
+        <circle cx="${p.x}" cy="${p.y-3}" r="9" fill="none" stroke="${impactColor}" stroke-width="0.8" opacity="0.5">
+          <animate attributeName="r" from="7" to="14" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite"/>
+        </circle>
+      </g>`;
+    }).join('');
+  }
+
+  // Render news feed cards
+  if(feed) feed.style.display = 'block';
+  if(count) count.textContent = results.length;
+
+  if(cards){
+    if(!results.length){
+      cards.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--text3);font-size:12px">ไม่พบข่าวสำคัญในขณะนี้</div>`;
+      return;
+    }
+    cards.innerHTML = results.map(({person:p, news:n}) => {
+      const impactColor = n.impact>=9 ? 'var(--red)' : n.impact>=7 ? 'var(--gold)' : 'var(--ice)';
+      const impactBg = n.impact>=9 ? 'rgba(255,77,106,0.15)' : n.impact>=7 ? 'rgba(201,168,76,0.15)' : 'rgba(100,210,255,0.12)';
+      const tags = (n.tags||[]).map(t=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${t}</span>`).join('');
+      const now = new Date().toLocaleString('th-TH',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `
+      <div id="elite-card-${p.id}" style="background:linear-gradient(145deg,rgba(20,28,42,0.98),rgba(12,18,30,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:13px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${impactColor},transparent)"></div>
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden">
+            ${p.logo ? `<img src="${p.logo}" style="width:28px;height:28px;object-fit:contain;border-radius:4px" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;font-size:16px">${p.emoji}</span>` : `<span style="font-size:16px">${p.emoji}</span>`}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${p.name}</div>
+            <div style="font-size:10px;color:var(--text3)">${p.role}</div>
+          </div>
+          <div style="background:${impactBg};border:2px solid ${impactColor};border-radius:20px;padding:4px 10px;flex-shrink:0;display:flex;align-items:baseline;gap:1px;box-shadow:0 0 10px ${impactColor}44">
+            <span style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:${impactColor};line-height:1">${n.impact}</span>
+            <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;color:${impactColor};opacity:0.7">/10</span>
+          </div>
+        </div>
+        <!-- Time -->
+        <div style="font-size:9px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:4px">⏱ ${now}</div>
+        <!-- Headline -->
+        <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span></div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:8px">${n.headline}</div>
+        <!-- Tags -->
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${tags}</div>
+        <!-- Pros -->
+        <div style="background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.18);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--green);margin-bottom:4px">✅ ได้ประโยชน์</div>
+          ${(n.pros||[]).map(p=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${p}</span></div>`).join('')}
+        </div>
+        <!-- Cons -->
+        <div style="background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.18);border-radius:9px;padding:8px 10px;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--red);margin-bottom:4px">❌ เสียประโยชน์</div>
+          ${(n.cons||[]).map(c=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${c}</span></div>`).join('')}
+        </div>
+        <!-- Portfolio Impact Button -->
+        <button onclick="analyzePortfolioImpact('${p.id}',this)" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px">
+          💼 วิเคราะห์ผลกระทบต่อพอร์ตฉัน
+        </button>
+        <!-- Portfolio Impact Result -->
+        <div id="port-impact-${p.id}" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:10px;margin-bottom:8px;font-size:11px;color:var(--text2);line-height:1.7"></div>
+        <div style="font-size:9px;color:var(--text3);opacity:0.6">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function scrollToEliteCard(id){
+  const el = document.getElementById('elite-card-'+id);
+  if(el){
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.style.border = '1px solid rgba(255,107,53,0.5)';
+    setTimeout(()=>{ el.style.border = '1px solid rgba(255,255,255,0.07)'; }, 2000);
+  }
+}
+
+async function analyzePortfolioImpact(personId, btn){
+  const resultEl = document.getElementById('port-impact-'+personId);
+  if(!resultEl) return;
+
+  // ดึงข้อมูลพอร์ต
+  const portList = (portfolio||[]).filter(p=>p.shares>0);
+  if(!portList.length){
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<div style="color:var(--text3);text-align:center">⚠️ ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:10px">เพิ่มหุ้นในหน้า Portfolio ก่อนนะครับ</span></div>`;
+    return;
+  }
+
+  // ดึงข่าวของคนนี้
+  const scanResult = _eliteScanResults.find(r=>r.person.id===personId);
+  if(!scanResult) return;
+
+  const {person:p, news:n} = scanResult;
+
+  // UI loading
+  btn.textContent = '⏳ กำลังวิเคราะห์...';
+  btn.disabled = true;
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `<div style="display:flex;gap:6px;align-items:center;color:var(--text3)"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><span>AI กำลังวิเคราะห์พอร์ตของคุณ...</span></div>`;
+
+  const portSummary = portList.map(h=>`${h.t}(${h.shares}หุ้น ราคาเฉลี่ย$${h.avg||h.price||'?'})`).join(', ');
+
+  try{
+    const prompt = `ข่าว: ${n.headline}
+บุคคล: ${p.name} (${p.role})
+ผลกระทบตลาด: ${(n.markets||[]).join(', ')}
+ผลดี: ${(n.pros||[]).join(', ')}
+ผลเสีย: ${(n.cons||[]).join(', ')}
+
+พอร์ตหุ้นของฉัน: ${portSummary}
+
+วิเคราะห์ว่าข่าวนี้กระทบหุ้นในพอร์ตฉันยังไง ตอบเป็น JSON ไม่มี markdown:
+{
+  "summary": "สรุปผลกระทบโดยรวม 1 ประโยค",
+  "stocks": [
+    {"ticker":"NVDA","impact":"positive/negative/neutral","reason":"เหตุผล 1 ประโยค","action":"ถือต่อ/ระวัง/โอกาสซื้อ"}
+  ]
+}
+เฉพาะหุ้นที่ได้รับผลกระทบจริงๆ เท่านั้น ถ้าไม่กระทบก็ไม่ต้องใส่`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    let info;
+    try{ info = JSON.parse(text.replace(/```json|```/g,'').trim()); }catch{ info=null; }
+
+    if(!info || !info.stocks?.length){
+      resultEl.innerHTML = `<div style="color:var(--text3);text-align:center;padding:4px 0">ข่าวนี้ไม่ได้กระทบหุ้นในพอร์ตของคุณโดยตรง</div>`;
+    } else {
+      const actionColor = a => a==='ถือต่อ'?'var(--green)':a==='โอกาสซื้อ'?'var(--ice)':'var(--gold)';
+      const impactIcon = i => i==='positive'?'📈':i==='negative'?'📉':'➡️';
+      resultEl.innerHTML = `
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--gold);margin-bottom:8px;letter-spacing:0.5px">💼 ผลกระทบต่อพอร์ตของคุณ</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:7px">${info.summary}</div>
+        ${info.stocks.map(s=>`
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--text);min-width:45px">${s.ticker}</div>
+            <div style="flex:1">
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">${impactIcon(s.impact)} ${s.reason}</div>
+            </div>
+            <div style="background:${s.impact==='positive'?'rgba(0,230,118,0.15)':s.impact==='negative'?'rgba(255,77,106,0.15)':'rgba(255,255,255,0.07)'};border:1px solid ${s.impact==='positive'?'rgba(0,230,118,0.3)':s.impact==='negative'?'rgba(255,77,106,0.3)':'rgba(255,255,255,0.1)'};border-radius:20px;padding:2px 8px;font-size:9px;font-weight:700;color:${actionColor(s.action)};white-space:nowrap;font-family:'Syne',sans-serif">${s.action}</div>
+          </div>`).join('')}`;
+    }
+  }catch(e){
+    resultEl.innerHTML = `<div style="color:var(--text3);text-align:center">เชื่อมต่อ AI ไม่ได้ ลองใหม่อีกครั้ง</div>`;
+  }
+
+  btn.textContent = '💼 วิเคราะห์ผลกระทบต่อพอร์ตฉัน';
+  btn.disabled = false;
+}
+
+function renderEliteEvents(){
+  const grid = document.getElementById('eliteEventsGrid');
+  if(!grid) return;
+  const now = new Date();
+  const tagColors = { 'Forex':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)|var(--ice)', '🇹🇭 ไทย':'rgba(70,180,70,0.15)|rgba(70,180,70,0.3)|#4db65c', '🇺🇸 สหรัฐ':'rgba(60,100,200,0.15)|rgba(60,100,200,0.35)|#5b8de0', '🇪🇺':'rgba(255,215,0,0.12)|rgba(255,215,0,0.3)|var(--gold)' };
+  grid.innerHTML = ELITE_EVENTS.map(ev => {
+    const evDate = new Date(ev.date + (ev.time ? 'T'+ev.time : 'T00:00:00'));
+    const diffDays = Math.ceil((evDate - now) / 86400000);
+    const urgency = diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
+    const countdownText = diffDays <= 0 ? 'วันนี้!' : diffDays === 1 ? 'อีก 1 วัน' : `อีก ${diffDays} วัน`;
+    const dateStr = evDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    const urgColor = urgency==='urgent'?'var(--red)':urgency==='soon'?'var(--gold)':'var(--ice)';
+    const urgBg = urgency==='urgent'?'rgba(255,77,106,0.2)|rgba(255,77,106,0.4)':urgency==='soon'?'rgba(201,168,76,0.2)|rgba(201,168,76,0.4)':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)';
+    const [cbg,cborder] = urgBg.split('|');
+    return `<div class="elite-event-card ${urgency}">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="width:36px;height:36px;border-radius:10px;background:${urgency==='urgent'?'rgba(255,77,106,0.12)':urgency==='soon'?'rgba(201,168,76,0.12)':'rgba(100,210,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ev.emoji}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${ev.title}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--text3)">${dateStr}${ev.time?' เวลา '+ev.time+' น.':''}</span>
+            <span style="background:${cbg};border:1px solid ${cborder};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:${urgColor};font-family:'Syne',sans-serif">${countdownText}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+            ${ev.tags.map(tag=>{const c=(tagColors[tag]||'rgba(255,255,255,0.08)|rgba(255,255,255,0.15)|var(--text3)').split('|');return `<span style="background:${c[0]};border:1px solid ${c[1]};border-radius:20px;padding:2px 7px;font-size:9px;color:${c[2]};font-family:'Syne',sans-serif">${tag}</span>`;}).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.5">${ev.detail}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:7px;font-size:9px;color:var(--text3)">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+    </div>`;
+  }).join('');
+}
+
+
+
+
+// ══════════════════════════════════════════
+// ELITE BACKGROUND SCAN — ทุก 30 นาที
+// ══════════════════════════════════════════
+
+let _eliteScanInterval = null;
+let _eliteLastScanTime = 0;
+let _eliteSeenHeadlines = new Set(JSON.parse(_lsGet('_elite_seen')||'[]'));
+
+function saveSeenHeadlines(){
+  try{ _lsSet('_elite_seen', JSON.stringify([..._eliteSeenHeadlines].slice(-100))); }catch{}
+}
+
+async function eliteBackgroundScan(){
+  // ไม่ scan ถ้า scan ไปแล้วไม่ถึง 25 นาที
+  const now = Date.now();
+  if(now - _eliteLastScanTime < 25 * 60 * 1000) return;
+  _eliteLastScanTime = now;
+
+  // ไม่ต้องแจ้งถ้า push ไม่ได้เปิด
+  if(Notification.permission !== 'granted') return;
+
+  try{
+    const nameList = ELITE_PEOPLE.slice(0,10).map(p=>`${p.name}(${p.id})`).join(', ');
+    const prompt = `ค้นหาข่าวสำคัญ 2 ชั่วโมงที่ผ่านมาของ: ${nameList}
+เฉพาะข่าวที่กระทบตลาดหุ้น impact ≥ 7/10 เท่านั้น
+ตอบ JSON array ไม่มี markdown:
+[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย","impact":8,"markets":["USD","Oil"]}]
+ถ้าไม่มีข่าวสำคัญตอบ []`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    let results = [];
+    try{ results = JSON.parse(text.replace(/```json|```/g,'').trim()); }catch{ return; }
+
+    for(const item of results){
+      if(!item.headline || item.impact < 7) continue;
+      // ข้ามถ้าเห็นข่าวนี้แล้ว
+      const key = item.id + '|' + item.headline.slice(0,30);
+      if(_eliteSeenHeadlines.has(key)) continue;
+      _eliteSeenHeadlines.add(key);
+
+      const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+      const name = person ? person.name : item.id;
+      const emoji = person ? person.emoji : '📰';
+      const markets = (item.markets||[]).join(', ');
+
+      // แจ้งเตือน
+      await showLocalNotification(
+        `${emoji} ${name} · Impact ${item.impact}/10`,
+        `${item.headline}${markets?' · '+markets:''}`,
+        { tag:'elite-'+item.id, requireInteraction: item.impact >= 9 }
+      );
+    }
+    saveSeenHeadlines();
+  }catch(e){}
+}
+
+async function toggleEliteNotification(){
+  const dot = document.getElementById('eliteLiveDot');
+  const txt = document.getElementById('eliteLiveText');
+
+  if(Notification.permission === 'granted' && _eliteScanInterval){
+    // ปิด
+    clearInterval(_eliteScanInterval);
+    _eliteScanInterval = null;
+    _lsSet('elite_scan','0');
+    if(dot){ dot.style.background='var(--text3)'; dot.style.animation='none'; }
+    if(txt){ txt.style.color='var(--text3)'; txt.textContent='OFF'; }
+    toast('🔕 ปิดแจ้งเตือน Elite แล้ว');
+  } else {
+    // เปิด — ขอ permission ก่อน
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      toast('⚠️ กรุณาอนุญาต Notification ในการตั้งค่า Safari');
+      return;
+    }
+    _lsSet('push_enabled','1');
+    _lsSet('elite_scan','1');
+    startEliteBackgroundScan();
+    if(dot){ dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite'; }
+    if(txt){ txt.style.color='var(--green)'; txt.textContent='LIVE'; }
+    toast('🔔 เปิดแจ้งเตือน Elite แล้ว — scan ทุก 30 นาที');
+    // test notification
+    setTimeout(()=>showLocalNotification('👁 ELITE พร้อมแล้ว','จะแจ้งเตือนเมื่อมีข่าว Impact ≥ 7/10',{tag:'elite-test'}), 1000);
+  }
+}
+
+function updateEliteNotifUI(){
+  const dot = document.getElementById('eliteLiveDot');
+  const txt = document.getElementById('eliteLiveText');
+  if(!dot||!txt) return;
+  const active = Notification.permission==='granted' && _lsGet('elite_scan')==='1';
+  if(active){
+    dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite';
+    txt.style.color='var(--green)'; txt.textContent='LIVE';
+  } else {
+    dot.style.background='var(--text3)'; dot.style.animation='none';
+    txt.style.color='var(--text3)'; txt.textContent='SCAN';
+  }
+}
+
+function startEliteBackgroundScan(){
+  if(_eliteScanInterval) return;
+  // scan ครั้งแรกหลัง 2 นาที
+  setTimeout(eliteBackgroundScan, 2 * 60 * 1000);
+  // scan ทุก 30 นาที
+  _eliteScanInterval = setInterval(eliteBackgroundScan, 30 * 60 * 1000);
+}
+
 // init เมื่อโหลดแอป
 window.addEventListener('load', ()=>{
   setTimeout(async ()=>{
@@ -10538,6 +11084,7 @@ window.addEventListener('load', ()=>{
         _swReg = await navigator.serviceWorker.register('/stock-pro-V2/sw.js', {scope: '/stock-pro-V2/'});
         if(Notification.permission === 'granted'){
           _lsSet('push_enabled','1');
+          startEliteBackgroundScan();
         }
       }catch{}
     }
