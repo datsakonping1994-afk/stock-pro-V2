@@ -9646,14 +9646,11 @@ function renderPortfolio(){
                 <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);letter-spacing:0.3px">${safeTicker}</div>
                 <div style="font-size:10px;color:var(--text3);margin-top:2px">${safeName||safeTicker} · <span class="port-weight-${safeTicker}">--</span></div>
               </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="text-align:right">
-                  <div class="port-val-${safeTicker}" style="font-size:16px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
-                  <div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;background:${isUp?'rgba(0,200,130,0.12)':'rgba(255,77,106,0.12)'};border:1px solid ${isUp?'rgba(0,200,130,0.25)':'rgba(255,77,106,0.25)'};border-radius:6px;padding:2px 7px">
-                    <span class="port-pct-${safeTicker}" style="font-size:11px;font-weight:700;color:${pnlColor}">${curPrice>0?(isUp?'▲':'▼')+Math.abs(pnlPct).toFixed(2)+'%':'--'}</span>
-                  </div>
+              <div style="text-align:right">
+                <div class="port-val-${safeTicker}" style="font-size:16px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
+                <div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;background:${isUp?'rgba(0,200,130,0.12)':'rgba(255,77,106,0.12)'};border:1px solid ${isUp?'rgba(0,200,130,0.25)':'rgba(255,77,106,0.25)'};border-radius:6px;padding:2px 7px">
+                  <span class="port-pct-${safeTicker}" style="font-size:11px;font-weight:700;color:${pnlColor}">${curPrice>0?(isUp?'▲':'▼')+Math.abs(pnlPct).toFixed(2)+'%':'--'}</span>
                 </div>
-                <button onclick="event.stopPropagation();if(confirm('ลบ ${safeTicker} ออกจากพอร์ต?'))removePortPosition('${safeTicker}')" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:8px 10px;font-size:16px;cursor:pointer;flex-shrink:0">🗑️</button>
               </div>
             </div>
             <!-- Progress bar weight -->
@@ -9663,7 +9660,7 @@ function renderPortfolio(){
           </div>
         </div>
         <!-- รายละเอียด (ซ่อน/แสดง) -->
-        <div class="port-detail-${safeTicker}" style="display:none;margin-top:12px">
+        <div class="port-detail-${safeTicker}" data-detail="${safeTicker}" style="display:none;margin-top:12px">
           <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:12px"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
             <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px">
@@ -9748,7 +9745,9 @@ function renderPortfolio(){
     const row=e.target.closest('.port-row');
     if(row){
       const ticker=row.dataset.ticker;
-      const detail=list.querySelector('.port-detail-'+ticker);
+      const safeTick = ticker.replace(/\./g,'-');
+      // ใช้ data attribute แทน class selector เพื่อรองรับ ticker ที่มี dot
+      const detail=list.querySelector(`[data-detail="${safeTick}"]`);
       if(detail){
         detail.style.display = detail.style.display==='block' ? 'none' : 'block';
       }
