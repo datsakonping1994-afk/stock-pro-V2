@@ -11200,6 +11200,19 @@ function initElitePage(){
 async function runEliteScan(forceRefresh=false){
   if(_eliteScanning) return;
 
+  // ถ้า force refresh → ล้าง cache ก่อนเลย
+  if(forceRefresh){
+    clearEliteCache();
+    // ซ่อนข่าวเก่า รีเซ็ต pins
+    const feed = document.getElementById('eliteNewsFeed');
+    const pins = document.getElementById('elitePins');
+    if(feed) feed.style.display = 'none';
+    if(pins) pins.innerHTML = '';
+    // แสดง overlay ใหม่
+    const ov = document.getElementById('eliteScanOverlay');
+    if(ov){ ov.style.display='flex'; ov.innerHTML='<div style="font-size:22px">🔄</div><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลัง RESCAN...</div>'; }
+  }
+
   // ถ้าไม่ได้ force refresh → เช็ค cache ก่อน
   if(!forceRefresh){
     const cached = loadEliteCache();
@@ -11241,17 +11254,15 @@ async function runEliteScan(forceRefresh=false){
 
     const nameList = ELITE_PEOPLE.map(p=>`${p.name}(${p.id}/${p.role})`).join(', ');
 
-    const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-    const prompt = `วันนี้ ${today} ค้นหาข่าวสำคัญที่เกิดขึ้นใน 24 ชั่วโมงที่ผ่านมาเกี่ยวกับบุคคลต่อไปนี้:
+    const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const searchTerms = ELITE_PEOPLE.slice(0,10).map(p=>`"${p.name}" news today`).join(', ');
+    const prompt = `Today is ${today}. Search for the latest news (last 24 hours) about these key figures and their market impact:
 
-${nameList}
+Search queries to use: ${searchTerms}
 
-คำแนะนำ:
-- ค้นหาทีละคนที่สำคัญที่สุดก่อน เช่น "Trump news today", "Fed Powell statement today", "Jensen Huang NVIDIA news"
-- เน้นข่าวที่กระทบตลาดหุ้น ค่าเงิน น้ำมัน crypto
-- ถ้าไม่มีข่าวของคนนั้นจริงๆ ไม่ต้องใส่
+Also search: "stock market news today", "Fed news today", "oil price news today"
 
-ตอบ JSON array เท่านั้น ไม่มี markdown ไม่มี backtick:
+For each person who has significant market-moving news today, return a JSON array. No markdown, no backtick:
 [{
   "id":"trump",
   "headline":"สรุปหัวข้อข่าวภาษาไทย 1 ประโยค",
