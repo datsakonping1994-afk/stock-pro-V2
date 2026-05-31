@@ -11274,7 +11274,8 @@ Only include people who have significant market-moving news today. If no news, r
       },
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:3000,
+        max_tokens:4000,
+        system:'You are a financial news analyst. You MUST respond with ONLY a valid JSON array. No text before or after. No markdown. No explanation. Start your response with [ and end with ].',
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:prompt}]
       })
