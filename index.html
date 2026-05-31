@@ -10622,12 +10622,24 @@ const ELITE_PEOPLE = [
 ];
 
 const ELITE_EVENTS = [
-  { title:'World Bank รายงาน Global Economic Prospects', emoji:'🌍', date:'2026-06-01', time:null,      tags:['Forex','🇹🇭 ไทย','🇺🇸 สหรัฐ'], markets:['USD','THB','SET'],  detail:'รายงานแนวโน้มเศรษฐกิจโลก คาดการณ์ GDP และความเสี่ยง'},
-  { title:'OPEC+ ประชุมใหญ่',                            emoji:'🛢️', date:'2026-06-07', time:'17:00',   tags:['Forex','🇹🇭 ไทย','🇺🇸 สหรัฐ'], markets:['Oil','Energy'],     detail:'กำหนดโควต้าผลิตน้ำมัน กระทบราคาน้ำมันโลกโดยตรง'},
-  { title:'ECB ประกาศดอกเบี้ย (มิ.ย.)',                  emoji:'🇪🇺', date:'2026-06-11', time:'19:15',   tags:['Forex'],                        markets:['EUR','European'],   detail:'คณะกรรมการ ECB ลงมติอัตราดอกเบี้ย กระทบค่าเงินยูโร'},
-  { title:'Fed ประชุม FOMC (มิ.ย.)',                      emoji:'🏛️', date:'2026-06-18', time:'01:00',   tags:['Forex','🇺🇸 สหรัฐ'],           markets:['USD','S&P500'],     detail:'Fed ประกาศนโยบายการเงิน ตลาดจับตาทิศทางดอกเบี้ย'},
-  { title:'G7 Summit 2026',                               emoji:'🌐', date:'2026-06-25', time:null,      tags:['Forex','🇺🇸 สหรัฐ','🇪🇺'],    markets:['USD','EUR','Gold'], detail:'ผู้นำ G7 หารือเศรษฐกิจโลก การค้า และความมั่นคง'},
-  { title:'US CPI Inflation (มิ.ย.)',                     emoji:'📊', date:'2026-07-15', time:'19:30',   tags:['🇺🇸 สหรัฐ','Forex'],           markets:['USD','Gold'],       detail:'ตัวเลขเงินเฟ้อสหรัฐ ชี้ทิศทาง Fed Rate ต่อไป'},
+  // ── มิถุนายน 2026 ──
+  { title:'US Jobs Report (NFP) May',       emoji:'💼', date:'2026-06-06', time:'07:30', tags:['SP500','Nasdaq','Jobs'],    markets:['SP500','USD','Bonds'],   detail:'ตัวเลขการจ้างงานนอกภาคเกษตร ชี้ความแข็งแกร่งของเศรษฐกิจ กระทบทิศทาง Fed โดยตรง'},
+  { title:'US CPI Inflation May',           emoji:'📊', date:'2026-06-11', time:'07:30', tags:['SP500','Fed','Inflation'],  markets:['SP500','Gold','Bonds'],  detail:'ดัชนีราคาผู้บริโภค ตัวเลขหลักที่ Fed ใช้ตัดสินใจดอกเบี้ย กระทบหุ้น Growth/Tech แรงมาก'},
+  { title:'Fed FOMC Meeting (Jun)',         emoji:'🏛️', date:'2026-06-18', time:'13:00', tags:['Fed','SP500','Nasdaq'],    markets:['SP500','Nasdaq','Gold'], detail:'Fed ประกาศนโยบายดอกเบี้ย ตลาดจับตาสัญญาณลด rate และ dot plot ใหม่'},
+  { title:'US Retail Sales May',           emoji:'🛒', date:'2026-06-17', time:'07:30', tags:['SP500','Consumer'],        markets:['SP500','USD'],           detail:'ยอดค้าปลีกสหรัฐ สะท้อนกำลังซื้อผู้บริโภค กระทบหุ้นกลุ่ม Consumer Discretionary'},
+  { title:'US GDP Q1 2026 (Final)',        emoji:'📈', date:'2026-06-26', time:'07:30', tags:['SP500','Economy'],         markets:['SP500','USD','Bonds'],   detail:'ตัวเลข GDP ไตรมาส 1 รอบสุดท้าย บอกภาพรวมเศรษฐกิจสหรัฐ'},
+  // ── กรกฎาคม 2026 ──
+  { title:'US Jobs Report (NFP) Jun',      emoji:'💼', date:'2026-07-02', time:'07:30', tags:['SP500','Nasdaq','Jobs'],    markets:['SP500','USD','Bonds'],   detail:'ตัวเลขการจ้างงานเดือนมิถุนายน ตลาดจับตาใกล้ชิดหลัง FOMC'},
+  { title:'US CPI Inflation Jun',          emoji:'📊', date:'2026-07-15', time:'07:30', tags:['SP500','Fed','Inflation'],  markets:['SP500','Gold','Bonds'],  detail:'เงินเฟ้อเดือนมิถุนายน ชี้ทิศทาง Fed ในการประชุม FOMC กรกฎาคม'},
+  { title:'Fed FOMC Meeting (Jul)',        emoji:'🏛️', date:'2026-07-30', time:'13:00', tags:['Fed','SP500','Nasdaq'],    markets:['SP500','Nasdaq','Gold'], detail:'การประชุม Fed เดือนกรกฎาคม ตลาดคาดหวังสัญญาณลดดอกเบี้ย'},
+  // ── Big Tech Earnings Q2 2026 ──
+  { title:'NVDA Earnings Q2 2026',         emoji:'🤖', date:'2026-08-27', time:'16:00', tags:['NVDA','AI','Nasdaq'],        markets:['NVDA','Nasdaq','SOX'],    detail:'รายงานผลประกอบการ NVIDIA กระทบหุ้น AI และ Semiconductor ทั้งกลุ่ม'},
+  { title:'AAPL Earnings Q3 FY2026',       emoji:'🍎', date:'2026-07-31', time:'16:00', tags:['AAPL','Tech','Nasdaq'],      markets:['AAPL','Nasdaq','SP500'], detail:'รายงานผลประกอบการ Apple กระทบ S&P500 และ Nasdaq โดยตรง เป็นหุ้น weight สูงสุด'},
+  { title:'MSFT Earnings Q4 FY2026',       emoji:'🪟', date:'2026-07-29', time:'16:00', tags:['MSFT','Cloud','Nasdaq'],     markets:['MSFT','Nasdaq','Cloud'],  detail:'รายงานผลประกอบการ Microsoft โฟกัส Azure และ AI revenue growth'},
+  { title:'GOOGL Earnings Q2 2026',        emoji:'🔍', date:'2026-07-29', time:'16:00', tags:['GOOGL','AI','Nasdaq'],       markets:['GOOGL','Nasdaq','Ads'],   detail:'รายงานผลประกอบการ Alphabet โฟกัส Search revenue และ Google Cloud'},
+  { title:'META Earnings Q2 2026',         emoji:'📱', date:'2026-07-30', time:'16:00', tags:['META','AI','Nasdaq'],        markets:['META','Nasdaq','Ads'],    detail:'รายงานผลประกอบการ Meta โฟกัส Ad revenue และ AI investment'},
+  { title:'AMZN Earnings Q2 2026',         emoji:'📦', date:'2026-08-01', time:'16:00', tags:['AMZN','Cloud','Nasdaq'],     markets:['AMZN','Nasdaq','AWS'],    detail:'รายงานผลประกอบการ Amazon โฟกัส AWS growth และ e-commerce margin'},
+  { title:'TSLA Earnings Q2 2026',         emoji:'⚡', date:'2026-07-23', time:'16:00', tags:['TSLA','EV','Nasdaq'],        markets:['TSLA','EV','Nasdaq'],     detail:'รายงานผลประกอบการ Tesla โฟกัส delivery numbers และ margin'},
 ];
 
 let _eliteTab = 'map';
@@ -10801,22 +10813,9 @@ async function runEliteScan(forceRefresh=false){
 
 ${newsSummary}
 
-ตอบ JSON array เท่านั้น ไม่มี markdown ไม่มี code block:
-[{
-  "id":"trump",
-  "headline":"สรุปข่าวภาษาไทย 1 ประโยค",
-  "summary":"อธิบายบริบทข่าวให้ชัดเจนว่าเกิดอะไรขึ้น ทำไมถึงสำคัญ และส่งผลอย่างไรต่อตลาด ภาษาง่าย 2-3 ประโยค",
-  "impact":8,
-  "pros":["ผลดีต่อตลาด อธิบายให้ชัดเจน"],
-  "cons":["ผลเสียต่อตลาด อธิบายให้ชัดเจน"],
-  "action":"BUY หรือ SELL หรือ HOLD",
-  "actionReason":"เหตุผลสั้นๆ ว่าทำไมถึงแนะนำ action นี้",
-  "stocks":[{"ticker":"AAPL","action":"BUY","impact":"+2-3%","reason":"เหตุผลสั้นๆ"}],
-  "portfolioImpact":"+1.5% ถ้าถือหุ้นกลุ่ม tech หรือ -0.8% ถ้าถือ bond",
-  "tags":["สหรัฐ","เศรษฐกิจ"],
-  "markets":["USD","S&P500"]
-}]
-เฉพาะคนที่มีข่าวสำคัญ impact ≥ 6 เท่านั้น stocks ให้ระบุ 2-4 ตัวที่ได้รับผลกระทบชัดเจนที่สุด`;
+ตอบ JSON array เท่านั้น ไม่มี markdown:
+[{"id":"trump","headline":"สรุปข่าวภาษาไทย 1 ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"tags":["สหรัฐ"],"markets":["USD"]}]
+เฉพาะคนที่มีข่าวสำคัญ impact ≥ 6 เท่านั้น`;
 
     let results = [];
     if(groqKey){
@@ -10825,7 +10824,7 @@ ${newsSummary}
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
         body:JSON.stringify({
           model:'llama-3.3-70b-versatile',
-          max_tokens:3000,
+          max_tokens:1500,
           messages:[
             {role:'system',content:'คุณคือนักวิเคราะห์การลงทุน ตอบ JSON เท่านั้น'},
             {role:'user',content:prompt}
@@ -10919,26 +10918,9 @@ function renderEliteScanResults(results, ageMs=0){
       const impactBg = n.impact>=9 ? 'rgba(255,77,106,0.15)' : n.impact>=7 ? 'rgba(201,168,76,0.15)' : 'rgba(100,210,255,0.12)';
       const tags = (n.tags||[]).map(t=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${t}</span>`).join('');
       const now = new Date().toLocaleString('th-TH',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      // action badge
-      const actionColor = n.action==='BUY' ? 'var(--green)' : n.action==='SELL' ? 'var(--red)' : 'var(--gold)';
-      const actionBg = n.action==='BUY' ? 'rgba(0,230,118,0.15)' : n.action==='SELL' ? 'rgba(255,77,106,0.15)' : 'rgba(201,168,76,0.15)';
-      const actionBorder = n.action==='BUY' ? 'rgba(0,230,118,0.4)' : n.action==='SELL' ? 'rgba(255,77,106,0.4)' : 'rgba(201,168,76,0.4)';
-      const actionEmoji = n.action==='BUY' ? '📈' : n.action==='SELL' ? '📉' : '⏸️';
-      // stocks
-      const stocksHtml = (n.stocks||[]).map(s=>{
-        const sc = s.action==='BUY' ? 'var(--green)' : s.action==='SELL' ? 'var(--red)' : 'var(--gold)';
-        const sb = s.action==='BUY' ? 'rgba(0,230,118,0.08)' : s.action==='SELL' ? 'rgba(255,77,106,0.08)' : 'rgba(201,168,76,0.08)';
-        return `<div style="background:${sb};border:1px solid ${sc}44;border-radius:9px;padding:7px 9px;display:flex;align-items:center;gap:7px">
-          <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:${sc};min-width:44px">${s.ticker}</span>
-          <span style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:${sc};background:${sc}22;border:1px solid ${sc}44;border-radius:6px;padding:1px 6px">${s.action}</span>
-          <span style="font-size:10px;font-weight:700;color:${sc};font-family:'Manrope',sans-serif">${s.impact||''}</span>
-          <span style="font-size:10px;color:var(--text3);flex:1;line-height:1.3">${s.reason||''}</span>
-        </div>`;
-      }).join('');
       return `
       <div id="elite-card-${p.id}" style="background:linear-gradient(145deg,rgba(20,28,42,0.98),rgba(12,18,30,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:13px;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${impactColor},transparent)"></div>
-
         <!-- Header -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden">
@@ -10953,66 +10935,28 @@ function renderEliteScanResults(results, ageMs=0){
             <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;color:${impactColor};opacity:0.7">/10</span>
           </div>
         </div>
-
-        <!-- Time + Markets -->
-        <div style="font-size:9px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span>⏱ ${now}</span>
-          <span style="opacity:0.4">·</span>
-          <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span>
-        </div>
-
+        <!-- Time -->
+        <div style="font-size:9px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:4px">⏱ ${now}</div>
         <!-- Headline -->
-        <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว</div>
+        <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span></div>
         <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:8px">${n.headline}</div>
-
-        <!-- Summary (บริบทข่าว) -->
-        ${n.summary ? `<div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.15);border-radius:9px;padding:9px 11px;margin-bottom:8px">
-          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:4px">💡 เกิดอะไรขึ้น?</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.7">${n.summary}</div>
-        </div>` : ''}
-
         <!-- Tags -->
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${tags}</div>
-
-        <!-- Action แนะนำ -->
-        ${n.action ? `<div style="background:${actionBg};border:1px solid ${actionBorder};border-radius:10px;padding:9px 11px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px">
-          <div style="flex-shrink:0">
-            <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:${actionColor}">${actionEmoji} ${n.action}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.5">${n.actionReason||''}</div>
-        </div>` : ''}
-
-        <!-- หุ้นที่ได้รับผลกระทบ -->
-        ${stocksHtml ? `<div style="margin-bottom:8px">
-          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);letter-spacing:1px;margin-bottom:5px">🎯 หุ้นที่ได้รับผลกระทบ</div>
-          <div style="display:flex;flex-direction:column;gap:5px">${stocksHtml}</div>
-        </div>` : ''}
-
-        <!-- Portfolio Impact % -->
-        ${n.portfolioImpact ? `<div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 11px;margin-bottom:8px;display:flex;align-items:center;gap:7px">
-          <span style="font-size:14px">📊</span>
-          <div>
-            <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);letter-spacing:1px;margin-bottom:2px">ผลกระทบต่อพอร์ต</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.5">${n.portfolioImpact}</div>
-          </div>
-        </div>` : ''}
-
         <!-- Pros -->
         <div style="background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.18);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--green);margin-bottom:4px">✅ ได้ประโยชน์</div>
-          ${(n.pros||[]).map(x=>`<div style="font-size:11px;color:var(--text2);line-height:1.6;display:flex;gap:5px"><span>•</span><span>${x}</span></div>`).join('')}
+          ${(n.pros||[]).map(p=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${p}</span></div>`).join('')}
         </div>
-
         <!-- Cons -->
         <div style="background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.18);border-radius:9px;padding:8px 10px;margin-bottom:8px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--red);margin-bottom:4px">❌ เสียประโยชน์</div>
-          ${(n.cons||[]).map(x=>`<div style="font-size:11px;color:var(--text2);line-height:1.6;display:flex;gap:5px"><span>•</span><span>${x}</span></div>`).join('')}
+          ${(n.cons||[]).map(c=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${c}</span></div>`).join('')}
         </div>
-
         <!-- Portfolio Impact Button -->
         <button onclick="analyzePortfolioImpact('${p.id}',this)" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px">
           💼 วิเคราะห์ผลกระทบต่อพอร์ตฉัน
         </button>
+        <!-- Portfolio Impact Result -->
         <div id="port-impact-${p.id}" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:10px;margin-bottom:8px;font-size:11px;color:var(--text2);line-height:1.7"></div>
         <div style="font-size:9px;color:var(--text3);opacity:0.6">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
       </div>`;
@@ -11117,19 +11061,40 @@ function renderEliteEvents(){
   const grid = document.getElementById('eliteEventsGrid');
   if(!grid) return;
   const now = new Date();
-  const tagColors = { 'Forex':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)|var(--ice)', '🇹🇭 ไทย':'rgba(70,180,70,0.15)|rgba(70,180,70,0.3)|#4db65c', '🇺🇸 สหรัฐ':'rgba(60,100,200,0.15)|rgba(60,100,200,0.35)|#5b8de0', '🇪🇺':'rgba(255,215,0,0.12)|rgba(255,215,0,0.3)|var(--gold)' };
-  grid.innerHTML = ELITE_EVENTS.map(ev => {
+  const tagColors = {
+    'SP500':    'rgba(0,230,118,0.12)|rgba(0,230,118,0.3)|var(--green)',
+    'SP500':   'rgba(0,230,118,0.12)|rgba(0,230,118,0.3)|var(--green)',
+    'Nasdaq':  'rgba(100,210,255,0.12)|rgba(100,210,255,0.3)|var(--ice)',
+    'Fed':     'rgba(201,168,76,0.12)|rgba(201,168,76,0.3)|var(--gold)',
+    'Inflation':'rgba(255,77,106,0.12)|rgba(255,77,106,0.3)|var(--red)',
+    'Jobs':    'rgba(100,210,255,0.12)|rgba(100,210,255,0.25)|var(--ice)',
+    'Economy': 'rgba(0,230,118,0.1)|rgba(0,230,118,0.25)|var(--green)',
+    'Consumer':'rgba(201,168,76,0.1)|rgba(201,168,76,0.25)|var(--gold)',
+    'AI':      'rgba(180,100,255,0.12)|rgba(180,100,255,0.3)|#c87aff',
+    'NVDA':    'rgba(118,185,0,0.12)|rgba(118,185,0,0.3)|#76b900',
+    'AAPL':    'rgba(200,200,200,0.1)|rgba(200,200,200,0.25)|#c8c8c8',
+    'MSFT':    'rgba(0,120,212,0.12)|rgba(0,120,212,0.3)|#0078d4',
+    'GOOGL':   'rgba(66,133,244,0.12)|rgba(66,133,244,0.3)|#4285f4',
+    'META':    'rgba(24,119,242,0.12)|rgba(24,119,242,0.3)|#1877f2',
+    'AMZN':    'rgba(255,153,0,0.12)|rgba(255,153,0,0.3)|#ff9900',
+    'TSLA':    'rgba(204,0,0,0.12)|rgba(204,0,0,0.3)|#cc0000',
+    'Cloud':   'rgba(100,210,255,0.1)|rgba(100,210,255,0.25)|var(--ice)',
+    'EV':      'rgba(0,230,118,0.1)|rgba(0,230,118,0.25)|var(--green)',
+  };
+  grid.innerHTML = ELITE_EVENTS.map((ev,idx) => {
     const evDate = new Date(ev.date + (ev.time ? 'T'+ev.time : 'T00:00:00'));
+    const isPast = evDate < now;
     const diffDays = Math.ceil((evDate - now) / 86400000);
-    const urgency = diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
-    const countdownText = diffDays <= 0 ? 'วันนี้!' : diffDays === 1 ? 'อีก 1 วัน' : `อีก ${diffDays} วัน`;
+    const urgency = isPast ? 'later' : diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
+    const countdownText = isPast ? 'ผ่านไปแล้ว' : diffDays === 0 ? 'วันนี้!' : diffDays === 1 ? 'อีก 1 วัน' : `อีก ${diffDays} วัน`;
     const dateStr = evDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
-    const urgColor = urgency==='urgent'?'var(--red)':urgency==='soon'?'var(--gold)':'var(--ice)';
-    const urgBg = urgency==='urgent'?'rgba(255,77,106,0.2)|rgba(255,77,106,0.4)':urgency==='soon'?'rgba(201,168,76,0.2)|rgba(201,168,76,0.4)':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)';
+    const urgColor = isPast ? 'var(--text3)' : urgency==='urgent'?'var(--red)':urgency==='soon'?'var(--gold)':'var(--ice)';
+    const urgBg = isPast ? 'rgba(255,255,255,0.06)|rgba(255,255,255,0.12)' : urgency==='urgent'?'rgba(255,77,106,0.2)|rgba(255,77,106,0.4)':urgency==='soon'?'rgba(201,168,76,0.2)|rgba(201,168,76,0.4)':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)';
     const [cbg,cborder] = urgBg.split('|');
-    return `<div class="elite-event-card ${urgency}">
+    const evId = 'ev-summary-'+idx;
+    return `<div class="elite-event-card ${urgency}" style="${isPast?'opacity:0.75':''}">
       <div style="display:flex;gap:10px;align-items:flex-start">
-        <div style="width:36px;height:36px;border-radius:10px;background:${urgency==='urgent'?'rgba(255,77,106,0.12)':urgency==='soon'?'rgba(201,168,76,0.12)':'rgba(100,210,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ev.emoji}</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:${isPast?'rgba(255,255,255,0.05)':urgency==='urgent'?'rgba(255,77,106,0.12)':urgency==='soon'?'rgba(201,168,76,0.12)':'rgba(100,210,255,0.1)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${isPast?'✅':ev.emoji}</div>
         <div style="flex:1;min-width:0">
           <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${ev.title}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
@@ -11142,9 +11107,157 @@ function renderEliteEvents(){
           <div style="font-size:11px;color:var(--text3);line-height:1.5">${ev.detail}</div>
         </div>
       </div>
+      <div id="${evId}" style="display:none;margin-top:8px"></div>
+      ${isPast ? `
+      <button onclick="summarizeEvent(${idx}, this)" style="width:100%;margin-top:10px;background:linear-gradient(135deg,rgba(100,210,255,0.1),rgba(100,210,255,0.05));border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px">
+        🔍 ดูสรุปผลการรายงาน
+      </button>
+      ` : `
+      <button onclick="forecastEvent(${idx}, this)" style="width:100%;margin-top:10px;background:linear-gradient(135deg,rgba(201,168,76,0.1),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px">
+        🔮 AI คาดการณ์แนวโน้ม
+      </button>
+      `}
       <div style="margin-top:8px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:7px;font-size:9px;color:var(--text3)">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
     </div>`;
   }).join('');
+}
+
+async function summarizeEvent(idx, btn){
+  const ev = ELITE_EVENTS[idx];
+  const evId = 'ev-summary-'+idx;
+  const box = document.getElementById(evId);
+  if(!box) return;
+
+  // toggle ถ้าเปิดอยู่แล้ว
+  if(box.style.display === 'block'){
+    box.style.display = 'none';
+    btn.innerHTML = '🔍 ดูสรุปผลการรายงาน';
+    return;
+  }
+
+  // แสดง loading
+  box.style.display = 'block';
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px;color:var(--text3);font-size:12px">
+    <div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div>
+    <span>AI กำลังค้นหาสรุปผล...</span>
+  </div>`;
+  btn.innerHTML = '⏳ กำลังโหลด...';
+  btn.disabled = true;
+
+  try{
+    const _ank = localStorage.getItem('anthropicKey')||'';
+    const prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}
+ค้นหาและสรุปผลการรายงาน/ประกาศที่เกิดขึ้นจริง ตอบเป็นภาษาไทย ให้ครอบคลุม:
+1. ผลที่ออกมาคืออะไร (ตัวเลข/มติ/ประกาศ)
+2. ตลาดหุ้น/ค่าเงิน/สินค้าโภคภัณฑ์ตอบสนองอย่างไร
+3. หุ้นหรือสินทรัพย์ไหนได้ประโยชน์ หรือเสียประโยชน์
+4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
+ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+
+    if(!text){
+      box.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px">ไม่พบข้อมูลสรุป</div>`;
+    } else {
+      // แปลง newline เป็น <br>
+      const html = text.replace(/\n/g,'<br>');
+      box.innerHTML = `
+        <div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.18);border-radius:10px;padding:11px 12px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:7px">📋 สรุปผลการรายงาน</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.8">${html}</div>
+        </div>`;
+    }
+    btn.innerHTML = '✅ ปิดสรุป';
+    btn.style.background = 'rgba(255,255,255,0.04)';
+    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+    btn.style.color = 'var(--text3)';
+  } catch(e){
+    box.innerHTML = `<div style="font-size:11px;color:var(--red);padding:8px">⚠️ โหลดไม่สำเร็จ ลองใหม่อีกครั้ง</div>`;
+    btn.innerHTML = '🔍 ดูสรุปผลการรายงาน';
+  }
+  btn.disabled = false;
+}
+
+async function forecastEvent(idx, btn){
+  const ev = ELITE_EVENTS[idx];
+  const evId = 'ev-summary-'+idx;
+  const box = document.getElementById(evId);
+  if(!box) return;
+
+  // toggle
+  if(box.style.display === 'block'){
+    box.style.display = 'none';
+    btn.innerHTML = '🔮 AI คาดการณ์แนวโน้ม';
+    btn.style.background = 'linear-gradient(135deg,rgba(201,168,76,0.1),rgba(201,168,76,0.05))';
+    btn.style.borderColor = 'rgba(201,168,76,0.25)';
+    btn.style.color = 'var(--gold)';
+    return;
+  }
+
+  box.style.display = 'block';
+  box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px;color:var(--text3);font-size:12px">
+    <div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div>
+    <span>AI กำลังวิเคราะห์แนวโน้ม...</span>
+  </div>`;
+  btn.innerHTML = '⏳ กำลังโหลด...';
+  btn.disabled = true;
+
+  try{
+    const _ank = localStorage.getItem('anthropicKey')||'';
+    const evDate = new Date(ev.date);
+    const dateStr = evDate.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+    const prompt = `เหตุการณ์ที่กำลังจะเกิดขึ้น: "${ev.title}" วันที่ ${dateStr}
+ค้นหาข้อมูลล่าสุดแล้ววิเคราะห์คาดการณ์ ตอบภาษาไทย ให้ครอบคลุม:
+1. ตลาดคาดการณ์ผลออกมาอย่างไร (ระบุ % ความน่าจะเป็นถ้าทำได้)
+2. ถ้าผลออกมาดีกว่าคาด → ตลาด/หุ้นจะเป็นอย่างไร
+3. ถ้าผลออกมาแย่กว่าคาด → ตลาด/หุ้นจะเป็นอย่างไร
+4. หุ้นหรือสินทรัพย์ไหนควรจับตาเป็นพิเศษก่อน event นี้
+5. กลยุทธ์สั้นๆ ที่นักลงทุนควรพิจารณา
+ตอบกระชับ ภาษาง่าย ไม่เกิน 8 ประโยค`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+
+    if(!text){
+      box.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px">ไม่พบข้อมูลคาดการณ์</div>`;
+    } else {
+      const html = text.replace(/\n/g,'<br>');
+      box.innerHTML = `
+        <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:11px 12px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);letter-spacing:1px;margin-bottom:7px">🔮 AI คาดการณ์แนวโน้ม</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.8">${html}</div>
+        </div>`;
+    }
+    btn.innerHTML = '✅ ปิดคาดการณ์';
+    btn.style.background = 'rgba(255,255,255,0.04)';
+    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+    btn.style.color = 'var(--text3)';
+  } catch(e){
+    box.innerHTML = `<div style="font-size:11px;color:var(--red);padding:8px">⚠️ โหลดไม่สำเร็จ ลองใหม่อีกครั้ง</div>`;
+    btn.innerHTML = '🔮 AI คาดการณ์แนวโน้ม';
+  }
+  btn.disabled = false;
 }
 
 
