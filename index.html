@@ -1981,6 +1981,7 @@ const WORKER='https://anthropic-proxy.datsakonping1994.workers.dev';
 const ALERT_WORKER='https://stock-alert.datsakonping1994.workers.dev';
 const PRICES_WORKER='https://stock-prices.datsakonping1994.workers.dev';
 const MY_WORKER='https://my-ai-proxy.datsakonpppp1994.workers.dev';
+const ELITE_WORKER='https://stock-elite.datsakonping1994.workers.dev';
 
 // ── Sync พอร์ต + alerts + trailing high ขึ้น Worker KV ──
 function syncAlertsToWorker(){
@@ -11243,133 +11244,33 @@ async function runEliteScan(forceRefresh=false){
   if(pins) pins.innerHTML = '';
 
   try{
-    const fk = localStorage.getItem('finnhubKey') || FINNHUB_KEY || '';
-    const groqKey = localStorage.getItem('groqKey') || '';
-    const _ank = localStorage.getItem('anthropicKey')||'';
-
-    // ── Step 1: ดึงข่าวจาก Finnhub ──
+    // ── เรียก Elite Worker (Claude Web Search) ──
     if(overlay) overlay.innerHTML = `
-      <div style="font-size:22px">📡</div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังดึงข่าว...</div>
-      <div style="font-size:11px;color:var(--text3)">Finnhub กำลังโหลดข่าวล่าสุด</div>
+      <div style="font-size:22px">🌍</div>
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ผ่าน Worker · รอ ~20 วินาที</div>
       <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
-    const now = Math.floor(Date.now()/1000);
-    const from = now - 24*3600;
-    const dateFrom = new Date(from*1000).toISOString().split('T')[0];
-    const dateTo = new Date(now*1000).toISOString().split('T')[0];
+    // ── เรียก Elite Worker ──
+    const workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(58000)
+    });
 
-    // ดึงข่าว Company + General News พร้อมกัน
-    const uniqueTickers = [...new Set(ELITE_PEOPLE.flatMap(p=>p.tickers||[]))];
-    const newsMap = {};
+    if(!workerResp.ok){
+      const err = await workerResp.json().catch(()=>({}));
+      throw new Error(err.error || 'Worker error ' + workerResp.status);
+    }
 
-    await Promise.all([
-      // Company news ทุก ticker
-      ...uniqueTickers.map(async ticker=>{
-        try{
-          const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${dateFrom}&to=${dateTo}&token=${fk}`);
-          const data = await r.json();
-          if(Array.isArray(data)) newsMap[ticker] = data.slice(0,3);
-        }catch{}
-      }),
-      // General news — ข่าวมาโคร/การเมือง
-      (async()=>{
-        try{
-          const r = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${fk}`);
-          const data = await r.json();
-          if(Array.isArray(data)) newsMap['_general'] = data.slice(0,15);
-        }catch{}
-      })()
-    ]);
-
-    // จับคู่ข่าวกับแต่ละคน
-    const generalNews = newsMap['_general'] || [];
-    const peopleWithNews = ELITE_PEOPLE.map(p=>{
-      // Company news จาก ticker
-      const companyArticles = (p.tickers||[]).flatMap(t=>newsMap[t]||[]);
-
-      // General news ที่มีชื่อคนนี้
-      const nameKeywords = p.name.toLowerCase().split(' ').filter(k=>k.length>3);
-      const roleKeywords = (p.role||'').toLowerCase().replace('ceo ','').split('/').filter(k=>k.length>3);
-      const generalMatched = generalNews.filter(a=>{
-        const h = (a.headline||'').toLowerCase();
-        const s = (a.summary||'').toLowerCase();
-        return nameKeywords.some(k=>h.includes(k)||s.includes(k)) ||
-               roleKeywords.some(k=>h.includes(k)||s.includes(k));
-      });
-
-      const allArticles = [...generalMatched, ...companyArticles];
-      if(!allArticles.length) return null;
-      allArticles.sort((a,b)=>b.datetime-a.datetime);
-      return { person:p, articles:allArticles.slice(0,3) };
-    }).filter(Boolean);
-
-    // ── Step 2: Groq วิเคราะห์ข่าว ──
-    if(overlay) overlay.innerHTML = `
-      <div style="font-size:22px">⚡</div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Groq กำลังวิเคราะห์...</div>
-      <div style="font-size:11px;color:var(--text3)">พบข่าวจาก ${peopleWithNews.length} แหล่ง</div>
-      <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
-
-    const newsSummary = peopleWithNews.length
-      ? peopleWithNews.map(({person:p,articles})=>
-          `[${p.id}] ${p.name} (${p.role}):\n${articles.map((a,i)=>`  ${i+1}. ${a.headline}`).join('\n')}`
-        ).join('\n\n')
-      : 'ไม่พบข่าวจาก Finnhub';
-
-    const today = new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-    const prompt = `วันนี้คือ${today}
-
-ข่าวหุ้นจาก Finnhub:
-${newsSummary}
-
-วิเคราะห์แต่ละรายการและผลกระทบต่อตลาดหุ้น ตอบเฉพาะข่าวที่มีความสำคัญ impact ≥ 6 เท่านั้น
-
-ตอบ JSON array เท่านั้น เริ่มด้วย [ จบด้วย ] ไม่มีข้อความอื่น:
-[{
-  "id": "ใส่ id จากด้านบน เช่น trump, jensen, musk",
-  "headline": "หัวข้อข่าวภาษาไทย กระชับ 1 ประโยค",
-  "summary": "อธิบายเนื้อหาข่าวเป็นภาษาไทย 2-3 ประโยค",
-  "impact": 7,
-  "pros": ["ผลดีต่อนักลงทุน ภาษาไทย"],
-  "cons": ["ผลเสียต่อนักลงทุน ภาษาไทย"],
-  "why": "เบื้องหลังและบริบทของข่าวนี้ ภาษาไทย",
-  "watch": "สิ่งที่ต้องจับตาต่อ ภาษาไทย",
-  "tags": ["สหรัฐ"],
-  "markets": ["USD", "SP500"],
-  "stocks_buy": ["NVDA"],
-  "stocks_watch": ["XOM"],
-  "affected_stocks": [{"ticker": "SPY", "direction": "up", "reason": "เหตุผลภาษาไทย"}],
-  "read_game": "วิเคราะห์กลยุทธ์เบื้องหลัง ภาษาไทย",
-  "response": "คาดการณ์การตอบสนองของตลาด ภาษาไทย"
-}]`;
-
+    const workerData = await workerResp.json();
     let results = [];
-    if(groqKey){
-      const gr = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
-        body:JSON.stringify({
-          model:'llama-3.3-70b-versatile',
-          max_tokens:3000,
-          temperature:0.3,
-          messages:[
-            {role:'system',content:'คุณคือนักวิเคราะห์การลงทุนชาวไทย ตอบ JSON array เท่านั้น เริ่มด้วย [ จบด้วย ] ทุกข้อความต้องเป็นภาษาไทย ห้ามมีข้อความอื่นนอกจาก JSON'},
-            {role:'user',content:prompt}
-          ]
-        })
-      });
-      const gd = await gr.json();
-      const text = gd.choices?.[0]?.message?.content||'';
-      try{
-        const clean = text.replace(/```json|```/g,'').trim();
-        const arr = JSON.parse(clean);
-        results = arr.map(item=>{
-          const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-          return person ? {person, news:item} : null;
-        }).filter(Boolean);
-      }catch(e){ console.log('Parse error:',e.message); }
+
+    if(workerData.ok && Array.isArray(workerData.results)){
+      results = workerData.results.map(item=>{
+        const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+        return person ? {person, news:item.news} : null;
+      }).filter(Boolean);
     }
 
     _eliteScanResults = results;
