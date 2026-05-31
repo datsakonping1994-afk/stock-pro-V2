@@ -103,6 +103,12 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
 .nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
+/* ── PORTFOLIO CHARTS ── */
+.port-chart-tab{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:all 0.2s}
+.port-chart-tab.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)}
+.port-range-btn{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.07);background:transparent;transition:all 0.2s}
+.port-range-btn.active{background:rgba(100,210,255,0.15);border-color:rgba(100,210,255,0.35);color:var(--ice)}
+
 /* ── ELITE PAGE ── */
 .elite-subtab{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;padding:5px 10px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);transition:all 0.2s;background:rgba(255,255,255,0.04)}
 .elite-subtab.active{background:rgba(255,107,53,0.15);border-color:rgba(255,107,53,0.4);color:#ff6b35}
@@ -1229,6 +1235,37 @@ canvas.bigchart{width:100%;height:100%}
 
       <!-- Holdings List -->
       <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">📊 Holdings</div>
+
+      <!-- Chart Section -->
+      <div id="portChartSection" style="display:none;margin-bottom:14px">
+        <!-- Chart Tabs -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="port-chart-tab active" id="pct-pnl" onclick="switchPortChart('pnl',this)">📈 P&L</button>
+          <button class="port-chart-tab" id="pct-pie" onclick="switchPortChart('pie',this)">🥧 สัดส่วน</button>
+          <div style="margin-left:auto;display:flex;gap:4px" id="pnlRangebtns">
+            <button class="port-range-btn active" onclick="switchPnlRange('1D',this)">1D</button>
+            <button class="port-range-btn" onclick="switchPnlRange('1W',this)">1W</button>
+            <button class="port-range-btn" onclick="switchPnlRange('1M',this)">1M</button>
+          </div>
+        </div>
+        <!-- P&L Chart -->
+        <div id="portPnlChartWrap" style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3)">P&L CHART</div>
+            <div id="portPnlChartVal" style="font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:var(--green)">$0.00</div>
+          </div>
+          <canvas id="portPnlCanvas" height="120" style="width:100%;display:block"></canvas>
+        </div>
+        <!-- Pie Chart -->
+        <div id="portPieChartWrap" style="display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px">
+          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px">สัดส่วนพอร์ต</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <canvas id="portPieCanvas" width="120" height="120" style="flex-shrink:0"></canvas>
+            <div id="portPieLegend" style="flex:1;display:flex;flex-direction:column;gap:5px"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="portHoldingsList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:100px">
         <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:11px;opacity:0.6">กรอก ticker + ราคาซื้อ + จำนวนหุ้น แล้วกด Add</span></div>
       </div>
@@ -9779,6 +9816,9 @@ function renderPortfolio(){
       }
     }catch{}
   }
+
+  // ── 4. อัปเดต Charts ──
+  updatePortCharts();
 }
 
 
@@ -10596,6 +10636,208 @@ navigator.serviceWorker?.addEventListener('message', e => {
   }
 });
 
+
+// ══════════════════════════════════════════
+// PORTFOLIO CHARTS
+// ══════════════════════════════════════════
+
+let _portChartType = 'pnl';
+let _portPnlRange = '1D';
+let _portPnlHistory = JSON.parse(_lsGet('_port_pnl_history') || '{}'); // {date: totalPnl}
+
+function savePortPnlSnapshot(){
+  try{
+    const portList = (portfolio||[]).filter(p=>p.shares>0);
+    if(!portList.length) return;
+    const totalPnl = portList.reduce((sum,h)=>{
+      const cur = stocks.find(s=>s.t===h.t);
+      if(!cur) return sum;
+      return sum + (cur.p - (h.avg||h.price||cur.p)) * h.shares;
+    }, 0);
+    const key = new Date().toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+    _portPnlHistory[key] = +totalPnl.toFixed(2);
+    // เก็บแค่ 30 วัน
+    const keys = Object.keys(_portPnlHistory).sort();
+    if(keys.length > 30*24) keys.slice(0, keys.length-30*24).forEach(k=>delete _portPnlHistory[k]);
+    _lsSet('_port_pnl_history', JSON.stringify(_portPnlHistory));
+  }catch{}
+}
+
+function switchPortChart(type, btn){
+  _portChartType = type;
+  document.querySelectorAll('.port-chart-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('portPnlChartWrap').style.display = type==='pnl' ? 'block' : 'none';
+  document.getElementById('portPieChartWrap').style.display = type==='pie' ? 'block' : 'none';
+  document.getElementById('pnlRangebtns').style.display = type==='pnl' ? 'flex' : 'none';
+  if(type==='pnl') renderPnlChart();
+  else renderPieChart();
+}
+
+function switchPnlRange(range, btn){
+  _portPnlRange = range;
+  document.querySelectorAll('.port-range-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderPnlChart();
+}
+
+function renderPnlChart(){
+  const canvas = document.getElementById('portPnlCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 300;
+  canvas.width = W * window.devicePixelRatio;
+  canvas.height = 120 * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const w = W, h = 120;
+
+  // ดึง history จาก _sp_port_hist ที่มีอยู่แล้ว
+  let hist = [];
+  try{ hist = JSON.parse(localStorage.getItem('_sp_port_hist')||'[]'); }catch{}
+  const rangeDay = _portPnlRange==='1D' ? 1 : _portPnlRange==='1W' ? 7 : 30;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - rangeDay);
+  const filtered = hist.filter(h=>new Date(h.d) >= cutoff);
+  const points = filtered.map(h=>h.pnl||0);
+  const curPnl = hist.length ? (hist[hist.length-1].pnl||0) : 0;
+  if(points.length === 0) points.push(curPnl);
+
+  // อัปเดต label
+  const valEl = document.getElementById('portPnlChartVal');
+  if(valEl){
+    valEl.textContent = (curPnl>=0?'+':'') + '$' + curPnl.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+    valEl.style.color = curPnl>=0 ? 'var(--green)' : 'var(--red)';
+  }
+
+  if(points.length < 2){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = '11px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('ใช้งานต่อเนื่องเพื่อดู chart', w/2, h/2);
+    return;
+  }
+
+  const minV = Math.min(...points);
+  const maxV = Math.max(...points);
+  const range = maxV - minV || 1;
+  const pad = 16;
+
+  const toX = i => pad + (i/(points.length-1)) * (w - pad*2);
+  const toY = v => h - pad - ((v-minV)/range) * (h - pad*2);
+
+  ctx.clearRect(0,0,w,h);
+
+  // gradient fill
+  const isUp = curPnl >= 0;
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, isUp ? 'rgba(0,230,118,0.25)' : 'rgba(255,77,106,0.25)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  points.forEach((v,i)=>{ if(i>0) ctx.lineTo(toX(i), toY(v)); });
+  ctx.lineTo(toX(points.length-1), h);
+  ctx.lineTo(toX(0), h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  points.forEach((v,i)=>{ if(i>0) ctx.lineTo(toX(i), toY(v)); });
+  ctx.strokeStyle = isUp ? '#00e676' : '#ff4d6a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // zero line
+  if(minV < 0 && maxV > 0){
+    const zeroY = toY(0);
+    ctx.beginPath();
+    ctx.moveTo(pad, zeroY);
+    ctx.lineTo(w-pad, zeroY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // dot at end
+  ctx.beginPath();
+  ctx.arc(toX(points.length-1), toY(curPnl), 4, 0, Math.PI*2);
+  ctx.fillStyle = isUp ? '#00e676' : '#ff4d6a';
+  ctx.fill();
+}
+
+function renderPieChart(){
+  const canvas = document.getElementById('portPieCanvas');
+  const legend = document.getElementById('portPieLegend');
+  if(!canvas || !legend) return;
+  const ctx = canvas.getContext('2d');
+  const W = 120, H = 120;
+  canvas.width = W * window.devicePixelRatio;
+  canvas.height = H * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  const portList = (portfolio||[]).filter(p=>p.shares>0);
+  const cash = parseFloat(_lsGet('portCash')||'0');
+
+  let slices = portList.map(h=>{
+    const cur = stocks.find(s=>s.t===h.t);
+    const val = cur ? cur.p * h.shares : (h.avg||h.price||0) * h.shares;
+    return { label:h.t, val };
+  }).filter(s=>s.val>0);
+
+  if(cash>0) slices.push({ label:'Cash 💵', val:cash });
+  if(!slices.length){ ctx.clearRect(0,0,W,H); legend.innerHTML=''; return; }
+
+  const total = slices.reduce((s,x)=>s+x.val, 0);
+  const colors = ['#c9a84c','#00e676','#64d2ff','#ff6b35','#ff4d6a','#a78bfa','#34d399','#f59e0b'];
+
+  ctx.clearRect(0,0,W,H);
+  let start = -Math.PI/2;
+  slices.forEach((s,i)=>{
+    const angle = (s.val/total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(60,60);
+    ctx.arc(60, 60, 54, start, start+angle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i%colors.length];
+    ctx.fill();
+    ctx.strokeStyle = '#0a0f1a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    start += angle;
+  });
+
+  // donut hole
+  ctx.beginPath();
+  ctx.arc(60,60,32,0,Math.PI*2);
+  ctx.fillStyle = '#0d1520';
+  ctx.fill();
+
+  // legend
+  legend.innerHTML = slices.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="width:8px;height:8px;border-radius:2px;background:${colors[i%colors.length]};flex-shrink:0"></div>
+      <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text);flex:1">${s.label}</div>
+      <div style="font-size:10px;color:var(--text3)">${((s.val/total)*100).toFixed(1)}%</div>
+    </div>`).join('');
+}
+
+function updatePortCharts(){
+  savePortPnlSnapshot();
+  const section = document.getElementById('portChartSection');
+  const portList = (portfolio||[]).filter(p=>p.shares>0);
+  if(portList.length > 0){
+    if(section) section.style.display = 'block';
+    if(_portChartType === 'pnl') renderPnlChart();
+    else renderPieChart();
+  } else {
+    if(section) section.style.display = 'none';
+  }
+}
 
 // ══════════════════════════════════════════
 // ELITE INTELLIGENCE ENGINE — Dynamic News Scan
