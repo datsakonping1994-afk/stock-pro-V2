@@ -11254,8 +11254,8 @@ async function runEliteScan(forceRefresh=false){
         <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Web Search · รอ ~30 วินาที</div>
         <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
-      const today = new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-      const prompt = `วันนี้คือ ${today} ค้นหาข่าวล่าสุดและวิเคราะห์เชิงลึกสำหรับบุคคลสำคัญที่มีผลกระทบต่อตลาดการเงินโลก:\nTrump/US policy, Powell/Fed rates, Jensen Huang/NVIDIA, Elon Musk/Tesla/SpaceX/xAI, Zuckerberg/Meta, Xi Jinping/China, Putin/Russia, Lagarde/ECB, OPEC+ oil, Tim Cook/Apple, Satya Nadella/Microsoft, Sam Altman/OpenAI\n\nค้นหาข่าวจริงล่าสุดแล้ววิเคราะห์อย่างละเอียด ตอบเป็น JSON array เท่านั้น ไม่มี markdown:\n[{"id":"trump","headline":"หัวข้อข่าวชัดเจนระบุตัวเลขและชื่อ","summary":"วิเคราะห์เชิงลึก 3-4 ประโยค","impact":8,"pros":["ผลดีเฉพาะเจาะจง"],"cons":["ผลเสียเฉพาะเจาะจง"],"why":"บริบทเชิงลึก 2-3 ประโยค","watch":"สิ่งที่ต้องติดตาม","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์เบื้องหลัง 2-3 ประโยค","response":"การตอบสนองที่คาดการณ์"}]\nเฉพาะ impact>=6 เท่านั้น ถ้าไม่มีข่าวสำคัญสำหรับคนนั้นให้ข้าม`;
+      const today = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
+      const prompt = `${today}: ค้นข่าวล่าสุดของ Trump, Powell/Fed, Jensen/NVIDIA, Musk/Tesla, Zuck/Meta, Xi/China, Putin, Lagarde/ECB, OPEC, Cook/Apple, Nadella/MSFT, Altman/OpenAI. ตอบ JSON array เฉพาะ impact>=6: [{"id":"trump","headline":"ข่าว","summary":"วิเคราะห์","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์","response":"การตอบสนอง"}]`;
 
       const apiResp = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
@@ -11266,10 +11266,10 @@ async function runEliteScan(forceRefresh=false){
           'anthropic-dangerous-direct-browser-access':'true'
         },
         body:JSON.stringify({
-          model:'claude-sonnet-4-5',
-          max_tokens:4000,
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:2000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
-          system:'You are a financial intelligence analyst. Use web_search to find real latest news. Return ONLY a raw JSON array starting with [ and ending with ]. No prose, no markdown, no preamble. All text fields in Thai except ticker symbols.',
+          system:'Financial news JSON API. Use web_search. Output ONLY raw JSON array. No markdown. Thai text except tickers.',
           messages:[{role:'user',content:prompt}]
         }),
         signal: AbortSignal.timeout(60000)
