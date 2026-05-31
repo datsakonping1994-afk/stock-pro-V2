@@ -3461,26 +3461,27 @@ async function fetchAnalystData(ticker){
               })()
             })).filter(t=>t.val!=='N/A');
 
-          // ── Push Notification สำหรับ Insider ที่มูลค่าสูง ──
+          // ── Push + Telegram Insider ซื้อ/ขาย วันนี้ ล่าสุดเท่านั้น ──
           const insiderKey = `_insider_alerted_${ticker}`;
-          const recentBig = (s2?.insiderLive||[]).filter(t=>{
-            const val = Math.abs((t.shares||0)*(t.price||0));
-            return val >= 500000; // $500K+
+          const todayStr = new Date().toISOString().slice(0,10);
+          const todayInsider = (s2?.insiderLive||[]).filter(t=>{
+            const tDate = t.date ? t.date.slice(0,10) : '';
+            return tDate === todayStr;
           });
-          if(recentBig.length && !sessionStorage.getItem(insiderKey)){
+          const latest = todayInsider[0]; // เอาแค่ล่าสุดตัวเดียว
+          if(latest && !sessionStorage.getItem(insiderKey)){
             sessionStorage.setItem(insiderKey,'1');
-            recentBig.forEach(t=>{
-              const val = Math.abs((t.shares||0)*(t.price||0));
-              const fmtVal = val>=1e6?`$${(val/1e6).toFixed(1)}M`:`$${(val/1e3).toFixed(0)}K`;
-              const emoji = t.type==='buy'?'🟢':'🔴';
-              const action = t.type==='buy'?'ซื้อ':'ขาย';
-              const dateStr = t.date ? new Date(t.date).toLocaleDateString('th-TH',{day:'numeric',month:'short'}) : '';
-              _sendPushAlert(
-                `${emoji} Insider ${action}: ${ticker}`,
-                `${t.name} ${action} ${fmtVal}${dateStr?' เมื่อ '+dateStr:''}`,
-                {tag:`insider-${ticker}`, data:{url:`/stock-pro-V2/?open=${ticker}`}}
-              );
-            });
+            const isBuy = latest.type==='buy';
+            const emoji = isBuy ? '🟢' : '🔴';
+            const action = isBuy ? 'ซื้อ' : 'ขาย';
+            const val = Math.abs((latest.shares||0)*(latest.price||0));
+            const fmtVal = val>=1e6?`$${(val/1e6).toFixed(1)}M`:val>=1000?`$${(val/1e3).toFixed(0)}K`:`$${val.toFixed(0)}`;
+            _sendPushAlert(
+              `${emoji} Insider ${action}: ${ticker}`,
+              `${latest.name||'Unknown'} ${action} ${fmtVal} — วันนี้`,
+              {tag:`insider-${ticker}`, data:{url:`/stock-pro-V2/?open=${ticker}`}}
+            );
+            sendTG(`${emoji} <b>Insider ${action}: ${ticker}</b>\n👤 ${latest.name||'Unknown'}\n💰 ${action} ${fmtVal}\n📅 วันนี้\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`);
           }
         }
       }
