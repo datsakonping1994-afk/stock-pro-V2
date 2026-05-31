@@ -11252,15 +11252,20 @@ async function runEliteScan(forceRefresh=false){
       <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
     // ── เรียก Elite Worker ──
-    const workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(58000)
-    });
+    let workerResp;
+    try{
+      workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(58000)
+      });
+    }catch(fetchErr){
+      throw new Error('Worker fetch error: ' + fetchErr.message);
+    }
 
     if(!workerResp.ok){
-      const err = await workerResp.json().catch(()=>({}));
-      throw new Error(err.error || 'Worker error ' + workerResp.status);
+      const errText = await workerResp.text().catch(()=>'unknown');
+      throw new Error('Worker ' + workerResp.status + ': ' + errText.slice(0,100));
     }
 
     const workerData = await workerResp.json();
@@ -11278,9 +11283,10 @@ async function runEliteScan(forceRefresh=false){
     renderEliteScanResults(results, 0);
 
   }catch(e){
+    console.log('[ELITE] Error:', e.message);
     if(overlay) overlay.innerHTML = `
       <div style="font-size:20px">⚠️</div>
-      <div style="font-size:12px;color:var(--text3);text-align:center">เชื่อมต่อไม่ได้<br>ลองใหม่อีกครั้ง</div>
+      <div style="font-size:12px;color:var(--text3);text-align:center;padding:0 16px">${e.message||'เชื่อมต่อไม่ได้'}</div>
       <button onclick="runEliteScan(true)" style="margin-top:8px;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);border-radius:10px;padding:8px 20px;font-size:11px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>`;
   }
 
