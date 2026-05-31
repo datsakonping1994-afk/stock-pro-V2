@@ -103,6 +103,14 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
 .nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
+/* ── AI SIGNALS ── */
+.ai-sig-filter{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:all 0.2s}
+.ai-sig-filter.active{background:rgba(100,210,255,0.15);border-color:rgba(100,210,255,0.35);color:var(--ice)}
+.ai-sig-card{background:linear-gradient(145deg,rgba(20,28,42,0.98),rgba(12,18,30,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:13px;position:relative;overflow:hidden;transition:all 0.2s}
+.ai-sig-card.buy{border-color:rgba(0,230,118,0.25)}
+.ai-sig-card.sell{border-color:rgba(255,77,106,0.25)}
+.ai-sig-card.hold{border-color:rgba(201,168,76,0.25)}
+
 /* ── PORTFOLIO CHARTS ── */
 .port-chart-tab{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:all 0.2s}
 .port-chart-tab.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)}
@@ -830,6 +838,32 @@ canvas.bigchart{width:100%;height:100%}
       <div class="alert-tab-row">
         <div class="alert-tab active" id="tabTradeLog" onclick="switchAlertTab('trade',this)">📋 Trade Log</div>
         <div class="alert-tab" id="tabPriceAlert" onclick="switchAlertTab('price',this)">🔔 Price Alert</div>
+        <div class="alert-tab" id="tabAISignal" onclick="switchAlertTab('aisignal',this)">🤖 AI สัญญาณ</div>
+      </div>
+
+      <!-- AI Signal Panel -->
+      <div id="panelAISignal" style="display:none;padding:12px 14px">
+
+        <!-- Scan Button -->
+        <button onclick="runAISignalScan()" id="aiSignalScanBtn" style="width:100%;background:linear-gradient(135deg,rgba(100,210,255,0.15),rgba(100,210,255,0.05));border:1px solid rgba(100,210,255,0.3);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px">
+          🤖 วิเคราะห์สัญญาณ AI
+        </button>
+
+        <!-- Filter -->
+        <div style="display:flex;gap:6px;margin-bottom:12px" id="aiSignalFilters">
+          <button class="ai-sig-filter active" onclick="filterAISignals('all',this)">ทั้งหมด</button>
+          <button class="ai-sig-filter" onclick="filterAISignals('buy',this)">🟢 ซื้อ</button>
+          <button class="ai-sig-filter" onclick="filterAISignals('sell',this)">🔴 ขาย</button>
+          <button class="ai-sig-filter" onclick="filterAISignals('hold',this)">🟡 ถือ</button>
+        </div>
+
+        <!-- Results -->
+        <div id="aiSignalResults" style="display:flex;flex-direction:column;gap:10px;padding-bottom:100px">
+          <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">
+            🤖 กด "วิเคราะห์สัญญาณ AI" เพื่อเริ่ม<br>
+            <span style="font-size:11px;opacity:0.6">AI จะวิเคราะห์หุ้นทุกตัวในพอร์ตและ watchlist</span>
+          </div>
+        </div>
       </div>
 
       <!-- Price Alert Panel -->
@@ -2245,8 +2279,10 @@ function switchAlertTab(tab, el){
   el.classList.add('active');
   document.getElementById('panelPriceAlert').style.display=tab==='price'?'block':'none';
   document.getElementById('panelTradeLog').style.display=tab==='trade'?'block':'none';
+  document.getElementById('panelAISignal').style.display=tab==='aisignal'?'block':'none';
   if(tab==='price'){buildTickerSelect();renderPriceAlerts();}
-  else renderAlerts();
+  else if(tab==='trade') renderAlerts();
+  else if(tab==='aisignal'){ initAISignals(); renderAISignalCards(_aiSignalData); }
 }
 
 
@@ -8728,36 +8764,46 @@ async function runAIMarketSummaryV2(){
     }));
   }
 
+  // ── ดึงข่าวจาก ELITE มาคัดหุ้น ──
+  let eliteContext = '';
+  try{
+    if(_eliteScanResults?.length){
+      const eliteNews = _eliteScanResults.map(r=>{
+        const pros = (r.news.pros||[]).join(', ');
+        const cons = (r.news.cons||[]).join(', ');
+        const markets = (r.news.markets||[]).join(', ');
+        return `${r.person.name}(${r.person.role}): "${r.news.headline}" Impact:${r.news.impact}/10 กระทบ:${markets} ผลดี:${pros} ผลเสีย:${cons}`;
+      }).join('\n');
+      eliteContext = `\n\n🌍 ELITE Intelligence (ข่าวผู้นำโลกล่าสุด):\n${eliteNews}\n→ ใช้ข้อมูลนี้คัดหุ้นที่น่าสนใจจากรายการหุ้นในแอปด้วย`;
+    }
+  }catch{}
+
   // ── ดึงข่าวตลาดล่าสุด ──
   let newsContext='';
   try{
-    // ดึงข่าว — Marketaux → NewsAPI → GNews → Yahoo RSS
-    const marketauxKey=localStorage.getItem('marketauxKey')||_MARKETAUX_KEY||'';
-    const newsapiKey=localStorage.getItem('newsapiKey')||_NEWSAPI_KEY||'';
-    const gnewsKey=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
     let newsItems=[];
-    // 1. Marketaux — ข่าวหุ้นพร้อม sentiment
-    if(!newsItems.length&&marketauxKey){
+
+    // 1. Finnhub General News — ไม่มี CORS มี key อยู่แล้ว
+    if(!newsItems.length){
       try{
-        const r=await fetch(`https://api.marketaux.com/v1/news/all?language=en&filter_entities=true&limit=5&api_token=${marketauxKey}`,{signal:AbortSignal.timeout(6000)});
-        if(r.ok){ const d=await r.json(); newsItems=(d?.data||[]).map(n=>({title:n.title})); }
+        const r=await fetch(`https://finnhub.io/api/v1/news?category=general&minId=0&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(6000)});
+        if(r.ok){
+          const d=await r.json();
+          newsItems=(d||[]).slice(0,8).map(n=>({title:n.headline}));
+        }
       }catch{}
     }
-    // 2. NewsAPI
-    if(!newsItems.length&&newsapiKey){
+
+    // 2. GNews — ไม่มี CORS
+    if(!newsItems.length){
+      const gnewsKey=localStorage.getItem('gnewsKey')||_GNEWS_KEY||'';
       try{
-        const r=await fetch(`https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey=${newsapiKey}`,{signal:AbortSignal.timeout(6000)});
-        if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
+        const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=8&apikey=${gnewsKey}`,{signal:AbortSignal.timeout(6000)});
+        if(r.ok){ const d=await r.json(); newsItems=(d?.articles||[]).map(n=>({title:n.title})); }
       }catch{}
     }
-    // 3. GNews
-    if(!newsItems.length&&gnewsKey){
-      try{
-        const r=await fetch(`https://gnews.io/api/v4/top-headlines?category=business&lang=en&country=us&max=5&apikey=${gnewsKey}`,{signal:AbortSignal.timeout(6000)});
-        if(r.ok){ const d=await r.json(); newsItems=d?.articles||[]; }
-      }catch{}
-    }
-    // 4. fallback Yahoo Finance RSS
+
+    // 3. fallback Yahoo Finance RSS
     if(!newsItems.length){
       try{
         const r=await fetch('https://finance.yahoo.com/rss/topfinstories',{signal:AbortSignal.timeout(6000)});
@@ -8769,8 +8815,9 @@ async function runAIMarketSummaryV2(){
         }
       }catch{}
     }
+
     if(newsItems.length){
-      newsContext='\n📰 ข่าวตลาดล่าสุด:\n'+newsItems.slice(0,5).map((n,i)=>`${i+1}. ${n.title||n.headline||''}`).join('\n');
+      newsContext='\n📰 ข่าวตลาดล่าสุด:\n'+newsItems.slice(0,8).map((n,i)=>`${i+1}. ${n.title||n.headline||''}`).filter(t=>t.length>3).join('\n');
     }
   }catch{}
 
@@ -8805,13 +8852,14 @@ async function runAIMarketSummaryV2(){
 💹 RSI ต่ำ (ถูกเกินจริง): ${oversold||'ไม่มี'}
 🔴 RSI สูง (แพงเกินจริง): ${overbought||'ไม่มี'}
 📅 Earnings เร็วๆ นี้: ${upcomingEarn||'ไม่มี'}
-${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}${newsContext}
+${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} สัญญาณ (Avg P&L ${stats.avgPct>=0?'+':''}${stats.avgPct}%)`:''}${newsContext}${eliteContext}
 
-วิเคราะห์ละเอียด 4 หัวข้อ ตัดสินใจชัดเจน ใช้ภาษาไทยเข้าใจง่าย:
-1) 🌎 ตลาดวันนี้เป็นยังไง: อธิบายว่าตลาดเปิดบวกหรือลบ ทำไม มีความเสี่ยงอะไรที่ต้องระวัง
-2) 🎯 หุ้นน่าซื้อวันนี้: ระบุชื่อหุ้นชัดๆ บอกว่าเพราะอะไรถึงน่าสนใจ ควรซื้อที่ราคาเท่าไหร่ ตั้ง Stop Loss ที่เท่าไหร่
-3) ⚠️ หุ้นที่ต้องระวัง: ระบุชื่อชัดๆ บอกว่าเสี่ยงเรื่องอะไร ถ้ามีอยู่ในพอร์ตควรทำอะไร
-4) 📋 กลยุทธ์วันนี้: บอกตรงๆ ว่าควรทำอะไร ซื้อ/ขาย/ถือ พร้อมเหตุผล
+วิเคราะห์ละเอียด 5 หัวข้อ ตัดสินใจชัดเจน ใช้ภาษาไทยเข้าใจง่าย:
+1) 🌎 ตลาดวันนี้เป็นยังไง: อธิบายภาพรวม ทิศทาง ความเสี่ยง
+2) 🌍 หุ้นน่าสนใจจากข่าว ELITE: นำข่าวผู้นำโลกมาคัดหุ้นที่น่าซื้อ เช่น ถ้า Trump ประกาศนโยบายอะไร → หุ้นไหนได้ประโยชน์ ระบุชื่อหุ้นชัดๆ พร้อมเหตุผลที่มาจากข่าว ELITE
+3) 🎯 หุ้นน่าซื้อจากเทคนิค: หุ้นที่ indicator/RSI/แนวรับดี ระบุราคาเข้าและ Stop Loss
+4) ⚠️ หุ้นที่ต้องระวัง: ระบุชื่อชัดๆ บอกว่าเสี่ยงเรื่องอะไร
+5) 📋 กลยุทธ์วันนี้: สรุปว่าควรทำอะไร ซื้อ/ขาย/ถือ
 ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet`;
   // Timeout รวม 30 วินาที ป้องกันค้าง
   const _aiResult = await Promise.race([
@@ -10636,6 +10684,213 @@ navigator.serviceWorker?.addEventListener('message', e => {
   }
 });
 
+
+// ══════════════════════════════════════════
+// AI SIGNAL ANALYZER
+// ══════════════════════════════════════════
+
+let _aiSignalData = []; // เก็บผลล่าสุด
+let _aiSignalFilter = 'all';
+
+function filterAISignals(type, btn){
+  _aiSignalFilter = type;
+  document.querySelectorAll('.ai-sig-filter').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderAISignalCards(_aiSignalData);
+}
+
+async function runAISignalScan(){
+  const btn = document.getElementById('aiSignalScanBtn');
+  const results = document.getElementById('aiSignalResults');
+  const ank = localStorage.getItem('anthropicKey')||'';
+
+  if(!ank){
+    toast('⚠️ ต้องใส่ Claude API Key ใน Settings ก่อน');
+    return;
+  }
+
+  // ดึงรายการหุ้น — พอร์ต + watchlist
+  const portTickers = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
+  const watchTickers = stocks.filter(s=>s.watch).map(s=>s.t);
+  const allTickers = [...new Set([...portTickers, ...watchTickers])].slice(0,15);
+
+  if(!allTickers.length){
+    toast('⚠️ ยังไม่มีหุ้นในพอร์ตหรือ watchlist');
+    return;
+  }
+
+  // UI loading
+  btn.disabled = true;
+  btn.innerHTML = `<div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><span style="margin-left:6px">กำลังวิเคราะห์ ${allTickers.length} ตัว...</span>`;
+  results.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--text3)">
+    <div style="font-size:13px;margin-bottom:8px">🤖 Claude กำลังวิเคราะห์พร้อม web search...</div>
+    <div style="font-size:11px;opacity:0.6">รอประมาณ 15-20 วินาที</div>
+  </div>`;
+
+  // สร้าง stock summary สำหรับ context
+  const stockSummary = allTickers.map(t=>{
+    const s = stocksMap.get(t);
+    const port = portfolio.find(p=>p.t===t);
+    if(!s) return `${t}: ไม่มีข้อมูล`;
+    const pnl = port ? ((s.p-(port.avg||port.price||s.p))*(port.shares||0)) : 0;
+    const pnlPct = port?.avg ? ((s.p-port.avg)/port.avg*100).toFixed(1) : '0';
+    return `${t}: ราคา $${s.p} เปลี่ยน ${s.c>=0?'+':''}${s.c}% ${port?`[พอร์ต: ${port.shares}หุ้น avg $${port.avg||port.price} P&L ${pnl>=0?'+':''}$${pnl.toFixed(0)} (${pnlPct}%)]`:'[watchlist]'}`;
+  }).join('\n');
+
+  const prompt = `วิเคราะห์หุ้นต่อไปนี้และให้สัญญาณการซื้อขาย โดยค้นหาข่าวล่าสุดและปัจจัยที่เกี่ยวข้องก่อน:
+
+${stockSummary}
+
+PORT SIZE: $${PORT_SIZE.toLocaleString()}
+
+สำหรับแต่ละหุ้น ให้วิเคราะห์:
+1. ข่าวล่าสุดที่กระทบ
+2. แนวโน้มทางเทคนิค
+3. ปัจจัยพื้นฐาน
+4. ความเสี่ยง
+
+ตอบ JSON array เท่านั้น ไม่มี markdown:
+[{
+  "ticker": "NVDA",
+  "signal": "buy",
+  "confidence": 85,
+  "headline": "สรุปสัญญาณ 1 ประโยค",
+  "reason": "เหตุผลหลัก 2-3 ประโยค",
+  "entry": 950,
+  "target": 1100,
+  "stop": 880,
+  "risk_reward": "1:2.4",
+  "timeframe": "1-2 สัปดาห์",
+  "tags": ["Momentum","AI Sector"],
+  "warning": "ความเสี่ยงที่ต้องระวัง"
+}]
+signal ต้องเป็น buy/sell/hold เท่านั้น`;
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':ank,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:3000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    const data = await response.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    let signals = [];
+    try{
+      signals = JSON.parse(text.replace(/```json|```/g,'').trim());
+    }catch{ signals = []; }
+
+    _aiSignalData = signals;
+    renderAISignalCards(signals);
+    // บันทึก cache
+    try{ _lsSet('_ai_signals_cache', JSON.stringify({ts:Date.now(), signals})); }catch{}
+
+  }catch(e){
+    results.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--text3)">⚠️ เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🤖 วิเคราะห์สัญญาณ AI';
+}
+
+function renderAISignalCards(signals){
+  const results = document.getElementById('aiSignalResults');
+  if(!results) return;
+
+  // โหลด cache ถ้ายังไม่มีข้อมูล
+  if(!signals.length){
+    try{
+      const cache = JSON.parse(_lsGet('_ai_signals_cache')||'{}');
+      const age = Date.now() - (cache.ts||0);
+      if(cache.signals?.length && age < 6*3600000){
+        signals = cache.signals;
+        _aiSignalData = signals;
+      }
+    }catch{}
+  }
+
+  const filtered = _aiSignalFilter==='all' ? signals : signals.filter(s=>s.signal===_aiSignalFilter);
+
+  if(!filtered.length){
+    results.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--text3);font-size:13px">ไม่มีสัญญาณ${_aiSignalFilter!=='all'?' ประเภทนี้':''}</div>`;
+    return;
+  }
+
+  const signalColor = s => s==='buy'?'var(--green)':s==='sell'?'var(--red)':'var(--gold)';
+  const signalBg = s => s==='buy'?'rgba(0,230,118,0.1)':s==='sell'?'rgba(255,77,106,0.1)':'rgba(201,168,76,0.1)';
+  const signalLabel = s => s==='buy'?'🟢 ซื้อ':s==='sell'?'🔴 ขาย':'🟡 ถือ';
+  const confColor = c => c>=80?'var(--green)':c>=60?'var(--gold)':'var(--red)';
+
+  results.innerHTML = signals.length ? `<div style="font-family:'Syne',sans-serif;font-size:9px;color:var(--text3);margin-bottom:8px;letter-spacing:1px">วิเคราะห์ ${signals.length} หุ้น · กด card เพื่อดูรายละเอียด</div>` : '';
+
+  results.innerHTML += filtered.map(s=>`
+    <div class="ai-sig-card ${s.signal}" onclick="this.querySelector('.ai-sig-detail').style.display=this.querySelector('.ai-sig-detail').style.display==='none'?'block':'none'">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${signalColor(s.signal)},transparent)"></div>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+          <img src="https://logo.clearbit.com/${(stocksMap.get(s.ticker)?.name||s.ticker).toLowerCase().replace(/[^a-z]/g,'')}.com" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display='none';this.nextSibling.style.display='flex'" />
+          <span style="display:none;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--text)">${s.ticker.slice(0,4)}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text)">${s.ticker}</div>
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.headline||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <div style="background:${signalBg(s.signal)};border:1.5px solid ${signalColor(s.signal)};border-radius:20px;padding:4px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:${signalColor(s.signal)}">${signalLabel(s.signal)}</div>
+          <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:${confColor(s.confidence||0)}">${s.confidence||0}%</div>
+        </div>
+      </div>
+      <!-- Quick stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:2px">เป้าหมาย</div>
+          <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--green)">$${s.target||'--'}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:2px">Stop Loss</div>
+          <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--red)">$${s.stop||'--'}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:2px">R/R</div>
+          <div style="font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--ice)">${s.risk_reward||'--'}</div>
+        </div>
+      </div>
+      <!-- Tags -->
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+        ${(s.tags||[]).map(t=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${t}</span>`).join('')}
+        <span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3)">⏱ ${s.timeframe||'--'}</span>
+      </div>
+      <!-- Detail (hidden by default) -->
+      <div class="ai-sig-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
+        <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:8px">${s.reason||''}</div>
+        ${s.entry?`<div style="font-size:11px;color:var(--text3);margin-bottom:4px">📍 จุดเข้า: <span style="color:var(--ice);font-weight:700">$${s.entry}</span></div>`:''}
+        ${s.warning?`<div style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--text2);margin-top:6px">⚠️ ${s.warning}</div>`:''}
+        <div style="margin-top:8px;font-size:9px;color:var(--text3);opacity:0.6">ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+      </div>
+    </div>`).join('');
+}
+
+// โหลด cache ตอนเปิดหน้า signals
+function initAISignals(){
+  try{
+    const cache = JSON.parse(_lsGet('_ai_signals_cache')||'{}');
+    const age = Date.now() - (cache.ts||0);
+    if(cache.signals?.length && age < 6*3600000){
+      _aiSignalData = cache.signals;
+    }
+  }catch{}
+}
 
 // ══════════════════════════════════════════
 // PORTFOLIO CHARTS
