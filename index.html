@@ -2381,10 +2381,11 @@ function makeCard(s){
   const frating=getFundRating(fscore);
   const shortVal=s.short?parseFloat(s.short):0;
   const shortSqueezeTag=shortVal>15?`<div class="card-badge" style="background:rgba(255,77,106,0.18);color:var(--red);border-color:rgba(255,77,106,0.35)">🩳 Squeeze Risk</div>`:'';
+  const safeId = s.t.replace(/\./g,'-');
   div.innerHTML=`
     <div class="card-header">
       <div class="card-left">
-        <div class="card-logo" id="logo-${s.t}">${buildLogoFallback(s.t)}</div>
+        <div class="card-logo" id="logo-${safeId}">${buildLogoFallback(s.t)}</div>
         <div>
           <div class="card-ticker">${s.t}</div>
           <div class="card-name">${s.n}</div>
@@ -2666,7 +2667,7 @@ function renderCards(){
     }
     grid.appendChild(fragment);
     // โหลดโลโก้หลัง DOM append แล้ว — ใช้ chunkList ของ chunk นี้
-    chunkList.forEach(s=>_loadLogoNow(s.t,'logo-'+s.t,44));
+    chunkList.forEach(s=>_loadLogoNow(s.t,'logo-'+s.t.replace(/\./g,'-'),44));
     if(i<list.length){
       requestAnimationFrame(renderChunk);
     } else {
@@ -4587,9 +4588,7 @@ async function checkExitSignal(ticker, price){
   const r2 = getR2(ticker, price);
   const s1 = getS1(ticker, price);
 
-  // ดึง portfolio
-  let portfolio=[];
-  try{ portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+  // ดึง portfolio จาก memory
   const pos = portfolio.find(p=>p.t===ticker);
   if(!pos||!pos.avgPrice||!pos.shares) return;
 
@@ -4623,8 +4622,11 @@ async function checkExitSignal(ticker, price){
   const overbought  = rsi >= 72;
   const stBearish   = ind ? ind.supertrendBull === false : false;
   const bigLoss     = pnlPct <= -7;
-  const trailingHit = pnlPct > 5 && trailingDrop >= 3; // กำไร >5% แล้วร่วงจาก high 3%
-  const overweight  = portPct >= 25; // หุ้นตัวนี้เกิน 25% ของพอร์ต
+  const trailingHit = pnlPct > 5 && trailingDrop >= 3;
+  const overweight  = portPct >= 25;
+  const profit70    = pnlPct >= 70;
+  const profit50    = pnlPct >= 50 && pnlPct < 70;
+  const profit30    = pnlPct >= 30 && pnlPct < 50;
 
   let exitReason = '', sellAction = '', sellShares = 0;
   const exitKey_r2       = `exit_r2_${ticker}`;
@@ -4633,21 +4635,46 @@ async function checkExitSignal(ticker, price){
   const exitKey_momentum = `exit_mom_${ticker}`;
   const exitKey_trail    = `exit_trail_${ticker}`;
   const exitKey_weight   = `exit_wt_${ticker}`;
+  const exitKey_p30      = `exit_p30_${ticker}`;
+  const exitKey_p50      = `exit_p50_${ticker}`;
+  const exitKey_p70      = `exit_p70_${ticker}`;
 
   if(hitR2 && !_exitAlerted.has(exitKey_r2)){
-    // ถึง R2 → ขายทั้งหมด
     exitReason = `🎯 ถึงเป้า R2 $${r2.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
     sellAction = `ขายทั้งหมด ${pos.shares} หุ้น`;
     sellShares = pos.shares;
     _exitAlerted.add(exitKey_r2, 7200000);
 
   } else if(hitR1 && !_exitAlerted.has(exitKey_r1)){
-    // ถึง R1 → ขายครึ่ง lock กำไร รอ R2
     const half = Math.ceil(pos.shares / 2);
     exitReason = `🎯 ถึงเป้า R1 $${r1.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
     sellAction = `ขายครึ่ง ${half} หุ้น (lock กำไร รอ R2 $${r2.toFixed(2)})`;
     sellShares = half;
     _exitAlerted.add(exitKey_r1, 7200000);
+
+  } else if(profit70 && !_exitAlerted.has(exitKey_p70)){
+    // กำไร 70%+ → ขาย 50% เก็บกำไรหนัก
+    const sell = Math.ceil(pos.shares * 0.5);
+    exitReason = `💰 กำไร +${pnlPct.toFixed(1)}% สูงมาก!`;
+    sellAction = `ขาย 50% (${sell} หุ้น) เก็บกำไร — ถือต่อ 50%`;
+    sellShares = sell;
+    _exitAlerted.add(exitKey_p70, 86400000);
+
+  } else if(profit50 && !_exitAlerted.has(exitKey_p50)){
+    // กำไร 50%+ → ขาย 25%
+    const sell = Math.ceil(pos.shares * 0.25);
+    exitReason = `💰 กำไร +${pnlPct.toFixed(1)}%`;
+    sellAction = `ขาย 25% (${sell} หุ้น) เก็บกำไรบางส่วน`;
+    sellShares = sell;
+    _exitAlerted.add(exitKey_p50, 86400000);
+
+  } else if(profit30 && !_exitAlerted.has(exitKey_p30)){
+    // กำไร 30%+ → ขายครึ่งเก็บกำไร
+    const half = Math.ceil(pos.shares / 2);
+    exitReason = `💰 กำไร +${pnlPct.toFixed(1)}% ถึงเป้าแล้ว`;
+    sellAction = `ขายครึ่ง ${half} หุ้น เก็บกำไรก่อน`;
+    sellShares = half;
+    _exitAlerted.add(exitKey_p30, 86400000);
 
   } else if(bigLoss && !_exitAlerted.has(exitKey_loss)){
     // Cut Loss → ขายทั้งหมด
@@ -4692,7 +4719,56 @@ ${exitReason}
   sendTG(tgMsg);
 }
 
-// ── Earnings Alert — แจ้งเตือนหุ้นในพอร์ตที่ Earnings ใกล้ ──
+// ── AI วิเคราะห์ผลประกอบการที่รายงานแล้ว ──
+async function _analyzeEarningsResult(ticker, btn){
+  const e=(window.earningsData||[]).find(x=>x.t===ticker);
+  if(!e) return;
+  btn.textContent='⏳ กำลังวิเคราะห์...';
+  btn.disabled=true;
+  const s=stocksMap.get(ticker);
+  const prompt=`หุ้น: ${ticker} (${e.n||s?.n||''})
+ผลประกอบการล่าสุด:
+- EPS จริง: ${e.epsActual||'N/A'} | คาด: ${e.eps||'N/A'}
+- Revenue จริง: ${e.revActual||'N/A'} | คาด: ${e.rev||'N/A'}
+- สถานะ: ${e.res||'N/A'}
+- ราคาหุ้นปัจจุบัน: $${s?.p||'N/A'} (${s?.c>=0?'+':''}${s?.c||0}%)
+
+วิเคราะห์ผลนี้ให้เข้าใจง่าย 3 ข้อ:
+1) ผลออกมาดีหรือแย่กว่าที่คาด เพราะอะไร
+2) กระทบราคาหุ้นยังไง ระยะสั้น 1-5 วัน
+3) ควรทำอะไร ซื้อ/ถือ/ขาย พร้อมเหตุผล`;
+  const sys='คุณคือที่ปรึกษาการลงทุนที่อธิบายผลประกอบการให้เข้าใจง่าย ไม่ใช้ศัพท์เทคนิค ตอบภาษาไทย';
+  const reply=await callAI_Quick(sys,prompt,400);
+  const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
+  if(resEl) resEl.textContent=reply||'ไม่สามารถวิเคราะห์ได้';
+  btn.textContent='✅ วิเคราะห์แล้ว';
+}
+
+// ── AI คาดการณ์ผลประกอบการที่จะมาถึง ──
+async function _analyzeEarningsPreview(ticker, btn){
+  const e=(window.earningsData||[]).find(x=>x.t===ticker);
+  if(!e) return;
+  btn.textContent='⏳ กำลังคาดการณ์...';
+  btn.disabled=true;
+  const s=stocksMap.get(ticker);
+  const prompt=`หุ้น: ${ticker} (${e.n||s?.n||''})
+กำลังจะประกาศผลประกอบการ: ${e.d}
+EPS ที่นักวิเคราะห์คาด: ${e.eps||'N/A'}
+Revenue ที่คาด: ${e.rev||'N/A'}
+ราคาปัจจุบัน: $${s?.p||'N/A'} | Revenue Growth: ${s?.rev||'N/A'} | P/E: ${s?.pe||'N/A'}
+
+คาดการณ์ผล 3 ข้อ:
+1) จะ Beat หรือ Miss คาดการณ์ไหม โอกาสกี่เปอร์เซ็นต์ เพราะอะไร
+2) ถ้า Beat ราคาน่าจะขึ้นเท่าไหร่ / ถ้า Miss ลงเท่าไหร่
+3) ควรทำอะไรก่อนประกาศผล ถือ/ขายบางส่วน/ซื้อเพิ่ม`;
+  const sys='คุณคือที่ปรึกษาการลงทุนที่ตัดสินใจชัดเจน ไม่พูดกลางๆ ตอบภาษาไทยเข้าใจง่าย';
+  const reply=await callAI_Quick(sys,prompt,400);
+  const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
+  if(resEl) resEl.textContent=reply||'ไม่สามารถคาดการณ์ได้';
+  btn.textContent='✅ คาดการณ์แล้ว';
+}
+
+// ── แจ้งเตือนหุ้นในพอร์ตที่ Earnings ใกล้ (1 วัน) ──
 const _earnAlerted = new Set();
 function checkEarningsAlert(){
   let portfolio=[];
@@ -4719,6 +4795,10 @@ function checkEarningsAlert(){
 
     const pnlPct = pos.avgPrice>0 ? ((s.p-pos.avgPrice)/pos.avgPrice*100) : 0;
     toast(msg, 5000);
+    // Push Notification
+    _sendPushAlert(msg, `ราคา $${fmt(s.p)} | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}% | ระวัง volatility`, {
+      tag:`earn-${pos.t}`, data:{url:`/stock-pro-V2/?open=${pos.t}`}
+    });
     sendTG(`${msg}\n💰 ราคา $${fmt(s.p)} | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%\n⚠️ ระวัง volatility ก่อน/หลัง Earnings`);
   });
 }
@@ -4857,6 +4937,36 @@ function showSignalPopup(ticker,price,s1,score,hasCandleData=false,level='strong
         <div class="signal-ai-header">⚖️ Risk/Reward Analysis</div>
         <div id="signalRRText" style="font-size:12px;color:var(--text2)">⏳ กำลังประเมิน...</div>
       </div>
+      <div class="signal-ai" style="margin-top:0;border-top:1px solid rgba(255,255,255,0.06);background:rgba(0,200,130,0.04)">
+        <div class="signal-ai-header">💰 แนะนำการซื้อ (Port $${PORT_SIZE.toLocaleString()})</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">${(()=>{
+          const slDist=price-s1;
+          const shares2=slDist>0?Math.floor(PORT_SIZE*0.02/slDist):0;
+          const shares1=slDist>0?Math.floor(PORT_SIZE*0.01/slDist):0;
+          const cost2=shares2*price;
+          const cost1=shares1*price;
+          const pct2=((cost2/PORT_SIZE)*100).toFixed(0);
+          const pct1=((cost1/PORT_SIZE)*100).toFixed(0);
+          const cash=_portCash||0;
+
+          if(cash<=0){
+            return `⚠️ <b>เงินสดไม่เพียงพอ</b> (เหลือ $0)<br>
+ควรพิจารณาขายหุ้นตัวที่กำไรมากหรือเกิน Position Limit ออกก่อนครับ`;
+          }
+          if(cash < cost1){
+            const maxShares=Math.floor(cash/price);
+            return `⚠️ <b>เงินสดเหลือ $${cash.toFixed(0)}</b> — ซื้อได้แค่ ${maxShares} หุ้น ($${(maxShares*price).toFixed(0)})<br>
+🛑 <b>Stop Loss:</b> $${s1.toFixed(2)}<br>
+🎯 <b>เป้าหมาย:</b> $${r1.toFixed(2)} (+${rrPct}%)`;
+          }
+          const cashWarn = cash<cost2 ? ' ⚠️ เงินสดไม่พอ' : '';
+          return `💵 เงินสดคงเหลือ $${cash.toFixed(0)}<br>
+🟢 <b>Conservative (Risk 1%):</b> ซื้อ <b>${shares1} หุ้น</b> ใช้เงิน $${cost1.toFixed(0)} (${pct1}% ของพอร์ต)<br>
+🚀 <b>Aggressive (Risk 2%):</b> ซื้อ <b>${shares2} หุ้น</b> ใช้เงิน $${cost2.toFixed(0)} (${pct2}% ของพอร์ต)${cashWarn}<br>
+🛑 <b>Stop Loss:</b> $${s1.toFixed(2)}<br>
+🎯 <b>เป้าหมาย:</b> $${r1.toFixed(2)} (+${rrPct}%)`;
+        })()}</div>
+      </div>
     </div>`;
   // Load signal logo (ใช้ safeTicker ที่ escape แล้ว)
   loadLogo(ticker, 'sig-logo-'+ticker, 48);
@@ -4911,21 +5021,17 @@ Buy Score: ${score}/100
 แนวต้าน: R1 $${r1.toFixed(2)} | R2 $${r2.toFixed(2)}
 ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}% | เป้า R1: +${rrPct}% | Risk/Reward: ${riskReward}x
 
-วิเคราะห์และตอบในรูปแบบนี้:
-🎯 คำตัดสินใจ: [ซื้อได้เลย / รอก่อน / ไม่แนะนำ] — เหตุผลหลัก 1 ประโยค
-📊 % โอกาส BUY สำเร็จ: [0-100%] — อธิบายว่าคำนวณจากอะไร
-✅ ผ่าน: indicator ที่ส่งสัญญาณดี (ระบุชื่อ+ค่าจริง)
-❌ ไม่ผ่าน: indicator ที่น่าเป็นห่วง (ระบุชื่อ+ค่าจริง)
-⚠️ ความเสี่ยง: สิ่งที่ต้องระวังที่สุด
-💰 Entry: $${price.toFixed(2)} | Stop Loss: $${s1.toFixed(2)} (-${slPct}%) | เป้า: $${r1.toFixed(2)} (+${rrPct}%)
-📜 เรียนรู้จากประวัติ: วิเคราะห์ว่าประวัติ Win/Loss ของหุ้นนี้บอกอะไร
-🔥 ความมั่นใจ: [สูง/กลาง/ต่ำ] — เหตุผล`;
+อธิบายให้เพื่อนที่ไม่รู้เรื่องหุ้นเข้าใจได้ในรูปแบบนี้:
+🎯 สรุป: [ซื้อได้เลย / รอก่อน / ไม่แนะนำ] เพราะ [เหตุผล 1 ประโยคภาษาง่ายๆ]
+📈 สัญญาณดี: [บอกว่ามีสัญญาณอะไรดี อธิบายให้เข้าใจว่าหมายความว่าอะไร]
+⚠️ ต้องระวัง: [บอกว่ามีความเสี่ยงอะไร อธิบายให้เข้าใจง่าย]
+💰 ถ้าซื้อ: เข้าที่ $${price.toFixed(2)} | ตั้ง Stop Loss ที่ $${s1.toFixed(2)} | เป้าหมาย $${r1.toFixed(2)}
+🔥 ความมั่นใจ: [สูง/กลาง/ต่ำ] เพราะ [เหตุผลสั้นๆ]`;
 
-  const sys=`คุณคือนักเทรดมืออาชีพที่ตัดสินใจเด็ดขาด ไม่พูดกลางๆ
-วิเคราะห์ indicator ทุกตัวที่ให้มาอย่างละเอียด ระบุชื่อและค่าจริงทุกครั้ง
-น้ำหนักสำคัญ: RSI > MACD > Supertrend > Volume > Heikin Ashi > Elder Ray
-เรียนรู้จากประวัติ Win/Loss — ถ้าหุ้นนี้ Win Rate ต่ำ ให้ระวังมากขึ้น
-ตอบภาษาไทยชาวบ้าน ใช้ emoji ห้ามใช้ศัพท์อังกฤษ`;
+  const sys=`คุณคือที่ปรึกษาการลงทุนที่อธิบายให้เพื่อนฟังได้เข้าใจง่ายมาก
+ห้ามใช้ศัพท์เทคนิคอย่าง RSI, MACD, Supertrend ถ้าต้องใช้ต้องอธิบายด้วย
+ตัดสินใจชัดเจน ไม่พูดกลางๆ ห้ามใช้ ** # หรือ Markdown
+ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet`;
 
   // อัปเดต model label — แสดง pending ก่อน จะอัปเดตหลังได้รับคำตอบ
   const el2pre=document.getElementById('signalAiModel');
@@ -8280,10 +8386,17 @@ function renderEarningsData(data, isLive=false){
       ?`<span class="earn-badge earn-soon">${countdown(e.d)||'⏳'}</span>`
       :`<span style="color:var(--dim);font-size:11px">—</span>`;
     const liveTag=e._live?'<span style="font-size:10px;color:var(--accent);margin-left:3px">●</span>':'';
+    const aiBtn = isDone
+      ? `<button onclick="event.stopPropagation();_analyzeEarningsResult('${e.t}',this)" style="margin-top:6px;width:100%;background:rgba(100,200,255,0.08);border:1px solid rgba(100,200,255,0.2);border-radius:8px;padding:5px;font-size:11px;color:var(--ice);cursor:pointer">🤖 AI วิเคราะห์ผล</button>`
+      : isSoon
+      ? `<button onclick="event.stopPropagation();_analyzeEarningsPreview('${e.t}',this)" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:5px;font-size:11px;color:var(--gold);cursor:pointer">🔮 AI คาดการณ์ผล</button>`
+      : '';
     return`<div class="earn-row" style="background:${bg};border-color:${bc}" onclick="goCard('${e.t}')">
       <span class="earn-ticker" style="color:${tc}">${e.t}${liveTag}</span><span class="earn-name">${e.n}</span>
       <span class="earn-date">${e.d}</span><span class="earn-eps">${epsStr}</span>
-      <span class="earn-rev">${revStr}</span>${badge}</div>`;
+      <span class="earn-rev">${revStr}</span>${badge}
+      ${aiBtn?`<div style="grid-column:1/-1;padding:0 4px 4px">${aiBtn}<div class="earn-ai-result-${e.t}" style="font-size:12px;color:var(--text2);margin-top:6px;white-space:pre-line;line-height:1.6"></div></div>`:''}
+    </div>`;
   }
   const soon=data.filter(e=>_getEarningsSt(e)==='soon');
   const done=data.filter(e=>_getEarningsSt(e)==='done');
@@ -8966,21 +9079,38 @@ async function analyzePortfolioAI(){
   resultEl.innerHTML='⏳ AI กำลังวิเคราะห์พอร์ต...';
 
   try{
-    let port=[];
-    try{ port=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+    const port=portfolio;
     if(!port.length){ resultEl.innerHTML='⚠️ ยังไม่มีหุ้นในพอร์ต'; return; }
-
-    const holdings=port.map(p=>{
-      const s=stocksMap.get(p.t);
-      const cur=s?.p||0;
-      const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
-      return `${p.t}: ${p.shares}หุ้น เข้าที่$${p.avgPrice} ปัจจุบัน$${cur} (${pnl}%)`;
-    }).join('\n');
 
     const totalVal=port.reduce((s,p)=>{
       const cur=stocksMap.get(p.t)?.p||0;
       return s+cur*p.shares;
     },0);
+
+    const holdings=port.map(p=>{
+      const s=stocksMap.get(p.t);
+      const cur=s?.p||0;
+      const val=cur*p.shares;
+      const pct=totalVal>0?(val/totalVal*100).toFixed(1):0;
+      const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
+      const sector=Object.entries(sectorMap).find(([,v])=>v.includes(p.t))?.[0]||'อื่นๆ';
+      const limit=_posLimits[p.t]||_recommendedLimit(p.t);
+      const overLimit=parseFloat(pct)>limit?` ⚠️ เกิน limit ${limit}%`:'';
+      return `${p.t}(${sector}): ${p.shares}หุ้น เข้า$${p.avgPrice} ปัจจุบัน$${cur} P&L:${pnl}% สัดส่วน:${pct}%${overLimit}`;
+    }).join('\n');
+
+    // Sector breakdown
+    const sectorBreakdown={};
+    port.forEach(p=>{
+      const sector=Object.entries(sectorMap).find(([,v])=>v.includes(p.t))?.[0]||'อื่นๆ';
+      const val=(stocksMap.get(p.t)?.p||0)*p.shares;
+      sectorBreakdown[sector]=(sectorBreakdown[sector]||0)+val;
+    });
+    const sectorText=Object.entries(sectorBreakdown)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([s,v])=>`${s}: ${totalVal>0?(v/totalVal*100).toFixed(0):0}%`)
+      .join(' | ');
+
     const cashPct=_portCash>0?((_portCash/(totalVal+_portCash))*100).toFixed(1):0;
     const fng=window._fngForAI;
     const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`; 
@@ -8988,18 +9118,20 @@ async function analyzePortfolioAI(){
     const sys=`คุณคือที่ปรึกษาการลงทุนที่วิเคราะห์พอร์ตอย่างละเอียด ใช้ภาษาไทยเข้าใจง่าย ห้ามใช้ ** # หรือ Markdown`;
     const prompt=`พอร์ตปัจจุบัน:
 ${holdings}
+
+Sector: ${sectorText}
 เงินสด: $${_portCash} (${cashPct}% ของพอร์ตรวม)
 ภาพรวมตลาด: ${mkt}
 
 วิเคราะห์ละเอียดดังนี้:
-1) ภาพรวมพอร์ต: สุขภาพโดยรวมเป็นยังไง กำไร/ขาดทุนรวม ความเสี่ยงสูงต่ำ
-2) วิเคราะห์ทีละหุ้น: แต่ละตัวสถานะเป็นยังไง น่าเป็นห่วงไหม ควรถือต่อหรือขาย
-3) หุ้นที่กำไรมาก: ควร Take Profit บางส่วนไหม เท่าไหร่ เพราะอะไร
-4) หุ้นที่ขาดทุน: ควรตั้ง Stop Loss ที่ราคาเท่าไหร่ หรือถือต่อได้
-5) เงินสด: เพียงพอไหม ควรเพิ่มหรือลด
+1) ภาพรวมพอร์ต: สุขภาพโดยรวม กำไร/ขาดทุนรวม ความเสี่ยง
+2) วิเคราะห์ทีละหุ้น: สถานะ น่าเป็นห่วงไหม ควรถือต่อหรือขาย
+3) หุ้นที่กำไรมาก: ควร Take Profit บางส่วนไหม เท่าไหร่
+4) หุ้นที่ขาดทุน: ควรตั้ง Stop Loss ที่ราคาเท่าไหร่
+5) Rebalance: พอร์ตกระจุกตัว sector ไหนเกินไปไหม ควรลดอะไร เพิ่มอะไร เงินสดเหมาะสมไหม
 6) คำแนะนำสำคัญ: 2-3 ข้อที่ต้องทำวันนี้หรือสัปดาห์นี้`;
 
-    let reply = await callAI_Analyze(sys,prompt,800);
+    let reply = await callAI_Analyze(sys,prompt,900);
     if(!reply){ resultEl.innerHTML='❌ ไม่สามารถวิเคราะห์ได้'; return; }
     reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').trim();
     resultEl.style.whiteSpace='pre-line';
@@ -9412,8 +9544,9 @@ function renderPortfolio(){
         barEl.style.width=newWidth;
       }
     }
-    const logoEl=document.getElementById(`portlogo-${pos.t}`);
-    if(logoEl) loadLogo(pos.t,`portlogo-${pos.t}`,40);
+    const safePortId=pos.t.replace(/\./g,'-');
+    const logoEl=document.getElementById(`portlogo-${safePortId}`);
+    if(logoEl) loadLogo(pos.t,`portlogo-${safePortId}`,40);
   });
   // accordion toggle
   list.onclick=(e)=>{
