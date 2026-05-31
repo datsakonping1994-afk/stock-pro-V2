@@ -10689,7 +10689,7 @@ function initElitePage(){
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
   }
-  // โหลด cache ก่อน ถ้ายังไม่หมดอายุ
+  // โหลด cache ก่อน ถ้ายังไม่หมดอายุ และมีข้อมูล
   const cached = loadEliteCache();
   if(cached && cached.results.length > 0){
     _eliteScanResults = cached.results;
@@ -10697,6 +10697,7 @@ function initElitePage(){
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   }
+  // ถ้าไม่มีอะไรเลย → overlay SCAN NOW แสดงอยู่แล้วจาก HTML
 }
 
 // ── MAIN SCAN FUNCTION ──
@@ -10799,8 +10800,18 @@ function renderEliteScanResults(results, ageMs=0){
   const cards = document.getElementById('eliteNewsCards');
   const count = document.getElementById('eliteNewsCount');
 
-  // Hide overlay
-  if(overlay) overlay.style.display = 'none';
+  // Hide overlay เฉพาะเมื่อมีผลลัพธ์
+  if(overlay && results.length > 0) overlay.style.display = 'none';
+  else if(overlay && results.length === 0){
+    // ไม่มีข่าว → แสดง overlay กลับมา พร้อมปุ่ม scan
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+      <div style="font-size:22px">👁</div>
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ไม่มีข่าวสำคัญตอนนี้</div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">ไม่พบข่าวที่กระทบตลาดใน 24 ชม.ที่ผ่านมา</div>
+      <button onclick="runEliteScan(true)" style="margin-top:8px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔄 SCAN ใหม่</button>`;
+    return;
+  }
 
   // แสดงเวลา cache
   if(count){
