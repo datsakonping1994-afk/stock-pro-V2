@@ -10801,9 +10801,22 @@ async function runEliteScan(forceRefresh=false){
 
 ${newsSummary}
 
-ตอบ JSON array เท่านั้น ไม่มี markdown:
-[{"id":"trump","headline":"สรุปข่าวภาษาไทย 1 ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"tags":["สหรัฐ"],"markets":["USD"]}]
-เฉพาะคนที่มีข่าวสำคัญ impact ≥ 6 เท่านั้น`;
+ตอบ JSON array เท่านั้น ไม่มี markdown ไม่มี code block:
+[{
+  "id":"trump",
+  "headline":"สรุปข่าวภาษาไทย 1 ประโยค",
+  "summary":"อธิบายบริบทข่าวให้ชัดเจนว่าเกิดอะไรขึ้น ทำไมถึงสำคัญ และส่งผลอย่างไรต่อตลาด ภาษาง่าย 2-3 ประโยค",
+  "impact":8,
+  "pros":["ผลดีต่อตลาด อธิบายให้ชัดเจน"],
+  "cons":["ผลเสียต่อตลาด อธิบายให้ชัดเจน"],
+  "action":"BUY หรือ SELL หรือ HOLD",
+  "actionReason":"เหตุผลสั้นๆ ว่าทำไมถึงแนะนำ action นี้",
+  "stocks":[{"ticker":"AAPL","action":"BUY","impact":"+2-3%","reason":"เหตุผลสั้นๆ"}],
+  "portfolioImpact":"+1.5% ถ้าถือหุ้นกลุ่ม tech หรือ -0.8% ถ้าถือ bond",
+  "tags":["สหรัฐ","เศรษฐกิจ"],
+  "markets":["USD","S&P500"]
+}]
+เฉพาะคนที่มีข่าวสำคัญ impact ≥ 6 เท่านั้น stocks ให้ระบุ 2-4 ตัวที่ได้รับผลกระทบชัดเจนที่สุด`;
 
     let results = [];
     if(groqKey){
@@ -10812,7 +10825,7 @@ ${newsSummary}
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
         body:JSON.stringify({
           model:'llama-3.3-70b-versatile',
-          max_tokens:1500,
+          max_tokens:3000,
           messages:[
             {role:'system',content:'คุณคือนักวิเคราะห์การลงทุน ตอบ JSON เท่านั้น'},
             {role:'user',content:prompt}
@@ -10906,9 +10919,26 @@ function renderEliteScanResults(results, ageMs=0){
       const impactBg = n.impact>=9 ? 'rgba(255,77,106,0.15)' : n.impact>=7 ? 'rgba(201,168,76,0.15)' : 'rgba(100,210,255,0.12)';
       const tags = (n.tags||[]).map(t=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${t}</span>`).join('');
       const now = new Date().toLocaleString('th-TH',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      // action badge
+      const actionColor = n.action==='BUY' ? 'var(--green)' : n.action==='SELL' ? 'var(--red)' : 'var(--gold)';
+      const actionBg = n.action==='BUY' ? 'rgba(0,230,118,0.15)' : n.action==='SELL' ? 'rgba(255,77,106,0.15)' : 'rgba(201,168,76,0.15)';
+      const actionBorder = n.action==='BUY' ? 'rgba(0,230,118,0.4)' : n.action==='SELL' ? 'rgba(255,77,106,0.4)' : 'rgba(201,168,76,0.4)';
+      const actionEmoji = n.action==='BUY' ? '📈' : n.action==='SELL' ? '📉' : '⏸️';
+      // stocks
+      const stocksHtml = (n.stocks||[]).map(s=>{
+        const sc = s.action==='BUY' ? 'var(--green)' : s.action==='SELL' ? 'var(--red)' : 'var(--gold)';
+        const sb = s.action==='BUY' ? 'rgba(0,230,118,0.08)' : s.action==='SELL' ? 'rgba(255,77,106,0.08)' : 'rgba(201,168,76,0.08)';
+        return `<div style="background:${sb};border:1px solid ${sc}44;border-radius:9px;padding:7px 9px;display:flex;align-items:center;gap:7px">
+          <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:${sc};min-width:44px">${s.ticker}</span>
+          <span style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:${sc};background:${sc}22;border:1px solid ${sc}44;border-radius:6px;padding:1px 6px">${s.action}</span>
+          <span style="font-size:10px;font-weight:700;color:${sc};font-family:'Manrope',sans-serif">${s.impact||''}</span>
+          <span style="font-size:10px;color:var(--text3);flex:1;line-height:1.3">${s.reason||''}</span>
+        </div>`;
+      }).join('');
       return `
       <div id="elite-card-${p.id}" style="background:linear-gradient(145deg,rgba(20,28,42,0.98),rgba(12,18,30,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:13px;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${impactColor},transparent)"></div>
+
         <!-- Header -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden">
@@ -10923,28 +10953,66 @@ function renderEliteScanResults(results, ageMs=0){
             <span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;color:${impactColor};opacity:0.7">/10</span>
           </div>
         </div>
-        <!-- Time -->
-        <div style="font-size:9px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:4px">⏱ ${now}</div>
+
+        <!-- Time + Markets -->
+        <div style="font-size:9px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>⏱ ${now}</span>
+          <span style="opacity:0.4">·</span>
+          <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span>
+        </div>
+
         <!-- Headline -->
-        <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span></div>
+        <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว</div>
         <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:8px">${n.headline}</div>
+
+        <!-- Summary (บริบทข่าว) -->
+        ${n.summary ? `<div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.15);border-radius:9px;padding:9px 11px;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:4px">💡 เกิดอะไรขึ้น?</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.7">${n.summary}</div>
+        </div>` : ''}
+
         <!-- Tags -->
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${tags}</div>
+
+        <!-- Action แนะนำ -->
+        ${n.action ? `<div style="background:${actionBg};border:1px solid ${actionBorder};border-radius:10px;padding:9px 11px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px">
+          <div style="flex-shrink:0">
+            <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:${actionColor}">${actionEmoji} ${n.action}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5">${n.actionReason||''}</div>
+        </div>` : ''}
+
+        <!-- หุ้นที่ได้รับผลกระทบ -->
+        ${stocksHtml ? `<div style="margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);letter-spacing:1px;margin-bottom:5px">🎯 หุ้นที่ได้รับผลกระทบ</div>
+          <div style="display:flex;flex-direction:column;gap:5px">${stocksHtml}</div>
+        </div>` : ''}
+
+        <!-- Portfolio Impact % -->
+        ${n.portfolioImpact ? `<div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 11px;margin-bottom:8px;display:flex;align-items:center;gap:7px">
+          <span style="font-size:14px">📊</span>
+          <div>
+            <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);letter-spacing:1px;margin-bottom:2px">ผลกระทบต่อพอร์ต</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.5">${n.portfolioImpact}</div>
+          </div>
+        </div>` : ''}
+
         <!-- Pros -->
         <div style="background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.18);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--green);margin-bottom:4px">✅ ได้ประโยชน์</div>
-          ${(n.pros||[]).map(p=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${p}</span></div>`).join('')}
+          ${(n.pros||[]).map(x=>`<div style="font-size:11px;color:var(--text2);line-height:1.6;display:flex;gap:5px"><span>•</span><span>${x}</span></div>`).join('')}
         </div>
+
         <!-- Cons -->
         <div style="background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.18);border-radius:9px;padding:8px 10px;margin-bottom:8px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--red);margin-bottom:4px">❌ เสียประโยชน์</div>
-          ${(n.cons||[]).map(c=>`<div style="font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:5px"><span>•</span><span>${c}</span></div>`).join('')}
+          ${(n.cons||[]).map(x=>`<div style="font-size:11px;color:var(--text2);line-height:1.6;display:flex;gap:5px"><span>•</span><span>${x}</span></div>`).join('')}
         </div>
+
         <!-- Portfolio Impact Button -->
         <button onclick="analyzePortfolioImpact('${p.id}',this)" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px">
           💼 วิเคราะห์ผลกระทบต่อพอร์ตฉัน
         </button>
-        <!-- Portfolio Impact Result -->
         <div id="port-impact-${p.id}" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:10px;margin-bottom:8px;font-size:11px;color:var(--text2);line-height:1.7"></div>
         <div style="font-size:9px;color:var(--text3);opacity:0.6">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
       </div>`;
