@@ -11243,55 +11243,74 @@ async function runEliteScan(forceRefresh=false){
   if(pins) pins.innerHTML = '';
 
   try{
+    const fk = localStorage.getItem('finnhubKey') || FINNHUB_KEY || '';
+    const groqKey = localStorage.getItem('groqKey') || '';
     const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── Claude + Web Search ──
+    // ── Step 1: Finnhub ดึงข่าวหุ้น ──
     if(overlay) overlay.innerHTML = `
-      <div style="font-size:22px">🔍</div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าว...</div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 20px">ค้นข่าวล่าสุดจากทั่วโลก รอ ~15 วินาที</div>
+      <div style="font-size:22px">📡</div>
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังดึงข่าว...</div>
+      <div style="font-size:11px;color:var(--text3)">Finnhub + Claude Web Search</div>
       <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
-    const nameList = ELITE_PEOPLE.map(p=>`${p.name}(${p.id}/${p.role})`).join(', ');
+    const now = Math.floor(Date.now()/1000);
+    const from = now - 24*3600;
+    const uniqueTickers = [...new Set(ELITE_PEOPLE.flatMap(p=>p.tickers||[]))];
+    const newsMap = {};
+    await Promise.all(uniqueTickers.map(async ticker=>{
+      try{
+        const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${new Date(from*1000).toISOString().split('T')[0]}&to=${new Date(now*1000).toISOString().split('T')[0]}&token=${fk}`);
+        const data = await r.json();
+        if(Array.isArray(data)) newsMap[ticker] = data.slice(0,3);
+      }catch{}
+    }));
+
+    const peopleWithNews = ELITE_PEOPLE.map(p=>{
+      const articles = (p.tickers||[]).flatMap(t=>newsMap[t]||[]);
+      if(!articles.length) return null;
+      articles.sort((a,b)=>b.datetime-a.datetime);
+      return { person:p, articles:articles.slice(0,3) };
+    }).filter(Boolean);
+
+    // ── Step 2: Groq วิเคราะห์ข่าว ──
+    if(overlay) overlay.innerHTML = `
+      <div style="font-size:22px">⚡</div>
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Groq กำลังวิเคราะห์...</div>
+      <div style="font-size:11px;color:var(--text3)">พบข่าว ${peopleWithNews.length} แหล่ง</div>
+      <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+
+    const newsSummary = peopleWithNews.length
+      ? peopleWithNews.map(({person:p,articles})=>`${p.id}|${p.name}(${p.role}): ${articles.map(a=>a.headline).join(' / ')}`).join('\n')
+      : 'No company news found';
 
     const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-    const prompt = `Today is ${today}. Search for latest market-moving news about these people:
-
-Donald Trump (trump), Jerome Powell (powell), Jensen Huang (jensen), Tim Cook (cook), Elon Musk (musk), Satya Nadella (nadella), Mark Zuckerberg (zuck), Sam Altman (altman), Xi Jinping (xi), Vladimir Putin (putin), Christine Lagarde (lagarde), OPEC+ (opec)
-
-Search for each one. Return ONLY a JSON array, no text before or after, no markdown:
-[{"id":"trump","headline":"headline in Thai","summary":"2-3 sentences in Thai","impact":8,"pros":["benefit"],"cons":["risk"],"why":"context in Thai","watch":"what to watch in Thai","tags":["US"],"markets":["USD"],"stocks_buy":["AAL"],"stocks_watch":["XOM"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"reason"}],"read_game":"strategy analysis in Thai","response":"expected response in Thai"}]
-Only include people who have significant market-moving news today. If no news, return [].`;
+    const prompt = `Today is ${today}. Analyze these news headlines and their market impact:\n${newsSummary}\n\nAlso consider any major geopolitical news today (Trump, Powell, OPEC, etc.) that may affect markets.\n\nReturn ONLY a JSON array, no text, no markdown:\n[{"id":"trump","headline":"Thai headline","summary":"Thai summary","impact":8,"pros":["benefit"],"cons":["risk"],"why":"Thai context","watch":"Thai watchpoint","tags":["US"],"markets":["USD"],"stocks_buy":["AAL"],"stocks_watch":["XOM"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"reason"}],"read_game":"Thai strategy","response":"Thai response"}]\nOnly include if impact >= 6. If nothing significant, return [].`;
 
     let results = [];
-    const response = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':_ank,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:4000,
-        system:'You are a financial news analyst. You MUST respond with ONLY a valid JSON array. No text before or after. No markdown. No explanation. Start your response with [ and end with ].',
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data = await response.json();
-    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-    console.log('[ELITE SCAN] Raw response:', text.slice(0,500));
-    console.log('[ELITE SCAN] API error:', data.error);
-    try{
-      const arr = JSON.parse(text.replace(/```json|```/g,'').trim());
-      console.log('[ELITE SCAN] Parsed results:', arr.length);
-      results = arr.map(item=>{
-        const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-        return person ? {person, news:item} : null;
-      }).filter(Boolean);
-    }catch(e){ console.log('[ELITE SCAN] Parse error:', e.message); }
+    if(groqKey){
+      const gr = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
+        body:JSON.stringify({
+          model:'llama-3.3-70b-versatile',
+          max_tokens:2000,
+          messages:[
+            {role:'system',content:'You are a financial analyst. Respond ONLY with a valid JSON array starting with [ and ending with ]. No other text.'},
+            {role:'user',content:prompt}
+          ]
+        })
+      });
+      const gd = await gr.json();
+      const text = gd.choices?.[0]?.message?.content||'';
+      try{
+        const arr = JSON.parse(text.replace(/```json|```/g,'').trim());
+        results = arr.map(item=>{
+          const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+          return person ? {person, news:item} : null;
+        }).filter(Boolean);
+      }catch(e){ console.log('Parse error:',e.message,text.slice(0,200)); }
+    }
 
     _eliteScanResults = results;
     if(results.length > 0) saveEliteCache(results);
