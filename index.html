@@ -11269,23 +11269,61 @@ async function runEliteScan(forceRefresh=false){
     const peopleWithNews = ELITE_PEOPLE.map(p=>{
       const articles = (p.tickers||[]).flatMap(t=>newsMap[t]||[]);
       if(!articles.length) return null;
-      articles.sort((a,b)=>b.datetime-a.datetime);
-      return { person:p, articles:articles.slice(0,3) };
+      // กรองเฉพาะข่าวที่มีชื่อคนหรือบริษัทในหัวข้อ
+      const nameKeywords = p.name.toLowerCase().split(' ');
+      const roleKeywords = (p.role||'').toLowerCase().replace('ceo ','').split('/');
+      const relevant = articles.filter(a=>{
+        const h = (a.headline||'').toLowerCase();
+        const s = (a.summary||'').toLowerCase();
+        return nameKeywords.some(k=>k.length>3&&(h.includes(k)||s.includes(k))) ||
+               roleKeywords.some(k=>k.length>3&&(h.includes(k)||s.includes(k))) ||
+               (p.tickers||[]).some(t=>h.includes(t.toLowerCase()));
+      });
+      const finalArticles = relevant.length ? relevant : articles;
+      finalArticles.sort((a,b)=>b.datetime-a.datetime);
+      return { person:p, articles:finalArticles.slice(0,2) };
     }).filter(Boolean);
 
     // ── Step 2: Groq วิเคราะห์ข่าว ──
     if(overlay) overlay.innerHTML = `
       <div style="font-size:22px">⚡</div>
       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Groq กำลังวิเคราะห์...</div>
-      <div style="font-size:11px;color:var(--text3)">พบข่าว ${peopleWithNews.length} แหล่ง</div>
+      <div style="font-size:11px;color:var(--text3)">พบข่าวจาก ${peopleWithNews.length} แหล่ง</div>
       <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
     const newsSummary = peopleWithNews.length
-      ? peopleWithNews.map(({person:p,articles})=>`${p.id}|${p.name}(${p.role}): ${articles.map(a=>a.headline).join(' / ')}`).join('\n')
-      : 'No company news found';
+      ? peopleWithNews.map(({person:p,articles})=>
+          `[${p.id}] ${p.name} (${p.role}):\n${articles.map((a,i)=>`  ${i+1}. ${a.headline}`).join('\n')}`
+        ).join('\n\n')
+      : 'ไม่พบข่าวจาก Finnhub';
 
-    const today = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-    const prompt = `Today is ${today}. Analyze these news headlines and their market impact:\n${newsSummary}\n\nAlso consider any major geopolitical news today (Trump, Powell, OPEC, etc.) that may affect markets.\n\nReturn ONLY a JSON array, no text, no markdown:\n[{"id":"trump","headline":"Thai headline","summary":"Thai summary","impact":8,"pros":["benefit"],"cons":["risk"],"why":"Thai context","watch":"Thai watchpoint","tags":["US"],"markets":["USD"],"stocks_buy":["AAL"],"stocks_watch":["XOM"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"reason"}],"read_game":"Thai strategy","response":"Thai response"}]\nOnly include if impact >= 6. If nothing significant, return [].`;
+    const today = new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+    const prompt = `วันนี้คือ${today}
+
+ข่าวหุ้นจาก Finnhub:
+${newsSummary}
+
+วิเคราะห์แต่ละรายการและผลกระทบต่อตลาดหุ้น ตอบเฉพาะข่าวที่มีความสำคัญ impact ≥ 6 เท่านั้น
+
+ตอบ JSON array เท่านั้น เริ่มด้วย [ จบด้วย ] ไม่มีข้อความอื่น:
+[{
+  "id": "ใส่ id จากด้านบน เช่น trump, jensen, musk",
+  "headline": "หัวข้อข่าวภาษาไทย กระชับ 1 ประโยค",
+  "summary": "อธิบายเนื้อหาข่าวเป็นภาษาไทย 2-3 ประโยค",
+  "impact": 7,
+  "pros": ["ผลดีต่อนักลงทุน ภาษาไทย"],
+  "cons": ["ผลเสียต่อนักลงทุน ภาษาไทย"],
+  "why": "เบื้องหลังและบริบทของข่าวนี้ ภาษาไทย",
+  "watch": "สิ่งที่ต้องจับตาต่อ ภาษาไทย",
+  "tags": ["สหรัฐ"],
+  "markets": ["USD", "SP500"],
+  "stocks_buy": ["NVDA"],
+  "stocks_watch": ["XOM"],
+  "affected_stocks": [{"ticker": "SPY", "direction": "up", "reason": "เหตุผลภาษาไทย"}],
+  "read_game": "วิเคราะห์กลยุทธ์เบื้องหลัง ภาษาไทย",
+  "response": "คาดการณ์การตอบสนองของตลาด ภาษาไทย"
+}]`;
 
     let results = [];
     if(groqKey){
@@ -11294,9 +11332,10 @@ async function runEliteScan(forceRefresh=false){
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
         body:JSON.stringify({
           model:'llama-3.3-70b-versatile',
-          max_tokens:2000,
+          max_tokens:3000,
+          temperature:0.3,
           messages:[
-            {role:'system',content:'You are a financial analyst. Respond ONLY with a valid JSON array starting with [ and ending with ]. No other text.'},
+            {role:'system',content:'คุณคือนักวิเคราะห์การลงทุนชาวไทย ตอบ JSON array เท่านั้น เริ่มด้วย [ จบด้วย ] ทุกข้อความต้องเป็นภาษาไทย ห้ามมีข้อความอื่นนอกจาก JSON'},
             {role:'user',content:prompt}
           ]
         })
@@ -11304,12 +11343,13 @@ async function runEliteScan(forceRefresh=false){
       const gd = await gr.json();
       const text = gd.choices?.[0]?.message?.content||'';
       try{
-        const arr = JSON.parse(text.replace(/```json|```/g,'').trim());
+        const clean = text.replace(/```json|```/g,'').trim();
+        const arr = JSON.parse(clean);
         results = arr.map(item=>{
           const person = ELITE_PEOPLE.find(p=>p.id===item.id);
           return person ? {person, news:item} : null;
         }).filter(Boolean);
-      }catch(e){ console.log('Parse error:',e.message,text.slice(0,200)); }
+      }catch(e){ console.log('Parse error:',e.message); }
     }
 
     _eliteScanResults = results;
