@@ -1270,36 +1270,6 @@ canvas.bigchart{width:100%;height:100%}
       <!-- Holdings List -->
       <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">📊 Holdings</div>
 
-      <!-- Chart Section -->
-      <div id="portChartSection" style="display:none;margin-bottom:14px">
-        <!-- Chart Tabs -->
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="port-chart-tab active" id="pct-pnl" onclick="switchPortChart('pnl',this)">📈 P&L</button>
-          <button class="port-chart-tab" id="pct-pie" onclick="switchPortChart('pie',this)">🥧 สัดส่วน</button>
-          <div style="margin-left:auto;display:flex;gap:4px" id="pnlRangebtns">
-            <button class="port-range-btn active" onclick="switchPnlRange('1D',this)">1D</button>
-            <button class="port-range-btn" onclick="switchPnlRange('1W',this)">1W</button>
-            <button class="port-range-btn" onclick="switchPnlRange('1M',this)">1M</button>
-          </div>
-        </div>
-        <!-- P&L Chart -->
-        <div id="portPnlChartWrap" style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3)">P&L CHART</div>
-            <div id="portPnlChartVal" style="font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:var(--green)">$0.00</div>
-          </div>
-          <canvas id="portPnlCanvas" height="120" style="width:100%;display:block"></canvas>
-        </div>
-        <!-- Pie Chart -->
-        <div id="portPieChartWrap" style="display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px">
-          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px">สัดส่วนพอร์ต</div>
-          <div style="display:flex;align-items:center;gap:16px">
-            <canvas id="portPieCanvas" width="120" height="120" style="flex-shrink:0"></canvas>
-            <div id="portPieLegend" style="flex:1;display:flex;flex-direction:column;gap:5px"></div>
-          </div>
-        </div>
-      </div>
-
       <div id="portHoldingsList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:100px">
         <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:11px;opacity:0.6">กรอก ticker + ราคาซื้อ + จำนวนหุ้น แล้วกด Add</span></div>
       </div>
@@ -8863,7 +8833,7 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet`;
   // Timeout รวม 30 วินาที ป้องกันค้าง
   const _aiResult = await Promise.race([
-    callAI_Analyze('คุณคือที่ปรึกษาการลงทุนที่พูดภาษาไทยเข้าใจง่าย ตัดสินใจชัดเจน ระบุชื่อหุ้นและราคาจริงๆ ไม่พูดกลางๆ อธิบายเหมือนคุยกับเพื่อนที่ไม่รู้เรื่องหุ้น', prompt, 1000),
+    callAI_Analyze('คุณคือที่ปรึกษาการลงทุนที่พูดภาษาไทยเข้าใจง่าย ตัดสินใจชัดเจน ระบุชื่อหุ้นและราคาจริงๆ ไม่พูดกลางๆ อธิบายเหมือนคุยกับเพื่อนที่ไม่รู้เรื่องหุ้น', prompt, 2500),
     new Promise(r=>setTimeout(()=>r('⚠️ AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'), 30000))
   ]);
   return _aiResult;
@@ -9676,11 +9646,14 @@ function renderPortfolio(){
                 <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);letter-spacing:0.3px">${safeTicker}</div>
                 <div style="font-size:10px;color:var(--text3);margin-top:2px">${safeName||safeTicker} · <span class="port-weight-${safeTicker}">--</span></div>
               </div>
-              <div style="text-align:right">
-                <div class="port-val-${safeTicker}" style="font-size:16px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
-                <div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;background:${isUp?'rgba(0,200,130,0.12)':'rgba(255,77,106,0.12)'};border:1px solid ${isUp?'rgba(0,200,130,0.25)':'rgba(255,77,106,0.25)'};border-radius:6px;padding:2px 7px">
-                  <span class="port-pct-${safeTicker}" style="font-size:11px;font-weight:700;color:${pnlColor}">${curPrice>0?(isUp?'▲':'▼')+Math.abs(pnlPct).toFixed(2)+'%':'--'}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="text-align:right">
+                  <div class="port-val-${safeTicker}" style="font-size:16px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--text)">${curPrice>0?'$'+(val).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'--'}</div>
+                  <div style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;background:${isUp?'rgba(0,200,130,0.12)':'rgba(255,77,106,0.12)'};border:1px solid ${isUp?'rgba(0,200,130,0.25)':'rgba(255,77,106,0.25)'};border-radius:6px;padding:2px 7px">
+                    <span class="port-pct-${safeTicker}" style="font-size:11px;font-weight:700;color:${pnlColor}">${curPrice>0?(isUp?'▲':'▼')+Math.abs(pnlPct).toFixed(2)+'%':'--'}</span>
+                  </div>
                 </div>
+                <button onclick="event.stopPropagation();if(confirm('ลบ ${safeTicker} ออกจากพอร์ต?'))removePortPosition('${safeTicker}')" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:10px;padding:8px 10px;font-size:16px;cursor:pointer;flex-shrink:0">🗑️</button>
               </div>
             </div>
             <!-- Progress bar weight -->
