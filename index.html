@@ -10750,7 +10750,7 @@ signal ต้องเป็น buy/sell/hold เท่านั้น`;
         'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-5',
         max_tokens:3000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:prompt}]
@@ -11266,7 +11266,7 @@ async function runEliteScan(forceRefresh=false){
           'anthropic-dangerous-direct-browser-access':'true'
         },
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
+          model:'claude-sonnet-4-5',
           max_tokens:4000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           system:'You are a financial intelligence analyst. Use web_search to find real latest news. Return ONLY a raw JSON array starting with [ and ending with ]. No prose, no markdown, no preamble. All text fields in Thai except ticker symbols.',
@@ -11553,7 +11553,7 @@ async function analyzePortfolioImpact(personId, btn){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-5',
         max_tokens:800,
         messages:[{role:'user',content:prompt}]
       })
@@ -11700,7 +11700,7 @@ async function summarizeEvent(idx, btn){
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
+          model:'claude-sonnet-4-5',
           max_tokens:1000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           messages:[{role:'user',content:prompt}]
@@ -11809,7 +11809,7 @@ async function forecastEvent(idx, btn){
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
+          model:'claude-sonnet-4-5',
           max_tokens:1500,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           messages:[{role:'user',content:prompt}]
