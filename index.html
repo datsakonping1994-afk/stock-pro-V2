@@ -11246,52 +11246,62 @@ async function runEliteScan(forceRefresh=false){
   try{
     const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── ถ้ามี Anthropic Key → ใช้ Claude API โดยตรง (web_search) ──
+    // ── ถ้ามี Anthropic Key → ใช้ Claude API (batch 4 คนต่อ request) ──
     if(_ank){
       if(overlay) overlay.innerHTML = `
         <div style="font-size:22px">🌍</div>
-        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
-        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Web Search · รอ ~30 วินาที</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังสแกน Elite...</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">แบ่งค้น 3 รอบ · รอ ~30 วินาที</div>
         <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
       const today = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
-      const prompt = `${today}: ค้นข่าวล่าสุดของ Trump, Powell/Fed, Jensen/NVIDIA, Musk/Tesla, Zuck/Meta, Xi/China, Putin, Lagarde/ECB, OPEC, Cook/Apple, Nadella/MSFT, Altman/OpenAI. ตอบ JSON array เฉพาะ impact>=6: [{"id":"trump","headline":"ข่าว","summary":"วิเคราะห์","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์","response":"การตอบสนอง"}]`;
+      const schema = '{"id":"trump","headline":"ข่าว","summary":"วิเคราะห์2ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"read_game":"กลยุทธ์","response":"การตอบสนอง"}';
 
-      const apiResp = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key':_ank,
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001',
-          max_tokens:2000,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          system:'Financial news JSON API. Use web_search. Output ONLY raw JSON array. No markdown. Thai text except tickers.',
-          messages:[{role:'user',content:prompt}]
-        }),
-        signal: AbortSignal.timeout(60000)
-      });
+      const batches = [
+        ['trump','powell','jensen','musk'],
+        ['zuck','xi','putin','lagarde'],
+        ['opec','cook','nadella','altman']
+      ];
 
-      if(!apiResp.ok){
-        const errData = await apiResp.json().catch(()=>({}));
-        throw new Error('Claude API: ' + (errData.error?.message || apiResp.status));
+      async function callClaude(ids){
+        const r = await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({
+            model:'claude-haiku-4-5-20251001',
+            max_tokens:1500,
+            tools:[{type:'web_search_20250305',name:'web_search',max_uses:2}],
+            system:'Financial news JSON API. Search latest news. Output ONLY raw JSON array. No markdown. Thai text except tickers.',
+            messages:[{role:'user',content:`${today}: ค้นข่าวล่าสุดของ ${ids.join(', ')} ตอบ JSON array เฉพาะ impact>=6 schema: [${schema}]`}]
+          }),
+          signal: AbortSignal.timeout(45000)
+        });
+        if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||r.status); }
+        const d = await r.json();
+        const txt = (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+        const m = txt.match(/\[[\s\S]*\]/);
+        if(!m) return [];
+        try{ return JSON.parse(m[0]); }catch{ return []; }
       }
 
-      const apiData = await apiResp.json();
-      const fullText = (apiData.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-      const match = fullText.match(/\[[\s\S]*\]/);
-      if(!match) throw new Error('ไม่พบ JSON ในผลลัพธ์');
+      let allRaw = [];
+      for(let i=0;i<batches.length;i++){
+        if(overlay){
+          const dots = ['🔍','🌐','📡'][i];
+          overlay.querySelector('div:nth-child(2)').textContent = `${dots} สแกนรอบที่ ${i+1}/3...`;
+        }
+        try{
+          const r = await callClaude(batches[i]);
+          allRaw = allRaw.concat(r);
+        }catch(e){ console.log('batch',i,'error:',e.message); }
+        if(i<2) await new Promise(res=>setTimeout(res,3000)); // หน่วง 3s ระหว่าง batch
+      }
 
-      let rawResults = JSON.parse(match[0]);
-      if(!Array.isArray(rawResults)) rawResults = [];
-
-      const results = rawResults.map(item=>{
-        const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-        return person ? {person, news:item} : null;
-      }).filter(Boolean).sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
+      const results = allRaw
+        .filter(item=>item&&item.id&&item.impact>=6)
+        .map(item=>{ const person=ELITE_PEOPLE.find(p=>p.id===item.id); return person?{person,news:item}:null; })
+        .filter(Boolean)
+        .sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
 
       _eliteScanResults = results;
       if(results.length > 0) saveEliteCache(results);
