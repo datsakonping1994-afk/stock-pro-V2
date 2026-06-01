@@ -11363,6 +11363,70 @@ function initElitePage(){
 }
 
 // ── MAIN SCAN FUNCTION ──
+// ── Elite Direct Fallback — ใช้เมื่อ Worker rate limit ──
+async function _eliteDirectFallback(overlay){
+  const _ank = localStorage.getItem('anthropicKey')||'';
+  if(!_ank){
+    toast('⚠️ Worker rate limit — ใส่ Claude API Key ใน Settings เพื่อใช้งาน Elite ต่อได้');
+    return [];
+  }
+
+  if(overlay) overlay.innerHTML = `
+    <div style="font-size:22px">🤖</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าว (fallback)...</div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Worker rate limit — ใช้ Claude โดยตรง</div>
+    <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+
+  try{
+    const topPeople = ELITE_PEOPLE.slice(0,12);
+    const nameList = topPeople.map(p=>p.name+'('+p.id+')').join(', ');
+    const prompt = 'ค้นหาข่าวสำคัญ 24 ชั่วโมงที่ผ่านมาของบุคคลต่อไปนี้: '+nameList+'\nตอบ JSON array เท่านั้น ไม่มี markdown:\n[{"id":"trump","headline":"หัวข้อข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"negative","markets":["USD"]}]\nถ้าไม่มีข่าวสำคัญของคนนั้นให้ข้ามไป';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':_ank,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:2000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    if(!resp.ok) throw new Error('Claude API '+resp.status);
+    const data = await resp.json();
+    const text = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    let items = [];
+    try{ items = JSON.parse(text.replace(/```json|```/g,'').trim()); }catch{ return []; }
+    if(!Array.isArray(items)) return [];
+
+    return items.filter(function(item){return item && item.id && item.headline;}).map(function(item){
+      const person = ELITE_PEOPLE.find(function(p){return p.id===item.id;});
+      if(!person) return null;
+      return {
+        person: person,
+        news: {
+          headline: item.headline||'',
+          summary: item.summary||'',
+          impact: item.impact||5,
+          sentiment: item.sentiment||'neutral',
+          markets: item.markets||person.tickers||[],
+          pros: [], cons: [],
+          fetchedAt: new Date().toISOString()
+        }
+      };
+    }).filter(Boolean);
+  }catch(e){
+    console.warn('[ELITE fallback] error:', e.message);
+    return [];
+  }
+}
+
 async function runEliteScan(forceRefresh=false){
   if(_eliteScanning) return;
 
@@ -11429,19 +11493,25 @@ async function runEliteScan(forceRefresh=false){
       throw new Error('Worker fetch error: ' + fetchErr.message);
     }
 
-    if(!workerResp.ok){
-      const errText = await workerResp.text().catch(()=>'unknown');
-      throw new Error('Worker ' + workerResp.status + ': ' + errText.slice(0,100));
-    }
-
-    const workerData = await workerResp.json();
     let results = [];
 
-    if(workerData.ok && Array.isArray(workerData.results)){
-      results = workerData.results.map(item=>{
-        const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-        return person ? {person, news:item.news} : null;
-      }).filter(Boolean);
+    if(!workerResp.ok){
+      // Worker rate limit / error → fallback ไปใช้ Claude API โดยตรง
+      console.warn('[ELITE] Worker error '+workerResp.status+', trying direct Claude fallback...');
+      results = await _eliteDirectFallback(overlay);
+    } else {
+      const workerData = await workerResp.json();
+      if(workerData.ok && Array.isArray(workerData.results)){
+        results = workerData.results.map(item=>{
+          const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+          return person ? {person, news:item.news} : null;
+        }).filter(Boolean);
+      }
+      // ถ้า Worker คืน empty ให้ fallback ด้วย
+      if(!results.length){
+        console.warn('[ELITE] Worker returned empty, trying fallback...');
+        results = await _eliteDirectFallback(overlay);
+      }
     }
 
     _eliteScanResults = results;
