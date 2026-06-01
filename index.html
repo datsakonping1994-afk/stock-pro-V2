@@ -9278,25 +9278,42 @@ async function triggerAISummary(){
 
 // ── PORTFOLIO TRACKER ──
 let portfolio = (()=>{
-  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) return JSON.parse(ls); }catch{}
-  try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) return JSON.parse(ss); }catch{}
-  try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
-  return [];
-})().filter(p => {
-  if(!p || !p.t) return false; // ลบ entry ที่ไม่มีข้อมูล
-  if(p.t === 'BRK.B' && (!p.shares || p.shares <= 0)) return false; // ลบ BRK.B ที่ไม่มีหุ้น
-  return true;
-});
+  let raw = [];
+  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) raw = JSON.parse(ls); }catch{}
+  if(!raw.length){ try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) raw = JSON.parse(ss); }catch{} }
+  if(!raw.length){ try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) raw = JSON.parse(decodeURIComponent(m[1])); }catch{} }
+  if(!Array.isArray(raw)) return [];
+  // กรองเฉพาะ entry ที่ไม่มีข้อมูลจริงๆ (ป้องกัน data corruption)
+  const cleaned = raw.filter(p => p && p.t && typeof p.avgPrice === 'number' && typeof p.shares === 'number' && p.shares > 0);
+  // ถ้า cleaned น้อยกว่า raw แสดงว่ามี entry เสีย → บันทึก cleaned กลับทันที
+  if(cleaned.length < raw.length){
+    try{ localStorage.setItem('_sp_portfolio', JSON.stringify(cleaned)); }catch{}
+    try{ sessionStorage.setItem('_sp_portfolio', JSON.stringify(cleaned)); }catch{}
+  }
+  return cleaned;
+})();
 
 function savePortfolio(){
-  const data = JSON.stringify(portfolio);
+  if(!Array.isArray(portfolio)) return;
+  // filter shares > 0 ก่อนบันทึกเสมอ ป้องกัน data corruption
+  const safeData = portfolio.filter(p => p && p.t && p.shares > 0);
+  // ป้องกันบันทึก array เปล่าทับข้อมูลดีๆ
+  if(safeData.length === 0){
+    try{
+      const existing = JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');
+      if(existing.length > 0){
+        console.warn('[StockPro] savePortfolio blocked: would overwrite '+existing.length+' positions with empty array');
+        return;
+      }
+    }catch{}
+  }
+  const data = JSON.stringify(safeData);
   try{ localStorage.setItem('_sp_portfolio', data); }catch{}
   try{ sessionStorage.setItem('_sp_portfolio', data); }catch{}
   try{
     const d=new Date(); d.setFullYear(d.getFullYear()+1);
     document.cookie=`_sp_portfolio=${encodeURIComponent(data)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
   }catch{}
-  // Sync ขึ้น Worker KV ทุกครั้งที่บันทึกพอร์ต
   setTimeout(syncAlertsToWorker, 500);
 }
 
