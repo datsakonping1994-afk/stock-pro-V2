@@ -262,7 +262,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .sector-btn.active{background:rgba(100,210,255,0.12);border-color:rgba(100,210,255,0.4);color:var(--ice);box-shadow:0 0 8px rgba(100,210,255,0.1)}
 
 /* ── STOCK CARD ── */
-.cards-grid{padding:0 12px;display:block;position:relative;padding-bottom:20px}
+.cards-grid{padding:0 12px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px}
 .stock-card{
   background:linear-gradient(160deg,rgba(22,30,45,0.98) 0%,rgba(14,20,32,0.99) 100%);
   border:1px solid rgba(255,255,255,0.07);
@@ -355,9 +355,9 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .port-row-flash-dn .port-row-inner{animation:flash-port-dn 1s ease-out forwards}
 
 /* Sparkline */
-.card-chart{position:relative;background:#070d18;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04)}
-.card-chart-lw{width:100%;height:160px}
-canvas.spark{width:100%;height:160px;display:block;pointer-events:none}
+.card-chart{position:relative;background:#070d18;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);height:110px;overflow:hidden}
+.card-chart-lw{width:100%;height:110px;overflow:hidden}
+canvas.spark{width:100%;height:110px;display:block;pointer-events:none}
 canvas.spark{width:100%;height:52px;display:block}
 
 /* Support/Resistance bar */
@@ -1444,7 +1444,7 @@ canvas.bigchart{width:100%;height:100%}
         <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span id="eliteNewsCount">0</span> รายการ</div>
         <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:3px 10px;font-size:9px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 RESCAN</button>
       </div>
-      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:8px;padding-bottom:20px"></div>
+      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:6px;padding-bottom:20px"></div>
     </div>
 
   </div>
@@ -2607,21 +2607,41 @@ function drawSpark(canvas,prices,isUp){
   ctx.fillStyle='#fff';ctx.fill();
 }
 
+// ── Sparkline fallback (canvas) ขณะ LW ยังโหลดไม่เสร็จ ──
+function _drawSparkFallback(container, s, raw){
+  if(!container) return;
+  container.innerHTML='';
+  const canvas=document.createElement('canvas');
+  canvas.style.cssText='width:100%;height:100%;display:block';
+  container.appendChild(canvas);
+  const prices=raw?.c?.slice(-30)||[];
+  const isUp=s.c>=0;
+  // ถ้าไม่มีข้อมูล สร้าง mock ง่ายๆ
+  const pts=prices.length>=2?prices:(()=>{
+    let p=s.p*0.92,arr=[];
+    for(let i=30;i>=0;i--){ p=p*(1+(Math.random()-0.47)*0.015); arr.push(p); }
+    arr[arr.length-1]=s.p; return arr;
+  })();
+  drawSpark(canvas, pts, isUp);
+}
+
 // ── Card Candlestick Chart ──
 function _drawCardCandle(container, s, raw, hasReal){
-  if(!container) return;
+  if(!container||!s) return;
+
+  // ถ้า LW ยังไม่โหลด — วาด sparkline ไปก่อน แล้ว redraw ทีหลัง
   if(typeof LightweightCharts==='undefined'){
+    _drawSparkFallback(container, s, raw);
     if(!window._lwLoading){
       window._lwLoading=true;
       const sc=document.createElement('script');
       sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
       sc.onload=()=>{
         window._lwLoading=false;
-        // Redraw ทุก card ที่รอ
         document.querySelectorAll('[id^="card-lw-"]').forEach(el=>{
-          const t=el.id.replace('card-lw-','').replace(/-/g,'.');
-          const st=stocksMap.get(t)||stocksMap.get(el.id.replace('card-lw-',''));
-          if(st){ const r=candleCache[t]?.data||candleCache[el.id.replace('card-lw-','')]?.data; _drawCardCandle(el,st,r,r&&r.c&&r.t&&!r._mock&&r.c.length>=5); }
+          const ticker=el.id.replace('card-lw-','').replace(/-/g,'.');
+          const st=stocksMap.get(ticker)||stocksMap.get(el.id.replace('card-lw-',''));
+          if(st){ const r=candleCache[ticker]?.data; _drawCardCandle(el,st,r,r&&r.c&&r.t&&!r._mock&&r.c.length>=5); }
         });
       };
       document.head.appendChild(sc);
@@ -2693,7 +2713,7 @@ function _drawCardCandle(container, s, raw, hasReal){
   chart.timeScale().fitContent();
   try{
     if(container._ro) container._ro.disconnect();
-    const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,160);});
+    const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,110);});
     ro.observe(container); container._ro=ro;
   }catch{}
   container._lwChart=chart;
@@ -2746,17 +2766,105 @@ function _drawCardCandleDays(container,s,raw,hasReal,days){
   candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
   if(!candleData.length) return;
   const w=container.getBoundingClientRect().width||360;
-  const chart=LightweightCharts.createChart(container,{width:w,height:160,layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false},crosshair:{mode:0},handleScroll:false,handleScale:false});
+  const chart=LightweightCharts.createChart(container,{width:w,height:110,layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false},crosshair:{mode:0},handleScroll:false,handleScale:false});
   const upColor='#00e676',dnColor='#ff4d6a';
   const cs=chart.addCandlestickSeries({upColor,downColor:dnColor,borderUpColor:upColor,borderDownColor:dnColor,wickUpColor:'rgba(0,230,118,0.5)',wickDownColor:'rgba(255,77,106,0.5)',priceLineVisible:false,lastValueVisible:false});
   cs.setData(candleData);
-  const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
-  if(s1>0) cs.createPriceLine({price:s1,color:'rgba(255,77,106,0.7)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
-  if(r1>0) cs.createPriceLine({price:r1,color:'rgba(0,230,118,0.7)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
+
+  // ── S/R คำนวณแม่นยำ: Volume Profile + Swing Cluster + ATR filter ──
+  const _calcSRAccurate=(data, n, price)=>{
+    if(!data||!data.h||!data.l||!data.c||data._mock||data.c.length<10) return null;
+    const len=Math.min(data.c.length, n);
+    const H=data.h.slice(-len), L=data.l.slice(-len), C=data.c.slice(-len);
+    const V=data.v ? data.v.slice(-len) : null;
+
+    // 1. ATR(14) เพื่อกำหนด cluster radius
+    let atrSum=0;
+    for(let i=1;i<Math.min(15,len);i++) atrSum+=Math.max(H[i]-L[i], Math.abs(H[i]-C[i-1]), Math.abs(L[i]-C[i-1]));
+    const atr=atrSum/14 || price*0.02;
+    const clusterR=atr*0.5;
+
+    // 2. หา swing points (lookback 3 แท่ง ให้แม่นขึ้น)
+    const candidates=[];
+    for(let i=3;i<len-3;i++){
+      // Swing High
+      if(H[i]>H[i-1]&&H[i]>H[i-2]&&H[i]>H[i-3]&&H[i]>H[i+1]&&H[i]>H[i+2]&&H[i]>H[i+3]){
+        const vol=V?V[i]:1;
+        candidates.push({price:H[i], type:'R', strength:1, vol});
+      }
+      // Swing Low
+      if(L[i]<L[i-1]&&L[i]<L[i-2]&&L[i]<L[i-3]&&L[i]<L[i+1]&&L[i]<L[i+2]&&L[i]<L[i+3]){
+        const vol=V?V[i]:1;
+        candidates.push({price:L[i], type:'S', strength:1, vol});
+      }
+    }
+
+    // 3. Volume Profile — หา price levels ที่มี volume สูง (แบ่ง 40 bins)
+    if(V){
+      const minP=Math.min(...L), maxP=Math.max(...H);
+      const binSize=(maxP-minP)/40;
+      if(binSize>0){
+        const bins=new Array(40).fill(0);
+        for(let i=0;i<len;i++){
+          const binIdx=Math.min(39, Math.floor((C[i]-minP)/binSize));
+          bins[binIdx]+=(V[i]||0);
+        }
+        // หา local max ใน volume profile
+        for(let b=1;b<39;b++){
+          if(bins[b]>bins[b-1]&&bins[b]>bins[b+1]&&bins[b]>0){
+            const lvlPrice=minP+(b+0.5)*binSize;
+            candidates.push({price:lvlPrice, type:lvlPrice>price?'R':'S', strength:2, vol:bins[b]});
+          }
+        }
+      }
+    }
+
+    // 4. ATR Clustering — รวม levels ที่อยู่ใกล้กัน
+    const cluster=(pts)=>{
+      pts.sort((a,b)=>a.price-b.price);
+      const clusters=[];
+      for(const pt of pts){
+        const last=clusters[clusters.length-1];
+        if(last&&Math.abs(pt.price-last.price)<clusterR){
+          // merge — weighted average by volume
+          const tw=last.vol+pt.vol;
+          last.price=(last.price*last.vol+pt.price*pt.vol)/tw;
+          last.vol=tw;
+          last.strength+=pt.strength;
+        } else {
+          clusters.push({...pt});
+        }
+      }
+      return clusters;
+    };
+
+    const rPts=cluster(candidates.filter(c=>c.type==='R'&&c.price>price)).sort((a,b)=>b.strength-a.strength||a.price-b.price);
+    const sPts=cluster(candidates.filter(c=>c.type==='S'&&c.price<price)).sort((a,b)=>b.strength-a.strength||b.price-a.price);
+
+    return { r: rPts.slice(0,3).map(p=>+p.price.toFixed(2)), s: sPts.slice(0,3).map(p=>+p.price.toFixed(2)) };
+  };
+
+  const lvls = hasReal ? _calcSRAccurate(raw, days, s.p) : null;
+  const rColor='rgba(0,230,118,0.85)', sColor='rgba(255,77,106,0.85)';
+  const rColor2='rgba(0,230,118,0.5)', sColor2='rgba(255,77,106,0.5)';
+  const rColor3='rgba(0,230,118,0.3)', sColor3='rgba(255,77,106,0.3)';
+
+  if(lvls){
+    if(lvls.r[0]) cs.createPriceLine({price:lvls.r[0],color:rColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
+    if(days>=90&&lvls.r[1]) cs.createPriceLine({price:lvls.r[1],color:rColor2,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R2'});
+    if(days>=180&&lvls.r[2]) cs.createPriceLine({price:lvls.r[2],color:rColor3,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R3'});
+    if(lvls.s[0]) cs.createPriceLine({price:lvls.s[0],color:sColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
+    if(days>=90&&lvls.s[1]) cs.createPriceLine({price:lvls.s[1],color:sColor2,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S2'});
+    if(days>=180&&lvls.s[2]) cs.createPriceLine({price:lvls.s[2],color:sColor3,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S3'});
+  } else {
+    const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
+    if(s1>0) cs.createPriceLine({price:s1,color:sColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
+    if(r1>0) cs.createPriceLine({price:r1,color:rColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
+  }
   cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.8)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
   if(hasReal&&raw.v&&raw.v.length){try{const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.82,bottom:0},lastValueVisible:false,priceLineVisible:false});const vs=raw.v.slice(-Math.min(raw.c.length,days));volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'})));}catch{}}
   chart.timeScale().fitContent();
-  try{if(container._ro)container._ro.disconnect();const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,160);});ro.observe(container);container._ro=ro;}catch{}
+  try{if(container._ro)container._ro.disconnect();const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,110);});ro.observe(container);container._ro=ro;}catch{}
   container._lwChart=chart;
 }
 
@@ -3112,105 +3220,48 @@ function getVisibleStocks(){
   return list;
 }
 
-// ══════════════════════════════════════════════════════════
-//  ⚡ VIRTUAL SCROLL — render เฉพาะ cards ที่เห็นบนจอ
-// ══════════════════════════════════════════════════════════
-const CARD_HEIGHT = 290; // ความสูง card โดยประมาณ (px) รวม gap
-const CARD_OVERSCAN = 3; // render เผื่อด้านบน/ล่าง N ใบ
-let _vsListCache = [];
-let _vsRendered = new Map(); // ticker → DOM element
-let _vsScrollEl = null;
-let _vsRAF = null;
-
+// ── renderCards — chunk render ไม่ block UI ──
 function renderCards(){
   const grid = document.getElementById('cardsGrid');
   if(!grid) return;
 
-  const list = getVisibleStocks();
-  _vsListCache = list;
-  _vsRendered = new Map();
+  grid.style.position = '';
+  grid.style.height = '';
+  grid.innerHTML = '';
 
-  // Empty state
+  const list = getVisibleStocks();
+
   if(showWatchlistOnly && list.length === 0){
     grid.innerHTML = '<div class="wl-empty"><div class="wl-empty-icon">⭐</div><div class="wl-empty-text">ยังไม่มีหุ้นใน Watchlist<br><br>กดปุ่ม ☆ บนการ์ดหุ้น<br>เพื่อเพิ่มเข้า Watchlist</div></div>';
     return;
   }
 
-  // สร้าง spacer container แทน grid ปกติ
-  const totalH = list.length * CARD_HEIGHT;
-  grid.style.position = 'relative';
-  grid.style.height = totalH + 'px';
-  grid.style.padding = '0 12px';
-  grid.style.paddingBottom = '20px';
-  grid.innerHTML = '';
-
-  // หา scroll container
-  _vsScrollEl = document.getElementById('content');
-
-  // ทำ initial render
-  _vsRender();
-
-  // ผูก scroll listener
-  if(_vsScrollEl){
-    _vsScrollEl._vsHandler && _vsScrollEl.removeEventListener('scroll', _vsScrollEl._vsHandler);
-    _vsScrollEl._vsHandler = () => {
-      if(_vsRAF) return;
-      _vsRAF = requestAnimationFrame(()=>{ _vsRAF = null; _vsRender(); });
-    };
-    _vsScrollEl.addEventListener('scroll', _vsScrollEl._vsHandler, {passive:true});
+  const CHUNK = 6;
+  let i = 0;
+  function renderChunk(){
+    const end = Math.min(i + CHUNK, list.length);
+    const frag = document.createDocumentFragment();
+    const chunk = [];
+    for(; i < end; i++){
+      frag.appendChild(makeCard(list[i]));
+      chunk.push(list[i]);
+    }
+    grid.appendChild(frag);
+    chunk.forEach(s => {
+      _loadLogoNow(s.t, 'logo-' + s.t.replace(/\./g,'-'), 44);
+      const container = document.getElementById('card-lw-' + s.t.replace(/\./g,'-'));
+      if(container){
+        const raw = candleCache[s.t]?.data;
+        const hasReal = raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
+        setTimeout(()=>_drawCardCandle(container, s, raw, hasReal), 50);
+      }
+    });
+    if(i < list.length) requestAnimationFrame(renderChunk);
   }
+  requestAnimationFrame(renderChunk);
 }
 
-function _vsRender(){
-  const grid = document.getElementById('cardsGrid');
-  if(!grid || !_vsListCache.length) return;
-
-  const scrollTop = _vsScrollEl ? _vsScrollEl.scrollTop : 0;
-  // offset ของ grid ภายใน scroll container
-  const gridTop = grid.getBoundingClientRect().top + scrollTop - (_vsScrollEl?.getBoundingClientRect().top||0);
-  const viewH = _vsScrollEl ? _vsScrollEl.clientHeight : window.innerHeight;
-
-  // คำนวณ index ที่ต้องแสดง
-  const relScroll = Math.max(0, scrollTop - gridTop);
-  const startIdx = Math.max(0, Math.floor(relScroll / CARD_HEIGHT) - CARD_OVERSCAN);
-  const endIdx = Math.min(_vsListCache.length - 1, Math.ceil((relScroll + viewH) / CARD_HEIGHT) + CARD_OVERSCAN);
-
-  // ลบ cards ที่ออกนอก view
-  for(const [ticker, el] of _vsRendered.entries()){
-    const idx = _vsListCache.findIndex(s => s.t === ticker);
-    if(idx < startIdx - CARD_OVERSCAN*2 || idx > endIdx + CARD_OVERSCAN*2){
-      el.remove();
-      _vsRendered.delete(ticker);
-    }
-  }
-
-  // เพิ่ม cards ที่ยังไม่ได้ render
-  for(let i = startIdx; i <= endIdx; i++){
-    const s = _vsListCache[i];
-    if(!s || _vsRendered.has(s.t)) continue;
-
-    const card = makeCard(s);
-    card.style.position = 'absolute';
-    card.style.top = (i * CARD_HEIGHT) + 'px';
-    card.style.left = '0';
-    card.style.right = '0';
-    card.style.width = 'calc(100% - 0px)';
-    grid.appendChild(card);
-    _vsRendered.set(s.t, card);
-
-    // โหลด logo
-    _loadLogoNow(s.t, 'logo-' + s.t.replace(/\./g,'-'), 44);
-
-    // Draw card candle chart
-    const safeId = s.t.replace(/\./g,'-');
-    const container = document.getElementById('card-lw-' + safeId);
-    if(container){
-      const raw = candleCache[s.t]?.data;
-      const hasReal = raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
-      setTimeout(()=>_drawCardCandle(container, s, raw, hasReal), 30);
-    }
-  }
-}
+function _vsRender(){} // compat stub
 
 // ── Fear & Greed Index ──
 let _fngCache=(()=>{try{const s=localStorage.getItem('_sp_fng_cache');if(s){const f=JSON.parse(s);if(f.ts&&Date.now()-f.ts<86400000)return f;}}catch{} return {value:null,ts:0};})();
