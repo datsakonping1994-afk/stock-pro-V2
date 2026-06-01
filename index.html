@@ -262,7 +262,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .sector-btn.active{background:rgba(100,210,255,0.12);border-color:rgba(100,210,255,0.4);color:var(--ice);box-shadow:0 0 8px rgba(100,210,255,0.1)}
 
 /* ── STOCK CARD ── */
-.cards-grid{padding:0 12px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px}
+.cards-grid{padding:0 4px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px}
 .stock-card{
   background:linear-gradient(160deg,rgba(22,30,45,0.98) 0%,rgba(14,20,32,0.99) 100%);
   border:1px solid rgba(255,255,255,0.07);
@@ -355,8 +355,8 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .port-row-flash-dn .port-row-inner{animation:flash-port-dn 1s ease-out forwards}
 
 /* Sparkline */
-.card-chart{position:relative;background:#070d18;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);height:110px;overflow:hidden}
-.card-chart-lw{width:100%;height:110px;overflow:hidden}
+.card-chart{position:relative;background:#070d18;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);height:200px;overflow:hidden}
+.card-chart-lw{width:100%;height:200px;overflow:hidden}
 canvas.spark{width:100%;height:110px;display:block;pointer-events:none}
 canvas.spark{width:100%;height:52px;display:block}
 
@@ -2713,7 +2713,7 @@ function _drawCardCandle(container, s, raw, hasReal){
   chart.timeScale().fitContent();
   try{
     if(container._ro) container._ro.disconnect();
-    const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,110);});
+    const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});
     ro.observe(container); container._ro=ro;
   }catch{}
   container._lwChart=chart;
@@ -2766,7 +2766,7 @@ function _drawCardCandleDays(container,s,raw,hasReal,days){
   candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
   if(!candleData.length) return;
   const w=container.getBoundingClientRect().width||360;
-  const chart=LightweightCharts.createChart(container,{width:w,height:110,layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false},crosshair:{mode:0},handleScroll:false,handleScale:false});
+  const chart=LightweightCharts.createChart(container,{width:w,height:200,layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false},crosshair:{mode:0},handleScroll:false,handleScale:false});
   const upColor='#00e676',dnColor='#ff4d6a';
   const cs=chart.addCandlestickSeries({upColor,downColor:dnColor,borderUpColor:upColor,borderDownColor:dnColor,wickUpColor:'rgba(0,230,118,0.5)',wickDownColor:'rgba(255,77,106,0.5)',priceLineVisible:false,lastValueVisible:false});
   cs.setData(candleData);
@@ -2864,7 +2864,7 @@ function _drawCardCandleDays(container,s,raw,hasReal,days){
   cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.8)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
   if(hasReal&&raw.v&&raw.v.length){try{const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.82,bottom:0},lastValueVisible:false,priceLineVisible:false});const vs=raw.v.slice(-Math.min(raw.c.length,days));volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'})));}catch{}}
   chart.timeScale().fitContent();
-  try{if(container._ro)container._ro.disconnect();const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,110);});ro.observe(container);container._ro=ro;}catch{}
+  try{if(container._ro)container._ro.disconnect();const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});ro.observe(container);container._ro=ro;}catch{}
   container._lwChart=chart;
 }
 
