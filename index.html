@@ -9573,10 +9573,10 @@ function _updatePortfolioRow(ticker, price, changePct){
   const pos = portfolio.find(p=>p.t===ticker);
   if(!pos||!pos.avgPrice||!pos.shares) return;
 
-  const cost=pos.avgPrice*pos.shares;
+  const posCost=pos.avgPrice*pos.shares;
   const val=price*pos.shares;
-  const pnl=val-cost;
-  const pnlPct=cost>0?(pnl/cost*100):0;
+  const pnl=val-posCost;
+  const pnlPct=posCost>0?(pnl/cost*100):0;
   const isUp=pnl>=0;
   const pnlColor=isUp?'var(--green)':'var(--red)';
   const fmt2=v=>v.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -9676,7 +9676,7 @@ function renderPortfolio(){
     const stockData = stocksMap.get(pos.t);
     // ถ้าไม่อยู่ใน stocks array ให้ดึงราคาจาก liveCache
     const curPrice = stockData?.p || (liveCache[pos.t] ? (stocksMap.get(pos.t)?.p||0) : 0) || pos.lastPrice || 0;
-    const cost = pos.avgPrice * pos.shares;
+    const rowCost = pos.avgPrice * pos.shares;
     const val = curPrice * pos.shares;
     const pnl = val - cost;
     const pnlPct = cost>0?(pnl/cost*100):0;
@@ -10270,7 +10270,7 @@ async function runMorningBrief(){
   }
 
   // Earnings วันนี้–3 วัน
-  const portTickers=new Set(portfolio.map(p=>p.t));
+  const portTickersSync=new Set(portfolio.map(p=>p.t));
   const wlTickers=watchlist;
   const earnSoon=[...new Set([...portTickers,...wlTickers])]
     .map(t=>stocksMap.get(t))
@@ -10735,7 +10735,7 @@ async function runAISignalScan(){
   }
 
   // ดึงรายการหุ้น — พอร์ต + watchlist
-  const portTickers = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
+  const portTickersArr = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
   const watchTickers = stocks.filter(s=>s.watch).map(s=>s.t);
   const allTickers = [...new Set([...portTickers, ...watchTickers])].slice(0,15);
 
