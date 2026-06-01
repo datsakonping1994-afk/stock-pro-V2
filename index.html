@@ -1475,10 +1475,10 @@ canvas.bigchart{width:100%;height:100%}
 
   </div>
   <div class="drawer-tabs">
-    <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
-    <div class="drawer-tab" onclick="drawerTab('fund',this)">Fundamental</div>
-    <div class="drawer-tab" onclick="drawerTab('ai',this)">AI Chat</div>
-    <div class="drawer-tab" onclick="drawerTab('news',this)">ข่าว</div>
+    <div class="drawer-tab active" data-tab="tech" onclick="drawerTab('tech',this)">Technical</div>
+    <div class="drawer-tab" data-tab="fund" onclick="drawerTab('fund',this)">Fundamental</div>
+    <div class="drawer-tab" data-tab="ai" onclick="drawerTab('ai',this)">AI Chat</div>
+    <div class="drawer-tab" data-tab="news" onclick="drawerTab('news',this)">ข่าว</div>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
 </div>
@@ -3178,10 +3178,10 @@ function openDrawer(ticker){
   loadLogo(ticker,'drawerLogo',40);
   // render tech tab ครั้งเดียวตอนเปิด
   _currentChartDays=30;
-  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  drawerTab('tech', document.querySelector('.drawer-tab[data-tab="tech"]'));
   // ดึง analyst data ในพื้นหลัง
   fetchAnalystData(ticker).then(()=>{
-    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
+    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[data-tab="fund"]'));
   });
   document.getElementById('drawer').classList.add('open');
   document.body.style.overflow='hidden';
@@ -3191,7 +3191,7 @@ function openDrawer(ticker){
   function _reRenderTechIfActive(){
     if(currentDrawerTicker===_snapTicker&&currentDrawerTab==='tech'){
       updateRSIFromCandles(_snapTicker);
-      drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+      drawerTab('tech', document.querySelector('.drawer-tab[data-tab="tech"]'));
     }
   }
   if(candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock){
@@ -7069,7 +7069,7 @@ async function _switchTF(btn, days){
       addLine(getR2(ticker,p),'R2','rgba(0,180,90,0.7)');
       chart.timeScale().fitContent();
     }
-    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
+    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[data-tab="tech"]'));
   }catch(e){}
 }
 
@@ -10362,7 +10362,7 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
   let _swipeStartX=0, _swipeStartY=0, _swipeStartTime=0;
 
   function _getTabEl(tab){
-    return document.querySelector(`.drawer-tab[onclick*="${tab}"]`);
+    return document.querySelector(`.drawer-tab[data-tab="${tab}"]`);
   }
 
   function _goTab(dir){
