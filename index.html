@@ -11697,8 +11697,8 @@ async function _eliteClaudeSearch(overlay, _ank){
 }
 
 // ── Elite Enrich — เติม pros/cons/why ที่ขาดจาก Worker ──
-async function _eliteEnrichResults(results, overlay){
-  const needsEnrich = results.filter(function(r){
+async function _eliteEnrichResults(results, overlay, forceAll){
+  const needsEnrich = forceAll ? results : results.filter(function(r){
     return !r.news.pros || !r.news.pros.length || !r.news.why;
   });
   if(!needsEnrich.length) return results;
@@ -11905,8 +11905,8 @@ async function runEliteScan(forceRefresh=false){
           // Render ข้อมูล Worker ก่อนเลย (เร็ว)
           _eliteScanResults = results;
           renderEliteScanResults(results, 0);
-          // แล้วค่อย Enrich เพิ่ม pros/cons แบบ async
-          const enriched = await _eliteEnrichResults(results, null);
+          // Enrich เสมอ — แปลไทย + pros/cons + อ่านเกม
+          const enriched = await _eliteEnrichResults(results, null, true);
           if(enriched && enriched.length){
             results = enriched;
           }
