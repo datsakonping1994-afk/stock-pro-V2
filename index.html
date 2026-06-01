@@ -11363,29 +11363,81 @@ function initElitePage(){
 }
 
 // ── MAIN SCAN FUNCTION ──
-// ── Elite Direct Fallback — ใช้เมื่อ Worker rate limit ──
+// ── Elite: Tavily ค้นข่าว + Claude วิเคราะห์ ──
 async function _eliteDirectFallback(overlay){
+  const tavilyKey = localStorage.getItem('tavilyKey')||'';
   const _ank = localStorage.getItem('anthropicKey')||'';
-  if(!_ank){
-    toast('⚠️ Worker rate limit — ใส่ Claude API Key ใน Settings เพื่อใช้งาน Elite ต่อได้');
+  if(!tavilyKey && !_ank){
+    toast('⚠️ ใส่ Tavily หรือ Claude API Key ใน Settings เพื่อใช้งาน Elite');
     return [];
   }
+  if(overlay) overlay.innerHTML = `
+    <div style="font-size:22px">🔍</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Tavily กำลังค้นข่าวจริง...</div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ค้นหาข่าวล่าสุด 24 ชม.</div>
+    <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+
+  // Step 1: Tavily ค้นข่าวแต่ละคน
+  const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){
+    return arr.findIndex(function(x){return x.id===p.id;})===i;
+  }).slice(0,10);
+
+  let allNews = [];
+
+  if(tavilyKey){
+    const searches = topPeople.slice(0,6).map(function(person){
+      return fetch('https://api.tavily.com/search',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          api_key: tavilyKey,
+          query: person.name + ' news market impact today 2025',
+          max_results: 2,
+          search_depth: 'basic',
+          include_answer: false,
+          days: 1
+        }),
+        signal: AbortSignal.timeout(15000)
+      }).then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(data){
+          if(!data || !data.results || !data.results.length) return null;
+          const top = data.results[0];
+          return {
+            id: person.id,
+            person: person,
+            headline: top.title || '',
+            summary: top.content ? top.content.slice(0,300) : '',
+            url: top.url || ''
+          };
+        }).catch(function(){ return null; });
+    });
+
+    const searchResults = await Promise.allSettled(searches);
+    allNews = searchResults
+      .filter(function(r){ return r.status==='fulfilled' && r.value; })
+      .map(function(r){ return r.value; });
+  }
+
+  if(!allNews.length){
+    // ถ้า Tavily ไม่ได้ผล fallback ให้ Claude ค้นเอง
+    return await _eliteClaudeSearch(overlay, _ank);
+  }
+
+  // Step 2: ส่งให้ Claude วิเคราะห์
+  if(!_ank) return _mapNewsToResults(allNews);
 
   if(overlay) overlay.innerHTML = `
     <div style="font-size:22px">🤖</div>
-    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าว (fallback)...</div>
-    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Worker rate limit — ใช้ Claude โดยตรง</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังวิเคราะห์...</div>
+    <div style="font-size:11px;color:var(--text3)">pros · cons · อ่านเกม · หุ้นที่เกี่ยวข้อง</div>
     <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
-  try{
-    const topPeople = ELITE_PEOPLE.slice(0,12);
-    const nameList = topPeople.map(p=>p.name+'('+p.id+')').join(', ');
-    const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-    const sysPrompt = 'You are an elite financial intelligence analyst. Respond ONLY with a valid JSON array. No markdown, no explanation, no extra text. Pure JSON only.';
-    const userPrompt = 'Today is '+today+'. Search for the latest significant news (last 24h) for: '+nameList+'\n\nReturn ONLY a JSON array with this exact structure for each person who has news:\n[{\n  "id": "trump",\n  "headline": "หัวข้อข่าวสำคัญภาษาไทย",\n  "summary": "สรุปเนื้อหาข่าว 2-3 ประโยคภาษาไทย",\n  "impact": 8,\n  "sentiment": "negative",\n  "markets": ["USD","Oil","SPY"],\n  "pros": ["ข้อดีต่อตลาด 1","ข้อดีต่อตลาด 2"],\n  "cons": ["ความเสี่ยง 1","ความเสี่ยง 2"],\n  "why": "เพราะอะไรถึงสำคัญ อธิบาย 2 ประโยคภาษาไทย",\n  "watch": "สิ่งที่นักลงทุนควรจับตาดูต่อไป bullet 2-3 ข้อ",\n  "read_game": "วิเคราะห์เชิงลึก อ่านเกมการเมือง/ธุรกิจ 2-3 ประโยคภาษาไทย",\n  "stocks_buy": ["NVDA","TSM"],\n  "stocks_watch": ["INTC","AMD"]\n}]\n\nOnly include people with genuinely significant market-moving news. Skip if no major news found.';
+  const newsSummary = allNews.map(function(item){
+    return item.person.name+'('+item.id+'): '+item.headline+' — '+item.summary;
+  }).join('\n');
 
-    // Step 1: call with web_search tool
-    const resp1 = await fetch('https://api.anthropic.com/v1/messages',{
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -11396,89 +11448,150 @@ async function _eliteDirectFallback(overlay){
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:4000,
-        system: sysPrompt,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:userPrompt}]
+        system:'You are a financial analyst. Analyze news for investors. Respond ONLY with valid JSON array. No markdown.',
+        messages:[{role:'user',content:'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนหุ้น ตอบ JSON array:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"negative","markets":["USD","Oil"],"pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ","watch":"สิ่งที่ควรจับตา","read_game":"วิเคราะห์เชิงลึก","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
       })
     });
+    if(!resp.ok) return _mapNewsToResults(allNews);
+    const data = await resp.json();
+    const text = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if(!jsonMatch) return _mapNewsToResults(allNews);
+    let items = [];
+    try{ items = JSON.parse(jsonMatch[0]); }catch(e){ return _mapNewsToResults(allNews); }
+    return items.filter(function(item){return item&&item.id&&item.headline;}).map(function(item){
+      const person = ELITE_PEOPLE.find(function(p){return p.id===item.id;});
+      if(!person) return null;
+      return {person:person, news:{
+        headline:item.headline||'', summary:item.summary||'',
+        impact:item.impact||5, sentiment:item.sentiment||'neutral',
+        markets:item.markets||person.tickers||[],
+        pros:item.pros||[], cons:item.cons||[],
+        why:item.why||'', watch:item.watch||'',
+        read_game:item.read_game||'',
+        stocks_buy:item.stocks_buy||[], stocks_watch:item.stocks_watch||[],
+        fetchedAt:new Date().toISOString()
+      }};
+    }).filter(Boolean);
+  }catch(e){
+    return _mapNewsToResults(allNews);
+  }
+}
 
-    if(!resp1.ok) throw new Error('Claude API '+resp1.status);
+function _mapNewsToResults(allNews){
+  return allNews.map(function(item){
+    return {person:item.person, news:{
+      headline:item.headline, summary:item.summary,
+      impact:5, sentiment:'neutral',
+      markets:item.person.tickers||[],
+      pros:[], cons:[], why:'', watch:'', read_game:'',
+      stocks_buy:[], stocks_watch:[],
+      fetchedAt:new Date().toISOString()
+    }};
+  });
+}
+
+async function _eliteClaudeSearch(overlay, _ank){
+  if(!_ank){ toast('⚠️ ใส่ Claude API Key ใน Settings'); return []; }
+  if(overlay) overlay.innerHTML = `
+    <div style="font-size:22px">🤖</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าว...</div>
+    <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+  const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;}).slice(0,10);
+  const nameList = topPeople.map(function(p){return p.name+'('+p.id+')';}).join(', ');
+  const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const prompt = 'Today is '+today+'. Search for significant market news (last 24h) for: '+nameList+'\nReturn ONLY JSON array:\n[{"id":"trump","headline":"หัวข้อภาษาไทย","summary":"สรุป","impact":8,"sentiment":"negative","markets":["USD"],"pros":["ข้อดี"],"cons":["ความเสี่ยง"],"why":"เหตุผล","watch":"สิ่งจับตา","read_game":"วิเคราะห์","stocks_buy":["SPY"],"stocks_watch":[]}]';
+  try{
+    const resp1 = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp1.ok) throw new Error('API '+resp1.status);
     const data1 = await resp1.json();
-
     let text = '';
-
-    if(data1.stop_reason === 'end_turn'){
-      // ตอบตรงเลย ไม่ได้ใช้ tool
+    if(data1.stop_reason==='end_turn'){
       text = (data1.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
-    } else if(data1.stop_reason === 'tool_use'){
-      // Claude ใช้ web_search → ต้องส่ง tool_result กลับ แล้วรอ final answer
-      const toolUseBlock = (data1.content||[]).find(function(c){return c.type==='tool_use';});
-      const toolResultContent = (data1.content||[])
-        .filter(function(c){return c.type==='tool_result' || c.type==='text';})
-        .map(function(c){return c.type==='text'?c.text:'';}).join('');
-
-      // Build turn 2: send assistant msg + tool_result back
+    } else if(data1.stop_reason==='tool_use'){
+      const toolBlock = (data1.content||[]).find(function(c){return c.type==='tool_use';});
       const msgs = [
-        {role:'user', content:userPrompt},
-        {role:'assistant', content:data1.content},
-        {role:'user', content:[{
-          type:'tool_result',
-          tool_use_id: toolUseBlock ? toolUseBlock.id : 'unknown',
-          content: toolResultContent || 'Search completed.'
-        }]}
+        {role:'user',content:prompt},
+        {role:'assistant',content:data1.content},
+        {role:'user',content:[{type:'tool_result',tool_use_id:toolBlock?toolBlock.id:'x',content:'Search completed.'}]}
       ];
-
       const resp2 = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key':_ank,
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001',
-          max_tokens:2000,
-          system: sysPrompt,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages: msgs
-        })
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
       });
-
-      if(!resp2.ok) throw new Error('Claude API turn2 '+resp2.status);
+      if(!resp2.ok) return [];
       const data2 = await resp2.json();
       text = (data2.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
     }
-
-    let items = [];
-    // พยายาม extract JSON array จาก text
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if(jsonMatch){
-      try{ items = JSON.parse(jsonMatch[0]); }catch(e){ console.warn('[ELITE] JSON parse error:', e.message, text.slice(0,200)); }
-    }
-    if(!Array.isArray(items)) return [];
-
-    return items.filter(function(item){return item && item.id && item.headline;}).map(function(item){
+    if(!jsonMatch) return [];
+    let items = [];
+    try{ items = JSON.parse(jsonMatch[0]); }catch(e){ return []; }
+    return items.filter(function(item){return item&&item.id&&item.headline;}).map(function(item){
       const person = ELITE_PEOPLE.find(function(p){return p.id===item.id;});
       if(!person) return null;
-      return {
-        person: person,
-        news: {
-          headline: item.headline||'',
-          summary: item.summary||'',
-          impact: item.impact||5,
-          sentiment: item.sentiment||'neutral',
-          markets: item.markets||person.tickers||[],
-          pros: [], cons: [],
-          fetchedAt: new Date().toISOString()
-        }
-      };
+      return {person:person, news:{
+        headline:item.headline||'', summary:item.summary||'',
+        impact:item.impact||5, sentiment:item.sentiment||'neutral',
+        markets:item.markets||person.tickers||[],
+        pros:item.pros||[], cons:item.cons||[],
+        why:item.why||'', watch:item.watch||'',
+        read_game:item.read_game||'',
+        stocks_buy:item.stocks_buy||[], stocks_watch:item.stocks_watch||[],
+        fetchedAt:new Date().toISOString()
+      }};
     }).filter(Boolean);
-  }catch(e){
-    console.warn('[ELITE fallback] error:', e.message);
-    return [];
-  }
+  }catch(e){ console.warn('[elite claude search]',e.message); return []; }
 }
+
+// ── Elite Enrich — เติม pros/cons/why ที่ขาดจาก Worker ──
+async function _eliteEnrichResults(results, overlay){
+  const _ank = localStorage.getItem('anthropicKey')||'';
+  const needsEnrich = results.filter(function(r){return !r.news.pros||!r.news.pros.length;});
+  if(!_ank || !needsEnrich.length) return results;
+  if(overlay) overlay.innerHTML = `
+    <div style="font-size:22px">🤖</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude วิเคราะห์ข้อมูลเพิ่ม...</div>
+    <div style="font-size:11px;color:var(--text3)">pros · cons · อ่านเกม</div>
+    <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+  try{
+    const newsItems = needsEnrich.map(function(r){
+      return r.person.name+'('+r.person.id+'): '+r.news.headline+' — '+(r.news.summary||'');
+    }).join('\n');
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,
+        system:'Financial analyst. JSON array only. No markdown.',
+        messages:[{role:'user',content:'วิเคราะห์ข่าวนี้ ตอบ JSON array:\n'+newsItems+'\n[{"id":"trump","pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เหตุผล 2 ประโยค","watch":"สิ่งจับตา","read_game":"วิเคราะห์เชิงลึก","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
+      })
+    });
+    if(!resp.ok) return results;
+    const data = await resp.json();
+    const text = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if(!jsonMatch) return results;
+    let enriched = [];
+    try{ enriched = JSON.parse(jsonMatch[0]); }catch(e){ return results; }
+    return results.map(function(r){
+      const e = enriched.find(function(x){return x.id===r.person.id;});
+      if(!e) return r;
+      return {person:r.person, news:Object.assign({},r.news,{
+        pros:e.pros||r.news.pros||[], cons:e.cons||r.news.cons||[],
+        why:e.why||r.news.why||'', watch:e.watch||r.news.watch||'',
+        read_game:e.read_game||r.news.read_game||'',
+        stocks_buy:e.stocks_buy||r.news.stocks_buy||[],
+        stocks_watch:e.stocks_watch||r.news.stocks_watch||[]
+      })};
+    });
+  }catch(e){ console.warn('[enrich]',e.message); return results; }
+}
+
 
 async function runEliteScan(forceRefresh=false){
   if(_eliteScanning) return;
@@ -11557,13 +11670,34 @@ async function runEliteScan(forceRefresh=false){
       if(workerData.ok && Array.isArray(workerData.results)){
         results = workerData.results.map(item=>{
           const person = ELITE_PEOPLE.find(p=>p.id===item.id);
-          return person ? {person, news:item.news} : null;
+          if(!person) return null;
+          // normalize news fields — Worker อาจส่ง format ต่างกัน
+          const n = item.news || item;
+          const news = {
+            headline: n.headline || n.title || '',
+            summary: n.summary || n.body || n.description || '',
+            impact: n.impact || n.score || 5,
+            sentiment: n.sentiment || 'neutral',
+            markets: n.markets || n.tickers || person.tickers || [],
+            pros: Array.isArray(n.pros) ? n.pros : (n.pros ? [n.pros] : []),
+            cons: Array.isArray(n.cons) ? n.cons : (n.cons ? [n.cons] : []),
+            why: n.why || n.reason || '',
+            watch: n.watch || n.watchlist || '',
+            read_game: n.read_game || n.readGame || n.analysis || '',
+            stocks_buy: n.stocks_buy || n.buy || [],
+            stocks_watch: n.stocks_watch || n.avoid || [],
+            fetchedAt: n.fetchedAt || new Date().toISOString()
+          };
+          return {person, news};
         }).filter(Boolean);
       }
       // ถ้า Worker คืน empty ให้ fallback ด้วย
       if(!results.length){
         console.warn('[ELITE] Worker returned empty, trying fallback...');
         results = await _eliteDirectFallback(overlay);
+      } else {
+        // Enrich ข้อมูลที่ขาด pros/cons/why จาก Claude
+        results = await _eliteEnrichResults(results, overlay);
       }
     }
 
