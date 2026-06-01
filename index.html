@@ -9282,7 +9282,11 @@ let portfolio = (()=>{
   try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) return JSON.parse(ss); }catch{}
   try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) return JSON.parse(decodeURIComponent(m[1])); }catch{}
   return [];
-})().filter(p => p.t !== 'BRK.B' || p.shares > 0); // ลบ BRK.B ที่ไม่มีหุ้นออก
+})().filter(p => {
+  if(!p || !p.t) return false; // ลบ entry ที่ไม่มีข้อมูล
+  if(p.t === 'BRK.B' && (!p.shares || p.shares <= 0)) return false; // ลบ BRK.B ที่ไม่มีหุ้น
+  return true;
+});
 
 function savePortfolio(){
   const data = JSON.stringify(portfolio);
