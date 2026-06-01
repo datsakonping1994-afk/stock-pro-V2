@@ -11901,20 +11901,25 @@ async function runEliteScan(forceRefresh=false){
           // Worker ส่ง empty/garbage → ใช้ fallback แทน
           console.warn('[ELITE] Worker data empty/invalid, using fallback...');
           results = await _eliteDirectFallback(overlay);
-        } else {
-          // Render ข้อมูล Worker ก่อนเลย (เร็ว)
-          _eliteScanResults = results;
-          renderEliteScanResults(results, 0);
-          // Enrich เสมอ — แปลไทย + pros/cons + อ่านเกม
-          const enriched = await _eliteEnrichResults(results, null, true);
-          if(enriched && enriched.length){
-            results = enriched;
-            // Re-render ทันทีหลัง enrich เสร็จ
-            _eliteScanResults = results;
-            saveEliteCache(results);
-            renderEliteScanResults(results, 0);
-          }
         }
+      }
+    }
+
+    // Render ข้อมูลดิบก่อน (เร็ว)
+    if(results.length > 0){
+      _eliteScanResults = results;
+      renderEliteScanResults(results, 0);
+    }
+
+    // Enrich เสมอทุก path — แปลไทย + pros/cons + อ่านเกม
+    const needsEnrich = results.some(function(r){ return !r.news.pros || !r.news.pros.length || !r.news.why; });
+    if(results.length > 0 && needsEnrich){
+      const enriched = await _eliteEnrichResults(results, overlay, true);
+      if(enriched && enriched.length){
+        results = enriched;
+        _eliteScanResults = results;
+        saveEliteCache(results);
+        renderEliteScanResults(results, 0);
       }
     }
 
