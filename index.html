@@ -1088,6 +1088,13 @@ canvas.bigchart{width:100%;height:100%}
         </div>
         <div class="settings-row">
           <div>
+            <div class="settings-label">🕵️ Insider Digest</div>
+            <div class="settings-sublabel">ส่ง Telegram สรุป Insider Trading ทุกหุ้นในพอร์ต (7 วัน)</div>
+          </div>
+          <button class="settings-btn" onclick="sendInsiderDigest()">📲 ส่ง</button>
+        </div>
+        <div class="settings-row">
+          <div>
             <div class="settings-label">💼 Backup พอร์ต</div>
             <div class="settings-sublabel">บันทึกพอร์ตเป็นไฟล์ JSON</div>
           </div>
@@ -1827,27 +1834,67 @@ const histEarnings={
 };
 
 // ── Insider Activity Data (ย้อนหลัง 6 เดือน) ──
-const insiderData={
-  NVDA:[{name:'Jensen Huang',role:'CEO',type:'sell',shares:240000,price:138.5,date:'ม.ค. 2025',val:'$33.2M'},{name:'Colette Kress',role:'CFO',type:'sell',shares:60000,price:142.0,date:'ก.พ. 2025',val:'$8.5M'}],
-  AAPL:[{name:'Tim Cook',role:'CEO',type:'sell',shares:200000,price:225.0,date:'พ.ย. 2024',val:'$45.0M'},{name:'Luca Maestri',role:'CFO',type:'sell',shares:100000,price:220.0,date:'ธ.ค. 2024',val:'$22.0M'}],
-  TSLA:[{name:'Elon Musk',role:'CEO',type:'sell',shares:10000000,price:280.0,date:'ม.ค. 2025',val:'$2.8B'},{name:'Vaibhav Taneja',role:'CFO',type:'sell',shares:50000,price:295.0,date:'มี.ค. 2025',val:'$14.8M'}],
-  PLTR:[{name:'Peter Thiel',role:'Director',type:'sell',shares:1500000,price:80.0,date:'ธ.ค. 2024',val:'$120M'},{name:'Alex Karp',role:'CEO',type:'sell',shares:500000,price:120.0,date:'มี.ค. 2025',val:'$60M'}],
-  RKLB:[{name:'Peter Beck',role:'CEO',type:'buy',shares:200000,price:18.0,date:'ก.ย. 2024',val:'$3.6M'},{name:'Adam Spice',role:'CFO',type:'buy',shares:50000,price:22.0,date:'พ.ย. 2024',val:'$1.1M'}],
-  ASTS:[{name:'Abel Avellan',role:'CEO',type:'buy',shares:500000,price:22.0,date:'ส.ค. 2024',val:'$11.0M'},{name:'Scott Wisniewski',role:'CPO',type:'buy',shares:100000,price:25.0,date:'ต.ค. 2024',val:'$2.5M'}],
-  HIMS:[{name:'Andrew Dudum',role:'CEO',type:'sell',shares:800000,price:38.0,date:'ก.พ. 2025',val:'$30.4M'},{name:'Yemi Okupe',role:'CFO',type:'buy',shares:50000,price:32.0,date:'ม.ค. 2025',val:'$1.6M'}],
-  OKLO:[{name:'Jacob DeWitte',role:'CEO',type:'buy',shares:100000,price:35.0,date:'ก.พ. 2025',val:'$3.5M'},{name:'Caroline Cochran',role:'COO',type:'buy',shares:80000,price:40.0,date:'เม.ย. 2025',val:'$3.2M'}],
-  META:[{name:'Mark Zuckerberg',role:'CEO',type:'sell',shares:180000,price:550.0,date:'ม.ค. 2025',val:'$99M'},{name:'Sheryl Sandberg',role:'Board',type:'sell',shares:40000,price:580.0,date:'มี.ค. 2025',val:'$23.2M'}],
-  MSFT:[{name:'Satya Nadella',role:'CEO',type:'sell',shares:100000,price:430.0,date:'พ.ย. 2024',val:'$43.0M'},{name:'Amy Hood',role:'CFO',type:'sell',shares:40000,price:440.0,date:'ก.พ. 2025',val:'$17.6M'}],
-  AMZN:[{name:'Andy Jassy',role:'CEO',type:'sell',shares:300000,price:200.0,date:'ก.พ. 2025',val:'$60M'},{name:'Brian Olsavsky',role:'CFO',type:'sell',shares:60000,price:210.0,date:'มี.ค. 2025',val:'$12.6M'}],
-  CRWD:[{name:'George Kurtz',role:'CEO',type:'sell',shares:50000,price:340.0,date:'ม.ค. 2025',val:'$17M'},{name:'Burt Podbere',role:'CFO',type:'sell',shares:20000,price:350.0,date:'มี.ค. 2025',val:'$7M'}],
-  IONQ:[{name:'Peter Chapman',role:'CEO',type:'buy',shares:100000,price:38.0,date:'ต.ค. 2024',val:'$3.8M'},{name:'Thomas Kramer',role:'CFO',type:'buy',shares:30000,price:42.0,date:'ม.ค. 2025',val:'$1.3M'}],
-  HOOD:[{name:'Vlad Tenev',role:'CEO',type:'sell',shares:1000000,price:50.0,date:'ก.พ. 2025',val:'$50M'},{name:'Jason Warnick',role:'CFO',type:'buy',shares:100000,price:55.0,date:'มี.ค. 2025',val:'$5.5M'}],
-  AMD:[{name:'Lisa Su',role:'CEO',type:'sell',shares:150000,price:140.0,date:'ก.พ. 2025',val:'$21M'},{name:'Jean Hu',role:'CFO',type:'sell',shares:30000,price:135.0,date:'ม.ค. 2025',val:'$4.1M'}],
-  INTC:[{name:'Pat Gelsinger',role:'CEO',type:'buy',shares:200000,price:22.0,date:'ต.ค. 2024',val:'$4.4M'},{name:'David Zinsner',role:'CFO',type:'buy',shares:50000,price:20.0,date:'พ.ย. 2024',val:'$1.0M'}],
-  IREN:[{name:'Daniel Roberts',role:'CEO',type:'buy',shares:500000,price:10.0,date:'ม.ค. 2025',val:'$5.0M'},{name:'Lloyd Wall',role:'CFO',type:'buy',shares:200000,price:12.0,date:'มี.ค. 2025',val:'$2.4M'}],
-  LLY:[{name:'David Ricks',role:'CEO',type:'sell',shares:20000,price:850.0,date:'ก.พ. 2025',val:'$17M'},{name:'Anat Ashkenazi',role:'CFO',type:'sell',shares:5000,price:820.0,date:'มี.ค. 2025',val:'$4.1M'}],
-  NFLX:[{name:'Reed Hastings',role:'Chairman',type:'sell',shares:50000,price:900.0,date:'ม.ค. 2025',val:'$45M'},{name:'Greg Peters',role:'Co-CEO',type:'sell',shares:20000,price:950.0,date:'มี.ค. 2025',val:'$19M'}],
-};
+const insiderData={}; // ข้อมูล fallback ว่าง — ใช้ Finnhub live แทน
+
+// ── fetchInsiderLive — ดึง Insider Trading สดจาก Finnhub ──
+const _insiderCache = {};
+async function fetchInsiderLive(ticker){
+  if(_insiderCache[ticker] && (Date.now()-_insiderCache[ticker].ts < 3600000)){
+    return _insiderCache[ticker].data;
+  }
+  try{
+    const url = 'https://finnhub.io/api/v1/stock/insider-transactions?symbol='+ticker+'&token='+FINNHUB_KEY;
+    const r = await fetch(url, {signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    const txs = (d.data||[])
+      .filter(function(t){ return t.transactionType && t.share && t.price; })
+      .sort(function(a,b){ return new Date(b.transactionDate)-new Date(a.transactionDate); })
+      .slice(0,8)
+      .map(function(t){
+        const isBuy = t.transactionType==='P - Purchase' || t.transactionType==='Buy';
+        const val = t.share * t.price;
+        const valStr = val>=1e9 ? '$'+(val/1e9).toFixed(1)+'B' : val>=1e6 ? '$'+(val/1e6).toFixed(1)+'M' : '$'+(val/1e3).toFixed(0)+'K';
+        const d2 = new Date(t.transactionDate);
+        const dateStr = d2.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+        return {
+          name: t.name||'Unknown',
+          role: t.position||'Insider',
+          type: isBuy ? 'buy' : 'sell',
+          shares: Math.abs(t.share),
+          price: t.price,
+          date: dateStr,
+          val: valStr
+        };
+      });
+    if(txs.length){
+      _insiderCache[ticker] = {data:txs, ts:Date.now()};
+      // อัปเดต stocksMap ด้วย
+      const s = stocksMap.get(ticker);
+      if(s) s.insiderLive = txs;
+    }
+    return txs.length ? txs : null;
+  }catch(e){ return null; }
+}
+
+// ── renderInsider แบบ async ที่ดึงสดจาก Finnhub ──
+async function renderInsiderAsync(ticker, containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:12px">⏳ กำลังโหลด Insider...</div>';
+  const s = stocksMap.get(ticker);
+  let data = s?.insiderLive || null;
+  if(!data){
+    data = await fetchInsiderLive(ticker);
+  }
+  if(!data || !data.length){
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">ไม่มีข้อมูล Insider</div>';
+    return;
+  }
+  renderInsider(ticker, containerId);
+}
+
+// ── Peer Comparison
 
 // ── Peer Comparison (กลุ่มหุ้นเดียวกัน) ──
 const peerGroups={
@@ -3491,26 +3538,31 @@ async function fetchAnalystData(ticker){
             })).filter(t=>t.val!=='N/A');
 
           // ── Push + Telegram Insider ซื้อ/ขาย วันนี้ ล่าสุดเท่านั้น ──
-          const insiderKey = `_insider_alerted_${ticker}`;
-          const todayStr = new Date().toISOString().slice(0,10);
-          const todayInsider = (s2?.insiderLive||[]).filter(t=>{
-            const tDate = t.date ? t.date.slice(0,10) : '';
-            return tDate === todayStr;
+          // ── Insider Alert — ส่ง Telegram ถ้ามีรายการใน 3 วันล่าสุด ──
+          const insiderKey = '_insider_alerted_'+ticker+'_'+new Date().toISOString().slice(0,10);
+          const cutoff = new Date(Date.now() - 3*24*60*60*1000).toISOString().slice(0,10);
+          const recentInsider = (s2?.insiderLive||[]).filter(function(t){
+            const tDate = (t.date||'').slice(0,10);
+            return tDate >= cutoff;
           });
-          const latest = todayInsider[0]; // เอาแค่ล่าสุดตัวเดียว
-          if(latest && !sessionStorage.getItem(insiderKey)){
+          if(recentInsider.length && !sessionStorage.getItem(insiderKey)){
             sessionStorage.setItem(insiderKey,'1');
-            const isBuy = latest.type==='buy';
-            const emoji = isBuy ? '🟢' : '🔴';
-            const action = isBuy ? 'ซื้อ' : 'ขาย';
-            const val = Math.abs((latest.shares||0)*(latest.price||0));
-            const fmtVal = val>=1e6?`$${(val/1e6).toFixed(1)}M`:val>=1000?`$${(val/1e3).toFixed(0)}K`:`$${val.toFixed(0)}`;
+            const txns = recentInsider.slice(0,8); // ทุก transaction ไม่จำกัดมูลค่า
+            const buys = txns.filter(function(t){return t.type==='buy';}).length;
+            const sells = txns.filter(function(t){return t.type==='sell';}).length;
+            const topEmoji = buys > sells ? '\uD83D\uDFE2' : sells > buys ? '\uD83D\uDD34' : '\uD83D\uDFE1';
+            const lines = txns.slice(0,5).map(function(t){
+              const isBuy = t.type==='buy';
+              const val = Math.abs((t.shares||0)*(t.price||0));
+              const fmtVal = val>=1e9?'$'+(val/1e9).toFixed(1)+'B':val>=1e6?'$'+(val/1e6).toFixed(1)+'M':val>=1e3?'$'+(val/1e3).toFixed(0)+'K':'$'+val.toFixed(0);
+              return (isBuy?'🟢':'🔴')+' '+t.name+' '+(isBuy?'ซื้อ':'ขาย')+' '+fmtVal+' ('+t.date+')';
+            }).join('\n');
             _sendPushAlert(
-              `${emoji} Insider ${action}: ${ticker}`,
-              `${latest.name||'Unknown'} ${action} ${fmtVal} — วันนี้`,
-              {tag:`insider-${ticker}`, data:{url:`/stock-pro-V2/?open=${ticker}`}}
+              txns[0].type==='buy'?'🟢':'🔴'+' Insider: '+ticker,
+              txns[0].name+(txns[0].type==='buy'?' ซื้อ':' ขาย')+' '+txns[0].val,
+              {tag:'insider-'+ticker, data:{url:'/stock-pro-V2/?open='+ticker}}
             );
-            sendTG(`${emoji} <b>Insider ${action}: ${ticker}</b>\n👤 ${latest.name||'Unknown'}\n💰 ${action} ${fmtVal}\n📅 วันนี้\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`);
+            sendTG('🕵️ <b>Insider Trading Alert: '+ticker+'</b>\n\n'+lines+'\n\n📊 ซื้อ '+buys+' / ขาย '+sells+' รายการ (3 วันล่าสุด)\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น');
           }
         }
       }
@@ -4044,7 +4096,7 @@ function drawerTab(tab, btn){
     // ── Render Historical Earnings Chart, Insider, Peer (after DOM ready) ──
     requestAnimationFrame(()=>{
       try{ renderEarningsChart(s.t,'earnChartWrap_'+s.t); }catch(e){}
-      try{ renderInsider(s.t,'insiderWrap_'+s.t); }catch(e){}
+      try{ renderInsiderAsync(s.t,'insiderWrap_'+s.t); }catch(e){}
       try{ renderPeerComparison(s.t,'peerWrap_'+s.t); }catch(e){}
     });
     } catch(fundErr) {
@@ -5571,6 +5623,58 @@ async function testTG(){
   }catch(e){
     toast('❌ เชื่อมต่อไม่ได้ ตรวจสอบ Token/Chat ID');
   }
+}
+
+// ── Insider Daily Digest — ดึงสดทุกหุ้นใน portfolio แล้วส่ง Telegram ──
+async function sendInsiderDigest(){
+  const tickers = portfolio.map(function(p){return p.t;});
+  if(!tickers.length){ toast('⚠️ ไม่มีหุ้นในพอร์ต'); return; }
+  toast('🕵️ กำลังดึงข้อมูล Insider...', 8000);
+
+  const cutoff = new Date(Date.now() - 7*24*60*60*1000).toISOString().slice(0,10);
+  const results = await Promise.allSettled(tickers.map(function(t){ return fetchInsiderLive(t); }));
+
+  let allTxns = [];
+  results.forEach(function(r, i){
+    if(r.status==='fulfilled' && r.value && r.value.length){
+      r.value.filter(function(t){ return (t.date||'').slice(0,10) >= cutoff; })
+        .forEach(function(t){ allTxns.push(Object.assign({ticker:tickers[i]}, t)); });
+    }
+  });
+
+  if(!allTxns.length){ toast('ไม่มีข้อมูล Insider ใน 7 วันล่าสุด'); return; }
+
+  // เรียงตาม value มากสุด
+  allTxns.sort(function(a,b){
+    return Math.abs((b.shares||0)*(b.price||0)) - Math.abs((a.shares||0)*(a.price||0));
+  });
+
+  const buys = allTxns.filter(function(t){return t.type==='buy';});
+  const sells = allTxns.filter(function(t){return t.type==='sell';});
+
+  let msg = '🕵️ <b>Insider Trading Digest (7 วันล่าสุด)</b>\n';
+  msg += '📊 ซื้อ '+buys.length+' รายการ / ขาย '+sells.length+' รายการ\n\n';
+
+  if(buys.length){
+    msg += '🟢 <b>Insider ซื้อ:</b>\n';
+    buys.slice(0,5).forEach(function(t){
+      const val = Math.abs((t.shares||0)*(t.price||0));
+      const fmtVal = val>=1e9?'$'+(val/1e9).toFixed(1)+'B':val>=1e6?'$'+(val/1e6).toFixed(1)+'M':'$'+(val/1e3).toFixed(0)+'K';
+      msg += '• <b>'+t.ticker+'</b> — '+t.name+' ซื้อ '+fmtVal+' ('+t.date+')\n';
+    });
+  }
+  if(sells.length){
+    msg += '\n🔴 <b>Insider ขาย:</b>\n';
+    sells.slice(0,5).forEach(function(t){
+      const val = Math.abs((t.shares||0)*(t.price||0));
+      const fmtVal = val>=1e9?'$'+(val/1e9).toFixed(1)+'B':val>=1e6?'$'+(val/1e6).toFixed(1)+'M':'$'+(val/1e3).toFixed(0)+'K';
+      msg += '• <b>'+t.ticker+'</b> — '+t.name+' ขาย '+fmtVal+' ('+t.date+')\n';
+    });
+  }
+  msg += '\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น';
+
+  await sendTG(msg);
+  toast('✅ ส่ง Insider Digest แล้ว');
 }
 
 async function sendTG(msg){
