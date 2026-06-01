@@ -11599,55 +11599,95 @@ async function _eliteEnrichResults(results, overlay){
   const needsEnrich = results.filter(function(r){
     return !r.news.pros || !r.news.pros.length || !r.news.why;
   });
-  if(!needsEnrich.length){ return results; }
+  if(!needsEnrich.length) return results;
 
-  toast('🤖 Claude วิเคราะห์+แปลภาษาไทย...', 5000);
+  const groqKey = localStorage.getItem('groqKey')||'';
+  const _ank = localStorage.getItem('anthropicKey')||'';
+  const geminiKey = localStorage.getItem('geminiKey')||'';
+  if(!groqKey && !_ank && !geminiKey) return results;
 
-  try{
-    const newsItems = needsEnrich.map(function(r){
-      return r.person.name+'(id:'+r.person.id+'): '+r.news.headline+' | '+(r.news.summary||'').slice(0,200);
-    }).join('\n');
+  toast('🤖 กำลังแปลและวิเคราะห์...', 8000);
 
-    const sys = 'Thai financial analyst. Return ONLY valid JSON array. No markdown, no explanation.';
-    const userMsg = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย แปลเป็นภาษาไทยทั้งหมด:\n'+newsItems+'\n\nตอบ JSON array เท่านั้น:\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ","watch":"สิ่งที่ควรจับตา","read_game":"วิเคราะห์เชิงลึก","impact":8,"stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const newsItems = needsEnrich.map(function(r){
+    return '- '+r.person.name+' (id:'+r.person.id+'): '+r.news.headline;
+  }).join('\n');
 
-    // ใช้ callAI_Quick ซึ่งมี fallback chain: Claude → Groq → Gemini
-    const text = await callAI_Quick(sys, userMsg, 4000);
+  const sys = 'คุณคือนักวิเคราะห์การเงินไทย ตอบ JSON array เท่านั้น ไม่มี markdown';
+  const msg = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย:\n'+newsItems+'\n\nตอบ JSON array (ภาษาไทยทั้งหมด):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย","summary_th":"สรุป 2 ประโยค","pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เหตุผลสำคัญ","watch":"สิ่งจับตา","read_game":"วิเคราะห์เชิงลึก","impact":7,"stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
-    if(!text){ toast('⚠️ วิเคราะห์ไม่สำเร็จ'); return results; }
+  let text = null;
 
-    const m = text.match(/\[[\s\S]*\]/);
-    if(!m){ return results; }
-
-    let enriched = [];
-    try{ enriched = JSON.parse(m[0]); }catch(e){ return results; }
-    if(!enriched.length) return results;
-
-    toast('✅ วิเคราะห์ครบแล้ว', 2000);
-
-    return results.map(function(r){
-      const e = enriched.find(function(x){ return x.id === r.person.id; });
-      if(!e) return r;
-      return {
-        person: r.person,
-        news: Object.assign({}, r.news, {
-          headline: e.headline_th || r.news.headline,
-          summary: e.summary_th || r.news.summary,
-          impact: e.impact || r.news.impact || 5,
-          pros: (e.pros && e.pros.length) ? e.pros : r.news.pros || [],
-          cons: (e.cons && e.cons.length) ? e.cons : r.news.cons || [],
-          why: e.why || r.news.why || '',
-          watch: e.watch || r.news.watch || '',
-          read_game: e.read_game || r.news.read_game || '',
-          stocks_buy: (e.stocks_buy && e.stocks_buy.length) ? e.stocks_buy : r.news.stocks_buy || [],
-          stocks_watch: (e.stocks_watch && e.stocks_watch.length) ? e.stocks_watch : r.news.stocks_watch || []
-        })
-      };
-    });
-  }catch(e){
-    console.warn('[enrich error]', e.message);
-    return results;
+  // 1. ลอง Groq ก่อน (เร็วสุด)
+  if(groqKey && !text){
+    try{
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+        body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:sys},{role:'user',content:msg}],max_tokens:3000,temperature:0.3}),
+        signal:AbortSignal.timeout(20000)
+      });
+      if(r.ok){ const d=await r.json(); text=d.choices?.[0]?.message?.content||null; }
+      else{ console.warn('[enrich groq]',r.status); }
+    }catch(e){ console.warn('[enrich groq err]',e.message); }
   }
+
+  // 2. ลอง Claude direct
+  if(_ank && !text){
+    try{
+      const r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,system:sys,messages:[{role:'user',content:msg}]}),
+        signal:AbortSignal.timeout(25000)
+      });
+      if(r.ok){ const d=await r.json(); text=(d.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join(''); }
+      else{ console.warn('[enrich claude]',r.status); }
+    }catch(e){ console.warn('[enrich claude err]',e.message); }
+  }
+
+  // 3. ลอง Gemini
+  if(geminiKey && !text){
+    try{
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+geminiKey,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:sys+'\n\n'+msg}]}],generationConfig:{maxOutputTokens:3000,temperature:0.3}}),
+        signal:AbortSignal.timeout(20000)
+      });
+      if(r.ok){ const d=await r.json(); text=d.candidates?.[0]?.content?.parts?.[0]?.text||null; }
+    }catch(e){ console.warn('[enrich gemini err]',e.message); }
+  }
+
+  if(!text){ toast('⚠️ วิเคราะห์ไม่สำเร็จ ลอง RESCAN ใหม่'); return results; }
+
+  const m = text.match(/\[[\s\S]*\]/);
+  if(!m){ console.warn('[enrich] no JSON in:', text.slice(0,200)); return results; }
+
+  let enriched = [];
+  try{ enriched = JSON.parse(m[0]); }catch(e){ return results; }
+  if(!enriched.length) return results;
+
+  toast('✅ วิเคราะห์ครบแล้ว', 2500);
+
+  return results.map(function(r){
+    const e = enriched.find(function(x){ return x.id === r.person.id; });
+    if(!e) return r;
+    return {
+      person: r.person,
+      news: Object.assign({}, r.news, {
+        headline: e.headline_th || r.news.headline,
+        summary: e.summary_th || r.news.summary,
+        impact: e.impact || r.news.impact || 5,
+        pros: (e.pros&&e.pros.length) ? e.pros : r.news.pros||[],
+        cons: (e.cons&&e.cons.length) ? e.cons : r.news.cons||[],
+        why: e.why||r.news.why||'',
+        watch: e.watch||r.news.watch||'',
+        read_game: e.read_game||r.news.read_game||'',
+        stocks_buy: (e.stocks_buy&&e.stocks_buy.length) ? e.stocks_buy : r.news.stocks_buy||[],
+        stocks_watch: (e.stocks_watch&&e.stocks_watch.length) ? e.stocks_watch : r.news.stocks_watch||[]
+      })
+    };
+  });
 }
 
 async function runEliteScan(forceRefresh=false){
