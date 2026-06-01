@@ -11009,7 +11009,6 @@ signal ต้องเป็น buy/sell/hold เท่านั้น`;
         'Content-Type':'application/json',
         'x-api-key':ank,
         'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
         model:'claude-sonnet-4-5',
@@ -11592,7 +11591,6 @@ async function _eliteDirectFallback(overlay){
         'Content-Type':'application/json',
         'x-api-key':_ank,
         'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
@@ -11653,7 +11651,7 @@ async function _eliteClaudeSearch(overlay, _ank){
   try{
     const resp1 = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
     });
     if(!resp1.ok) throw new Error('API '+resp1.status);
@@ -11670,7 +11668,7 @@ async function _eliteClaudeSearch(overlay, _ank){
       ];
       const resp2 = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
       });
       if(!resp2.ok) return [];
@@ -11740,7 +11738,7 @@ async function _eliteEnrichResults(results, overlay){
     try{
       const r = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,system:sys,messages:[{role:'user',content:msg}]}),
         signal:AbortSignal.timeout(25000)
       });
@@ -12323,7 +12321,7 @@ async function analyzePortfolioImpact(personId, btn){
     const _ank=localStorage.getItem('anthropicKey')||'';
     const response = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({
         model:'claude-sonnet-4-5',
         max_tokens:800,
@@ -12470,7 +12468,7 @@ async function summarizeEvent(idx, btn){
 
       const resp = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({
           model:'claude-sonnet-4-5',
           max_tokens:1000,
@@ -12579,7 +12577,7 @@ async function forecastEvent(idx, btn){
 
       const resp = await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({
           model:'claude-sonnet-4-5',
           max_tokens:1500,
@@ -12713,7 +12711,7 @@ async function eliteBackgroundScan(){
     const _ank=localStorage.getItem('anthropicKey')||'';
     const response = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:600,
