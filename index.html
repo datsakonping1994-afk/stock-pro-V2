@@ -11127,6 +11127,13 @@ const ELITE_PEOPLE = [
   { id:'lagarde', name:'Christine Lagarde', role:'ECB President',          emoji:'🇪🇺', logo:'https://logo.clearbit.com/ecb.europa.eu',          tickers:['FEZ','EWG'],          x:478, y:100, color:'#2980b9' },
   { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน',    emoji:'🛢️', logo:'https://logo.clearbit.com/opec.org',               tickers:['USO','XLE'],          x:570, y:168, color:'#f39c12' },
   { id:'modi',    name:'Narendra Modi',     role:'นายกฯ อินเดีย',          emoji:'🇮🇳', logo:'https://logo.clearbit.com/india.gov.in',           tickers:['INDA','EPI'],         x:648, y:185, color:'#e67e22' },
+  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google/Alphabet',    emoji:'🔍', logo:'https://logo.clearbit.com/google.com',             tickers:['GOOGL','GOOG'],       x:200, y:120, color:'#4285f4' },
+  { id:'bezos',   name:'Jeff Bezos',        role:'Founder Amazon',         emoji:'📦', logo:'https://logo.clearbit.com/amazon.com',             tickers:['AMZN'],               x:220, y:140, color:'#ff9900' },
+  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'https://logo.clearbit.com/jpmorganchase.com',      tickers:['JPM'],                x:240, y:160, color:'#003087' },
+  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire Hathaway', emoji:'💰', logo:'https://logo.clearbit.com/berkshirehathaway.com',  tickers:['BRK.B','BRK.A'],      x:260, y:180, color:'#6b4c11' },
+  { id:'yellen',  name:'Janet Yellen',      role:'US Treasury Secretary',  emoji:'🏛️', logo:'https://logo.clearbit.com/treasury.gov',           tickers:['TLT','DXY'],          x:280, y:200, color:'#1a5276' },
+  { id:'iger',    name:'Bob Iger',          role:'CEO Disney',             emoji:'🏰', logo:'https://logo.clearbit.com/disney.com',             tickers:['DIS'],                x:300, y:220, color:'#1565c0' },
+  { id:'khamenei', name:'Ali Khamenei',      role:'ผู้นำสูงสุดอิหร่าน',      emoji:'🇮🇷', logo:'https://logo.clearbit.com/president.ir',           tickers:['USO','XLE','GLD'],     x:580, y:200, color:'#1a7a4a' },
 ];
 
 const ELITE_EVENTS = [
@@ -11291,22 +11298,29 @@ async function runEliteScan(forceRefresh=false){
         <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
       const people = [
-        {id:'trump',q:'Donald Trump US policy economy 2025'},
-        {id:'powell',q:'Jerome Powell Fed interest rates 2025'},
-        {id:'jensen',q:'Jensen Huang NVIDIA AI earnings 2025'},
-        {id:'musk',q:'Elon Musk Tesla SpaceX xAI 2025'},
-        {id:'zuck',q:'Mark Zuckerberg Meta AI 2025'},
-        {id:'xi',q:'Xi Jinping China economy trade 2025'},
-        {id:'putin',q:'Vladimir Putin Russia economy oil 2025'},
-        {id:'lagarde',q:'Christine Lagarde ECB rates Europe 2025'},
-        {id:'opec',q:'OPEC oil production price 2025'},
-        {id:'cook',q:'Tim Cook Apple earnings iPhone 2025'},
-        {id:'nadella',q:'Satya Nadella Microsoft AI Azure 2025'},
-        {id:'altman',q:'Sam Altman OpenAI GPT 2025'},
+        {id:'trump',q:'Donald Trump US policy tariff economy stock market 2025'},
+        {id:'powell',q:'Jerome Powell Fed interest rates cut hike stock market 2025'},
+        {id:'jensen',q:'Jensen Huang NVIDIA AI chip earnings stock 2025'},
+        {id:'musk',q:'Elon Musk Tesla SpaceX xAI stock earnings 2025'},
+        {id:'zuck',q:'Mark Zuckerberg Meta AI earnings stock 2025'},
+        {id:'xi',q:'Xi Jinping China economy trade tariff stock market 2025'},
+        {id:'putin',q:'Vladimir Putin Russia oil war stock market 2025'},
+        {id:'lagarde',q:'Christine Lagarde ECB rates Europe stock market 2025'},
+        {id:'opec',q:'OPEC oil price production cut stock market 2025'},
+        {id:'cook',q:'Tim Cook Apple earnings iPhone stock AAPL 2025'},
+        {id:'nadella',q:'Satya Nadella Microsoft AI Azure earnings MSFT 2025'},
+        {id:'altman',q:'Sam Altman OpenAI GPT stock market impact 2025'},
+        {id:'pichai',q:'Sundar Pichai Google Alphabet AI earnings GOOGL 2025'},
+        {id:'bezos',q:'Jeff Bezos Amazon AWS earnings stock AMZN 2025'},
+        {id:'dimon',q:'Jamie Dimon JPMorgan bank earnings stock JPM 2025'},
+        {id:'buffett',q:'Warren Buffett Berkshire investment stock market 2025'},
+        {id:'yellen',q:'Janet Yellen US Treasury economy bond stock 2025'},
+        {id:'iger',q:'Bob Iger Disney earnings stock DIS 2025'},
+        {id:'khamenei',q:'Khamenei Iran nuclear oil sanctions stock market 2025'},
       ];
 
-      // ค้น Tavily ทีละ 4 คน (3 batch)
-      const batches = [people.slice(0,4), people.slice(4,8), people.slice(8,12)];
+      // ค้น Tavily ทีละ 4 คน (batch)
+      const batches = [people.slice(0,4), people.slice(4,8), people.slice(8,12), people.slice(12,16), people.slice(16)];
       let newsContext = '';
       const today = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
 
@@ -11348,10 +11362,7 @@ async function runEliteScan(forceRefresh=false){
           temperature:0.3,
           messages:[
             {role:'system',content:'You are a financial news JSON API. Output ONLY a raw JSON array. Start with [ end with ]. No prose, no markdown. All text fields in Thai except tickers.'},
-            {role:'user',content:`วันนี้ ${today} จากข่าวด้านล่าง วิเคราะห์และตอบ JSON array:
-${newsContext}
-
-Schema แต่ละรายการ: {"id":"trump","headline":"ข่าวสำคัญ","summary":"วิเคราะห์ 2-3 ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์เบื้องหลัง","response":"การตอบสนองที่คาดการณ์"}`}
+            {role:'user',content:`วันนี้ ${today} จากข่าวด้านล่าง วิเคราะห์เฉพาะเหตุการณ์ที่กระทบราคาหุ้นโดยตรง เช่น นโยบาย ภาษี ดอกเบี้ย ผลประกอบการ สงคราม การค้า AI ระบุ ticker หุ้นที่ได้รับผลกระทบจริงๆ ตอบ JSON array:\n${newsContext}\n\nSchema: [{\"id\":\"trump\",\"headline\":\"ข่าวที่กระทบหุ้นโดยตรง\",\"summary\":\"ผลกระทบต่อตลาดหุ้น 2-3 ประโยค\",\"impact\":8,\"pros\":[\"หุ้นกลุ่มที่ได้ประโยชน์\"],\"cons\":[\"หุ้นกลุ่มที่เสียประโยชน์\"],\"why\":\"เหตุผลที่กระทบตลาด\",\"watch\":\"sector/ticker ที่ต้องจับตา\",\"tags\":[\"US\"],\"markets\":[\"SPY\",\"USD\"],\"stocks_buy\":[\"JPM\",\"GS\"],\"stocks_watch\":[\"TSLA\",\"NVDA\"],\"affected_stocks\":[{\"ticker\":\"SPY\",\"direction\":\"up\",\"reason\":\"เหตุผลที่ราคาขึ้น/ลง\"}],\"read_game\":\"กลยุทธ์การลงทุนจากข่าวนี้\",\"response\":\"ตลาดน่าจะตอบสนองอย่างไร\"}]`}
           ]
         }),
         signal:AbortSignal.timeout(30000)
