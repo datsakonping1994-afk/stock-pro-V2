@@ -1083,6 +1083,21 @@ canvas.bigchart{width:100%;height:100%}
       <div class="settings-section">
         <div class="settings-section-title">Data</div>
         <div class="settings-row">
+          <div>
+            <div class="settings-label">💼 Backup พอร์ต</div>
+            <div class="settings-sublabel">บันทึกพอร์ตเป็นไฟล์ JSON เพื่อกู้คืนภายหลัง</div>
+          </div>
+          <button class="settings-btn" onclick="exportPortfolioBackup()">📤 Export</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">📂 Restore พอร์ต</div>
+            <div class="settings-sublabel">นำเข้าพอร์ตจากไฟล์ backup JSON</div>
+          </div>
+          <button class="settings-btn" onclick="document.getElementById('portImportFile').click()">📥 Import</button>
+          <input type="file" id="portImportFile" accept=".json" style="display:none" onchange="importPortfolioBackup(this)">
+        </div>
+        <div class="settings-row">
           <div class="settings-label">Export Trade Log</div>
           <button class="settings-btn" onclick="exportCSV()">📥 CSV</button>
         </div>
@@ -4727,6 +4742,72 @@ function _showSignalDetail(idx){
   modal.appendChild(card);
   modal.onclick=e=>{ if(e.target===modal) modal.remove(); };
   document.body.appendChild(modal);
+}
+
+
+// ── Export / Import Portfolio Backup ──
+function exportPortfolioBackup(){
+  try{
+    const data = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      portfolio: portfolio,
+      cash: _portCash
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stockpro-portfolio-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('✅ Export พอร์ต ' + portfolio.length + ' ตัวสำเร็จ');
+  }catch(e){
+    toast('❌ Export ล้มเหลว: ' + e.message);
+  }
+}
+
+function importPortfolioBackup(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const raw = JSON.parse(e.target.result);
+      let imported = [];
+      // รองรับทั้ง format ใหม่ {version,portfolio} และ array โดยตรง
+      if(Array.isArray(raw)){
+        imported = raw;
+      } else if(raw.portfolio && Array.isArray(raw.portfolio)){
+        imported = raw.portfolio;
+        if(raw.cash && !isNaN(raw.cash)){
+          _portCash = parseFloat(raw.cash);
+          localStorage.setItem('_sp_cash', _portCash.toString());
+        }
+      }
+      // validate
+      const valid = imported.filter(p => p && p.t && typeof p.avgPrice === 'number' && typeof p.shares === 'number' && p.shares > 0);
+      if(!valid.length){ toast('❌ ไฟล์ไม่มีข้อมูลพอร์ต'); return; }
+      if(!confirm('นำเข้า ' + valid.length + ' หุ้น? จะทับข้อมูลพอร์ตปัจจุบัน ' + portfolio.length + ' หุ้น')){
+        input.value=''; return;
+      }
+      portfolio = valid;
+      savePortfolio();
+      // เพิ่มหุ้นที่ไม่อยู่ใน stocks list
+      valid.forEach(pos => {
+        if(!stocksMap.get(pos.t)){
+          stocks.push({t:pos.t, n:pos.t, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
+          _rebuildStocksMap();
+        }
+      });
+      renderPortfolio();
+      toast('✅ Import สำเร็จ ' + valid.length + ' หุ้น');
+    }catch(err){
+      toast('❌ ไฟล์ผิดรูปแบบ: ' + err.message);
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
 }
 
 function exportCSV(){
@@ -9700,11 +9781,11 @@ function renderPortfolio(){
     const curPrice = stockData?.p || (liveCache[pos.t] ? (stocksMap.get(pos.t)?.p||0) : 0) || pos.lastPrice || 0;
     const rowCost = pos.avgPrice * pos.shares;
     const val = curPrice * pos.shares;
-    const pnl = val - cost;
-    const pnlPct = cost>0?(pnl/cost*100):0;
+    const pnl = val - rowCost;
+    const pnlPct = rowCost>0?(pnl/rowCost*100):0;
     const isUp = pnl>=0;
     const pnlColor = isUp?'var(--green)':'var(--red)';
-    totalCost += cost;
+    totalCost += rowCost;
     totalVal += val;
     const safeTicker = _escHtml(pos.t);
     const safeName = _escHtml(stockData?.n||'');
