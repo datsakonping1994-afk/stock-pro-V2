@@ -352,8 +352,8 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .port-row-flash-dn .port-row-inner{animation:flash-port-dn 1s ease-out forwards}
 
 /* Sparkline */
-.card-chart{height:52px;position:relative;pointer-events:none}
-canvas.spark{width:100%;height:52px;display:block;pointer-events:none;touch-action:none}
+.card-chart{height:52px;position:relative}
+canvas.spark{width:100%;height:52px;display:block}
 
 /* Support/Resistance bar */
 .card-levels{padding:6px 14px 12px;display:flex;flex-direction:column;gap:6px}
@@ -1083,23 +1083,23 @@ canvas.bigchart{width:100%;height:100%}
       <div class="settings-section">
         <div class="settings-section-title">Data</div>
         <div class="settings-row">
+          <div class="settings-label">Export Trade Log</div>
+          <button class="settings-btn" onclick="exportCSV()">📥 CSV</button>
+        </div>
+        <div class="settings-row">
           <div>
             <div class="settings-label">💼 Backup พอร์ต</div>
-            <div class="settings-sublabel">บันทึกพอร์ตเป็นไฟล์ JSON เพื่อกู้คืนภายหลัง</div>
+            <div class="settings-sublabel">บันทึกพอร์ตเป็นไฟล์ JSON</div>
           </div>
           <button class="settings-btn" onclick="exportPortfolioBackup()">📤 Export</button>
         </div>
         <div class="settings-row">
           <div>
             <div class="settings-label">📂 Restore พอร์ต</div>
-            <div class="settings-sublabel">นำเข้าพอร์ตจากไฟล์ backup JSON</div>
+            <div class="settings-sublabel">นำเข้าพอร์ตจากไฟล์ backup</div>
           </div>
           <button class="settings-btn" onclick="document.getElementById('portImportFile').click()">📥 Import</button>
           <input type="file" id="portImportFile" accept=".json" style="display:none" onchange="importPortfolioBackup(this)">
-        </div>
-        <div class="settings-row">
-          <div class="settings-label">Export Trade Log</div>
-          <button class="settings-btn" onclick="exportCSV()">📥 CSV</button>
         </div>
         <div class="settings-row">
           <div class="settings-label">ล้าง Trade Log</div>
@@ -1292,7 +1292,11 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <!-- Holdings List -->
-      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">📊 Holdings</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)">📊 Holdings</div>
+        <button onclick="_debugPortfolio()" style="font-size:9px;color:var(--text3);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:3px 8px;cursor:pointer;font-family:'Syne',sans-serif">🔍 Debug</button>
+      </div>
+      <div id="portDebugPanel" style="display:none;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:10px;padding:10px;margin-bottom:10px;font-size:10px;color:var(--ice);font-family:'IBM Plex Mono',monospace;line-height:1.5"></div>
 
       <div id="portHoldingsList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:100px">
         <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:11px;opacity:0.6">กรอก ticker + ราคาซื้อ + จำนวนหุ้น แล้วกด Add</span></div>
@@ -1490,10 +1494,10 @@ canvas.bigchart{width:100%;height:100%}
 
   </div>
   <div class="drawer-tabs">
-    <div class="drawer-tab active" data-tab="tech" onclick="drawerTab('tech',this)">Technical</div>
-    <div class="drawer-tab" data-tab="fund" onclick="drawerTab('fund',this)">Fundamental</div>
-    <div class="drawer-tab" data-tab="ai" onclick="drawerTab('ai',this)">AI Chat</div>
-    <div class="drawer-tab" data-tab="news" onclick="drawerTab('news',this)">ข่าว</div>
+    <div class="drawer-tab active" onclick="drawerTab('tech',this)">Technical</div>
+    <div class="drawer-tab" onclick="drawerTab('fund',this)">Fundamental</div>
+    <div class="drawer-tab" onclick="drawerTab('ai',this)">AI Chat</div>
+    <div class="drawer-tab" onclick="drawerTab('news',this)">ข่าว</div>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
 </div>
@@ -3193,10 +3197,10 @@ function openDrawer(ticker){
   loadLogo(ticker,'drawerLogo',40);
   // render tech tab ครั้งเดียวตอนเปิด
   _currentChartDays=30;
-  drawerTab('tech', document.querySelector('.drawer-tab[data-tab="tech"]'));
+  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
   // ดึง analyst data ในพื้นหลัง
   fetchAnalystData(ticker).then(()=>{
-    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[data-tab="fund"]'));
+    if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
   });
   document.getElementById('drawer').classList.add('open');
   document.body.style.overflow='hidden';
@@ -3206,7 +3210,7 @@ function openDrawer(ticker){
   function _reRenderTechIfActive(){
     if(currentDrawerTicker===_snapTicker&&currentDrawerTab==='tech'){
       updateRSIFromCandles(_snapTicker);
-      drawerTab('tech', document.querySelector('.drawer-tab[data-tab="tech"]'));
+      drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
     }
   }
   if(candleCache[ticker]?.data&&!candleCache[ticker]?.data?._mock){
@@ -4744,67 +4748,105 @@ function _showSignalDetail(idx){
   document.body.appendChild(modal);
 }
 
-
-// ── Export / Import Portfolio Backup ──
-function exportPortfolioBackup(){
-  try{
-    const data = {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      portfolio: portfolio,
-      cash: _portCash
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'stockpro-portfolio-' + new Date().toISOString().slice(0,10) + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('✅ Export พอร์ต ' + portfolio.length + ' ตัวสำเร็จ');
-  }catch(e){
-    toast('❌ Export ล้มเหลว: ' + e.message);
+// ── Portfolio Debug + Backup Tools ──
+function _debugPortfolio(){
+  const panel = document.getElementById('portDebugPanel');
+  if(!panel) return;
+  if(panel.style.display !== 'none'){ panel.style.display='none'; return; }
+  let ls_raw=null, ls_parsed=null, ls_err='';
+  try{ ls_raw=localStorage.getItem('_sp_portfolio'); }catch(e){ ls_err=e.message; }
+  try{ ls_parsed=ls_raw?JSON.parse(ls_raw):null; }catch(e){ ls_err='parse:'+e.message; }
+  let ss_raw=null;
+  try{ ss_raw=sessionStorage.getItem('_sp_portfolio'); }catch{}
+  let ck=null;
+  try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) ck='found('+decodeURIComponent(m[1]).length+'chars)'; }catch{}
+  const NL=String.fromCharCode(10);
+  const mem=portfolio;
+  let info='[memory] '+mem.length+' items'+NL;
+  if(mem.length) info+='  '+mem.map(function(p){return p.t+'x'+p.shares;}).join(', ')+NL;
+  info+='[localStorage] '+(ls_raw?ls_raw.length+'chars':'NULL')+NL;
+  if(ls_parsed) info+='  '+ls_parsed.length+' items: '+ls_parsed.map(function(p){return p.t||'?';}).join(',')+NL;
+  if(ls_err) info+='  ERR: '+ls_err+NL;
+  info+='[sessionStorage] '+(ss_raw?ss_raw.length+'chars':'NULL')+NL;
+  info+='[cookie] '+(ck||'not found')+NL;
+  info+='[cash] '+(localStorage.getItem('_sp_cash')||'0')+NL;
+  panel.style.display='block';
+  panel.innerHTML='<pre style="margin:0">'+info+'</pre>'+
+    '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+
+    '<button onclick="_forceLoadPortfolio()" style="font-size:10px;background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);border-radius:6px;padding:4px 10px;color:#00e676;cursor:pointer">🔄 Force Load</button>'+
+    '<button onclick="_forceSavePortfolio()" style="font-size:10px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:4px 10px;color:#c9a84c;cursor:pointer">💾 Force Save</button>'+
+    '<button onclick="_clearPortfolioData()" style="font-size:10px;background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:6px;padding:4px 10px;color:#ff4d6a;cursor:pointer">🗑️ Clear All</button>'+
+    '</div>';
+}
+function _forceLoadPortfolio(){
+  let loaded=null;
+  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) loaded=JSON.parse(ls); }catch{}
+  if(!loaded||!loaded.length){ try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) loaded=JSON.parse(ss); }catch{} }
+  if(!loaded||!loaded.length){ try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) loaded=JSON.parse(decodeURIComponent(m[1])); }catch{} }
+  if(loaded&&loaded.length){
+    portfolio.length=0;
+    loaded.filter(function(p){return p&&p.t&&p.shares>0;}).forEach(function(p){portfolio.push(p);});
+    renderPortfolio();
+    document.getElementById('portDebugPanel').style.display='none';
+    toast('✅ โหลด '+portfolio.length+' หุ้น');
+  } else {
+    toast('❌ ไม่พบข้อมูลพอร์ตใน storage ใดเลย');
   }
 }
-
+function _forceSavePortfolio(){
+  if(!portfolio.length){ toast('⚠️ portfolio ว่างเปล่า ไม่มีอะไรบันทึก'); return; }
+  const data=JSON.stringify(portfolio);
+  try{ localStorage.setItem('_sp_portfolio',data); }catch(e){ toast('❌ localStorage error: '+e.message); return; }
+  try{ sessionStorage.setItem('_sp_portfolio',data); }catch{}
+  toast('✅ Force save '+portfolio.length+' หุ้น');
+  document.getElementById('portDebugPanel').style.display='none';
+}
+function _clearPortfolioData(){
+  if(!confirm('ลบข้อมูลพอร์ตทั้งหมด?')) return;
+  try{ localStorage.removeItem('_sp_portfolio'); }catch{}
+  try{ sessionStorage.removeItem('_sp_portfolio'); }catch{}
+  portfolio.length=0;
+  renderPortfolio();
+  toast('🗑️ ลบข้อมูลพอร์ตแล้ว');
+}
+function exportPortfolioBackup(){
+  try{
+    const data={version:2,exportedAt:new Date().toISOString(),portfolio:portfolio,cash:_portCash};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='stockpro-portfolio-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅ Export พอร์ต '+portfolio.length+' ตัวสำเร็จ');
+  }catch(e){ toast('❌ Export ล้มเหลว: '+e.message); }
+}
 function importPortfolioBackup(input){
-  const file = input.files[0];
-  if(!file){ return; }
-  const reader = new FileReader();
-  reader.onload = function(e){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
     try{
-      const raw = JSON.parse(e.target.result);
-      let imported = [];
-      // รองรับทั้ง format ใหม่ {version,portfolio} และ array โดยตรง
-      if(Array.isArray(raw)){
-        imported = raw;
-      } else if(raw.portfolio && Array.isArray(raw.portfolio)){
-        imported = raw.portfolio;
-        if(raw.cash && !isNaN(raw.cash)){
-          _portCash = parseFloat(raw.cash);
-          localStorage.setItem('_sp_cash', _portCash.toString());
-        }
+      const raw=JSON.parse(e.target.result);
+      let imported=[];
+      if(Array.isArray(raw)) imported=raw;
+      else if(raw.portfolio&&Array.isArray(raw.portfolio)){
+        imported=raw.portfolio;
+        if(raw.cash&&!isNaN(raw.cash)){ _portCash=parseFloat(raw.cash); localStorage.setItem('_sp_cash',_portCash.toString()); }
       }
-      // validate
-      const valid = imported.filter(p => p && p.t && typeof p.avgPrice === 'number' && typeof p.shares === 'number' && p.shares > 0);
+      const valid=imported.filter(function(p){return p&&p.t&&typeof p.avgPrice==='number'&&p.shares>0;});
       if(!valid.length){ toast('❌ ไฟล์ไม่มีข้อมูลพอร์ต'); return; }
-      if(!confirm('นำเข้า ' + valid.length + ' หุ้น? จะทับข้อมูลพอร์ตปัจจุบัน ' + portfolio.length + ' หุ้น')){
-        input.value=''; return;
-      }
-      portfolio = valid;
+      if(!confirm('นำเข้า '+valid.length+' หุ้น? จะทับข้อมูลพอร์ตปัจจุบัน '+portfolio.length+' หุ้น')){ input.value=''; return; }
+      portfolio.length=0;
+      valid.forEach(function(p){portfolio.push(p);});
       savePortfolio();
-      // เพิ่มหุ้นที่ไม่อยู่ใน stocks list
-      valid.forEach(pos => {
+      valid.forEach(function(pos){
         if(!stocksMap.get(pos.t)){
-          stocks.push({t:pos.t, n:pos.t, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
+          stocks.push({t:pos.t,n:pos.t,p:0,c:0,pe:null,mktcap:'N/A',rev:'N/A',earn:null});
           _rebuildStocksMap();
         }
       });
       renderPortfolio();
-      toast('✅ Import สำเร็จ ' + valid.length + ' หุ้น');
-    }catch(err){
-      toast('❌ ไฟล์ผิดรูปแบบ: ' + err.message);
-    }
+      toast('✅ Import สำเร็จ '+valid.length+' หุ้น');
+    }catch(err){ toast('❌ ไฟล์ผิดรูปแบบ: '+err.message); }
     input.value='';
   };
   reader.readAsText(file);
@@ -6431,11 +6473,6 @@ const _YAHOO_ENDPOINTS = [
 ];
 
 const _YAHOO_PROXIES = [
-  // Workers ส่วนตัว — เร็วและเชื่อถือได้ที่สุด ไว้ก่อน
-  url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
-  url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
-  // query2 direct (บางครั้ง Safari อนุญาต CORS)
-  url=>url.replace('query1.finance.yahoo.com','query2.finance.yahoo.com'),
   // CORS proxies สาธารณะ
   url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
   url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -6446,6 +6483,9 @@ const _YAHOO_PROXIES = [
   url=>`https://crossorigin.me/${url}`,
   url=>`https://yacdn.org/proxy/${url}`,
   url=>`https://cors.sh/?${url}`,
+  // Workers ส่วนตัว
+  url=>`https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent(url)}`,
+  url=>`https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent(url)}`,
 ];
 
 let _workingProxy=null;
@@ -7152,7 +7192,7 @@ async function _switchTF(btn, days){
       addLine(getR2(ticker,p),'R2','rgba(0,180,90,0.7)');
       chart.timeScale().fitContent();
     }
-    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[data-tab="tech"]'));
+    if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){}
 }
 
@@ -7419,9 +7459,18 @@ async function fetchCandles(ticker, days=60){
       candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'twelve'};
       return candleData;
     }
-    // ── 2. Fallback → Yahoo Finance (ฟรี ไม่มี Rate Limit) ──
+    // ── 2. Fallback → Polygon.io ──
+    candleData=await fetchCandlesPolygon(ticker, days);
+    if(candleData){
+      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
+      _saveCandleCache();
+      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'polygon'};
+      return candleData;
+    }
+    // ── 3. Fallback → Yahoo Finance (proxy chain เดิม) ──
     const range=days<=30?'1mo':days<=90?'3mo':days<=150?'6mo':days<=210?'1y':'2y';
     const yahooUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
+    // ใช้ working proxy ก่อน แล้วกรอง proxy ที่กำลัง cooldown ออก
     const proxiesToUse = [
       ...(_workingProxy ? [_workingProxy] : []),
       ..._YAHOO_PROXIES.filter(p=>p!==_workingProxy && !_isProxyCoolingDown(p))
@@ -7441,31 +7490,6 @@ async function fetchCandles(ticker, days=60){
       candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'yahoo'};
       _saveCandleCache();
       candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'yahoo'};
-      return candleData;
-    }
-    // ── 3. Fallback → Polygon.io (อาจโดน Rate Limit) ──
-    candleData=await fetchCandlesPolygon(ticker, days);
-    if(candleData){
-      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'polygon'};
-      _saveCandleCache();
-      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'polygon'};
-      return candleData;
-    }
-    // ── 4. Yahoo อีกรอบด้วย endpoint สำรอง ──
-    const yahooUrl2=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`;
-    try{
-      candleData=await Promise.any(_YAHOO_PROXIES.map(async mkProxy=>{
-        const r=await _tryProxy(mkProxy, yahooUrl2, 5000);
-        if(!r) throw new Error('fail');
-        const c=_extractCandleFromParsed(r.parsed);
-        if(!c) throw new Error('no candle');
-        return c;
-      }));
-    }catch{}
-    if(candleData){
-      candleCache[ticker]={data:candleData,ts:Date.now(),days,src:'yahoo2'};
-      _saveCandleCache();
-      candleCache[cacheKey]={data:candleData,ts:Date.now(),src:'yahoo2'};
       return candleData;
     }
   }catch(e){}
@@ -9360,41 +9384,22 @@ async function triggerAISummary(){
 // ── PORTFOLIO TRACKER ──
 let portfolio = (()=>{
   let raw = [];
-  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) raw = JSON.parse(ls); }catch{}
-  if(!raw.length){ try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) raw = JSON.parse(ss); }catch{} }
-  if(!raw.length){ try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) raw = JSON.parse(decodeURIComponent(m[1])); }catch{} }
+  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) raw=JSON.parse(ls); }catch{}
+  if(!raw.length){ try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) raw=JSON.parse(ss); }catch{} }
+  if(!raw.length){ try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) raw=JSON.parse(decodeURIComponent(m[1])); }catch{} }
   if(!Array.isArray(raw)) return [];
-  // กรองเฉพาะ entry ที่ไม่มีข้อมูลจริงๆ (ป้องกัน data corruption)
-  const cleaned = raw.filter(p => p && p.t && typeof p.avgPrice === 'number' && typeof p.shares === 'number' && p.shares > 0);
-  // ถ้า cleaned น้อยกว่า raw แสดงว่ามี entry เสีย → บันทึก cleaned กลับทันที
-  if(cleaned.length < raw.length){
-    try{ localStorage.setItem('_sp_portfolio', JSON.stringify(cleaned)); }catch{}
-    try{ sessionStorage.setItem('_sp_portfolio', JSON.stringify(cleaned)); }catch{}
-  }
-  return cleaned;
+  return raw.filter(p => p && p.t && p.shares > 0);
 })();
 
 function savePortfolio(){
-  if(!Array.isArray(portfolio)) return;
-  // filter shares > 0 ก่อนบันทึกเสมอ ป้องกัน data corruption
-  const safeData = portfolio.filter(p => p && p.t && p.shares > 0);
-  // ป้องกันบันทึก array เปล่าทับข้อมูลดีๆ
-  if(safeData.length === 0){
-    try{
-      const existing = JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');
-      if(existing.length > 0){
-        console.warn('[StockPro] savePortfolio blocked: would overwrite '+existing.length+' positions with empty array');
-        return;
-      }
-    }catch{}
-  }
-  const data = JSON.stringify(safeData);
+  const data = JSON.stringify(portfolio);
   try{ localStorage.setItem('_sp_portfolio', data); }catch{}
   try{ sessionStorage.setItem('_sp_portfolio', data); }catch{}
   try{
     const d=new Date(); d.setFullYear(d.getFullYear()+1);
     document.cookie=`_sp_portfolio=${encodeURIComponent(data)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
   }catch{}
+  // Sync ขึ้น Worker KV ทุกครั้งที่บันทึกพอร์ต
   setTimeout(syncAlertsToWorker, 500);
 }
 
@@ -9489,18 +9494,37 @@ Sector: ${sectorText}
 
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
+  // sanitize: อนุญาตเฉพาะ A-Z, 0-9, .
   const ticker = (rawTicker||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   const buyPrice = parseFloat(document.getElementById('portPrice')?.value);
   const shares = parseFloat(document.getElementById('portShares')?.value);
   if(!ticker || isNaN(buyPrice) || buyPrice<=0 || isNaN(shares) || shares<=0){
     toast('⚠️ กรอก Ticker / ราคาซื้อ / จำนวนหุ้นให้ครบ'); return;
   }
-
-  // ── เช็ค Position Limit ก่อน push ──
+  // ถ้ามี ticker นี้อยู่แล้ว ให้ average down/up
   const cost = buyPrice * shares;
   const existing = portfolio.find(p=>p.t===ticker);
-  const curVal = (stocksMap.get(ticker)?.p || buyPrice) * (existing ? existing.shares : 0);
-  const newVal = cost + curVal;
+  if(existing){
+    const totalShares = existing.shares + shares;
+    existing.avgPrice = (existing.avgPrice*existing.shares + buyPrice*shares) / totalShares;
+    existing.shares = totalShares;
+  } else {
+    portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
+    // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
+    if(!stocksMap.get(ticker)){
+      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null}); _rebuildStocksMap();
+      // ดึงราคาทันที
+      fetchSingleQuoteFast({t:ticker}).then(q=>{
+        if(q&&q.p>0){
+          const s=stocksMap.get(ticker);
+          if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
+        }
+      }).catch(()=>{});
+    }
+  }
+  // ── เช็ค Position Limit ──
+  const curVal = (stocksMap.get(ticker)?.p || buyPrice) * (existing ? existing.shares : shares);
+  const newVal = buyPrice * shares + (existing ? curVal : 0);
   const portTotal = portfolio.reduce((s,p)=>s+(stocksMap.get(p.t)?.p||p.avgPrice)*p.shares, 0) + _portCash;
   if(portTotal > 0){
     const newPct = (newVal / portTotal * 100);
@@ -9510,28 +9534,7 @@ function addPortPosition(){
       if(!ok) return;
     }
   }
-
-  // ── เพิ่มหรือ Average Down ──
-  if(existing){
-    const totalShares = existing.shares + shares;
-    existing.avgPrice = (existing.avgPrice*existing.shares + buyPrice*shares) / totalShares;
-    existing.shares = totalShares;
-  } else {
-    portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
-    if(!stocksMap.get(ticker)){
-      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
-      _rebuildStocksMap();
-      fetchSingleQuoteFast({t:ticker}).then(q=>{
-        if(q&&q.p>0){
-          const s=stocksMap.get(ticker);
-          if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
-        }
-      }).catch(()=>{});
-    }
-  }
-
   savePortfolio();
-
   // ── หักเงินสดอัตโนมัติ ──
   if(_portCash > 0){
     _portCash = Math.max(0, +(_portCash - cost).toFixed(2));
@@ -9544,6 +9547,7 @@ function addPortPosition(){
   document.getElementById('portPrice').value='';
   document.getElementById('portShares').value='';
   renderPortfolio();
+  toast('✅ เพิ่ม '+ticker+' แล้ว');
 }
 
 function removePortPosition(ticker){
@@ -9676,10 +9680,10 @@ function _updatePortfolioRow(ticker, price, changePct){
   const pos = portfolio.find(p=>p.t===ticker);
   if(!pos||!pos.avgPrice||!pos.shares) return;
 
-  const posCost=pos.avgPrice*pos.shares;
+  const cost=pos.avgPrice*pos.shares;
   const val=price*pos.shares;
-  const pnl=val-posCost;
-  const pnlPct=posCost>0?(pnl/cost*100):0;
+  const pnl=val-cost;
+  const pnlPct=cost>0?(pnl/cost*100):0;
   const isUp=pnl>=0;
   const pnlColor=isUp?'var(--green)':'var(--red)';
   const fmt2=v=>v.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -9779,13 +9783,13 @@ function renderPortfolio(){
     const stockData = stocksMap.get(pos.t);
     // ถ้าไม่อยู่ใน stocks array ให้ดึงราคาจาก liveCache
     const curPrice = stockData?.p || (liveCache[pos.t] ? (stocksMap.get(pos.t)?.p||0) : 0) || pos.lastPrice || 0;
-    const rowCost = pos.avgPrice * pos.shares;
+    const cost = pos.avgPrice * pos.shares;
     const val = curPrice * pos.shares;
-    const pnl = val - rowCost;
-    const pnlPct = rowCost>0?(pnl/rowCost*100):0;
+    const pnl = val - cost;
+    const pnlPct = cost>0?(pnl/cost*100):0;
     const isUp = pnl>=0;
     const pnlColor = isUp?'var(--green)':'var(--red)';
-    totalCost += rowCost;
+    totalCost += cost;
     totalVal += val;
     const safeTicker = _escHtml(pos.t);
     const safeName = _escHtml(stockData?.n||'');
@@ -10373,7 +10377,7 @@ async function runMorningBrief(){
   }
 
   // Earnings วันนี้–3 วัน
-  const portTickersSync=new Set(portfolio.map(p=>p.t));
+  const portTickers=new Set(portfolio.map(p=>p.t));
   const wlTickers=watchlist;
   const earnSoon=[...new Set([...portTickers,...wlTickers])]
     .map(t=>stocksMap.get(t))
@@ -10483,7 +10487,7 @@ setTimeout(()=>{try{checkEarningsAlert();}catch{}}, 8000); // เช็คตอ
   let _swipeStartX=0, _swipeStartY=0, _swipeStartTime=0;
 
   function _getTabEl(tab){
-    return document.querySelector(`.drawer-tab[data-tab="${tab}"]`);
+    return document.querySelector(`.drawer-tab[onclick*="${tab}"]`);
   }
 
   function _goTab(dir){
@@ -10838,7 +10842,7 @@ async function runAISignalScan(){
   }
 
   // ดึงรายการหุ้น — พอร์ต + watchlist
-  const portTickersArr = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
+  const portTickers = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
   const watchTickers = stocks.filter(s=>s.watch).map(s=>s.t);
   const allTickers = [...new Set([...portTickers, ...watchTickers])].slice(0,15);
 
