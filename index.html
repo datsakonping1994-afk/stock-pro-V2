@@ -11272,7 +11272,7 @@ async function runEliteScan(forceRefresh=false){
             max_tokens:1500,
             tools:[{type:'web_search_20250305',name:'web_search',max_uses:2}],
             system:'Financial news JSON API. Search latest news. Output ONLY raw JSON array. No markdown. Thai text except tickers.',
-            messages:[{role:'user',content:`${today}: ค้นข่าวล่าสุดของ ${ids.join(', ')} ตอบ JSON array เฉพาะ impact>=6 schema: [${schema}]`}]
+            messages:[{role:'user',content:`${today}: ค้นหาข่าวล่าสุดของ ${ids.join(', ')} แล้วตอบ JSON array เสมอ ห้ามตอบ [] ต้องมีอย่างน้อย 1 รายการต่อคน impact ตั้งแต่ 1-10 schema: [${schema}]`}]
           }),
           signal: AbortSignal.timeout(45000)
         });
@@ -11298,7 +11298,7 @@ async function runEliteScan(forceRefresh=false){
       }
 
       const results = allRaw
-        .filter(item=>item&&item.id&&item.impact>=6)
+        .filter(item=>item&&item.id&&item.impact>=1)
         .map(item=>{ const person=ELITE_PEOPLE.find(p=>p.id===item.id); return person?{person,news:item}:null; })
         .filter(Boolean)
         .sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
