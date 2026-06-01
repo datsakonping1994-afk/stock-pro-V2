@@ -11346,6 +11346,18 @@ function initElitePage(){
   if(cached && cached.results.length > 0){
     _eliteScanResults = cached.results;
     renderEliteScanResults(cached.results, cached.age);
+    // ถ้า cache ไม่มี pros/cons → enrich แบบ background
+    const missingAnalysis = cached.results.some(function(r){ return !r.news.pros||!r.news.pros.length; });
+    if(missingAnalysis){
+      setTimeout(async function(){
+        const enriched = await _eliteEnrichResults(cached.results, null);
+        if(enriched){
+          _eliteScanResults = enriched;
+          saveEliteCache(enriched);
+          renderEliteScanResults(enriched, 0);
+        }
+      }, 500);
+    }
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   } else {
