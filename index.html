@@ -9391,37 +9391,18 @@ Sector: ${sectorText}
 
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
-  // sanitize: อนุญาตเฉพาะ A-Z, 0-9, .
   const ticker = (rawTicker||'').replace(/[^A-Z0-9.]/g,'').slice(0,10);
   const buyPrice = parseFloat(document.getElementById('portPrice')?.value);
   const shares = parseFloat(document.getElementById('portShares')?.value);
   if(!ticker || isNaN(buyPrice) || buyPrice<=0 || isNaN(shares) || shares<=0){
     toast('⚠️ กรอก Ticker / ราคาซื้อ / จำนวนหุ้นให้ครบ'); return;
   }
-  // ถ้ามี ticker นี้อยู่แล้ว ให้ average down/up
+
+  // ── เช็ค Position Limit ก่อน push ──
   const cost = buyPrice * shares;
   const existing = portfolio.find(p=>p.t===ticker);
-  if(existing){
-    const totalShares = existing.shares + shares;
-    existing.avgPrice = (existing.avgPrice*existing.shares + buyPrice*shares) / totalShares;
-    existing.shares = totalShares;
-  } else {
-    portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
-    // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
-    if(!stocksMap.get(ticker)){
-      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null}); _rebuildStocksMap();
-      // ดึงราคาทันที
-      fetchSingleQuoteFast({t:ticker}).then(q=>{
-        if(q&&q.p>0){
-          const s=stocksMap.get(ticker);
-          if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
-        }
-      }).catch(()=>{});
-    }
-  }
-  // ── เช็ค Position Limit ──
-  const curVal = (stocksMap.get(ticker)?.p || buyPrice) * (existing ? existing.shares : shares);
-  const newVal = buyPrice * shares + (existing ? curVal : 0);
+  const curVal = (stocksMap.get(ticker)?.p || buyPrice) * (existing ? existing.shares : 0);
+  const newVal = cost + curVal;
   const portTotal = portfolio.reduce((s,p)=>s+(stocksMap.get(p.t)?.p||p.avgPrice)*p.shares, 0) + _portCash;
   if(portTotal > 0){
     const newPct = (newVal / portTotal * 100);
@@ -9431,7 +9412,28 @@ function addPortPosition(){
       if(!ok) return;
     }
   }
+
+  // ── เพิ่มหรือ Average Down ──
+  if(existing){
+    const totalShares = existing.shares + shares;
+    existing.avgPrice = (existing.avgPrice*existing.shares + buyPrice*shares) / totalShares;
+    existing.shares = totalShares;
+  } else {
+    portfolio.push({ t:ticker, avgPrice:buyPrice, shares });
+    if(!stocksMap.get(ticker)){
+      stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null});
+      _rebuildStocksMap();
+      fetchSingleQuoteFast({t:ticker}).then(q=>{
+        if(q&&q.p>0){
+          const s=stocksMap.get(ticker);
+          if(s){ s.p=q.p; s.c=q.c||0; renderPortfolio(); }
+        }
+      }).catch(()=>{});
+    }
+  }
+
   savePortfolio();
+
   // ── หักเงินสดอัตโนมัติ ──
   if(_portCash > 0){
     _portCash = Math.max(0, +(_portCash - cost).toFixed(2));
@@ -9444,7 +9446,6 @@ function addPortPosition(){
   document.getElementById('portPrice').value='';
   document.getElementById('portShares').value='';
   renderPortfolio();
-  toast('✅ เพิ่ม '+ticker+' แล้ว');
 }
 
 function removePortPosition(ticker){
