@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 
-<!-- Preload LightweightCharts for card candlestick charts -->
-<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
-
 <title>STOCK PRO ◈</title>
 
 <!-- App Icon -->
@@ -262,7 +259,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .sector-btn.active{background:rgba(100,210,255,0.12);border-color:rgba(100,210,255,0.4);color:var(--ice);box-shadow:0 0 8px rgba(100,210,255,0.1)}
 
 /* ── STOCK CARD ── */
-.cards-grid{padding:0 4px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px}
+.cards-grid{padding:0 12px;display:flex;flex-direction:column;gap:12px;padding-bottom:20px}
 .stock-card{
   background:linear-gradient(160deg,rgba(22,30,45,0.98) 0%,rgba(14,20,32,0.99) 100%);
   border:1px solid rgba(255,255,255,0.07);
@@ -355,9 +352,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .port-row-flash-dn .port-row-inner{animation:flash-port-dn 1s ease-out forwards}
 
 /* Sparkline */
-.card-chart{position:relative;background:#070d18;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);height:200px;overflow:hidden}
-.card-chart-lw{width:100%;height:200px;overflow:hidden}
-canvas.spark{width:100%;height:110px;display:block;pointer-events:none}
+.card-chart{height:52px;position:relative}
 canvas.spark{width:100%;height:52px;display:block}
 
 /* Support/Resistance bar */
@@ -1444,7 +1439,7 @@ canvas.bigchart{width:100%;height:100%}
         <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span id="eliteNewsCount">0</span> รายการ</div>
         <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:3px 10px;font-size:9px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 RESCAN</button>
       </div>
-      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:6px;padding-bottom:20px"></div>
+      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:8px;padding-bottom:20px"></div>
     </div>
 
   </div>
@@ -2607,288 +2602,58 @@ function drawSpark(canvas,prices,isUp){
   ctx.fillStyle='#fff';ctx.fill();
 }
 
-// ── Sparkline fallback (canvas) ขณะ LW ยังโหลดไม่เสร็จ ──
-function _drawSparkFallback(container, s, raw){
-  if(!container) return;
-  container.innerHTML='';
-  const canvas=document.createElement('canvas');
-  canvas.style.cssText='width:100%;height:100%;display:block';
-  container.appendChild(canvas);
-  const prices=raw?.c?.slice(-30)||[];
-  const isUp=s.c>=0;
-  // ถ้าไม่มีข้อมูล สร้าง mock ง่ายๆ
-  const pts=prices.length>=2?prices:(()=>{
-    let p=s.p*0.92,arr=[];
-    for(let i=30;i>=0;i--){ p=p*(1+(Math.random()-0.47)*0.015); arr.push(p); }
-    arr[arr.length-1]=s.p; return arr;
-  })();
-  drawSpark(canvas, pts, isUp);
-}
-
-// ── Card Candlestick Chart ──
-function _drawCardCandle(container, s, raw, hasReal){
-  if(!container||!s) return;
-
-  // ถ้า LW ยังไม่โหลด — วาด sparkline ไปก่อน แล้ว redraw ทีหลัง
-  if(typeof LightweightCharts==='undefined'){
-    _drawSparkFallback(container, s, raw);
-    if(!window._lwLoading){
-      window._lwLoading=true;
-      const sc=document.createElement('script');
-      sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
-      sc.onload=()=>{
-        window._lwLoading=false;
-        document.querySelectorAll('[id^="card-lw-"]').forEach(el=>{
-          const ticker=el.id.replace('card-lw-','').replace(/-/g,'.');
-          const st=stocksMap.get(ticker)||stocksMap.get(el.id.replace('card-lw-',''));
-          if(st){ const r=candleCache[ticker]?.data; _drawCardCandle(el,st,r,r&&r.c&&r.t&&!r._mock&&r.c.length>=5); }
-        });
-      };
-      document.head.appendChild(sc);
-    }
-    return;
-  }
-  if(container._lwChart){ try{container._lwChart.remove();}catch{} container._lwChart=null; }
-  container.innerHTML='';
-
-  const days=30;
-  let candleData=[];
-  if(hasReal){
-    const n=Math.min(raw.c.length,days);
-    for(let i=raw.c.length-n;i<raw.c.length;i++){
-      const t=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
-      if(t&&!isNaN(o)&&!isNaN(h)&&!isNaN(l)&&!isNaN(c)&&h>=l)
-        candleData.push({time:t,open:o,high:h,low:l,close:c});
-    }
-  } else {
-    const now=Math.floor(Date.now()/1000);
-    let p=s.p*0.88;
-    for(let i=days;i>=0;i--){
-      p=Math.max(p*(1+(Math.random()-0.47)*0.022),s.p*0.5);
-      const o=+p.toFixed(2),chg=p*(Math.random()-0.5)*0.012,c=+(p+chg).toFixed(2);
-      const h=+(Math.max(o,c)*(1+Math.random()*0.007)).toFixed(2);
-      const l=+(Math.min(o,c)*(1-Math.random()*0.007)).toFixed(2);
-      candleData.push({time:now-i*86400,open:o,high:h,low:l,close:c});
-    }
-    if(candleData.length) candleData[candleData.length-1].close=s.p;
-  }
-  const seen=new Set();
-  candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
-  if(!candleData.length) return;
-
-  const w=container.getBoundingClientRect().width||360;
-  const chart=LightweightCharts.createChart(container,{
-    width:w, height:160,
-    layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},
-    grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},
-    rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},
-    timeScale:{borderColor:'transparent',visible:false},
-    crosshair:{mode:0},
-    handleScroll:false,handleScale:false,
-  });
-  const upColor='#00e676',dnColor='#ff4d6a';
-  const cs=chart.addCandlestickSeries({
-    upColor,downColor:dnColor,
-    borderUpColor:upColor,borderDownColor:dnColor,
-    wickUpColor:'rgba(0,230,118,0.5)',wickDownColor:'rgba(255,77,106,0.5)',
-    priceLineVisible:false,lastValueVisible:false,
-  });
-  cs.setData(candleData);
-
-  // S/R lines
-  const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
-  if(s1>0) cs.createPriceLine({price:s1,color:'rgba(255,77,106,0.7)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
-  if(r1>0) cs.createPriceLine({price:r1,color:'rgba(0,230,118,0.7)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
-  cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.8)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
-
-  // Volume bars
-  if(hasReal&&raw.v&&raw.v.length){
-    try{
-      const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.82,bottom:0},lastValueVisible:false,priceLineVisible:false});
-      const n=Math.min(raw.c.length,days);
-      const vs=raw.v.slice(-n);
-      volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'})));
-    }catch{}
-  }
-  chart.timeScale().fitContent();
-  try{
-    if(container._ro) container._ro.disconnect();
-    const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});
-    ro.observe(container); container._ro=ro;
-  }catch{}
-  container._lwChart=chart;
-}
-
-function _cardSwitchTF(e, ticker, btn, days){
-  e.stopPropagation();
-  const btns=btn.parentElement.querySelectorAll('.tf-btn');
-  btns.forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const safeId=ticker.replace(/\./g,'-');
-  const container=document.getElementById('card-lw-'+safeId);
-  if(!container) return;
-  const s=stocksMap.get(ticker);
-  if(!s) return;
-  if(container._lwChart){try{container._lwChart.remove();}catch{} container._lwChart=null;}
-  container.innerHTML='';
-  fetchCandles(ticker,days).then(()=>{
-    const raw=candleCache[ticker]?.data;
-    const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
-    _drawCardCandleDays(container,s,raw,hasReal,days);
-  }).catch(()=>{
-    const raw=candleCache[ticker]?.data;
-    _drawCardCandleDays(container,s,raw,raw&&raw.c&&raw.t&&!raw._mock&&raw.c.length>=5,days);
-  });
-}
-
-function _drawCardCandleDays(container,s,raw,hasReal,days){
-  if(!container||typeof LightweightCharts==='undefined') return;
-  if(container._lwChart){try{container._lwChart.remove();}catch{} container._lwChart=null;}
-  container.innerHTML='';
-  let candleData=[];
-  if(hasReal){
-    const n=Math.min(raw.c.length,days);
-    for(let i=raw.c.length-n;i<raw.c.length;i++){
-      const t=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
-      if(t&&!isNaN(o)&&h>=l) candleData.push({time:t,open:o,high:h,low:l,close:c});
-    }
-  } else {
-    const now=Math.floor(Date.now()/1000); let p=s.p*0.88;
-    for(let i=days;i>=0;i--){
-      p=Math.max(p*(1+(Math.random()-0.47)*0.022),s.p*0.5);
-      const o=+p.toFixed(2),chg=p*(Math.random()-0.5)*0.012,c=+(p+chg).toFixed(2);
-      const h=+(Math.max(o,c)*(1+Math.random()*0.007)).toFixed(2),l=+(Math.min(o,c)*(1-Math.random()*0.007)).toFixed(2);
-      candleData.push({time:now-i*86400,open:o,high:h,low:l,close:c});
-    }
-    if(candleData.length) candleData[candleData.length-1].close=s.p;
-  }
-  const seen=new Set();
-  candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
-  if(!candleData.length) return;
-  const w=container.getBoundingClientRect().width||360;
-  const chart=LightweightCharts.createChart(container,{width:w,height:200,layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.7)'},grid:{vertLines:{color:'rgba(255,255,255,0.02)'},horzLines:{color:'rgba(255,255,255,0.02)'}},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.08,bottom:0.2},textColor:'rgba(139,153,181,0.6)'},timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false},crosshair:{mode:0},handleScroll:false,handleScale:false});
-  const upColor='#00e676',dnColor='#ff4d6a';
-  const cs=chart.addCandlestickSeries({upColor,downColor:dnColor,borderUpColor:upColor,borderDownColor:dnColor,wickUpColor:'rgba(0,230,118,0.5)',wickDownColor:'rgba(255,77,106,0.5)',priceLineVisible:false,lastValueVisible:false});
-  cs.setData(candleData);
-
-  const lvls = _getSRLevels(s.t, s.p, days);
-  const rColor='rgba(0,230,118,0.85)', sColor='rgba(255,77,106,0.85)';
-  const rColor2='rgba(0,230,118,0.5)', sColor2='rgba(255,77,106,0.5)';
-  const rColor3='rgba(0,230,118,0.3)', sColor3='rgba(255,77,106,0.3)';
-
-  if(lvls){
-    if(lvls.r[0]) cs.createPriceLine({price:lvls.r[0],color:rColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
-    if(days>=90&&lvls.r[1]) cs.createPriceLine({price:lvls.r[1],color:rColor2,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R2'});
-    if(days>=180&&lvls.r[2]) cs.createPriceLine({price:lvls.r[2],color:rColor3,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R3'});
-    if(lvls.s[0]) cs.createPriceLine({price:lvls.s[0],color:sColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
-    if(days>=90&&lvls.s[1]) cs.createPriceLine({price:lvls.s[1],color:sColor2,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S2'});
-    if(days>=180&&lvls.s[2]) cs.createPriceLine({price:lvls.s[2],color:sColor3,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S3'});
-  }
-  cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.8)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
-  if(hasReal&&raw.v&&raw.v.length){try{const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.82,bottom:0},lastValueVisible:false,priceLineVisible:false});const vs=raw.v.slice(-Math.min(raw.c.length,days));volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'})));}catch{}}
-  chart.timeScale().fitContent();
-  try{if(container._ro)container._ro.disconnect();const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});ro.observe(container);container._ro=ro;}catch{}
-  container._lwChart=chart;
-}
-
-
-function _redrawCardChart(ticker){
-  const safeId=ticker.replace(/\./g,'-');
-  const container=document.getElementById('card-lw-'+safeId);
-  if(!container) return;
-  const s=stocksMap.get(ticker);
-  if(!s) return;
-  const raw=candleCache[ticker]?.data;
-  const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
-  _drawCardCandle(container,s,raw,hasReal);
-}
-
 // ── Levels (simplified pivot) ──
-// ── S/R Level Cache (ใช้ร่วมกันทุกที่) ──
-const _srCache = {};
-
-function _getSRLevels(ticker, price, days=60){
-  const key = `${ticker}_${days}`;
-  const cached = _srCache[key];
-  // cache 5 นาที
-  if(cached && Date.now()-cached.ts < 300000) return cached.levels;
-
-  const data = candleCache[ticker]?.data;
-  if(!data||!data.h||!data.l||!data.c||data._mock||data.c.length<10){
-    // fallback เดิม
-    const pct=price>500?0.06:price>100?0.07:price>20?0.08:price>5?0.10:0.12;
-    const s1=+(price*(1-pct)).toFixed(2);
-    const levels={s:[s1, +(s1*(1-pct*0.8)).toFixed(2), +(s1*(1-pct*1.6)).toFixed(2)], r:[+(price*(1+pct*1.2)).toFixed(2), +(price*(1+pct*2.0)).toFixed(2), +(price*(1+pct*3.0)).toFixed(2)]};
-    _srCache[key]={levels, ts:Date.now()};
-    return levels;
-  }
-
-  const n = Math.min(data.c.length, days);
-  const H=data.h.slice(-n), L=data.l.slice(-n), C=data.c.slice(-n);
-  const V=data.v ? data.v.slice(-n) : null;
-
-  // ATR(14)
-  let atrSum=0;
-  for(let i=1;i<Math.min(15,n);i++) atrSum+=Math.max(H[i]-L[i],Math.abs(H[i]-C[i-1]),Math.abs(L[i]-C[i-1]));
-  const atr=(atrSum/14)||price*0.02;
-  const clusterR=atr*0.5;
-
-  // Swing points (lookback 3)
-  const candidates=[];
-  for(let i=3;i<n-3;i++){
-    if(H[i]>H[i-1]&&H[i]>H[i-2]&&H[i]>H[i-3]&&H[i]>H[i+1]&&H[i]>H[i+2]&&H[i]>H[i+3])
-      candidates.push({price:H[i], type:'R', vol:V?V[i]:1, strength:1});
-    if(L[i]<L[i-1]&&L[i]<L[i-2]&&L[i]<L[i-3]&&L[i]<L[i+1]&&L[i]<L[i+2]&&L[i]<L[i+3])
-      candidates.push({price:L[i], type:'S', vol:V?V[i]:1, strength:1});
-  }
-
-  // Volume Profile (40 bins)
-  if(V){
-    const minP=Math.min(...L), maxP=Math.max(...H), binSize=(maxP-minP)/40;
-    if(binSize>0){
-      const bins=new Array(40).fill(0);
-      for(let i=0;i<n;i++){ const b=Math.min(39,Math.floor((C[i]-minP)/binSize)); bins[b]+=(V[i]||0); }
-      for(let b=1;b<39;b++){
-        if(bins[b]>bins[b-1]&&bins[b]>bins[b+1]&&bins[b]>0){
-          const lp=minP+(b+0.5)*binSize;
-          candidates.push({price:lp, type:lp>price?'R':'S', vol:bins[b], strength:2});
-        }
+function getS1(t,p){
+  if(!p||p<=0) return 0;
+  // ลอง dynamic จาก candle data ก่อน
+  const data=candleCache[t]?.data;
+  if(data&&data.l&&data.l.length>=20&&!data._mock){
+    const lows=data.l;
+    const n=Math.min(60,lows.length);
+    const recentLows=lows.slice(-n);
+    const swingLows=[];
+    for(let i=2;i<recentLows.length-2;i++){
+      if(recentLows[i]<recentLows[i-1]&&recentLows[i]<recentLows[i-2]&&
+         recentLows[i]<recentLows[i+1]&&recentLows[i]<recentLows[i+2]){
+        swingLows.push(recentLows[i]);
       }
     }
+    const valid=swingLows.filter(v=>v<p*0.99&&v>p*0.85).sort((a,b)=>b-a);
+    if(valid.length>0) return +valid[0].toFixed(2);
+    const low20=Math.min(...lows.slice(-20));
+    if(low20<p*0.99&&low20>p*0.85) return +low20.toFixed(2);
   }
-
-  // ATR Clustering
-  const cluster=(pts)=>{
-    pts.sort((a,b)=>a.price-b.price);
-    const out=[];
-    for(const pt of pts){
-      const last=out[out.length-1];
-      if(last&&Math.abs(pt.price-last.price)<clusterR){
-        const tw=last.vol+pt.vol;
-        last.price=(last.price*last.vol+pt.price*pt.vol)/tw;
-        last.vol=tw; last.strength+=pt.strength;
-      } else { out.push({...pt}); }
-    }
-    return out;
-  };
-
-  const rPts=cluster(candidates.filter(c=>c.type==='R'&&c.price>price)).sort((a,b)=>b.strength-a.strength||a.price-b.price);
-  const sPts=cluster(candidates.filter(c=>c.type==='S'&&c.price<price)).sort((a,b)=>b.strength-a.strength||b.price-a.price);
-
-  const levels={
-    s: sPts.slice(0,3).map(p=>+p.price.toFixed(2)),
-    r: rPts.slice(0,3).map(p=>+p.price.toFixed(2))
-  };
-  _srCache[key]={levels, ts:Date.now()};
-  return levels;
+  // hardcode fallback
+  const hardcoded=sup0[t];
+  if(hardcoded&&hardcoded<p*0.99&&hardcoded>p*0.85) return hardcoded;
+  const pct=p>500?0.06:p>100?0.07:p>20?0.08:p>5?0.10:0.12;
+  return +(p*(1-pct)).toFixed(2);
 }
-
-function getS1(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.s[0]||+(p*0.93).toFixed(2); }
-function getS2(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.s[1]||+(p*0.87).toFixed(2); }
-function getS3(t,p){ const lvl=_getSRLevels(t,p,180); return lvl.s[2]||+(p*0.80).toFixed(2); }
-function getR1(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.r[0]||+(p*1.07).toFixed(2); }
-function getR2(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.r[1]||+(p*1.14).toFixed(2); }
-function getR3(t,p){ const lvl=_getSRLevels(t,p,180); return lvl.r[2]||+(p*1.22).toFixed(2); }
+function getS2(t,p){
+  // S2 = แนวรับที่ 2 อยู่ต่ำกว่า S1 ประมาณ 5-8%
+  if(!p||p<=0) return 0;
+  const s1=getS1(t,p);
+  const pct=p>500?0.05:p>100?0.06:p>20?0.07:p>5?0.09:0.11;
+  return +(s1*(1-pct)).toFixed(2);
+}
+function getR1(t,p){
+  if(!p||p<=0) return 0;
+  const s1=getS1(t,p);
+  const range=p-s1;
+  // FIX: cap R1 ไม่เกิน 15% จากราคาปัจจุบัน ป้องกัน R1 สูงเกินจริงเมื่อ S1 ห่างมาก
+  const maxR1Pct=p>500?0.10:p>100?0.12:p>20?0.14:0.15;
+  const r1Raw=p+range*1.5;
+  return +(Math.min(r1Raw, p*(1+maxR1Pct))).toFixed(2);
+}
+function getR2(t,p){
+  if(!p||p<=0) return 0;
+  const s1=getS1(t,p);
+  const range=p-s1;
+  // FIX: cap R2 ไม่เกิน 25% จากราคาปัจจุบัน
+  const maxR2Pct=p>500?0.18:p>100?0.20:p>20?0.23:0.25;
+  const r2Raw=p+range*3.0;
+  return +(Math.min(r2Raw, p*(1+maxR2Pct))).toFixed(2);
+}
 
 // ── Render Card ──
 function makeCard(s){
@@ -2930,15 +2695,7 @@ function makeCard(s){
         <div class="card-chg ${isUp?'up':'dn'}" id="chg-v2-${s.t}">${s.p>0?(isUp?'+':'')+((+s.c).toFixed(2))+'%':'--'}</div>
       </div>
     </div>
-    <div class="card-chart" onclick="event.stopPropagation()">
-      <div style="display:flex;gap:5px;padding:6px 10px 4px;background:#070d18">
-        <button class="tf-btn active" onclick="_cardSwitchTF(event,'${s.t}',this,30)" style="padding:2px 8px;font-size:9px">1M</button>
-        <button class="tf-btn" onclick="_cardSwitchTF(event,'${s.t}',this,90)" style="padding:2px 8px;font-size:9px">3M</button>
-        <button class="tf-btn" onclick="_cardSwitchTF(event,'${s.t}',this,180)" style="padding:2px 8px;font-size:9px">6M</button>
-        <button class="tf-btn" onclick="_cardSwitchTF(event,'${s.t}',this,365)" style="padding:2px 8px;font-size:9px">1Y</button>
-      </div>
-      <div class="card-chart-lw" id="card-lw-${safeId}"></div>
-    </div>
+    <div class="card-chart"><canvas class="spark" id="spark-${s.t}"></canvas></div>
     <div class="card-levels">
       <div class="levels-bar">
         <div class="levels-bar-fill ${isUp?'up-zone':'dn-zone'}" style="width:${pos}%"></div>
@@ -3177,48 +2934,46 @@ function getVisibleStocks(){
   return list;
 }
 
-// ── renderCards — chunk render ไม่ block UI ──
 function renderCards(){
-  const grid = document.getElementById('cardsGrid');
+  const grid=document.getElementById('cardsGrid');
   if(!grid) return;
-
-  grid.style.position = '';
-  grid.style.height = '';
-  grid.innerHTML = '';
-
-  const list = getVisibleStocks();
-
-  if(showWatchlistOnly && list.length === 0){
-    grid.innerHTML = '<div class="wl-empty"><div class="wl-empty-icon">⭐</div><div class="wl-empty-text">ยังไม่มีหุ้นใน Watchlist<br><br>กดปุ่ม ☆ บนการ์ดหุ้น<br>เพื่อเพิ่มเข้า Watchlist</div></div>';
+  grid.innerHTML='';
+  const list=getVisibleStocks();
+  // Empty state สำหรับ watchlist
+  if(showWatchlistOnly && list.length===0){
+    grid.innerHTML='<div class="wl-empty"><div class="wl-empty-icon">⭐</div><div class="wl-empty-text">ยังไม่มีหุ้นใน Watchlist<br><br>กดปุ่ม ☆ บนการ์ดหุ้น<br>เพื่อเพิ่มเข้า Watchlist</div></div>';
     return;
   }
-
-  const CHUNK = 6;
-  let i = 0;
+  // render ทีละ 10 ตัว ไม่ block UI
+  const CHUNK=10;
+  let i=0;
   function renderChunk(){
-    const end = Math.min(i + CHUNK, list.length);
-    const frag = document.createDocumentFragment();
-    const chunk = [];
-    for(; i < end; i++){
-      frag.appendChild(makeCard(list[i]));
-      chunk.push(list[i]);
+    const end=Math.min(i+CHUNK,list.length);
+    const fragment=document.createDocumentFragment(); // สร้างใหม่ทุก chunk
+    const chunkList=[];
+    for(;i<end;i++){
+      fragment.appendChild(makeCard(list[i]));
+      chunkList.push(list[i]);
     }
-    grid.appendChild(frag);
-    chunk.forEach(s => {
-      _loadLogoNow(s.t, 'logo-' + s.t.replace(/\./g,'-'), 44);
-      const container = document.getElementById('card-lw-' + s.t.replace(/\./g,'-'));
-      if(container){
-        const raw = candleCache[s.t]?.data;
-        const hasReal = raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
-        setTimeout(()=>_drawCardCandle(container, s, raw, hasReal), 50);
-      }
-    });
-    if(i < list.length) requestAnimationFrame(renderChunk);
+    grid.appendChild(fragment);
+    // โหลดโลโก้หลัง DOM append แล้ว — ใช้ chunkList ของ chunk นี้
+    chunkList.forEach(s=>_loadLogoNow(s.t,'logo-'+s.t.replace(/\./g,'-'),44));
+    if(i<list.length){
+      requestAnimationFrame(renderChunk);
+    } else {
+      // Draw sparklines หลัง render ครบ
+      setTimeout(()=>{
+        list.forEach(s=>{
+          const canvas=document.getElementById('spark-'+s.t);
+          if(canvas&&candleCache[s.t]?.data?.c){
+            drawSpark(canvas,candleCache[s.t].data.c.slice(-30),s.c>=0);
+          }
+        });
+      },50);
+    }
   }
   requestAnimationFrame(renderChunk);
 }
-
-function _vsRender(){} // compat stub
 
 // ── Fear & Greed Index ──
 let _fngCache=(()=>{try{const s=localStorage.getItem('_sp_fng_cache');if(s){const f=JSON.parse(s);if(f.ts&&Date.now()-f.ts<86400000)return f;}}catch{} return {value:null,ts:0};})();
@@ -3971,6 +3726,13 @@ function drawerTab(tab, btn){
     // ROC
     const rocTxt=sig?.roc!=null?`<span class="ind-val ${sig.roc>0?'bull':'bear'}">${sig.roc>0?'+':''}${sig.roc}%</span>`:'<span class="ind-val">--</span>';
     body.innerHTML=`
+      <div class="chart-timeframes">
+        <button class="tf-btn active" onclick="_switchTF(this,30)">1M</button>
+        <button class="tf-btn" onclick="_switchTF(this,90)">3M</button>
+        <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
+        <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
+      </div>
+      <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3992,6 +3754,11 @@ function drawerTab(tab, btn){
         <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
         <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">${s1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวรับ S2</span><span class="ind-val bear" style="opacity:0.75">${getS2(s.t,s.p).toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">${r1.toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">${getR2(s.t,s.p).toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
         <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
@@ -10390,40 +10157,6 @@ async function checkBuySignalFull(ticker,price){
   }
 }
 
-// ══════════════════════════════════════════════════════════
-//  ⚡ BACKGROUND SYNC — อัพเดทราคาแบบ silent ไม่กระตุก
-// ══════════════════════════════════════════════════════════
-const _bgSyncQueue = new Map(); // ticker → stock obj
-let _bgSyncRAF = null;
-
-function _bgSyncFlush(){
-  _bgSyncRAF = null;
-  for(const [ticker, s] of _bgSyncQueue.entries()){
-    // อัพเดทเฉพาะ element ที่มีอยู่ใน DOM จริง — ไม่ re-render card ทั้งใบ
-    const priceEl = document.getElementById(`price-v2-${ticker}`);
-    const chgEl   = document.getElementById(`chg-v2-${ticker}`);
-    if(!priceEl && !chgEl){ _bgSyncQueue.delete(ticker); continue; }
-    const chgNum = typeof s.c==='number' ? s.c : parseFloat(s.c)||0;
-    const prev = _prevPrices[ticker];
-    const dir  = prev!=null ? (s.p>prev?'up':s.p<prev?'dn':null) : null;
-    if(dir && priceEl) _triggerFlash(priceEl, dir);
-    _prevPrices[ticker] = s.p;
-    if(priceEl) priceEl.textContent = fmt(s.p);
-    if(chgEl){
-      chgEl.textContent = (chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
-      chgEl.className = 'card-chg '+(chgNum>=0?'up':'dn');
-    }
-    _bgSyncQueue.delete(ticker);
-  }
-}
-
-function _bgSyncPrice(s){
-  _bgSyncQueue.set(s.t, s);
-  if(!_bgSyncRAF){
-    _bgSyncRAF = requestAnimationFrame(_bgSyncFlush);
-  }
-}
-
 // ── Enhanced updateCardLive with buy signal check ──
 const _buyAlerted=new Set();
 function _isBuyAlerted(ticker){
@@ -10470,11 +10203,24 @@ function _queueSignalCheck(ticker){
 }
 
 function updateCardLive(s){
-  // ── Background sync: อัพเดท DOM ผ่าน RAF batch ไม่กระตุก ──
-  _bgSyncPrice(s);
+  const priceEl=document.getElementById(`price-v2-${s.t}`);
+  const chgEl=document.getElementById(`chg-v2-${s.t}`);
+  const chgNum=typeof s.c==='number'?s.c:parseFloat(s.c)||0;
+
+  // ── Flash เมื่อราคาเปลี่ยน ──
+  const prev=_prevPrices[s.t];
+  const dir=prev!=null?(s.p>prev?'up':s.p<prev?'dn':null):null;
+  if(dir&&priceEl) _triggerFlash(priceEl, dir);
+  _prevPrices[s.t]=s.p;
+
+  if(priceEl) priceEl.textContent=fmt(s.p);
+  if(chgEl){
+    chgEl.textContent=(chgNum>=0?'+':'')+chgNum.toFixed(2)+'%';
+    chgEl.className='card-chg '+(chgNum>=0?'up':'dn');
+  }
 
   // ── Portfolio in-place update (ไม่ re-render ทั้งหมด) ──
-  _updatePortfolioRow(s.t, s.p, typeof s.c==='number'?s.c:parseFloat(s.c)||0);
+  _updatePortfolioRow(s.t, s.p, chgNum);
 
   // Portfolio full re-render — throttle 5 วินาที (fallback)
   const portActive=document.getElementById('page-port')?.classList.contains('active');
