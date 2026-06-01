@@ -955,6 +955,15 @@ canvas.bigchart{width:100%;height:100%}
         </div>
         <div class="settings-row">
           <div style="width:100%">
+            <div class="settings-label">Tavily API Key <span style="font-size:10px;color:var(--gold)">(Elite Web Search · ฟรี 1000/เดือน)</span></div>
+            <div class="settings-sublabel"><a href="https://app.tavily.com" target="_blank" style="color:var(--gold);text-decoration:underline">app.tavily.com</a> → API Keys → tvly-...</div>
+            <input class="settings-input full" id="tavilyKeyInput" type="password" placeholder="tvly-...">
+            <div id="tavilyKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
+            <button class="settings-btn" style="margin-top:6px;background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)" onclick="testTavilyKey()">🧪 ทดสอบ</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div style="width:100%">
             <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--green)">(ฟรี)</span></div>
             <div class="settings-sublabel"><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--green);text-decoration:underline">aistudio.google.com</a> → Get API Key → AIza...</div>
             <input class="settings-input full" id="geminiKeyInput" type="password" placeholder="AIza...">
@@ -5599,6 +5608,10 @@ function loadSettings(){
     const gk=localStorage.getItem('groqKey')||'';
     const gkEl=document.getElementById('groqKeyInput');
     if(gkEl) gkEl.value=gk;
+    // โหลด Tavily key
+    const tvk=localStorage.getItem('tavilyKey')||'';
+    const tvkEl=document.getElementById('tavilyKeyInput');
+    if(tvkEl) tvkEl.value=tvk;
     // โหลด Gemini key (อาจซ้ำกับด้านบน — ใช้ค่าเดิม)
     const gmkEl2=document.getElementById('geminiKeyInput');
     if(gmkEl2) gmkEl2.value=localStorage.getItem('geminiKey')||'';
@@ -5666,6 +5679,12 @@ function saveSettings(){
     if(gk) localStorage.setItem('groqKey',gk);
     else localStorage.removeItem('groqKey');
   }catch{}
+  // บันทึก Tavily key
+  try{
+    const tvk=document.getElementById('tavilyKeyInput')?.value?.trim()||'';
+    if(tvk) localStorage.setItem('tavilyKey',tvk);
+    else localStorage.removeItem('tavilyKey');
+  }catch{}
   // บันทึก Gemini key
   try{
     const gmk=document.getElementById('geminiKeyInput')?.value?.trim()||'';
@@ -5692,6 +5711,20 @@ function saveSettings(){
   }catch{}
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
+}
+
+async function testTavilyKey(){
+  const statusEl=document.getElementById('tavilyKeyStatus');
+  const key=document.getElementById('tavilyKeyInput')?.value?.trim()||'';
+  if(!statusEl) return;
+  if(!key){ statusEl.style.display='block';statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ กรุณาใส่ Tavily Key ก่อน';return; }
+  statusEl.style.display='block';statusEl.style.background='rgba(255,255,255,0.05)';statusEl.style.border='1px solid rgba(255,255,255,0.1)';statusEl.style.color='var(--text2)';statusEl.textContent='⏳ กำลังทดสอบ...';
+  try{
+    const r=await fetch('https://api.tavily.com/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key,query:'test',max_results:1}),signal:AbortSignal.timeout(8000)});
+    if(r.ok){ localStorage.setItem('tavilyKey',key); statusEl.style.background='rgba(0,230,118,0.1)';statusEl.style.border='1px solid rgba(0,230,118,0.3)';statusEl.style.color='var(--green)';statusEl.textContent='✅ Tavily ใช้งานได้! (บันทึกแล้ว)'; }
+    else if(r.status===401||r.status===403){ statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ API Key ไม่ถูกต้อง'; }
+    else { statusEl.style.background='rgba(255,215,0,0.1)';statusEl.style.border='1px solid rgba(255,215,0,0.3)';statusEl.style.color='var(--yellow)';statusEl.textContent='⚠️ Tavily ตอบกลับ '+r.status; }
+  }catch(e){ statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ เชื่อมต่อล้มเหลว: '+e.message; }
 }
 
 async function testGroqKey(){
@@ -11246,66 +11279,128 @@ async function runEliteScan(forceRefresh=false){
   try{
     const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── ถ้ามี Anthropic Key → ใช้ Claude API (batch 4 คนต่อ request) ──
-    if(_ank){
+    // ── ถ้ามี Tavily Key → ใช้ Tavily Search + Groq วิเคราะห์ ──
+    const _tvk = localStorage.getItem('tavilyKey')||'';
+    const _grk = localStorage.getItem('groqKey')||'';
+
+    if(_tvk && _grk){
       if(overlay) overlay.innerHTML = `
         <div style="font-size:22px">🌍</div>
-        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังสแกน Elite...</div>
-        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">แบ่งค้น 3 รอบ · รอ ~30 วินาที</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">กำลังค้นข่าวจริง...</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">Tavily Search + Groq วิเคราะห์</div>
         <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
-      const today = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
-      const schema = '{"id":"trump","headline":"ข่าว","summary":"วิเคราะห์2ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"read_game":"กลยุทธ์","response":"การตอบสนอง"}';
-
-      const batches = [
-        ['trump','powell','jensen','musk'],
-        ['zuck','xi','putin','lagarde'],
-        ['opec','cook','nadella','altman']
+      const people = [
+        {id:'trump',q:'Donald Trump US policy economy 2025'},
+        {id:'powell',q:'Jerome Powell Fed interest rates 2025'},
+        {id:'jensen',q:'Jensen Huang NVIDIA AI earnings 2025'},
+        {id:'musk',q:'Elon Musk Tesla SpaceX xAI 2025'},
+        {id:'zuck',q:'Mark Zuckerberg Meta AI 2025'},
+        {id:'xi',q:'Xi Jinping China economy trade 2025'},
+        {id:'putin',q:'Vladimir Putin Russia economy oil 2025'},
+        {id:'lagarde',q:'Christine Lagarde ECB rates Europe 2025'},
+        {id:'opec',q:'OPEC oil production price 2025'},
+        {id:'cook',q:'Tim Cook Apple earnings iPhone 2025'},
+        {id:'nadella',q:'Satya Nadella Microsoft AI Azure 2025'},
+        {id:'altman',q:'Sam Altman OpenAI GPT 2025'},
       ];
 
-      async function callClaude(ids){
-        const r = await fetch('https://api.anthropic.com/v1/messages',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({
-            model:'claude-haiku-4-5-20251001',
-            max_tokens:1500,
-            tools:[{type:'web_search_20250305',name:'web_search',max_uses:2}],
-            system:'Financial news JSON API. Search latest news. Output ONLY raw JSON array. No markdown. Thai text except tickers.',
-            messages:[{role:'user',content:`${today}: ค้นหาข่าวล่าสุดของ ${ids.join(', ')} แล้วตอบ JSON array เสมอ ห้ามตอบ [] ต้องมีอย่างน้อย 1 รายการต่อคน impact ตั้งแต่ 1-10 schema: [${schema}]`}]
-          }),
-          signal: AbortSignal.timeout(45000)
-        });
-        if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||r.status); }
-        const d = await r.json();
-        const txt = (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-        const m = txt.match(/\[[\s\S]*\]/);
-        if(!m) return [];
-        try{ return JSON.parse(m[0]); }catch{ return []; }
-      }
+      // ค้น Tavily ทีละ 4 คน (3 batch)
+      const batches = [people.slice(0,4), people.slice(4,8), people.slice(8,12)];
+      let newsContext = '';
+      const today = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
 
-      let allRaw = [];
       for(let i=0;i<batches.length;i++){
         if(overlay){
-          const dots = ['🔍','🌐','📡'][i];
-          overlay.querySelector('div:nth-child(2)').textContent = `${dots} สแกนรอบที่ ${i+1}/3...`;
+          const lbl = ['🔍 Trump · Powell · Jensen · Musk','🌐 Zuck · Xi · Putin · Lagarde','📡 OPEC · Cook · Nadella · Altman'][i];
+          const d2 = overlay.querySelector('div:nth-child(2)'); if(d2) d2.textContent = lbl;
         }
-        try{
-          const r = await callClaude(batches[i]);
-          allRaw = allRaw.concat(r);
-        }catch(e){ console.log('batch',i,'error:',e.message); }
-        if(i<2) await new Promise(res=>setTimeout(res,3000)); // หน่วง 3s ระหว่าง batch
+        for(const p of batches[i]){
+          try{
+            const tr = await fetch('https://api.tavily.com/search',{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({api_key:_tvk, query:p.q, search_depth:'basic', max_results:2, include_answer:true}),
+              signal:AbortSignal.timeout(10000)
+            });
+            if(tr.ok){
+              const td = await tr.json();
+              const snippet = (td.answer||'') + ' ' + (td.results||[]).map(r=>r.title+': '+r.content?.slice(0,150)).join(' | ');
+              newsContext += `
+[${p.id}]: ${snippet.slice(0,400)}`;
+            }
+          }catch(e){ console.log('[ELITE] tavily',p.id,'error:',e.message); }
+        }
+        if(i<2) await new Promise(res=>setTimeout(res,500));
       }
 
+      if(overlay){
+        const d2 = overlay.querySelector('div:nth-child(2)'); if(d2) d2.textContent = '🤖 Groq กำลังวิเคราะห์...';
+      }
+
+      // ส่งให้ Groq วิเคราะห์
+      const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_grk},
+        body:JSON.stringify({
+          model:'moonshotai/kimi-k2-instruct',
+          max_tokens:3000,
+          temperature:0.3,
+          messages:[
+            {role:'system',content:'You are a financial news JSON API. Output ONLY a raw JSON array. Start with [ end with ]. No prose, no markdown. All text fields in Thai except tickers.'},
+            {role:'user',content:`วันนี้ ${today} จากข่าวด้านล่าง วิเคราะห์และตอบ JSON array:
+${newsContext}
+
+Schema แต่ละรายการ: {"id":"trump","headline":"ข่าวสำคัญ","summary":"วิเคราะห์ 2-3 ประโยค","impact":8,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์เบื้องหลัง","response":"การตอบสนองที่คาดการณ์"}`}
+          ]
+        }),
+        signal:AbortSignal.timeout(30000)
+      });
+
+      if(!groqResp.ok){ const e=await groqResp.json().catch(()=>({})); throw new Error('Groq: '+(e.error?.message||groqResp.status)); }
+      const groqData = await groqResp.json();
+      const rawText = groqData.choices?.[0]?.message?.content||'';
+      const match = rawText.match(/\[[\s\S]*\]/);
+      if(!match) throw new Error('Groq ไม่คืน JSON');
+
+      let allRaw = [];
+      try{ allRaw = JSON.parse(match[0]); if(!Array.isArray(allRaw)) allRaw=[]; }catch{ allRaw=[]; }
+
       const results = allRaw
-        .filter(item=>item&&item.id&&item.impact>=1)
+        .filter(item=>item&&item.id)
         .map(item=>{ const person=ELITE_PEOPLE.find(p=>p.id===item.id); return person?{person,news:item}:null; })
         .filter(Boolean)
         .sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
 
       _eliteScanResults = results;
-      if(results.length > 0) saveEliteCache(results);
+      if(results.length>0) saveEliteCache(results);
       renderEliteScanResults(results, 0);
+
+    } else if(_ank){
+      // ── Fallback: Claude API (no web search) ──
+      if(overlay) overlay.innerHTML = `
+        <div style="font-size:22px">🤖</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังวิเคราะห์...</div>
+        <div style="font-size:11px;color:var(--text3)">ใส่ Tavily+Groq Key เพื่อข่าวจริง</div>
+        <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+      const today2 = new Date().toLocaleDateString('th-TH',{month:'long',day:'numeric',year:'numeric'});
+      const prompt2 = `${today2}: วิเคราะห์สถานการณ์ล่าสุดของ Trump, Powell/Fed, Jensen/NVIDIA, Musk/Tesla, Zuck/Meta, Xi/China, Putin, Lagarde/ECB, OPEC, Cook/Apple, Nadella/MSFT, Altman/OpenAI ตอบ JSON array ทุกคน: [{"id":"trump","headline":"ข่าว","summary":"วิเคราะห์","impact":7,"pros":["ผลดี"],"cons":["ผลเสีย"],"why":"บริบท","watch":"จับตา","tags":["US"],"markets":["USD"],"stocks_buy":["JPM"],"stocks_watch":["GS"],"affected_stocks":[{"ticker":"SPY","direction":"up","reason":"เหตุผล"}],"read_game":"กลยุทธ์","response":"การตอบสนอง"}]`;
+      const apiResp2 = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,system:'Financial JSON API. Output ONLY raw JSON array. Thai text except tickers.',messages:[{role:'user',content:prompt2}]}),
+        signal:AbortSignal.timeout(30000)
+      });
+      if(!apiResp2.ok){ const e=await apiResp2.json().catch(()=>({})); throw new Error('Claude: '+(e.error?.message||apiResp2.status)); }
+      const apiData2 = await apiResp2.json();
+      const txt2 = (apiData2.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      const m2 = txt2.match(/\[[\s\S]*\]/);
+      if(!m2) throw new Error('Claude ไม่คืน JSON');
+      let raw2=[]; try{ raw2=JSON.parse(m2[0]); if(!Array.isArray(raw2)) raw2=[]; }catch{ raw2=[]; }
+      const results2 = raw2.filter(i=>i&&i.id).map(item=>{ const p=ELITE_PEOPLE.find(p=>p.id===item.id); return p?{person:p,news:item}:null; }).filter(Boolean).sort((a,b)=>(b.news.impact||0)-(a.news.impact||0));
+      _eliteScanResults = results2;
+      if(results2.length>0) saveEliteCache(results2);
+      renderEliteScanResults(results2, 0);
 
     } else {
       // ── Fallback: เรียก Elite Worker ──
@@ -11499,7 +11594,14 @@ function renderEliteScanResults(results, ageMs=0){
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">👁 สิ่งที่ควรจับตา</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.watch}</div>
         </div>` : ''}
-        <div style="font-size:9px;color:var(--text3);opacity:0.6">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
+        <!-- Feedback -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+          <div style="font-size:9px;color:var(--text3);opacity:0.6">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น</div>
+          <div style="display:flex;gap:6px;align-items:center" id="feedback-${p.id}">
+            <button onclick="eliteFeedback('${p.id}','up',this)" style="background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:20px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--green);transition:all 0.2s" data-type="up">👍</button>
+            <button onclick="eliteFeedback('${p.id}','down',this)" style="background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);border-radius:20px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--red);transition:all 0.2s" data-type="down">👎</button>
+          </div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -11902,6 +12004,34 @@ let _eliteSeenHeadlines = new Set(JSON.parse(_lsGet('_elite_seen')||'[]'));
 
 function saveSeenHeadlines(){
   try{ _lsSet('_elite_seen', JSON.stringify([..._eliteSeenHeadlines].slice(-100))); }catch{}
+}
+
+function eliteFeedback(id, type, btn){
+  // บันทึก feedback
+  const key = '_elite_fb_'+id;
+  const prev = localStorage.getItem(key);
+  if(prev === type){
+    // ยกเลิก
+    localStorage.removeItem(key);
+    const wrap = document.getElementById('feedback-'+id);
+    if(wrap) wrap.querySelectorAll('button').forEach(b=>{ b.style.opacity='1'; b.style.transform='scale(1)'; });
+    return;
+  }
+  localStorage.setItem(key, type);
+  // อัพเดต UI
+  const wrap = document.getElementById('feedback-'+id);
+  if(wrap){
+    wrap.querySelectorAll('button').forEach(b=>{
+      const t = b.getAttribute('data-type');
+      b.style.opacity = t===type ? '1' : '0.35';
+      b.style.transform = t===type ? 'scale(1.15)' : 'scale(1)';
+      if(t===type){
+        b.style.background = type==='up' ? 'rgba(0,230,118,0.2)' : 'rgba(255,77,106,0.2)';
+        b.style.borderColor = type==='up' ? 'rgba(0,230,118,0.5)' : 'rgba(255,77,106,0.5)';
+      }
+    });
+  }
+  toast(type==='up' ? '👍 ขอบคุณ! ข่าวนี้มีประโยชน์' : '👎 รับทราบ จะพัฒนาต่อไป');
 }
 
 async function eliteBackgroundScan(){
