@@ -11343,7 +11343,7 @@ async function runEliteScan(forceRefresh=false){
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+_grk},
         body:JSON.stringify({
-          model:'moonshotai/kimi-k2-instruct',
+          model:'llama-3.3-70b-versatile',
           max_tokens:3000,
           temperature:0.3,
           messages:[
