@@ -11366,15 +11366,17 @@ function initElitePage(){
 // ── Elite: Tavily ค้นข่าว + Claude วิเคราะห์ ──
 async function _eliteDirectFallback(overlay){
   const tavilyKey = localStorage.getItem('tavilyKey')||'';
+  const gnewsKey2 = localStorage.getItem('gnewsKey') || _GNEWS_KEY || '';
   const _ank = localStorage.getItem('anthropicKey')||'';
-  if(!tavilyKey && !_ank){
-    toast('⚠️ ใส่ Tavily หรือ Claude API Key ใน Settings เพื่อใช้งาน Elite');
+  if(!gnewsKey2 && !tavilyKey && !_ank){
+    toast('⚠️ ใส่ Claude API Key ใน Settings เพื่อใช้งาน Elite');
     return [];
   }
+  const newsSource = gnewsKey2 ? 'GNews' : tavilyKey ? 'Tavily' : 'Claude';
   if(overlay) overlay.innerHTML = `
-    <div style="font-size:22px">🔍</div>
-    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Tavily กำลังค้นข่าวจริง...</div>
-    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ค้นหาข่าวล่าสุด 24 ชม.</div>
+    <div style="font-size:22px">📰</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${newsSource} กำลังค้นข่าวจริง...</div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ข่าวล่าสุด 24 ชม. · ${topPeople.slice(0,6).length} คน</div>
     <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
   // Step 1: Tavily ค้นข่าวแต่ละคน
@@ -11384,7 +11386,32 @@ async function _eliteDirectFallback(overlay){
 
   let allNews = [];
 
-  if(tavilyKey){
+  // ── GNews ดึงข่าวแต่ละคน ──
+  const gnewsKey = localStorage.getItem('gnewsKey') || _GNEWS_KEY || '';
+  if(gnewsKey){
+    const searches = topPeople.slice(0,6).map(function(person){
+      const q = encodeURIComponent('"' + person.name + '"');
+      return fetch('https://gnews.io/api/v4/search?q='+q+'&lang=en&max=2&sortby=publishedAt&apikey='+gnewsKey, {
+        signal: AbortSignal.timeout(12000)
+      }).then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(data){
+          if(!data || !data.articles || !data.articles.length) return null;
+          const top = data.articles[0];
+          return {
+            id: person.id,
+            person: person,
+            headline: top.title || '',
+            summary: top.description ? top.description.slice(0,400) : (top.content||'').slice(0,400),
+            url: top.url || ''
+          };
+        }).catch(function(){ return null; });
+    });
+
+    const searchResults = await Promise.allSettled(searches);
+    allNews = searchResults
+      .filter(function(r){ return r.status==='fulfilled' && r.value; })
+      .map(function(r){ return r.value; });
+  } else if(tavilyKey){
     const searches = topPeople.slice(0,6).map(function(person){
       return fetch('https://api.tavily.com/search',{
         method:'POST',
@@ -11554,11 +11581,8 @@ async function _eliteEnrichResults(results, overlay){
   const _ank = localStorage.getItem('anthropicKey')||'';
   const needsEnrich = results.filter(function(r){return !r.news.pros||!r.news.pros.length;});
   if(!_ank || !needsEnrich.length) return results;
-  if(overlay) overlay.innerHTML = `
-    <div style="font-size:22px">🤖</div>
-    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude วิเคราะห์ข้อมูลเพิ่ม...</div>
-    <div style="font-size:11px;color:var(--text3)">pros · cons · อ่านเกม</div>
-    <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
+  // แสดง toast แทน overlay (ไม่บังข่าว)
+  toast('🤖 Claude กำลังวิเคราะห์เพิ่ม...', 3000);
   try{
     const newsItems = needsEnrich.map(function(r){
       return r.person.name+'('+r.person.id+'): '+r.news.headline+' — '+(r.news.summary||'');
@@ -11696,8 +11720,14 @@ async function runEliteScan(forceRefresh=false){
         console.warn('[ELITE] Worker returned empty, trying fallback...');
         results = await _eliteDirectFallback(overlay);
       } else {
-        // Enrich ข้อมูลที่ขาด pros/cons/why จาก Claude
-        results = await _eliteEnrichResults(results, overlay);
+        // Render ข้อมูล Worker ก่อนเลย (เร็ว)
+        _eliteScanResults = results;
+        renderEliteScanResults(results, 0);
+        // แล้วค่อย Enrich เพิ่ม pros/cons แบบ async
+        const enriched = await _eliteEnrichResults(results, null);
+        if(enriched && enriched.length){
+          results = enriched;
+        }
       }
     }
 
