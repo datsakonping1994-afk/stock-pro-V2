@@ -11389,29 +11389,35 @@ async function _eliteDirectFallback(overlay){
   // ── GNews ดึงข่าวแต่ละคน ──
   const gnewsKey = localStorage.getItem('gnewsKey') || _GNEWS_KEY || '';
   if(gnewsKey){
-    const searches = topPeople.slice(0,6).map(function(person){
-      const q = encodeURIComponent('"' + person.name + '"');
-      return fetch('https://gnews.io/api/v4/search?q='+q+'&lang=en&max=2&sortby=publishedAt&apikey='+gnewsKey, {
-        signal: AbortSignal.timeout(12000)
-      }).then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(data){
+    try{
+      const searches = topPeople.slice(0,6).map(function(person){
+        const q = encodeURIComponent('"' + person.name + '"');
+        return fetch('https://gnews.io/api/v4/search?q='+q+'&lang=en&max=2&sortby=publishedAt&apikey='+gnewsKey, {
+          signal: AbortSignal.timeout(12000)
+        }).then(function(r){
+          if(!r.ok){ console.warn('[GNews] '+person.name+' status:'+r.status); return null; }
+          return r.json();
+        }).then(function(data){
           if(!data || !data.articles || !data.articles.length) return null;
           const top = data.articles[0];
           return {
-            id: person.id,
-            person: person,
+            id: person.id, person: person,
             headline: top.title || '',
             summary: top.description ? top.description.slice(0,400) : (top.content||'').slice(0,400),
             url: top.url || ''
           };
-        }).catch(function(){ return null; });
-    });
+        }).catch(function(e){ console.warn('[GNews]',e.message); return null; });
+      });
+      const searchResults = await Promise.allSettled(searches);
+      allNews = searchResults
+        .filter(function(r){ return r.status==='fulfilled' && r.value; })
+        .map(function(r){ return r.value; });
+      if(allNews.length) console.log('[GNews] got', allNews.length, 'articles');
+      else console.warn('[GNews] all searches failed, trying fallback');
+    }catch(e){ console.warn('[GNews error]', e.message); }
+  }
 
-    const searchResults = await Promise.allSettled(searches);
-    allNews = searchResults
-      .filter(function(r){ return r.status==='fulfilled' && r.value; })
-      .map(function(r){ return r.value; });
-  } else if(tavilyKey){
+  if(!allNews.length && tavilyKey){
     const searches = topPeople.slice(0,6).map(function(person){
       return fetch('https://api.tavily.com/search',{
         method:'POST',
@@ -11720,13 +11726,21 @@ async function runEliteScan(forceRefresh=false){
         console.warn('[ELITE] Worker returned empty, trying fallback...');
         results = await _eliteDirectFallback(overlay);
       } else {
-        // Render ข้อมูล Worker ก่อนเลย (เร็ว)
-        _eliteScanResults = results;
-        renderEliteScanResults(results, 0);
-        // แล้วค่อย Enrich เพิ่ม pros/cons แบบ async
-        const enriched = await _eliteEnrichResults(results, null);
-        if(enriched && enriched.length){
-          results = enriched;
+        // เช็คว่า Worker ส่งข้อมูลจริงหรือเปล่า
+        const hasRealNews = results.some(function(r){ return r.news && r.news.headline && r.news.headline.length > 5; });
+        if(!hasRealNews){
+          // Worker ส่ง empty/garbage → ใช้ fallback แทน
+          console.warn('[ELITE] Worker data empty/invalid, using fallback...');
+          results = await _eliteDirectFallback(overlay);
+        } else {
+          // Render ข้อมูล Worker ก่อนเลย (เร็ว)
+          _eliteScanResults = results;
+          renderEliteScanResults(results, 0);
+          // แล้วค่อย Enrich เพิ่ม pros/cons แบบ async
+          const enriched = await _eliteEnrichResults(results, null);
+          if(enriched && enriched.length){
+            results = enriched;
+          }
         }
       }
     }
