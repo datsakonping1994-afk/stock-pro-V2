@@ -2771,80 +2771,7 @@ function _drawCardCandleDays(container,s,raw,hasReal,days){
   const cs=chart.addCandlestickSeries({upColor,downColor:dnColor,borderUpColor:upColor,borderDownColor:dnColor,wickUpColor:'rgba(0,230,118,0.5)',wickDownColor:'rgba(255,77,106,0.5)',priceLineVisible:false,lastValueVisible:false});
   cs.setData(candleData);
 
-  // ── S/R คำนวณแม่นยำ: Volume Profile + Swing Cluster + ATR filter ──
-  const _calcSRAccurate=(data, n, price)=>{
-    if(!data||!data.h||!data.l||!data.c||data._mock||data.c.length<10) return null;
-    const len=Math.min(data.c.length, n);
-    const H=data.h.slice(-len), L=data.l.slice(-len), C=data.c.slice(-len);
-    const V=data.v ? data.v.slice(-len) : null;
-
-    // 1. ATR(14) เพื่อกำหนด cluster radius
-    let atrSum=0;
-    for(let i=1;i<Math.min(15,len);i++) atrSum+=Math.max(H[i]-L[i], Math.abs(H[i]-C[i-1]), Math.abs(L[i]-C[i-1]));
-    const atr=atrSum/14 || price*0.02;
-    const clusterR=atr*0.5;
-
-    // 2. หา swing points (lookback 3 แท่ง ให้แม่นขึ้น)
-    const candidates=[];
-    for(let i=3;i<len-3;i++){
-      // Swing High
-      if(H[i]>H[i-1]&&H[i]>H[i-2]&&H[i]>H[i-3]&&H[i]>H[i+1]&&H[i]>H[i+2]&&H[i]>H[i+3]){
-        const vol=V?V[i]:1;
-        candidates.push({price:H[i], type:'R', strength:1, vol});
-      }
-      // Swing Low
-      if(L[i]<L[i-1]&&L[i]<L[i-2]&&L[i]<L[i-3]&&L[i]<L[i+1]&&L[i]<L[i+2]&&L[i]<L[i+3]){
-        const vol=V?V[i]:1;
-        candidates.push({price:L[i], type:'S', strength:1, vol});
-      }
-    }
-
-    // 3. Volume Profile — หา price levels ที่มี volume สูง (แบ่ง 40 bins)
-    if(V){
-      const minP=Math.min(...L), maxP=Math.max(...H);
-      const binSize=(maxP-minP)/40;
-      if(binSize>0){
-        const bins=new Array(40).fill(0);
-        for(let i=0;i<len;i++){
-          const binIdx=Math.min(39, Math.floor((C[i]-minP)/binSize));
-          bins[binIdx]+=(V[i]||0);
-        }
-        // หา local max ใน volume profile
-        for(let b=1;b<39;b++){
-          if(bins[b]>bins[b-1]&&bins[b]>bins[b+1]&&bins[b]>0){
-            const lvlPrice=minP+(b+0.5)*binSize;
-            candidates.push({price:lvlPrice, type:lvlPrice>price?'R':'S', strength:2, vol:bins[b]});
-          }
-        }
-      }
-    }
-
-    // 4. ATR Clustering — รวม levels ที่อยู่ใกล้กัน
-    const cluster=(pts)=>{
-      pts.sort((a,b)=>a.price-b.price);
-      const clusters=[];
-      for(const pt of pts){
-        const last=clusters[clusters.length-1];
-        if(last&&Math.abs(pt.price-last.price)<clusterR){
-          // merge — weighted average by volume
-          const tw=last.vol+pt.vol;
-          last.price=(last.price*last.vol+pt.price*pt.vol)/tw;
-          last.vol=tw;
-          last.strength+=pt.strength;
-        } else {
-          clusters.push({...pt});
-        }
-      }
-      return clusters;
-    };
-
-    const rPts=cluster(candidates.filter(c=>c.type==='R'&&c.price>price)).sort((a,b)=>b.strength-a.strength||a.price-b.price);
-    const sPts=cluster(candidates.filter(c=>c.type==='S'&&c.price<price)).sort((a,b)=>b.strength-a.strength||b.price-a.price);
-
-    return { r: rPts.slice(0,3).map(p=>+p.price.toFixed(2)), s: sPts.slice(0,3).map(p=>+p.price.toFixed(2)) };
-  };
-
-  const lvls = hasReal ? _calcSRAccurate(raw, days, s.p) : null;
+  const lvls = _getSRLevels(s.t, s.p, days);
   const rColor='rgba(0,230,118,0.85)', sColor='rgba(255,77,106,0.85)';
   const rColor2='rgba(0,230,118,0.5)', sColor2='rgba(255,77,106,0.5)';
   const rColor3='rgba(0,230,118,0.3)', sColor3='rgba(255,77,106,0.3)';
@@ -2856,10 +2783,6 @@ function _drawCardCandleDays(container,s,raw,hasReal,days){
     if(lvls.s[0]) cs.createPriceLine({price:lvls.s[0],color:sColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
     if(days>=90&&lvls.s[1]) cs.createPriceLine({price:lvls.s[1],color:sColor2,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S2'});
     if(days>=180&&lvls.s[2]) cs.createPriceLine({price:lvls.s[2],color:sColor3,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S3'});
-  } else {
-    const s1=getS1(s.t,s.p),r1=getR1(s.t,s.p);
-    if(s1>0) cs.createPriceLine({price:s1,color:sColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'S1'});
-    if(r1>0) cs.createPriceLine({price:r1,color:rColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'R1'});
   }
   cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.8)',lineWidth:1,lineStyle:0,axisLabelVisible:false,title:''});
   if(hasReal&&raw.v&&raw.v.length){try{const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.82,bottom:0},lastValueVisible:false,priceLineVisible:false});const vs=raw.v.slice(-Math.min(raw.c.length,days));volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.12)':'rgba(255,77,106,0.12)'})));}catch{}}
@@ -2881,57 +2804,91 @@ function _redrawCardChart(ticker){
 }
 
 // ── Levels (simplified pivot) ──
-function getS1(t,p){
-  if(!p||p<=0) return 0;
-  // ลอง dynamic จาก candle data ก่อน
-  const data=candleCache[t]?.data;
-  if(data&&data.l&&data.l.length>=20&&!data._mock){
-    const lows=data.l;
-    const n=Math.min(60,lows.length);
-    const recentLows=lows.slice(-n);
-    const swingLows=[];
-    for(let i=2;i<recentLows.length-2;i++){
-      if(recentLows[i]<recentLows[i-1]&&recentLows[i]<recentLows[i-2]&&
-         recentLows[i]<recentLows[i+1]&&recentLows[i]<recentLows[i+2]){
-        swingLows.push(recentLows[i]);
+// ── S/R Level Cache (ใช้ร่วมกันทุกที่) ──
+const _srCache = {};
+
+function _getSRLevels(ticker, price, days=60){
+  const key = `${ticker}_${days}`;
+  const cached = _srCache[key];
+  // cache 5 นาที
+  if(cached && Date.now()-cached.ts < 300000) return cached.levels;
+
+  const data = candleCache[ticker]?.data;
+  if(!data||!data.h||!data.l||!data.c||data._mock||data.c.length<10){
+    // fallback เดิม
+    const pct=price>500?0.06:price>100?0.07:price>20?0.08:price>5?0.10:0.12;
+    const s1=+(price*(1-pct)).toFixed(2);
+    const levels={s:[s1, +(s1*(1-pct*0.8)).toFixed(2), +(s1*(1-pct*1.6)).toFixed(2)], r:[+(price*(1+pct*1.2)).toFixed(2), +(price*(1+pct*2.0)).toFixed(2), +(price*(1+pct*3.0)).toFixed(2)]};
+    _srCache[key]={levels, ts:Date.now()};
+    return levels;
+  }
+
+  const n = Math.min(data.c.length, days);
+  const H=data.h.slice(-n), L=data.l.slice(-n), C=data.c.slice(-n);
+  const V=data.v ? data.v.slice(-n) : null;
+
+  // ATR(14)
+  let atrSum=0;
+  for(let i=1;i<Math.min(15,n);i++) atrSum+=Math.max(H[i]-L[i],Math.abs(H[i]-C[i-1]),Math.abs(L[i]-C[i-1]));
+  const atr=(atrSum/14)||price*0.02;
+  const clusterR=atr*0.5;
+
+  // Swing points (lookback 3)
+  const candidates=[];
+  for(let i=3;i<n-3;i++){
+    if(H[i]>H[i-1]&&H[i]>H[i-2]&&H[i]>H[i-3]&&H[i]>H[i+1]&&H[i]>H[i+2]&&H[i]>H[i+3])
+      candidates.push({price:H[i], type:'R', vol:V?V[i]:1, strength:1});
+    if(L[i]<L[i-1]&&L[i]<L[i-2]&&L[i]<L[i-3]&&L[i]<L[i+1]&&L[i]<L[i+2]&&L[i]<L[i+3])
+      candidates.push({price:L[i], type:'S', vol:V?V[i]:1, strength:1});
+  }
+
+  // Volume Profile (40 bins)
+  if(V){
+    const minP=Math.min(...L), maxP=Math.max(...H), binSize=(maxP-minP)/40;
+    if(binSize>0){
+      const bins=new Array(40).fill(0);
+      for(let i=0;i<n;i++){ const b=Math.min(39,Math.floor((C[i]-minP)/binSize)); bins[b]+=(V[i]||0); }
+      for(let b=1;b<39;b++){
+        if(bins[b]>bins[b-1]&&bins[b]>bins[b+1]&&bins[b]>0){
+          const lp=minP+(b+0.5)*binSize;
+          candidates.push({price:lp, type:lp>price?'R':'S', vol:bins[b], strength:2});
+        }
       }
     }
-    const valid=swingLows.filter(v=>v<p*0.99&&v>p*0.85).sort((a,b)=>b-a);
-    if(valid.length>0) return +valid[0].toFixed(2);
-    const low20=Math.min(...lows.slice(-20));
-    if(low20<p*0.99&&low20>p*0.85) return +low20.toFixed(2);
   }
-  // hardcode fallback
-  const hardcoded=sup0[t];
-  if(hardcoded&&hardcoded<p*0.99&&hardcoded>p*0.85) return hardcoded;
-  const pct=p>500?0.06:p>100?0.07:p>20?0.08:p>5?0.10:0.12;
-  return +(p*(1-pct)).toFixed(2);
+
+  // ATR Clustering
+  const cluster=(pts)=>{
+    pts.sort((a,b)=>a.price-b.price);
+    const out=[];
+    for(const pt of pts){
+      const last=out[out.length-1];
+      if(last&&Math.abs(pt.price-last.price)<clusterR){
+        const tw=last.vol+pt.vol;
+        last.price=(last.price*last.vol+pt.price*pt.vol)/tw;
+        last.vol=tw; last.strength+=pt.strength;
+      } else { out.push({...pt}); }
+    }
+    return out;
+  };
+
+  const rPts=cluster(candidates.filter(c=>c.type==='R'&&c.price>price)).sort((a,b)=>b.strength-a.strength||a.price-b.price);
+  const sPts=cluster(candidates.filter(c=>c.type==='S'&&c.price<price)).sort((a,b)=>b.strength-a.strength||b.price-a.price);
+
+  const levels={
+    s: sPts.slice(0,3).map(p=>+p.price.toFixed(2)),
+    r: rPts.slice(0,3).map(p=>+p.price.toFixed(2))
+  };
+  _srCache[key]={levels, ts:Date.now()};
+  return levels;
 }
-function getS2(t,p){
-  // S2 = แนวรับที่ 2 อยู่ต่ำกว่า S1 ประมาณ 5-8%
-  if(!p||p<=0) return 0;
-  const s1=getS1(t,p);
-  const pct=p>500?0.05:p>100?0.06:p>20?0.07:p>5?0.09:0.11;
-  return +(s1*(1-pct)).toFixed(2);
-}
-function getR1(t,p){
-  if(!p||p<=0) return 0;
-  const s1=getS1(t,p);
-  const range=p-s1;
-  // FIX: cap R1 ไม่เกิน 15% จากราคาปัจจุบัน ป้องกัน R1 สูงเกินจริงเมื่อ S1 ห่างมาก
-  const maxR1Pct=p>500?0.10:p>100?0.12:p>20?0.14:0.15;
-  const r1Raw=p+range*1.5;
-  return +(Math.min(r1Raw, p*(1+maxR1Pct))).toFixed(2);
-}
-function getR2(t,p){
-  if(!p||p<=0) return 0;
-  const s1=getS1(t,p);
-  const range=p-s1;
-  // FIX: cap R2 ไม่เกิน 25% จากราคาปัจจุบัน
-  const maxR2Pct=p>500?0.18:p>100?0.20:p>20?0.23:0.25;
-  const r2Raw=p+range*3.0;
-  return +(Math.min(r2Raw, p*(1+maxR2Pct))).toFixed(2);
-}
+
+function getS1(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.s[0]||+(p*0.93).toFixed(2); }
+function getS2(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.s[1]||+(p*0.87).toFixed(2); }
+function getS3(t,p){ const lvl=_getSRLevels(t,p,180); return lvl.s[2]||+(p*0.80).toFixed(2); }
+function getR1(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.r[0]||+(p*1.07).toFixed(2); }
+function getR2(t,p){ const lvl=_getSRLevels(t,p,60); return lvl.r[1]||+(p*1.14).toFixed(2); }
+function getR3(t,p){ const lvl=_getSRLevels(t,p,180); return lvl.r[2]||+(p*1.22).toFixed(2); }
 
 // ── Render Card ──
 function makeCard(s){
