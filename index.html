@@ -11909,6 +11909,10 @@ async function runEliteScan(forceRefresh=false){
           const enriched = await _eliteEnrichResults(results, null, true);
           if(enriched && enriched.length){
             results = enriched;
+            // Re-render ทันทีหลัง enrich เสร็จ
+            _eliteScanResults = results;
+            saveEliteCache(results);
+            renderEliteScanResults(results, 0);
           }
         }
       }
