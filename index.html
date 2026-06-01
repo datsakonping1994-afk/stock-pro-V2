@@ -11380,9 +11380,12 @@ async function _eliteDirectFallback(overlay){
   try{
     const topPeople = ELITE_PEOPLE.slice(0,12);
     const nameList = topPeople.map(p=>p.name+'('+p.id+')').join(', ');
-    const prompt = 'ค้นหาข่าวสำคัญ 24 ชั่วโมงที่ผ่านมาของบุคคลต่อไปนี้: '+nameList+'\nตอบ JSON array เท่านั้น ไม่มี markdown:\n[{"id":"trump","headline":"หัวข้อข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"negative","markets":["USD"]}]\nถ้าไม่มีข่าวสำคัญของคนนั้นให้ข้ามไป';
+    const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+    const sysPrompt = 'You are a financial news analyst. Respond ONLY with a valid JSON array, no markdown, no explanation.';
+    const userPrompt = 'Today is '+today+'. Search and find important market-moving news from the last 24 hours for these people: '+nameList+'\nReturn ONLY a JSON array:\n[{"id":"trump","headline":"Brief news headline in Thai","summary":"2-sentence Thai summary","impact":8,"sentiment":"negative","markets":["USD","Oil"]}]\nOnly include people with actual significant news. Skip if no major news.';
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    // Step 1: call with web_search tool
+    const resp1 = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -11392,17 +11395,67 @@ async function _eliteDirectFallback(overlay){
       },
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
-        max_tokens:2000,
+        max_tokens:4000,
+        system: sysPrompt,
         tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:prompt}]
+        messages:[{role:'user',content:userPrompt}]
       })
     });
 
-    if(!resp.ok) throw new Error('Claude API '+resp.status);
-    const data = await resp.json();
-    const text = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    if(!resp1.ok) throw new Error('Claude API '+resp1.status);
+    const data1 = await resp1.json();
+
+    let text = '';
+
+    if(data1.stop_reason === 'end_turn'){
+      // ตอบตรงเลย ไม่ได้ใช้ tool
+      text = (data1.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    } else if(data1.stop_reason === 'tool_use'){
+      // Claude ใช้ web_search → ต้องส่ง tool_result กลับ แล้วรอ final answer
+      const toolUseBlock = (data1.content||[]).find(function(c){return c.type==='tool_use';});
+      const toolResultContent = (data1.content||[])
+        .filter(function(c){return c.type==='tool_result' || c.type==='text';})
+        .map(function(c){return c.type==='text'?c.text:'';}).join('');
+
+      // Build turn 2: send assistant msg + tool_result back
+      const msgs = [
+        {role:'user', content:userPrompt},
+        {role:'assistant', content:data1.content},
+        {role:'user', content:[{
+          type:'tool_result',
+          tool_use_id: toolUseBlock ? toolUseBlock.id : 'unknown',
+          content: toolResultContent || 'Search completed.'
+        }]}
+      ];
+
+      const resp2 = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':_ank,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:2000,
+          system: sysPrompt,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          messages: msgs
+        })
+      });
+
+      if(!resp2.ok) throw new Error('Claude API turn2 '+resp2.status);
+      const data2 = await resp2.json();
+      text = (data2.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    }
+
     let items = [];
-    try{ items = JSON.parse(text.replace(/```json|```/g,'').trim()); }catch{ return []; }
+    // พยายาม extract JSON array จาก text
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if(jsonMatch){
+      try{ items = JSON.parse(jsonMatch[0]); }catch(e){ console.warn('[ELITE] JSON parse error:', e.message, text.slice(0,200)); }
+    }
     if(!Array.isArray(items)) return [];
 
     return items.filter(function(item){return item && item.id && item.headline;}).map(function(item){
