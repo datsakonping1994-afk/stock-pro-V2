@@ -11372,17 +11372,17 @@ async function _eliteDirectFallback(overlay){
     toast('⚠️ ใส่ Claude API Key ใน Settings เพื่อใช้งาน Elite');
     return [];
   }
+  // declare topPeople ก่อนใช้ใน overlay
+  const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){
+    return arr.findIndex(function(x){return x.id===p.id;})===i;
+  }).slice(0,10);
+
   const newsSource = gnewsKey2 ? 'GNews' : tavilyKey ? 'Tavily' : 'Claude';
   if(overlay) overlay.innerHTML = `
     <div style="font-size:22px">📰</div>
     <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${newsSource} กำลังค้นข่าวจริง...</div>
     <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ข่าวล่าสุด 24 ชม. · ${topPeople.slice(0,6).length} คน</div>
     <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
-
-  // Step 1: Tavily ค้นข่าวแต่ละคน
-  const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){
-    return arr.findIndex(function(x){return x.id===p.id;})===i;
-  }).slice(0,10);
 
   let allNews = [];
 
