@@ -8568,9 +8568,9 @@ async function fetchAndRenderEarnings(){
       if(r.ok){
         const d=await r.json();
         const items=d?.earningsCalendar||[];
-        // กรองเฉพาะหุ้นที่มีในแอป
+        // แสดงทุกตัว ไม่กรองเฉพาะ Watchlist
         const tickers=new Set(stocks.map(s=>s.t));
-        const matched=items.filter(e=>tickers.has(e.symbol));
+        const matched=items.filter(e=>e.symbol);
 
         if(matched.length>0){
           // แปลงเป็น format เดียวกับ earningsData
