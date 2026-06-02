@@ -5469,17 +5469,13 @@ Buy Score: ${score}/100
   let usedModel = 'Cache';
   if(!reply){
     try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),25000);
       const groqKey=localStorage.getItem('groqKey')||'';
       if(groqKey){
         const rg=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
           body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7}),
-          signal:ctrl.signal
-        });
-        clearTimeout(tid);
+        }, 25000);
         if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null; if(reply) usedModel='⚡ Groq Llama 3.3';}
       }
     }catch(e){console.warn('signal AI error:',e.message);}
@@ -11493,16 +11489,8 @@ function initElitePage(){
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   } else {
-    // ไม่มีข้อมูลเลย → reset overlay กลับเป็น SCAN NOW
-    const overlay = document.getElementById('eliteScanOverlay');
-    if(overlay){
-      overlay.style.display = 'flex';
-      overlay.innerHTML = `
-        <div style="font-size:22px">👁</div>
-        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
-        <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
-        <button onclick="runEliteScan(true)" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>`;
-    }
+    // ไม่มีข้อมูลเลย → auto scan เลย ไม่ต้องรอกด SCAN NOW
+    setTimeout(()=>runEliteScan(true), 300);
   }
 }
 
