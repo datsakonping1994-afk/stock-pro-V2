@@ -7527,17 +7527,18 @@ async function fetchCandlesPolygon(ticker, days=60){
   try{
     const to=new Date();
     const from=new Date();
-    from.setDate(from.getDate()-Math.ceil(days*1.5)); // เผื่อวันหยุด
+    from.setDate(from.getDate()-Math.ceil(days*1.5));
     const fmt=d=>d.toISOString().slice(0,10);
-    const url=`https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${fmt(from)}/${fmt(to)}?adjusted=true&sort=asc&limit=300&apiKey=${POLYGON_KEY}`;
+    // ── ผ่าน Worker /candles (key rotation) แทน Polygon โดยตรง ──
+    const workerUrl=`${PRICES_WORKER}/candles?t=${encodeURIComponent(ticker)}&from=${fmt(from)}&to=${fmt(to)}`;
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(url,{signal:ctrl.signal});
+    const r=await fetch(workerUrl,{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     const d=await r.json();
-    if(d.status==='ERROR'||!d.results||d.results.length<5) return null;
-    const results=d.results.slice(-days); // เอาแค่ days ล่าสุด
+    if(!d.ok||!d.results||d.results.length<5) return null;
+    const results=d.results.slice(-days);
     const c=[],h=[],l=[],o=[],v=[],t=[];
     for(const bar of results){
       c.push(bar.c);
@@ -7545,7 +7546,7 @@ async function fetchCandlesPolygon(ticker, days=60){
       l.push(bar.l);
       o.push(bar.o);
       v.push(bar.v||0);
-      t.push(Math.floor(bar.t/1000)); // ms → sec
+      t.push(Math.floor(bar.t/1000));
     }
     return c.length>=5?{c,h,l,o,v,t}:null;
   }catch{ return null; }
