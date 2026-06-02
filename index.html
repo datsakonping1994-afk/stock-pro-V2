@@ -918,7 +918,7 @@ canvas.bigchart{width:100%;height:100%}
             <div class="settings-sublabel">ราคาหุ้น real-time</div>
             <input class="settings-input" id="finnhubKeyInput" type="password" placeholder="d83v..." style="width:100%;margin-top:6px">
             <div id="finnhubKeyStatus" style="margin-top:6px;font-size:12px;color:var(--text3)"></div>
-            <button class="settings-btn" id="testFinnhubBtn" onclick="testApiKey()" style="margin-top:6px">🔑 ทดสอบ Finnhub</button>
+            <div style="display:flex;gap:8px;margin-top:6px"><button class="settings-btn" id="testFinnhubBtn" onclick="testApiKey()">🔑 ทดสอบ Finnhub</button><button class="settings-btn" onclick="clearApiKey('finnhubKey','finnhubKeyInput','finnhubKeyStatus')" style="background:rgba(255,77,106,0.15);border-color:rgba(255,77,106,0.3);color:var(--red)">🗑️ ล้าง</button></div>
           </div>
         </div>
         <div class="settings-row" style="border-bottom:none">
@@ -927,7 +927,7 @@ canvas.bigchart{width:100%;height:100%}
             <div class="settings-sublabel">ข้อมูลกราฟ candles</div>
             <input class="settings-input" id="polygonKeyInput" type="password" placeholder="H4aN..." style="width:100%;margin-top:6px">
             <div id="polygonKeyStatus" style="margin-top:6px;font-size:12px;color:var(--text3)"></div>
-            <button class="settings-btn" id="testPolygonBtn" onclick="testPolygonKey()" style="margin-top:6px">🔑 ทดสอบ Polygon</button>
+            <div style="display:flex;gap:8px;margin-top:6px"><button class="settings-btn" id="testPolygonBtn" onclick="testPolygonKey()">🔑 ทดสอบ Polygon</button><button class="settings-btn" onclick="clearApiKey('polygonKey','polygonKeyInput','polygonKeyStatus')" style="background:rgba(255,77,106,0.15);border-color:rgba(255,77,106,0.3);color:var(--red)">🗑️ ล้าง</button></div>
           </div>
         </div>
       </div>
@@ -6011,6 +6011,15 @@ async function testGroqKey(){
   btn.textContent='🧪 ทดสอบ';
 }
 
+function clearApiKey(storageKey, inputId, statusId){
+  try{ localStorage.removeItem(storageKey); }catch{}
+  const input = document.getElementById(inputId);
+  const status = document.getElementById(statusId);
+  if(input){ input.value = ""; }
+  if(status){ status.textContent = "🗑️ ล้างแล้ว"; status.style.color = "var(--text3)"; }
+  if(storageKey === "finnhubKey"){ FINNHUB_KEY = ""; }
+  toast("🗑️ ลบ Key ออกแล้ว");
+}
 async function testApiKey(){
   const btn=document.getElementById('testFinnhubBtn');
   const statusEl=document.getElementById('finnhubKeyStatus');
@@ -6745,6 +6754,29 @@ async function fetchSingleQuoteFast(s){
 
 // ── loadWorkerPriceCache — ดึงราคาทั้งหมดจาก Worker ครั้งเดียว ──
 async function loadWorkerPriceCache(){
+  // ── Local cache 2 นาที ──
+  try{
+    const lc=sessionStorage.getItem("_sp_price_cache");
+    if(lc){
+      const obj=JSON.parse(lc);
+      if(obj.ts&&Date.now()-obj.ts<120000){
+        window._workerPriceCache=obj.quotes;
+        let updated=0;
+        for(const s of stocks){
+          const q=obj.quotes[s.t];
+          if(q&&q.price>0){ s.p=q.price; s.c=q.change||0; liveCache[s.t]=Date.now(); updateCardLive(s); updated++; }
+        }
+        if(updated>0){
+          const stEl=$id("statusText");
+          const age=Math.floor((Date.now()-obj.ts)/1000);
+          if(stEl) stEl.textContent=`✅ ${updated} ตัว (Local Cache · อายุ ${age}s)`;
+        }
+        _workerCacheLoading=false;
+        return;
+      }
+    }
+  }catch{}
+
   if(_workerCacheLoading) return;
   _workerCacheLoading=true;
   try{
@@ -6756,6 +6788,7 @@ async function loadWorkerPriceCache(){
     const d=await r.json();
     if(d.ok&&d.quotes){
       window._workerPriceCache=d.quotes;
+      try{ sessionStorage.setItem("_sp_price_cache", JSON.stringify({quotes:d.quotes,ts:Date.now()})); }catch{}
       // อัปเดตราคาทุกตัวทันที
       let updated=0;
       for(const s of stocks){
