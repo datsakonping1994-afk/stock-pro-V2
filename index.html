@@ -7532,7 +7532,7 @@ async function fetchCandlesPolygon(ticker, days=60){
     // ── ผ่าน Worker /candles (key rotation) แทน Polygon โดยตรง ──
     const workerUrl=`${PRICES_WORKER}/candles?t=${encodeURIComponent(ticker)}&from=${fmt(from)}&to=${fmt(to)}`;
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const tid=setTimeout(()=>ctrl.abort(),10000);
     const r=await fetch(workerUrl,{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
