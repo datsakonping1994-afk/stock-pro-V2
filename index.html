@@ -10498,7 +10498,7 @@ async function runMorningBrief(){
       if(!s) return null;
       const pnlPct=pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
       const rsi=rsiData[pos.t]||50;
-      return `${pos.t}: P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}% | RSI ${rsi}${rsi<=35?' (Oversold)':rsi>=70?' (Overbought)':''}`;
+      return `${pos.t}: วันนี้ ${s.c>=0?'+':''}${(typeof s.c==='number'?s.c:parseFloat(s.c)||0).toFixed(2)}% | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}% | RSI ${rsi}${rsi<=35?' (Oversold)':rsi>=70?' (Overbought)':''}`;
     }).filter(Boolean);
     portSummary=portDetails.join('\n');
   }
