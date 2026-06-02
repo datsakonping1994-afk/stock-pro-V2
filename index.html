@@ -918,7 +918,7 @@ canvas.bigchart{width:100%;height:100%}
             <div class="settings-sublabel">ราคาหุ้น real-time</div>
             <input class="settings-input" id="finnhubKeyInput" type="password" placeholder="d83v..." style="width:100%;margin-top:6px">
             <div id="finnhubKeyStatus" style="margin-top:6px;font-size:12px;color:var(--text3)"></div>
-            <button class="settings-btn" id="testFinnhubBtn" onclick="testFinnhubKey()" style="margin-top:6px">🔑 ทดสอบ Finnhub</button>
+            <button class="settings-btn" id="testFinnhubBtn" onclick="testApiKey()" style="margin-top:6px">🔑 ทดสอบ Finnhub</button>
           </div>
         </div>
         <div class="settings-row" style="border-bottom:none">
@@ -1908,7 +1908,7 @@ const peerGroups={
 // ── Finnhub key ย้ายไปเก็บใน Cloudflare Worker secret แล้ว ──
 // Client ไม่มี key อีกต่อไป — ทุก request ผ่าน WORKER endpoint
 // FINNHUB_KEY เหลือไว้เป็น boolean flag เท่านั้น (ตรวจสอบจาก /api/test)
-var FINNHUB_KEY = (()=>{try{return localStorage.getItem('finnhubKey')||'d83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';}catch{return 'd83vsjpr01qkm5c9o0p0d83vsjpr01qkm5c9o0pg';}})();
+var FINNHUB_KEY = (()=>{try{return localStorage.getItem('finnhubKey')||'';}catch{return '';}})();
 var _workerKeyVerified = false; // true เมื่อ /api/test ยืนยันแล้ว
 // FIX: ครอบ try/catch ป้องกัน crash ใน iOS Private Mode / Safari ITP
 let PORT_SIZE = (()=>{ try{ return parseInt(localStorage.getItem('_sp_portsize')||'10000'); }catch{ return 10000; } })();
@@ -6012,8 +6012,8 @@ async function testGroqKey(){
 }
 
 async function testApiKey(){
-  const btn=document.getElementById('testApiBtn');
-  const statusEl=document.getElementById('apiKeyStatus');
+  const btn=document.getElementById('testFinnhubBtn');
+  const statusEl=document.getElementById('finnhubKeyStatus');
   if(!statusEl) return;
   const key=document.getElementById('finnhubKeyInput')?.value?.trim()||FINNHUB_KEY||'';
   if(!key){
