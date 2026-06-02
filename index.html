@@ -6319,7 +6319,7 @@ function startLive(){
   // รีเฟรช Worker cache ทุก 60 วินาที
   // ── Worker cache refresh ทุก 15 วินาที (เดิม 60 วินาที) ──
   if(window._workerCacheTimer) clearInterval(window._workerCacheTimer);
-  window._workerCacheTimer=setInterval(()=>loadWorkerPriceCache(), 5000);
+  window._workerCacheTimer=setInterval(()=>loadWorkerPriceCache(), 60000);
 
   // ── Smart Live Poll — ดึงสดเฉพาะหุ้นในพอร์ต ทุก 12 วินาที ──
   // ใช้ /prices/live endpoint ที่ดึง Finnhub โดยตรง bypass cache
