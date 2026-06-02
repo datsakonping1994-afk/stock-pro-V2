@@ -3223,15 +3223,17 @@ function openDrawer(ticker){
   const dLogo=document.getElementById('drawerLogo');
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
   loadLogo(ticker,'drawerLogo',40);
-  // render tech tab ครั้งเดียวตอนเปิด
+  // เปิด drawer ก่อน แล้วค่อย render tech tab
   _currentChartDays=30;
-  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  document.getElementById('drawer').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{
+    drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  }, 50);
   // ดึง analyst data ในพื้นหลัง
   fetchAnalystData(ticker).then(()=>{
     if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
   });
-  document.getElementById('drawer').classList.add('open');
-  document.body.style.overflow='hidden';
 
   // โหลด candles background — ไม่บล็อก drawer เปิด
   var _snapTicker = ticker;
