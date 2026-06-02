@@ -1930,7 +1930,7 @@ function _recommendedLimit(ticker){
 }
 
 // ── Named constants (ป้องกัน magic numbers กระจัดกระจาย) ──
-const BUY_SIGNAL_THRESHOLD = 45;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
+const BUY_SIGNAL_THRESHOLD = 50;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
 const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
@@ -10816,7 +10816,7 @@ function _getAIPickStocks(tab){
       return {...s, _score:score, _upside:upside, _rev:rev};
     })
     .filter(s => {
-      if(tab==='ai') return s._score >= 45;
+      if(tab==='ai') return s._score >= 50;
       if(tab==='value') return s.pe && s.pe < 25 && s._upside > 10;
       if(tab==='growth') return s._rev >= 25;
       return true;
