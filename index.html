@@ -7482,7 +7482,7 @@ async function fetchCandlesTwelve(ticker, days=60){
     const outputsize=Math.min(days+10, 500);
     const url=`https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=${outputsize}&apikey=${TWELVE_KEY}`;
     const ctrl=new AbortController();
-    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const tid=setTimeout(()=>ctrl.abort(),3000);
     const r=await fetch(url,{signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
