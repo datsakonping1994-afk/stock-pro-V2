@@ -129,8 +129,10 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .elite-leader-loc{font-size:9px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:3px}
 .elite-impact-badge{position:absolute;top:8px;right:8px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid}
 .elite-event-card{background:linear-gradient(145deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px;position:relative;overflow:hidden}
-.elite-event-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0}
+.elite-event-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+.elite-event-card.urgent{border-color:rgba(255,77,106,0.35)!important}
 .elite-event-card.urgent::before{background:linear-gradient(90deg,var(--red),transparent)}
+.elite-event-card.soon{border-color:rgba(201,168,76,0.3)!important}
 .elite-event-card.soon::before{background:linear-gradient(90deg,var(--gold),transparent)}
 .elite-event-card.later::before{background:linear-gradient(90deg,var(--ice),transparent)}
 .elite-event-emoji{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
@@ -1821,6 +1823,23 @@ const insiderData={}; // ข้อมูล fallback ว่าง — ใช้ 
 
 // ── fetchInsiderLive — ดึง Insider Trading สดจาก Finnhub ──
 const _insiderCache = {};
+function _normalizeInsiderRole(pos){
+  if(!pos) return 'Insider';
+  const p = pos.toUpperCase();
+  if(p.includes('CEO')||p.includes('CHIEF EXECUTIVE')) return 'CEO';
+  if(p.includes('CFO')||p.includes('CHIEF FINANCIAL')) return 'CFO';
+  if(p.includes('COO')||p.includes('CHIEF OPERATING')) return 'COO';
+  if(p.includes('CTO')||p.includes('CHIEF TECHNOLOGY')) return 'CTO';
+  if(p.includes('CHAIRMAN')) return 'Chairman';
+  if(p.includes('PRESIDENT')) return 'President';
+  if(p.includes('DIRECTOR')) return 'Director';
+  if(p.includes('SVP')||p.includes('SR. VP')||p.includes('SENIOR VP')) return 'SVP';
+  if(p.includes('EVP')||p.includes('EXEC. VP')||p.includes('EXECUTIVE VP')) return 'EVP';
+  if(p.includes('VP')||p.includes('VICE PRESIDENT')) return 'VP';
+  if(p.includes('GENERAL COUNSEL')||p.includes('CLO')) return 'CLO';
+  if(p.includes('10%')||p.includes('10 %')||p.includes('OWNER')) return '10% Owner';
+  return pos.length > 20 ? pos.slice(0,18)+'…' : pos;
+}
 async function fetchInsiderLive(ticker){
   if(_insiderCache[ticker] && (Date.now()-_insiderCache[ticker].ts < 3600000)){
     return _insiderCache[ticker].data;
@@ -1842,7 +1861,7 @@ async function fetchInsiderLive(ticker){
         const dateStr = d2.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
         return {
           name: t.name||'Unknown',
-          role: t.position||'Insider',
+          role: _normalizeInsiderRole(t.position||''),
           type: isBuy ? 'buy' : 'sell',
           shares: Math.abs(t.share),
           price: t.price,
@@ -3733,23 +3752,47 @@ function drawerTab(tab, btn){
         <div class="ind-row" style="background:rgba(0,230,118,0.06);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">แนวต้าน R1</span><span class="ind-val bull">${r1.toFixed(2)}</span></div>
         <div class="ind-row" style="background:rgba(0,230,118,0.04);border-color:rgba(0,230,118,0.12)"><span class="ind-name" style="color:var(--green);opacity:0.75">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">${getR2(s.t,s.p).toFixed(2)}</span></div>
         <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
-        <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
-        <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
-        <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
-        <div class="ind-row"><span class="ind-name">Bollinger %B</span>${bbTxt}</div>
-        <div class="ind-row"><span class="ind-name">VWAP (20d avg)</span>${vwapTxt}</div>
-        <div class="ind-row"><span class="ind-name">EMA Ribbon 8/13/21</span>${ribbonTxt}</div>
-        <div class="ind-row"><span class="ind-name">Donchian Ch. (20)</span>${donchTxt}</div>
-        <div class="ind-row"><span class="ind-name">CMF (20)</span>${cmfTxt}</div>
-        <div class="ind-row"><span class="ind-name">ROC (10)</span>${rocTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Ichimoku Kijun</span>${kijunTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Tenkan/Kijun</span>${tenkanTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Cloud Position</span>${cloudTxt}</div>
-        <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Chikou Span</span>${chikouTxt}</div>
-        <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
-        <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
-        <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
-        ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
+
+        <!-- Momentum Section (collapse/expand) -->
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'flex':'none';this.querySelector('.ind-chevron').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid var(--border);cursor:pointer;margin-top:4px">
+          <span style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);letter-spacing:1px">📊 MOMENTUM & OSCILLATORS</span>
+          <span class="ind-chevron" style="font-size:10px;color:var(--text3);transition:transform 0.2s">▼</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
+          <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
+          <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
+          <div class="ind-row"><span class="ind-name">Bollinger %B</span>${bbTxt}</div>
+          <div class="ind-row"><span class="ind-name">VWAP (20d avg)</span>${vwapTxt}</div>
+          <div class="ind-row"><span class="ind-name">EMA Ribbon 8/13/21</span>${ribbonTxt}</div>
+          <div class="ind-row"><span class="ind-name">Donchian Ch. (20)</span>${donchTxt}</div>
+          <div class="ind-row"><span class="ind-name">CMF (20)</span>${cmfTxt}</div>
+          <div class="ind-row"><span class="ind-name">ROC (10)</span>${rocTxt}</div>
+        </div>
+
+        <!-- Ichimoku Section (collapse/expand) -->
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'flex':'none';this.querySelector('.ind-chevron').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(100,210,255,0.05);border-radius:10px;border:1px solid rgba(100,210,255,0.15);cursor:pointer;margin-top:4px">
+          <span style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px">☁️ ICHIMOKU CLOUD</span>
+          <span class="ind-chevron" style="font-size:10px;color:var(--ice);transition:transform 0.2s">▼</span>
+        </div>
+        <div style="display:none;flex-direction:column;gap:8px;margin-top:4px">
+          <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Ichimoku Kijun</span>${kijunTxt}</div>
+          <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Tenkan/Kijun</span>${tenkanTxt}</div>
+          <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Cloud Position</span>${cloudTxt}</div>
+          <div class="ind-row" style="background:rgba(100,210,255,0.05);border-color:rgba(100,210,255,0.2)"><span class="ind-name" style="color:var(--ice)">☁️ Chikou Span</span>${chikouTxt}</div>
+        </div>
+
+        <!-- Advanced Section (collapse/expand) -->
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'flex':'none';this.querySelector('.ind-chevron').style.transform=this.nextElementSibling.style.display==='none'?'rotate(0deg)':'rotate(180deg)'" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid var(--border);cursor:pointer;margin-top:4px">
+          <span style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);letter-spacing:1px">🚀 ADVANCED SIGNALS</span>
+          <span class="ind-chevron" style="font-size:10px;color:var(--text3);transition:transform 0.2s">▼</span>
+        </div>
+        <div style="display:none;flex-direction:column;gap:8px;margin-top:4px">
+          <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
+          <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
+          <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
+          ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
+        </div>
         <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -3888,7 +3931,7 @@ function drawerTab(tab, btn){
       '<div class="ind-row"><span class="ind-name">52W Low</span><span class="ind-val bear">'+low52+'</span></div>' +
       pctHiRow + pctLoRow +
       '<div class="ind-row"><span class="ind-name">เปลี่ยนแปลงวันนี้</span><span class="ind-val '+chgCls+'">$'+s.p.toFixed(2)+' ('+chgTxt+')</span></div>' +
-      (s.target?'<div class="ind-row"><span class="ind-name">🎯 Analyst Target</span><span class="ind-val '+(s.p<s.target?'bull':'bear')+'">${'+(s.target.toLocaleString())+' ('+(s.p<s.target?'+':'')+((s.target-s.p)/s.p*100).toFixed(1)+'%)</span></div>':'') +
+      (s.target?'<div class="ind-row"><span class="ind-name">🎯 Analyst Target</span><span class="ind-val '+(s.p<s.target?'bull':'bear')+'">$'+s.target.toLocaleString()+' ('+(s.p<s.target?'+':'')+((s.target-s.p)/s.p*100).toFixed(1)+'%)</span></div>':'') +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">⚠️ ความเสี่ยง</div>' +
       (s.div?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+s.div+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
       (s.beta!=null?'<div class="ind-row"><span class="ind-name">📉 Beta (ความผันผวน)</span><span class="ind-val '+(s.beta>1.5?'bear':s.beta<0.8?'bull':'neut')+'">'+s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)')+'</span></div>':'') +
@@ -3920,13 +3963,16 @@ function drawerTab(tab, btn){
         const fr=getFundRating(fs);
         return '<div style="margin-top:16px;padding:14px;border-radius:12px;background:'+fr.bg+';border:1px solid '+fr.border+';box-shadow:'+(fr.shadow||'none')+'">' +
           '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:'+fr.color+';margin-bottom:8px">⭐ Fundamental Score</div>' +
-          '<div style="display:flex;align-items:center;gap:12px">' +
-            '<div style="font-size:32px;font-weight:800;font-family:\'Manrope\',sans-serif;color:'+fr.color+'">'+fs+'</div>' +
-            '<div>' +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' +
+            '<div style="font-size:36px;font-weight:800;font-family:\'Manrope\',sans-serif;color:'+fr.color+'">'+fs+'</div>' +
+            '<div style="flex:1">' +
               '<div style="font-size:16px;font-weight:700;color:'+fr.color+';font-family:\'Syne\',sans-serif">'+fr.label+'</div>' +
-              '<div style="width:120px;height:6px;background:var(--bg4);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+fs+'%;background:'+fr.color+';border-radius:3px;transition:width 0.6s ease"></div></div>' +
+              '<div style="font-size:10px;color:var(--text3);margin-bottom:6px">คะแนนวิเคราะห์พื้นฐาน / 100</div>' +
+              '<div style="width:100%;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.min(fs,100)+'%;background:linear-gradient(90deg,'+fr.color+','+fr.color+'99);border-radius:4px;transition:width 0.6s ease"></div></div>' +
+              '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px"><span>0</span><span>50</span><span>100</span></div>' +
             '</div>' +
           '</div>' +
+          '<div style="font-size:10px;color:var(--text3);background:rgba(255,255,255,0.03);border-radius:8px;padding:6px 10px">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>' +
         '</div>' +
         // ── Historical Earnings Chart ──
         '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:20px 0 8px">📊 Historical Earnings</div>' +
@@ -7761,7 +7807,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   }
 
   const score1 = Math.min(g1, 30);
-  if(score1>0) scoreBreakdown.push(`📍 ชิดแนวรับ ${score1}/30`);
+  if(score1>0) scoreBreakdown.push(`📍 แนวรับ ${score1}/30pts`);
 
   // ════════════════════════════════════════════════
   // GROUP 2 — Oversold (25 คะแนน)
@@ -7813,7 +7859,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   }
 
   const score2 = Math.round(Math.min(osVotes/osMax,1)*25);
-  if(score2>0) scoreBreakdown.push(`📉 oversold ${score2}/25`);
+  if(score2>0) scoreBreakdown.push(`📉 Oversold RSI ${score2}/25pts`);
 
   // ════════════════════════════════════════════════
   // GROUP 3 — Momentum กลับตัว (20 คะแนน)
@@ -7940,7 +7986,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   }
 
   const score3 = Math.min(g3, 20);
-  if(score3>0) scoreBreakdown.push(`📈 momentum ${score3}/20`);
+  if(score3>0) scoreBreakdown.push(`📈 Momentum ${score3}/20pts`);
 
   // ════════════════════════════════════════════════
   // GROUP 4 — Volume ยืนยัน (15 คะแนน)
@@ -7974,7 +8020,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   if(mfi!==null&&mfi<=25&&volRatio>=1.2) g4+=3;
 
   const score4 = Math.min(g4, 15);
-  if(score4>0) scoreBreakdown.push(`📦 volume ${score4}/15`);
+  if(score4>0) scoreBreakdown.push(`📦 Volume ${score4}/15pts`);
 
   // ════════════════════════════════════════════════
   // GROUP 5 — Candle Pattern (10 คะแนน)
@@ -8019,7 +8065,7 @@ function _calcBuyScore(ticker, price, s1, r1){
   else if(dojiPattern)            g5=3;
 
   const score5 = g5;
-  if(score5>0) scoreBreakdown.push(`🕯️ pattern ${score5}/10`);
+  if(score5>0) scoreBreakdown.push(`🕯️ Pattern ${score5}/10pts`);
 
   // ════════════════════════════════════════════════
   // GROUP 6 — Volume Profile POC + Parabolic SAR (15 คะแนน)
@@ -10009,16 +10055,17 @@ function renderPortfolio(){
   });
   sortedPortfolio.forEach(pos=>{
     const stockData = stocksMap.get(pos.t);
-    // ถ้าไม่อยู่ใน stocks array ให้ดึงราคาจาก liveCache
-    const curPrice = stockData?.p || (liveCache[pos.t] ? (stocksMap.get(pos.t)?.p||0) : 0) || pos.lastPrice || 0;
+    // ถ้าไม่อยู่ใน stocks array ให้ใช้ lastPrice หรือ avgPrice เป็น fallback
+    const curPrice = stockData?.p || pos.lastPrice || 0;
+    const hasCurPrice = curPrice > 0;
     const cost = pos.avgPrice * pos.shares;
-    const val = curPrice * pos.shares;
+    const val = hasCurPrice ? curPrice * pos.shares : cost; // ถ้าไม่มีราคาให้ใช้ cost แทน (P&L = 0)
     const pnl = val - cost;
     const pnlPct = cost>0?(pnl/cost*100):0;
     const isUp = pnl>=0;
     const pnlColor = isUp?'var(--green)':'var(--red)';
     totalCost += cost;
-    totalVal += val;
+    totalVal += hasCurPrice ? val : cost; // นับ cost ถ้าไม่มีราคา ไม่ให้ P&L ผิด
     const safeTicker = _escHtml(pos.t);
     const safeName = _escHtml(stockData?.n||'');
     const weightPct = 0; // คำนวณหลัง loop
@@ -10157,16 +10204,26 @@ function renderPortfolio(){
   // Cash display
   const cash=_portCash||0;
   const cashEl=document.getElementById('portCashDisplay');
-  if(cashEl) cashEl.textContent='$'+cash.toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0});
+  if(cashEl) cashEl.textContent=cash>0?'$'+cash.toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0}):'ไม่ได้ตั้งค่า';
   const allocBar=document.getElementById('portAllocationBar');
-  if(allocBar&&(totalVal>0||cash>0)){
-    const total=totalVal+cash;
-    const sPct=total>0?(totalVal/total*100):0;
-    const cPct=total>0?(cash/total*100):0;
-    allocBar.style.display='block';
-    document.getElementById('portStockPct').textContent=sPct.toFixed(0)+'%';
-    document.getElementById('portCashPct').textContent=cPct.toFixed(0)+'%';
-    document.getElementById('portStockBar').style.width=sPct.toFixed(1)+'%';
+  if(allocBar){
+    if(totalVal>0 && cash>0){
+      const total=totalVal+cash;
+      const sPct=total>0?(totalVal/total*100):100;
+      const cPct=total>0?(cash/total*100):0;
+      allocBar.style.display='block';
+      document.getElementById('portStockPct').textContent=sPct.toFixed(0)+'%';
+      document.getElementById('portCashPct').textContent=cPct.toFixed(0)+'%';
+      document.getElementById('portStockBar').style.width=sPct.toFixed(1)+'%';
+    } else if(totalVal>0){
+      // มีหุ้นแต่ไม่ได้ตั้ง Cash
+      allocBar.style.display='block';
+      document.getElementById('portStockPct').textContent='100%';
+      document.getElementById('portCashPct').textContent='--';
+      document.getElementById('portStockBar').style.width='100%';
+    } else {
+      allocBar.style.display='none';
+    }
   }
 
   // ── 1. Auto-update Port Size จากมูลค่าจริง ──
@@ -12596,11 +12653,12 @@ function renderEliteEvents(){
     const evDate = new Date(ev.date + (ev.time ? 'T'+ev.time : 'T00:00:00'));
     const isPast = evDate < now;
     const diffDays = Math.ceil((evDate - now) / 86400000);
-    const urgency = isPast ? 'later' : diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
-    const countdownText = isPast ? 'ผ่านไปแล้ว' : diffDays === 0 ? 'วันนี้!' : diffDays === 1 ? 'อีก 1 วัน' : `อีก ${diffDays} วัน`;
+    const urgency = isPast ? 'later' : diffDays <= 0 ? 'urgent' : diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
+    const countdownText = isPast ? 'ผ่านไปแล้ว' : diffDays === 0 ? '🔴 วันนี้!' : diffDays === 1 ? '🔴 พรุ่งนี้!' : diffDays<=3 ? `🔴 อีก ${diffDays} วัน` : diffDays<=10 ? `🟡 อีก ${diffDays} วัน` : `อีก ${diffDays} วัน`;
     const dateStr = evDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
     const urgColor = isPast ? 'var(--text3)' : urgency==='urgent'?'var(--red)':urgency==='soon'?'var(--gold)':'var(--ice)';
     const urgBg = isPast ? 'rgba(255,255,255,0.06)|rgba(255,255,255,0.12)' : urgency==='urgent'?'rgba(255,77,106,0.2)|rgba(255,77,106,0.4)':urgency==='soon'?'rgba(201,168,76,0.2)|rgba(201,168,76,0.4)':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)';
+    const cardBorder = isPast ? 'rgba(255,255,255,0.07)' : urgency==='urgent'?'rgba(255,77,106,0.35)':urgency==='soon'?'rgba(201,168,76,0.25)':'rgba(100,210,255,0.15)';
     const [cbg,cborder] = urgBg.split('|');
     const evId = 'ev-summary-'+idx;
     return `<div class="elite-event-card ${urgency}" style="${isPast?'opacity:0.75':''}">
