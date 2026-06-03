@@ -11622,8 +11622,8 @@ async function _eliteDirectFallback(overlay){
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:4000,
-        system:'You are a financial analyst. Analyze news for investors. Respond ONLY with valid JSON array. No markdown.',
-        messages:[{role:'user',content:'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนหุ้น ตอบ JSON array:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"negative","markets":["USD","Oil"],"pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ","watch":"สิ่งที่ควรจับตา","read_game":"วิเคราะห์เชิงลึก","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
+        system:'You are a financial analyst. Analyze news for Thai investors. ALL text fields (headline, summary, pros, cons, why, watch, read_game) MUST be in Thai language. Respond ONLY with valid JSON array. No markdown.',
+        messages:[{role:'user',content:'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนหุ้นไทย ต้องตอบเป็นภาษาไทยทั้งหมด ตอบ JSON array:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย (แปลจากอังกฤษถ้าจำเป็น)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"negative","markets":["USD","Oil"],"pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ (ภาษาไทย)","watch":"สิ่งที่ควรจับตา (ภาษาไทย)","read_game":"วิเคราะห์เชิงลึก (ภาษาไทย)","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
       })
     });
     if(!resp.ok) return _mapNewsToResults(allNews);
@@ -11680,7 +11680,7 @@ async function _eliteClaudeSearch(overlay, _ank){
     const resp1 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst for Thai investors. ALL text fields MUST be in Thai language. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
     });
     if(!resp1.ok) throw new Error('API '+resp1.status);
     const data1 = await resp1.json();
@@ -11697,7 +11697,7 @@ async function _eliteClaudeSearch(overlay, _ank){
       const resp2 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Financial analyst for Thai investors. ALL text fields MUST be in Thai language. JSON array only.',tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
       });
       if(!resp2.ok) return [];
       const data2 = await resp2.json();
@@ -11884,7 +11884,43 @@ async function runEliteScan(forceRefresh=false){
   try{
     const _ank = localStorage.getItem('anthropicKey')||'';
 
-    // ── เรียก Elite Worker ──
+    // ── [NEW] ลองดึงผล scan ล่าสุดจาก /results ก่อน (เร็วมาก ไม่ต้อง scan ใหม่) ──
+    if(!forceRescan){
+      try{
+        const cachedResp = await fetch(ELITE_WORKER + '/results', { signal: AbortSignal.timeout(5000) });
+        if(cachedResp.ok){
+          const cachedData = await cachedResp.json();
+          if(cachedData.ok && cachedData.items && cachedData.items.length > 0 && cachedData.age < 7200){
+            if(overlay) overlay.style.display='none';
+            const mapped = cachedData.items.map(item=>{
+              const person = ELITE_PEOPLE.find(p=>p.id===item.id);
+              if(!person) return null;
+              return { person, news:{
+                headline: item.headline||'', summary: item.what_happened||'',
+                impact: item.impact||5, sentiment: item.market_impact?.includes('ลบ')||item.market_impact?.includes('negative') ? 'negative' : 'positive',
+                markets: item.markets||[], pros: item.pros||[], cons: item.cons||[],
+                why: item.why_important||'', watch: item.action||'',
+                read_game: item.market_impact||'',
+                stocks_buy: (item.affected_stocks||[]).filter(s=>s.impact==='positive').map(s=>s.t),
+                stocks_watch: (item.affected_stocks||[]).filter(s=>s.impact==='negative').map(s=>s.t),
+                fetchedAt: new Date(Date.now()-cachedData.age*1000).toISOString()
+              }};
+            }).filter(Boolean);
+            if(mapped.length > 0){
+              _eliteScanResults = mapped;
+              saveEliteCache(mapped);
+              renderEliteScanResults(mapped, cachedData.age * 1000);
+              if(dot){ dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite'; }
+              if(liveText) liveText.textContent = 'LIVE';
+              console.log('[ELITE] loaded from /results cache, age:', cachedData.age+'s');
+              return;
+            }
+          }
+        }
+      }catch(e){ console.warn('[ELITE] /results fetch failed:', e.message); }
+    }
+
+    // ── เรียก Elite Worker trigger scan ใหม่ ──
     if(overlay) overlay.innerHTML = `
       <div style="font-size:22px">🌍</div>
       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าวทั่วโลก...</div>
@@ -11893,9 +11929,8 @@ async function runEliteScan(forceRefresh=false){
 
     let workerResp;
     try{
-      workerResp = await fetch(ELITE_WORKER + '/elite-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      workerResp = await fetch(ELITE_WORKER + '/trigger', {
+        method: 'GET',
         signal: AbortSignal.timeout(58000)
       });
     }catch(fetchErr){
