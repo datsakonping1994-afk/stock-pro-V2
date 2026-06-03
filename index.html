@@ -535,15 +535,17 @@ canvas.bigchart{width:100%;height:100%}
 @keyframes toastIn{from{opacity:0;top:calc(env(safe-area-inset-top) + 50px)}to{opacity:1;top:calc(env(safe-area-inset-top) + 60px)}}
 
 /* ── EARNINGS TABLE ── */
-.earn-hdr{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:6px 10px;font-size:10px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid var(--border)}
-.earn-row{display:grid;grid-template-columns:52px 1fr 80px 60px 60px 80px;gap:6px;padding:10px;border-radius:10px;margin-bottom:6px;border:1px solid var(--border);align-items:center;cursor:pointer;transition:all 0.15s}
+.earn-hdr{display:none}
+.earn-row{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.02)}
 .earn-row:active{opacity:0.8}
-.earn-ticker{font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
-.earn-name{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.earn-date{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
-.earn-eps{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
-.earn-rev{font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;text-align:right}
-.earn-badge{font-size:10px;font-weight:600;padding:3px 6px;border-radius:6px;text-align:center;white-space:nowrap}
+.earn-row-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.earn-row-bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.earn-ticker{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;flex-shrink:0}
+.earn-name{font-size:11px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.earn-date{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;flex-shrink:0}
+.earn-eps{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace}
+.earn-rev{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace}
+.earn-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;text-align:center;white-space:nowrap;flex-shrink:0}
 .earn-done{background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.25)}
 .earn-soon{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25)}
 .earn-miss{background:rgba(255,77,106,0.12);color:var(--red);border:1px solid rgba(255,77,106,0.25)}
@@ -6404,6 +6406,14 @@ function _tryStartLive(attempt=0){
 _tryStartLive();
 if(document.readyState!=='complete'){
   window.addEventListener('load',()=>_tryStartLive());
+  // [FIX] auto-sync stocks ไปยัง Worker ตอนแอปเริ่ม เพื่อให้ signal ทำงานได้
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{
+      try{ syncAlertsToWorker(); console.log('[SYNC] stocks synced to Worker'); }catch{}
+    }, 3000); // รอ 3 วินาทีให้ stocks โหลดก่อน
+  });
+  // sync ซ้ำทุก 30 นาที เผื่อ KV หมดอายุหรือมีการเปลี่ยนแปลง
+  setInterval(()=>{ try{ syncAlertsToWorker(); }catch{} }, 30*60*1000);
 }
 // เริ่ม preload candles หลัง live เริ่มแล้ว 4 วินาที (ไม่แย่ง bandwidth)
 setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
@@ -6444,6 +6454,8 @@ document.addEventListener('visibilitychange',()=>{
       httpPoll();
     }
     updateDashboard();
+    // sync stocks ทุกครั้งที่กลับมาเปิดแอป (เผื่อ KV หมดอายุ)
+    try{ syncAlertsToWorker(); }catch{}
   }
 });
 
@@ -8691,26 +8703,40 @@ async function fetchAndRenderEarnings(){
 
   // FIX: key อยู่ใน Worker — ดึง earnings ได้เลยเสมอ
   try{
-      // ดึง earnings calendar 60 วันข้างหน้า + 30 วันที่ผ่านมา
+      // ดึง earnings calendar ผ่าน PRICES_WORKER ก่อน (ประหยัด Finnhub quota)
       const today=new Date();
       const from=new Date(today); from.setDate(from.getDate()-30);
       const to=new Date(today); to.setDate(to.getDate()+60);
       const fmt=d=>d.toISOString().slice(0,10);
 
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),8000);
-      const r=await fetch(
-        `https://finnhub.io/api/v1/calendar/earnings?from=${fmt(from)}&to=${fmt(to)}&token=${FINNHUB_KEY}`,
-        {signal:ctrl.signal}
-      );
-      clearTimeout(tid);
+      let items=[];
+      let usedLive=false;
 
-      if(r.ok){
-        const d=await r.json();
-        const items=d?.earningsCalendar||[];
+      // ลองผ่าน Worker ก่อน
+      try{
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),6000);
+        const r=await fetch(`${PRICES_WORKER}/earnings?from=${fmt(from)}&to=${fmt(to)}`,{signal:ctrl.signal});
+        clearTimeout(tid);
+        if(r.ok){ const d=await r.json(); if(d.ok&&d.items?.length){ items=d.items; usedLive=true; } }
+      }catch{}
+
+      // fallback: ดึง Finnhub โดยตรง
+      if(!items.length){
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),8000);
+        const r=await fetch(
+          `https://finnhub.io/api/v1/calendar/earnings?from=${fmt(from)}&to=${fmt(to)}&token=${FINNHUB_KEY}`,
+          {signal:ctrl.signal}
+        );
+        clearTimeout(tid);
+        if(r.ok){ const d=await r.json(); items=d?.earningsCalendar||[]; usedLive=true; }
+      }
+
+      if(items.length>0){
         // กรองเฉพาะหุ้นที่มีในแอป
         const tickers=new Set(stocks.map(s=>s.t));
-        const matched=items.filter(e=>tickers.has(e.symbol));
+        const matched=items.filter(e=>tickers.has(e.symbol||e.t)).map(e=>({...e, symbol:e.symbol||e.t}));
 
         if(matched.length>0){
           // แปลงเป็น format เดียวกับ earningsData
@@ -8726,17 +8752,40 @@ async function fetchAndRenderEarnings(){
             const diffDays=(dt-now)/86400000;
             const st=isPast?'done':diffDays<=7?'soon':'future';
             const s=stocksMap.get(e.symbol);
+            // คำนวณ EPS surprise %
+            const epsEst=e.epsEstimate!=null?+e.epsEstimate:null;
+            const epsAct=e.epsActual!=null?+e.epsActual:null;
+            const revEst=e.revenueEstimate!=null?+e.revenueEstimate:null;
+            const revAct=e.revenueActual!=null?+e.revenueActual:null;
+            // Beat/Miss — ดู EPS และ Revenue ประกอบกัน
+            let res=null;
+            if(isPast&&epsAct!=null&&epsEst!=null){
+              const epsBeat=epsAct>=epsEst;
+              const revBeat=revAct!=null&&revEst!=null?revAct>=revEst:null;
+              const epsPct=epsEst!==0?((epsAct-epsEst)/Math.abs(epsEst)*100):0;
+              if(epsBeat && revBeat!==false){
+                const pct=epsPct>0?` +${epsPct.toFixed(0)}%`:'';
+                res=`✅ Beat${pct}`;
+              } else if(!epsBeat && revBeat===false){
+                res='❌ Miss';
+              } else if(epsBeat && revBeat===false){
+                res='⚠️ EPS Beat / Rev Miss';
+              } else {
+                res='⚠️ EPS Miss / Rev Beat';
+              }
+            } else if(isPast){
+              res='✅ Done';
+            }
             return{
               t:e.symbol,
               n:s?.n||e.symbol,
               d:fmtThDate(e.date),
               st,
-              eps:e.epsEstimate!=null?`$${(+e.epsEstimate).toFixed(2)}`:null,
-              epsActual:e.epsActual!=null?`$${(+e.epsActual).toFixed(2)}`:null,
-              rev:e.revenueEstimate!=null?`$${(e.revenueEstimate/1e9).toFixed(1)}B`:null,
-              revActual:e.revenueActual!=null?`$${(e.revenueActual/1e9).toFixed(1)}B`:null,
-              res:isPast&&e.epsActual!=null&&e.epsEstimate!=null?(e.epsActual>=e.epsEstimate?'✅ Beat':'❌ Miss'):isPast?'✅ Done':null,
-              _live:true
+              eps:epsEst!=null?`$${epsEst.toFixed(2)}`:null,
+              epsActual:epsAct!=null?`$${epsAct.toFixed(2)}`:null,
+              rev:revEst!=null?`$${(revEst/1e9).toFixed(1)}B`:null,
+              revActual:revAct!=null?`$${(revAct/1e9).toFixed(1)}B`:null,
+              res, _live:true
             };
           });
 
@@ -8752,7 +8801,7 @@ async function fetchAndRenderEarnings(){
           // บันทึก Earnings ลง localStorage cache ไว้ 1 วัน
           try{ localStorage.setItem('_sp_earnings_cache',JSON.stringify({data:merged,ts:Date.now()})); }catch{}
           window.earningsData=merged;
-          renderEarningsData(merged, true);
+          renderEarningsData(merged, usedLive);
           return;
         }
       }
@@ -8792,7 +8841,8 @@ function renderEarningsData(data, isLive=false){
     const epsStr=e.epsActual||e.eps||'—';
     const revStr=e.revActual||e.rev||'—';
     const isMissRes=e.res&&(e.res.includes('Miss')||e.res.includes('❌'));
-    const badgeClass=isDone?(isMissRes?'earn-miss':'earn-done'):'earn-soon';
+    const isMixedRes=e.res&&e.res.includes('⚠️');
+    const badgeClass=isDone?(isMixedRes?'earn-soon':isMissRes?'earn-miss':'earn-done'):'earn-soon';
     const badge=isDone
       ?`<span class="earn-badge ${badgeClass}">${e.res||'✅ Done'}</span>`
       :isSoon
@@ -8805,10 +8855,19 @@ function renderEarningsData(data, isLive=false){
       ? `<button onclick="event.stopPropagation();_analyzeEarningsPreview('${e.t}',this)" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:5px;font-size:11px;color:var(--gold);cursor:pointer">🔮 AI คาดการณ์ผล</button>`
       : '';
     return`<div class="earn-row" style="background:${bg};border-color:${bc}" onclick="goCard('${e.t}')">
-      <span class="earn-ticker" style="color:${tc}">${e.t}${liveTag}</span><span class="earn-name">${e.n}</span>
-      <span class="earn-date">${e.d}</span><span class="earn-eps">${epsStr}</span>
-      <span class="earn-rev">${revStr}</span>${badge}
-      ${aiBtn?`<div style="grid-column:1/-1;padding:0 4px 4px">${aiBtn}<div class="earn-ai-result-${e.t}" style="font-size:12px;color:var(--text2);margin-top:6px;white-space:pre-line;line-height:1.6"></div></div>`:''}
+      <div class="earn-row-top">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span class="earn-ticker" style="color:${tc}">${e.t}${liveTag}</span>
+          <span class="earn-name">${e.n}</span>
+        </div>
+        ${badge}
+      </div>
+      <div class="earn-row-bottom">
+        <span class="earn-date">📅 ${e.d}</span>
+        <span class="earn-eps">EPS ${epsStr}</span>
+        <span class="earn-rev">REV ${revStr}</span>
+      </div>
+      ${aiBtn?`<div style="padding:2px 0 0">${aiBtn}<div class="earn-ai-result-${e.t}" style="font-size:12px;color:var(--text2);margin-top:6px;white-space:pre-line;line-height:1.6"></div></div>`:''}
     </div>`;
   }
   const soon=data.filter(e=>_getEarningsSt(e)==='soon');
