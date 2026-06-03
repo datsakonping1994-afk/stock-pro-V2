@@ -11988,12 +11988,21 @@ async function runEliteScan(forceRefresh=false){
               if(!person) return null;
               return { person, news:{
                 headline: item.headline||'', summary: item.what_happened||'',
+                ai_take: item.ai_take||'',
+                sentiment: item.sentiment||'neutral',
+                confidence: item.confidence||70,
+                sector: item.sector||'',
+                news_type: item.news_type||'',
+                risk_level: item.risk_level||'medium',
+                etf_impact: item.etf_impact||null,
+                timeline: item.timeline||null,
                 impact: item.impact||5, sentiment: item.market_impact?.includes('ลบ')||item.market_impact?.includes('negative') ? 'negative' : 'positive',
                 markets: item.markets||[], pros: item.pros||[], cons: item.cons||[],
                 why: item.why_important||'', watch: item.action||'',
                 read_game: item.market_impact||'',
-                stocks_buy: (item.affected_stocks||[]).filter(s=>s.impact==='positive').map(s=>s.t),
-                stocks_watch: (item.affected_stocks||[]).filter(s=>s.impact==='negative').map(s=>s.t),
+                stocks_buy: (item.stocks_benefit||item.affected_stocks||[]).filter(s=>s.impact==='positive'||item.stocks_benefit).map(s=>s.t),
+                stocks_watch: (item.stocks_hurt||item.affected_stocks||[]).filter(s=>s.impact==='negative'||item.stocks_hurt).map(s=>s.t),
+                affected_stocks: item.affected_stocks||[],
                 fetchedAt: new Date(Date.now()-cachedData.age*1000).toISOString()
               }};
             }).filter(Boolean);
@@ -12229,10 +12238,41 @@ function renderEliteScanResults(results, ageMs=0){
         <!-- Headline -->
         <div style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:4px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:var(--ice)">${(n.markets||[]).join(', ')}</span></div>
         <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:6px">${n.headline}</div>
+        <!-- [NEW] Sentiment + Confidence + Sector badges -->
+        ${(()=>{
+          const sentiment = n.sentiment || 'neutral';
+          const sentCol = sentiment==='bullish'?'#00e676':sentiment==='bearish'?'#ff4d6a':'#8b99b5';
+          const sentEmoji = sentiment==='bullish'?'📈':sentiment==='bearish'?'📉':'➡️';
+          const riskCol = n.risk_level==='high'?'#ff4d6a':n.risk_level==='low'?'#00e676':'#f5c518';
+          const conf = n.confidence||70;
+          return `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+            <span style="background:${sentCol}18;border:1px solid ${sentCol}40;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;color:${sentCol}">${sentEmoji} ${sentiment==='bullish'?'Bullish':sentiment==='bearish'?'Bearish':'Neutral'}</span>
+            <span style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--text3)">🎯 Confidence ${conf}%</span>
+            ${n.sector?`<span style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--ice)">${n.sector}</span>`:''}
+            ${n.news_type?`<span style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--gold)">${n.news_type}</span>`:''}
+            ${n.risk_level?`<span style="background:${riskCol}18;border:1px solid ${riskCol}40;border-radius:6px;padding:2px 8px;font-size:10px;color:${riskCol}">Risk ${n.risk_level}</span>`:''}
+          </div>`;
+        })()}
+        <!-- [NEW] AI Take -->
+        ${n.ai_take ? `<div style="background:linear-gradient(135deg,rgba(100,210,255,0.08),rgba(201,168,76,0.06));border:1px solid rgba(100,210,255,0.2);border-radius:9px;padding:8px 10px;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);margin-bottom:3px">🤖 AI Take</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.5;font-weight:600">${n.ai_take}</div>
+        </div>` : ''}
         <!-- Summary -->
         ${n.summary ? `<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;padding:8px 10px;background:rgba(255,255,255,0.03);border-left:2px solid ${impactColor};border-radius:0 8px 8px 0">${n.summary}</div>` : ''}
         <!-- Tags -->
         ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${tags}</div>` : ''}
+        <!-- [NEW] ETF Impact -->
+        ${n.etf_impact ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:6px">📊 ETF Impact</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${Object.entries(n.etf_impact).map(([k,v])=>{
+              const col=v==='positive'?'var(--green)':v==='negative'?'var(--red)':'var(--text3)';
+              const ico=v==='positive'?'▲':v==='negative'?'▼':'–';
+              return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
         <!-- Pros -->
         ${(n.pros&&n.pros.length) ? `<div style="background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.18);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--green);margin-bottom:4px">✅ ได้ประโยชน์</div>
@@ -12257,20 +12297,12 @@ function renderEliteScanResults(results, ageMs=0){
           ${(n.stocks_watch||[]).length ? `<div><div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">⚠️ ระวัง</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:6px;padding:3px 8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--red)">${t}</span>`).join('')}</div></div>` : ''}
         </div>` : ''}
-        <!-- Affected Stocks -->
-        ${(n.affected_stocks||[]).length ? `
-        <div style="background:rgba(100,210,255,0.04);border:1px solid rgba(100,210,255,0.12);border-radius:9px;padding:8px 10px;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);margin-bottom:6px">📈 ผลกระทบต่อหุ้น</div>
-          <div style="display:flex;flex-direction:column;gap:5px">
-            ${(n.affected_stocks||[]).map(s=>{
-              const col = s.direction==='up' ? 'var(--green)' : s.direction==='down' ? 'var(--red)' : 'var(--text3)';
-              const arrow = s.direction==='up' ? '▲' : s.direction==='down' ? '▼' : '–';
-              return `<div style="display:flex;align-items:flex-start;gap:6px">
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:${col};min-width:50px">${arrow} ${s.ticker}</span>
-                <span style="font-size:10px;color:var(--text3);line-height:1.4">${s.reason||''}</span>
-              </div>`;
-            }).join('')}
-          </div>
+        <!-- [NEW] Timeline -->
+        ${n.timeline ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:6px">⏳ Timeline</div>
+          ${n.timeline.short?`<div style="font-size:10px;color:var(--text2);line-height:1.5;margin-bottom:3px"><span style="color:var(--gold);font-weight:700">ระยะสั้น</span> ${n.timeline.short}</div>`:''}
+          ${n.timeline.medium?`<div style="font-size:10px;color:var(--text2);line-height:1.5;margin-bottom:3px"><span style="color:var(--ice);font-weight:700">ระยะกลาง</span> ${n.timeline.medium}</div>`:''}
+          ${n.timeline.long?`<div style="font-size:10px;color:var(--text2);line-height:1.5"><span style="color:var(--text3);font-weight:700">ระยะยาว</span> ${n.timeline.long}</div>`:''}
         </div>` : ''}
         <!-- อ่านเกม -->
         ${n.read_game ? `<div style="background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.2);border-radius:9px;padding:8px 10px;margin-bottom:6px">
