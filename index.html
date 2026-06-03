@@ -8789,21 +8789,22 @@ async function fetchAndRenderEarnings(){
             const epsAct=e.epsActual!=null?+e.epsActual:null;
             const revEst=e.revenueEstimate!=null?+e.revenueEstimate:null;
             const revAct=e.revenueActual!=null?+e.revenueActual:null;
-            // Beat/Miss — ดู EPS และ Revenue ประกอบกัน
+            // Beat/Miss — ดู EPS และ Revenue ประกอบกัน พร้อม % surprise
             let res=null;
             if(isPast&&epsAct!=null&&epsEst!=null){
               const epsBeat=epsAct>=epsEst;
               const revBeat=revAct!=null&&revEst!=null?revAct>=revEst:null;
               const epsPct=epsEst!==0?((epsAct-epsEst)/Math.abs(epsEst)*100):0;
+              const pctStr=epsPct!==0?` ${epsPct>0?'+':''}${epsPct.toFixed(0)}%`:'';
+              const estStr=epsEst!=null?` (Est. $${epsEst.toFixed(2)})`:'';
               if(epsBeat && revBeat!==false){
-                const pct=epsPct>0?` +${epsPct.toFixed(0)}%`:'';
-                res=`✅ Beat${pct}`;
+                res=`✅ Beat${pctStr}${estStr}`;
               } else if(!epsBeat && revBeat===false){
-                res='❌ Miss';
+                res=`❌ Miss${pctStr}${estStr}`;
               } else if(epsBeat && revBeat===false){
-                res='⚠️ EPS Beat / Rev Miss';
+                res=`⚠️ EPS Beat${pctStr} / Rev Miss`;
               } else {
-                res='⚠️ EPS Miss / Rev Beat';
+                res=`⚠️ EPS Miss${pctStr} / Rev Beat`;
               }
             } else if(isPast){
               res='✅ Done';
@@ -8882,9 +8883,9 @@ function renderEarningsData(data, isLive=false){
       :`<span style="color:var(--dim);font-size:11px">—</span>`;
     const liveTag=e._live?'<span style="font-size:10px;color:var(--accent);margin-left:3px">●</span>':'';
     const aiBtn = isDone
-      ? `<button onclick="event.stopPropagation();_analyzeEarningsResult('${e.t}',this)" style="margin-top:6px;width:100%;background:rgba(100,200,255,0.08);border:1px solid rgba(100,200,255,0.2);border-radius:8px;padding:5px;font-size:11px;color:var(--ice);cursor:pointer">🤖 AI วิเคราะห์ผล</button>`
+      ? `<button onclick="event.stopPropagation();_analyzeEarningsResult('${e.t}',this)" style="margin-top:6px;width:100%;background:linear-gradient(135deg,rgba(100,200,255,0.15),rgba(100,200,255,0.05));border:1px solid rgba(100,200,255,0.35);border-radius:8px;padding:7px;font-size:12px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif">🤖 AI วิเคราะห์ผล</button>`
       : isSoon
-      ? `<button onclick="event.stopPropagation();_analyzeEarningsPreview('${e.t}',this)" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:5px;font-size:11px;color:var(--gold);cursor:pointer">🔮 AI คาดการณ์ผล</button>`
+      ? `<button onclick="event.stopPropagation();_analyzeEarningsPreview('${e.t}',this)" style="margin-top:6px;width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05));border:1px solid rgba(255,215,0,0.35);border-radius:8px;padding:7px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif">🔮 AI คาดการณ์ผล</button>`
       : '';
     return`<div class="earn-row" style="background:${bg};border-color:${bc}" onclick="goCard('${e.t}')">
       <div class="earn-row-top">
