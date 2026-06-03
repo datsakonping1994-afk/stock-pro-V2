@@ -12306,7 +12306,7 @@ function renderEliteScanResults(results, ageMs=0){
         </div>` : ''}
         <!-- อ่านเกม -->
         ${n.read_game ? `<div style="background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.2);border-radius:9px;padding:8px 10px;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#ff6b35;margin-bottom:4px">🎯 อ่านเกม</div>
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#ff6b35;margin-bottom:4px">🎯 อ่านเกม — Insight ที่คนมองข้าม</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.read_game}</div>
         </div>` : ''}
         <!-- ตอบโต้ -->
@@ -12316,7 +12316,7 @@ function renderEliteScanResults(results, ageMs=0){
         </div>` : ''}
         <!-- สิ่งที่ควรจับตา -->
         ${n.watch ? `<div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 10px;margin-bottom:8px">
-          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">👁 สิ่งที่ควรจับตา</div>
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">👁 จับตา — Event/ตัวเลขสำคัญ</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.watch}</div>
         </div>` : ''}
         <!-- Feedback -->
@@ -12418,7 +12418,7 @@ function _renderEliteModal(idx){
       <!-- Watch -->
       ${n.watch ? `
       <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#c9a84c;margin-bottom:8px;letter-spacing:0.5px">👁 สิ่งที่ควรจับตา</div>
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#c9a84c;margin-bottom:8px;letter-spacing:0.5px">👁 จับตา — Event/ตัวเลขสำคัญ</div>
         ${n.watch.split(/[,\n•]+/).filter(w=>w.trim()).map(w=>`<div style="font-size:12px;color:#a8b8d0;line-height:1.6;display:flex;gap:7px;margin-bottom:3px"><span style="color:#c9a84c;flex-shrink:0">•</span><span>${w.trim()}</span></div>`).join('')}
       </div>` : ''}
 
@@ -12441,7 +12441,7 @@ function _renderEliteModal(idx){
       <!-- Read Game -->
       ${n.read_game ? `
       <div style="background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.25);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#ff6b35;margin-bottom:6px;letter-spacing:0.5px">🎯 อ่านเกม</div>
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#ff6b35;margin-bottom:6px;letter-spacing:0.5px">🎯 อ่านเกม — Insight ที่คนมองข้าม</div>
         <div style="font-size:12px;color:#a8b8d0;line-height:1.7">${n.read_game}</div>
       </div>` : ''}
 
