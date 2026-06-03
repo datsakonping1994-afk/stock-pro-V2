@@ -3726,11 +3726,8 @@ function drawerTab(tab, btn){
       <div id="tvChartContainer" style="height:420px;overflow:hidden;margin:0 -16px 8px -16px;width:calc(100% + 32px);border-radius:0;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
-        <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
         <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
         <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
-        <div class="ind-row"><span class="ind-name">MACD Signal</span>${macdTxt}</div>
-        <div class="ind-row"><span class="ind-name">MACD Histogram</span>${macdHistTxt}</div>
         <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
         <div class="ind-row"><span class="ind-name">Bollinger %B</span>${bbTxt}</div>
         <div class="ind-row"><span class="ind-name">VWAP (20d avg)</span>${vwapTxt}</div>
@@ -3763,21 +3760,39 @@ function drawerTab(tab, btn){
           </div>
         </div>
       </div>`;
-    // ── TradingView Widget ──
+    // ── TradingView Advanced Chart Widget ──
     const _initTVChart=(intervalDays)=>{
       const container=document.getElementById('tvChartContainer');
       if(!container) return;
-      // แปลง days → TradingView interval
       const tvInterval = intervalDays<=30?'D': intervalDays<=90?'W':'M';
-      const tvRange    = intervalDays<=30?'1M': intervalDays<=90?'3M': intervalDays<=180?'6M':'12M';
-      container.innerHTML=`
-        <iframe
-          src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${s.t}&symbol=${encodeURIComponent(s.t)}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0&backgroundColor=rgba(7,13,24,1)&gridColor=rgba(255,255,255,0.03)&lineColor=%2300e676&upColor=%2300e676&downColor=%23ff4d6a&borderUpColor=%2300e676&borderDownColor=%23ff4d6a&wickUpColor=%2300e676&wickDownColor=%23ff4d6a&studies=RSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FEMA%40tv-basicstudies%1FEMA%40tv-basicstudies%1FEMA%40tv-basicstudies&studies_overrides=%7B%22ema.length.0%22%3A50%2C%22ema.length.1%22%3A100%2C%22ema.length.2%22%3A200%7D"
-          style="width:100%;height:420px;border:none;display:block"
-          allowtransparency="true"
-          scrolling="no"
-        ></iframe>`;
-      // ป้องกัน touch bubble ไป page swipe
+      const containerId = 'tv_adv_'+s.t.replace(/[^a-zA-Z0-9]/g,'_');
+      container.innerHTML=`<div id="${containerId}" style="height:420px"></div>`;
+      const script=document.createElement('script');
+      script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+      script.async=true;
+      script.innerHTML=JSON.stringify({
+        autosize: true,
+        symbol: s.t,
+        interval: tvInterval,
+        timezone: "Asia/Bangkok",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        backgroundColor: "rgba(7,13,24,1)",
+        gridColor: "rgba(255,255,255,0.03)",
+        hide_top_toolbar: false,
+        hide_legend: false,
+        save_image: false,
+        studies: [
+          "RSI@tv-basicstudies",
+          "MACD@tv-basicstudies",
+          { id:"MAExp@tv-basicstudies", inputs:{ length:50  } },
+          { id:"MAExp@tv-basicstudies", inputs:{ length:100 } },
+          { id:"MAExp@tv-basicstudies", inputs:{ length:200 } }
+        ],
+        container_id: containerId
+      });
+      document.getElementById(containerId).appendChild(script);
       ['touchstart','touchmove','touchend'].forEach(ev=>
         container.addEventListener(ev,e=>e.stopPropagation(),{passive:true})
       );
@@ -7183,14 +7198,34 @@ async function _switchTF(btn, days){
   const container=document.getElementById('tvChartContainer');
   if(!container) return;
   const tvInterval = days<=30?'D': days<=90?'W':'M';
-  const tvRange    = days<=30?'1M': days<=90?'3M': days<=180?'6M':'12M';
-  container.innerHTML=`
-    <iframe
-      src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${ticker}_${days}&symbol=${encodeURIComponent(ticker)}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0&backgroundColor=rgba(7,13,24,1)&gridColor=rgba(255,255,255,0.03)&upColor=%2300e676&downColor=%23ff4d6a&borderUpColor=%2300e676&borderDownColor=%23ff4d6a&wickUpColor=%2300e676&wickDownColor=%23ff4d6a&studies=RSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FEMA%40tv-basicstudies%1FEMA%40tv-basicstudies%1FEMA%40tv-basicstudies&studies_overrides=%7B%22ema.length.0%22%3A50%2C%22ema.length.1%22%3A100%2C%22ema.length.2%22%3A200%7D"
-      style="width:100%;height:420px;border:none;display:block"
-      allowtransparency="true"
-      scrolling="no"
-    ></iframe>`;
+  const containerId = 'tv_adv_'+ticker.replace(/[^a-zA-Z0-9]/g,'_')+'_'+days;
+  container.innerHTML=`<div id="${containerId}" style="height:420px"></div>`;
+  const script=document.createElement('script');
+  script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  script.async=true;
+  script.innerHTML=JSON.stringify({
+    autosize: true,
+    symbol: ticker,
+    interval: tvInterval,
+    timezone: "Asia/Bangkok",
+    theme: "dark",
+    style: "1",
+    locale: "en",
+    backgroundColor: "rgba(7,13,24,1)",
+    gridColor: "rgba(255,255,255,0.03)",
+    hide_top_toolbar: false,
+    hide_legend: false,
+    save_image: false,
+    studies: [
+      "RSI@tv-basicstudies",
+      "MACD@tv-basicstudies",
+      { id:"MAExp@tv-basicstudies", inputs:{ length:50  } },
+      { id:"MAExp@tv-basicstudies", inputs:{ length:100 } },
+      { id:"MAExp@tv-basicstudies", inputs:{ length:200 } }
+    ],
+    container_id: containerId
+  });
+  document.getElementById(containerId).appendChild(script);
   // อัพเดท indicator ด้านล่างด้วย
   try{
     await updateRSIFromCandles(ticker);
@@ -7438,18 +7473,34 @@ async function fetchCandles(ticker, days=60){
   if(_candleFetching.has(cacheKey)) return candleCache[cacheKey]?.data||candleCache[ticker]?.data||null;
   _candleFetching.add(cacheKey);
   try{
-    // ── 0. ลอง Worker KV cache ก่อน (เร็วที่สุด ไม่เสีย quota) ──
+    // ── 0. ลอง PRICES_WORKER /candles ก่อน (key rotation + KV cache) ──
     try{
+      const _to=new Date();
+      const _from=new Date();
+      _from.setDate(_from.getDate()-Math.ceil(days*1.5));
+      const _fmt=d=>d.toISOString().slice(0,10);
       const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),4000);
-      const r=await fetch(`${ALERT_WORKER}/candles?t=${ticker}&days=${days}`,{signal:ctrl.signal});
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const r=await fetch(`${PRICES_WORKER}/candles?t=${ticker}&from=${_fmt(_from)}&to=${_fmt(_to)}`,{signal:ctrl.signal});
       clearTimeout(tid);
       if(r.ok){
         const d=await r.json();
-        if(d.ok&&d.c&&d.c.length>=10){
-          candleCache[ticker]={data:d,ts:Date.now(),days,src:'worker'};
-      _saveCandleCache();
-          return d;
+        if(d.ok&&d.results&&d.results.length>=10){
+          // แปลง Polygon format → candle format
+          const results=d.results.slice(-days);
+          const c=[],h=[],l=[],o=[],v=[],t=[];
+          for(const bar of results){
+            c.push(bar.c); h.push(bar.h); l.push(bar.l);
+            o.push(bar.o); v.push(bar.v||0);
+            t.push(Math.floor(bar.t/1000));
+          }
+          if(c.length>=5){
+            const data={c,h,l,o,v,t};
+            candleCache[ticker]={data,ts:Date.now(),days,src:'worker'};
+            candleCache[cacheKey]={data,ts:Date.now(),src:'worker'};
+            _saveCandleCache();
+            return data;
+          }
         }
       }
     }catch{}
