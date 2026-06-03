@@ -23,6 +23,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
+<!-- [FIX 1] Preload LightweightCharts — โหลดล่วงหน้าตอนแอปเริ่ม ไม่รอให้เปิด drawer แล้วค่อยโหลด -->
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -3223,15 +3225,18 @@ function openDrawer(ticker){
   const dLogo=document.getElementById('drawerLogo');
   if(dLogo){dLogo.innerHTML=buildLogoFallback(ticker);}
   loadLogo(ticker,'drawerLogo',40);
-  // render tech tab ครั้งเดียวตอนเปิด
+  // [FIX 3] เปิด drawer ก่อน แล้วค่อย render tech tab หลัง transition เริ่ม
   _currentChartDays=30;
-  drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  document.getElementById('drawer').classList.add('open');
+  document.body.style.overflow='hidden';
+  // render tech tab หลัง drawer เริ่ม visible (รอ 1 frame)
+  requestAnimationFrame(()=>{
+    drawerTab('tech', document.querySelector('.drawer-tab[onclick*="tech"]'));
+  });
   // ดึง analyst data ในพื้นหลัง
   fetchAnalystData(ticker).then(()=>{
     if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
   });
-  document.getElementById('drawer').classList.add('open');
-  document.body.style.overflow='hidden';
 
   // โหลด candles background — ไม่บล็อก drawer เปิด
   var _snapTicker = ticker;
@@ -3810,13 +3815,17 @@ function drawerTab(tab, btn){
         const seen=new Set();
         candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
 
-        // DEBUG — ลบออกหลัง fix
-        console.log('[CHART DEBUG]',s.t,'hasReal=',hasReal,'candleData.length=',candleData.length,'w=',container.getBoundingClientRect().width,'offsetW=',container.offsetWidth,'LW=',typeof LightweightCharts);
-        if(candleData.length>0) console.log('[CHART DEBUG] first=',JSON.stringify(candleData[0]),'last=',JSON.stringify(candleData[candleData.length-1]));
+        // [production — debug log removed]
 
         if(!candleData.length) return;
 
-        const w=container.getBoundingClientRect().width||container.parentElement?.getBoundingClientRect().width||360;
+        // [FIX 2b] รอ drawer animation เสร็จก่อนวัด width เพื่อป้องกัน width=0
+        const w = (()=>{
+          let ww = container.getBoundingClientRect().width;
+          if(ww < 10) ww = container.parentElement?.getBoundingClientRect().width || 0;
+          if(ww < 10) ww = window.innerWidth || 360;
+          return ww;
+        })();
         const chart=LightweightCharts.createChart(container,{
           width:w, height:200,
           layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
@@ -3867,14 +3876,24 @@ function drawerTab(tab, btn){
         }catch(e){}
       };
 
-      if(typeof LightweightCharts!=='undefined'){
-        _drawLW();
-      } else {
-        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
-        const sc=document.createElement('script');
-        sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
-        sc.onload=_drawLW; document.head.appendChild(sc);
-      }
+      // [FIX 2a] รอ LightweightCharts ให้พร้อมก่อน render ไม่ใช่ return เงียบๆ
+      const _waitAndDrawLW = (retries) => {
+        if(typeof LightweightCharts !== 'undefined'){
+          _drawLW();
+        } else if(retries > 0){
+          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
+          setTimeout(()=>_waitAndDrawLW(retries-1), 300);
+        } else {
+          // fallback: inject script แล้วรอ onload
+          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
+          const sc=document.createElement('script');
+          sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
+          sc.onload=()=>{ if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _drawLW(); };
+          sc.onerror=()=>{ container.innerHTML='<div style="color:var(--red);text-align:center;padding:60px 0;font-size:12px">❌ โหลดกราฟไม่ได้ กรุณาตรวจสอบ network</div>'; };
+          document.head.appendChild(sc);
+        }
+      };
+      _waitAndDrawLW(10);
 
       // fetch candles จริงแล้ว redraw
       if(!hasReal&&hasApiKey()){
@@ -3883,7 +3902,10 @@ function drawerTab(tab, btn){
         }).catch(()=>{});
       }
     };
-    requestAnimationFrame(()=>{
+    // [FIX 2c] รอ drawer open transition (420ms) ก่อนวัด width และ render chart
+    const _drawerOpenDelay = container._lwChart ? 0 : 450;
+    setTimeout(()=>{
+      requestAnimationFrame(()=>{
       if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
         _initLWChart();
         const dayMap={30:0,90:1,180:2,365:3};
@@ -3891,6 +3913,7 @@ function drawerTab(tab, btn){
         document.querySelectorAll('.tf-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
       }
     });
+    }, _drawerOpenDelay);
     }; // end _renderTech
     _renderTech();
     // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
