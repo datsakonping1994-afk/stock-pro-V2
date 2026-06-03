@@ -3726,6 +3726,11 @@ function drawerTab(tab, btn){
       <div id="tvChartContainer" style="height:420px;overflow:hidden;margin:0 -16px 8px -16px;width:calc(100% + 32px);border-radius:0;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
+        <div class="ind-row" style="background:rgba(255,77,106,0.06);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">แนวรับ S1</span><span class="ind-val bear">${s1.toFixed(2)}</span></div>
+        <div class="ind-row" style="background:rgba(255,77,106,0.04);border-color:rgba(255,77,106,0.12)"><span class="ind-name" style="color:var(--red2);opacity:0.75">แนวรับ S2</span><span class="ind-val bear" style="opacity:0.75">${getS2(s.t,s.p).toFixed(2)}</span></div>
+        <div class="ind-row" style="background:rgba(0,230,118,0.06);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">แนวต้าน R1</span><span class="ind-val bull">${r1.toFixed(2)}</span></div>
+        <div class="ind-row" style="background:rgba(0,230,118,0.04);border-color:rgba(0,230,118,0.12)"><span class="ind-name" style="color:var(--green);opacity:0.75">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">${getR2(s.t,s.p).toFixed(2)}</span></div>
+        <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         <div class="ind-row"><span class="ind-name">Stochastic %K/%D</span>${stochTxt}</div>
         <div class="ind-row"><span class="ind-name">Williams %R</span>${wRTxt}</div>
         <div class="ind-row"><span class="ind-name">ADX (DI+/DI-)</span>${adxTxt}</div>
@@ -3742,11 +3747,6 @@ function drawerTab(tab, btn){
         <div class="ind-row" style="background:rgba(0,230,118,0.05);border-color:rgba(0,230,118,0.2)"><span class="ind-name" style="color:var(--green)">🚀 Supertrend</span>${stTxt}</div>
         <div class="ind-row" style="background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.2)"><span class="ind-name" style="color:var(--gold)">⬛ Parabolic SAR</span>${sarTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.05);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">🛑 ATR Stop Loss</span>${atrStopTxt}</div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S1</span><span class="ind-val bear">${s1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวรับ S2</span><span class="ind-val bear" style="opacity:0.75">${getS2(s.t,s.p).toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R1</span><span class="ind-val bull">${r1.toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">แนวต้าน R2</span><span class="ind-val bull" style="opacity:0.75">${getR2(s.t,s.p).toFixed(2)}</span></div>
-        <div class="ind-row"><span class="ind-name">ห่าง S1</span><span class="ind-val ${((s.p-s1)/s1*100)<=2?'bull':'neut'}">${((s.p-s1)/s1*100).toFixed(2)}%</span></div>
         ${sig?.scoreBreakdown?.length?`<div class="ind-row" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="ind-name" style="margin-bottom:4px">Score Breakdown</span><span style="font-size:10px;color:var(--text2);line-height:1.8">${sig.scoreBreakdown.join('<br>')}</span></div>`:''}
         <div style="margin-top:14px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:14px;padding:14px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔔 ตั้ง Price Alert</div>
@@ -3786,10 +3786,22 @@ function drawerTab(tab, btn){
         studies: [
           "RSI@tv-basicstudies",
           "MACD@tv-basicstudies",
-          { id:"MAExp@tv-basicstudies", inputs:{ length:50  } },
-          { id:"MAExp@tv-basicstudies", inputs:{ length:100 } },
-          { id:"MAExp@tv-basicstudies", inputs:{ length:200 } }
+          "MAExp@tv-basicstudies",
+          "MAExp@tv-basicstudies",
+          "MAExp@tv-basicstudies"
         ],
+        studies_overrides: {
+          "moving average exponential.length": 50,
+          "moving average exponential.1.length": 100,
+          "moving average exponential.2.length": 200,
+          "moving average exponential.plot.color": "#f5c518",
+          "moving average exponential.1.plot.color": "#2196f3",
+          "moving average exponential.2.plot.color": "#e040fb",
+          "macd.macd.color": "#2196f3",
+          "macd.signal.color": "#ff9800",
+          "macd.positive bar.color": "#00e676",
+          "macd.negative bar.color": "#ff4d6a"
+        },
         container_id: containerId
       });
       document.getElementById(containerId).appendChild(script);
@@ -7219,10 +7231,22 @@ async function _switchTF(btn, days){
     studies: [
       "RSI@tv-basicstudies",
       "MACD@tv-basicstudies",
-      { id:"MAExp@tv-basicstudies", inputs:{ length:50  } },
-      { id:"MAExp@tv-basicstudies", inputs:{ length:100 } },
-      { id:"MAExp@tv-basicstudies", inputs:{ length:200 } }
+      "MAExp@tv-basicstudies",
+      "MAExp@tv-basicstudies",
+      "MAExp@tv-basicstudies"
     ],
+    studies_overrides: {
+      "moving average exponential.length": 50,
+      "moving average exponential.1.length": 100,
+      "moving average exponential.2.length": 200,
+      "moving average exponential.plot.color": "#f5c518",
+      "moving average exponential.1.plot.color": "#2196f3",
+      "moving average exponential.2.plot.color": "#e040fb",
+      "macd.macd.color": "#2196f3",
+      "macd.signal.color": "#ff9800",
+      "macd.positive bar.color": "#00e676",
+      "macd.negative bar.color": "#ff4d6a"
+    },
     container_id: containerId
   });
   document.getElementById(containerId).appendChild(script);
