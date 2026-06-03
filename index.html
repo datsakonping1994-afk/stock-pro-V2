@@ -3723,7 +3723,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="tvChartContainer" style="height:420px;overflow:hidden;margin:0 -16px 8px -16px;width:calc(100% + 32px);border-radius:0;background:#0a101a"></div>
+      <div id="tvChartContainer" style="height:500px;overflow:hidden;margin:0 -16px 8px -16px;width:calc(100% + 32px);border-radius:0;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row" style="background:rgba(255,77,106,0.06);border-color:rgba(255,77,106,0.2)"><span class="ind-name" style="color:var(--red2)">แนวรับ S1</span><span class="ind-val bear">${s1.toFixed(2)}</span></div>
@@ -3765,46 +3765,16 @@ function drawerTab(tab, btn){
       const container=document.getElementById('tvChartContainer');
       if(!container) return;
       const tvInterval = intervalDays<=30?'D': intervalDays<=90?'W':'M';
-      const containerId = 'tv_adv_'+s.t.replace(/[^a-zA-Z0-9]/g,'_');
-      container.innerHTML=`<div id="${containerId}" style="height:420px"></div>`;
-      const script=document.createElement('script');
-      script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-      script.async=true;
-      script.innerHTML=JSON.stringify({
-        autosize: true,
-        symbol: s.t,
-        interval: tvInterval,
-        timezone: "Asia/Bangkok",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        backgroundColor: "rgba(7,13,24,1)",
-        gridColor: "rgba(255,255,255,0.03)",
-        hide_top_toolbar: false,
-        hide_legend: false,
-        save_image: false,
-        studies: [
-          "RSI@tv-basicstudies",
-          "MACD@tv-basicstudies",
-          "MAExp@tv-basicstudies",
-          "MAExp@tv-basicstudies",
-          "MAExp@tv-basicstudies"
-        ],
-        studies_overrides: {
-          "moving average exponential.length": 50,
-          "moving average exponential.1.length": 100,
-          "moving average exponential.2.length": 200,
-          "moving average exponential.plot.color": "#f5c518",
-          "moving average exponential.1.plot.color": "#2196f3",
-          "moving average exponential.2.plot.color": "#e040fb",
-          "macd.macd.color": "#2196f3",
-          "macd.signal.color": "#ff9800",
-          "macd.positive bar.color": "#00e676",
-          "macd.negative bar.color": "#ff4d6a"
-        },
-        container_id: containerId
-      });
-      document.getElementById(containerId).appendChild(script);
+      const tvRange    = intervalDays<=30?'1M': intervalDays<=90?'3M': intervalDays<=180?'6M':'12M';
+      const sym = encodeURIComponent(s.t);
+      container.innerHTML=`
+        <iframe
+          id="tv_iframe_${s.t.replace(/[^a-zA-Z0-9]/g,'_')}"
+          src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${s.t}&symbol=${sym}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&save_image=0&studies=RSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FMA%40tv-basicstudies%1FMA%40tv-basicstudies%1FMA%40tv-basicstudies&studies_overrides=%7B%22ma.ma%201.length%22%3A50%2C%22ma.ma%201.color%22%3A%22%23f5c518%22%2C%22ma.ma%202.length%22%3A100%2C%22ma.ma%202.color%22%3A%22%232196f3%22%2C%22ma.ma%203.length%22%3A200%2C%22ma.ma%203.color%22%3A%22%23e040fb%22%7D&overrides=%7B%22paneProperties.background%22%3A%22%23070d18%22%2C%22paneProperties.backgroundType%22%3A%22solid%22%2C%22paneProperties.vertGridProperties.color%22%3A%22rgba(255%2C255%2C255%2C0.03)%22%2C%22paneProperties.horzGridProperties.color%22%3A%22rgba(255%2C255%2C255%2C0.03)%22%2C%22mainSeriesProperties.candleStyle.upColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.downColor%22%3A%22%23ff4d6a%22%2C%22mainSeriesProperties.candleStyle.borderUpColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.borderDownColor%22%3A%22%23ff4d6a%22%2C%22mainSeriesProperties.candleStyle.wickUpColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.wickDownColor%22%3A%22%23ff4d6a%22%7D"
+          style="width:100%;height:500px;border:none;display:block"
+          allowtransparency="true"
+          scrolling="no"
+        ></iframe>`;
       ['touchstart','touchmove','touchend'].forEach(ev=>
         container.addEventListener(ev,e=>e.stopPropagation(),{passive:true})
       );
@@ -7210,46 +7180,15 @@ async function _switchTF(btn, days){
   const container=document.getElementById('tvChartContainer');
   if(!container) return;
   const tvInterval = days<=30?'D': days<=90?'W':'M';
-  const containerId = 'tv_adv_'+ticker.replace(/[^a-zA-Z0-9]/g,'_')+'_'+days;
-  container.innerHTML=`<div id="${containerId}" style="height:420px"></div>`;
-  const script=document.createElement('script');
-  script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-  script.async=true;
-  script.innerHTML=JSON.stringify({
-    autosize: true,
-    symbol: ticker,
-    interval: tvInterval,
-    timezone: "Asia/Bangkok",
-    theme: "dark",
-    style: "1",
-    locale: "en",
-    backgroundColor: "rgba(7,13,24,1)",
-    gridColor: "rgba(255,255,255,0.03)",
-    hide_top_toolbar: false,
-    hide_legend: false,
-    save_image: false,
-    studies: [
-      "RSI@tv-basicstudies",
-      "MACD@tv-basicstudies",
-      "MAExp@tv-basicstudies",
-      "MAExp@tv-basicstudies",
-      "MAExp@tv-basicstudies"
-    ],
-    studies_overrides: {
-      "moving average exponential.length": 50,
-      "moving average exponential.1.length": 100,
-      "moving average exponential.2.length": 200,
-      "moving average exponential.plot.color": "#f5c518",
-      "moving average exponential.1.plot.color": "#2196f3",
-      "moving average exponential.2.plot.color": "#e040fb",
-      "macd.macd.color": "#2196f3",
-      "macd.signal.color": "#ff9800",
-      "macd.positive bar.color": "#00e676",
-      "macd.negative bar.color": "#ff4d6a"
-    },
-    container_id: containerId
-  });
-  document.getElementById(containerId).appendChild(script);
+  const tvRange    = days<=30?'1M': days<=90?'3M': days<=180?'6M':'12M';
+  const sym = encodeURIComponent(ticker);
+  container.innerHTML=`
+    <iframe
+      src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${ticker}_${days}&symbol=${sym}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&save_image=0&studies=RSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FMA%40tv-basicstudies%1FMA%40tv-basicstudies%1FMA%40tv-basicstudies&studies_overrides=%7B%22ma.ma%201.length%22%3A50%2C%22ma.ma%201.color%22%3A%22%23f5c518%22%2C%22ma.ma%202.length%22%3A100%2C%22ma.ma%202.color%22%3A%22%232196f3%22%2C%22ma.ma%203.length%22%3A200%2C%22ma.ma%203.color%22%3A%22%23e040fb%22%7D&overrides=%7B%22paneProperties.background%22%3A%22%23070d18%22%2C%22paneProperties.backgroundType%22%3A%22solid%22%2C%22paneProperties.vertGridProperties.color%22%3A%22rgba(255%2C255%2C255%2C0.03)%22%2C%22paneProperties.horzGridProperties.color%22%3A%22rgba(255%2C255%2C255%2C0.03)%22%2C%22mainSeriesProperties.candleStyle.upColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.downColor%22%3A%22%23ff4d6a%22%2C%22mainSeriesProperties.candleStyle.borderUpColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.borderDownColor%22%3A%22%23ff4d6a%22%2C%22mainSeriesProperties.candleStyle.wickUpColor%22%3A%22%2300e676%22%2C%22mainSeriesProperties.candleStyle.wickDownColor%22%3A%22%23ff4d6a%22%7D"
+      style="width:100%;height:500px;border:none;display:block"
+      allowtransparency="true"
+      scrolling="no"
+    ></iframe>`;
   // อัพเดท indicator ด้านล่างด้วย
   try{
     await updateRSIFromCandles(ticker);
