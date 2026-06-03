@@ -3776,14 +3776,17 @@ function drawerTab(tab, btn){
       container._lwTicker = s.t;
       container._needsRedraw = false;
       const days=_currentChartDays||30;
-      const raw=candleCache[s.t]?.data;
-      const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
+      // [FIX] อ่าน raw และ hasReal ใหม่ทุกครั้งที่ _initLWChart ถูกเรียก ไม่ใช่จาก closure เดิม
+      // เพราะ fetchCandles อาจเสร็จหลัง closure ถูกสร้างแล้ว
 
       const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p);
       const r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
 
       const _drawLW=()=>{
         if(typeof LightweightCharts==='undefined') return;
+        // อ่านค่าสดจาก cache ตอนที่จะวาดจริง
+        const raw=candleCache[s.t]?.data;
+        const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
         container.innerHTML='';
 
         // ── สร้าง candleData ──
@@ -3905,10 +3908,15 @@ function drawerTab(tab, btn){
       };
       _waitAndDrawLW(10);
 
-      // fetch candles จริงแล้ว redraw
-      if(!hasReal&&hasApiKey()){
+      // fetch candles จริงแล้ว redraw — force redraw เพราะได้ข้อมูลใหม่
+      if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
+        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดข้อมูล...</div>';
         fetchCandles(s.t,days).then(()=>{
-          if(currentDrawerTicker===s.t&&currentDrawerTab==='tech') _initLWChart();
+          if(currentDrawerTicker===s.t&&currentDrawerTab==='tech'){
+            const c2=document.getElementById('lwChartContainer');
+            if(c2){ c2._needsRedraw=true; c2._lwChart=null; }
+            _initLWChart();
+          }
         }).catch(()=>{});
       }
     };
@@ -3926,10 +3934,14 @@ function drawerTab(tab, btn){
     }, _drawerOpenDelay);
     }; // end _renderTech
     _renderTech();
-    // ถ้ายังไม่มี candle → fetch แล้ว re-render indicator (เฉพาะถ้ายังอยู่ tech tab)
+    // ถ้ายังไม่มี candle → fetch แล้ว re-render (เฉพาะถ้ายังอยู่ tech tab)
     if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
       if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
-        if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _renderTech();
+        if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
+          const c3=document.getElementById('lwChartContainer');
+          if(c3){ c3._needsRedraw=true; c3._lwChart=null; }
+          _renderTech();
+        }
       }).catch(()=>{});
     }
   } else if(tab==='ai'){
