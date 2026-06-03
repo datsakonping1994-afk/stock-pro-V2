@@ -3791,14 +3791,22 @@ function drawerTab(tab, btn){
         if(hasReal){
           const n=Math.min(raw.c.length,days);
           for(let i=raw.c.length-n;i<raw.c.length;i++){
-            const t=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
-            if(t&&!isNaN(o)&&!isNaN(h)&&!isNaN(l)&&!isNaN(c)&&h>=l)
-              candleData.push({time:t,open:o,high:h,low:l,close:c});
+            const ts=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
+            if(!ts||isNaN(o)||isNaN(h)||isNaN(l)||isNaN(c)||h<l) continue;
+            // แปลง unix timestamp → YYYY-MM-DD string สำหรับ LightweightCharts v3.8
+            let timeVal;
+            if(typeof ts==='string'&&ts.includes('-')){
+              timeVal=ts; // already date string
+            } else {
+              const d=new Date(ts>9999999999?ts:ts*1000);
+              timeVal=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            }
+            candleData.push({time:timeVal,open:o,high:h,low:l,close:c});
           }
         } else {
-          // mock OHLC
-          const now=Math.floor(Date.now()/1000);
+          // mock OHLC — ใช้ YYYY-MM-DD string เพราะ LightweightCharts v3.8 daily ต้องการ string ไม่ใช่ unix timestamp
           let p=s.p*0.85;
+          const baseMs=Date.now()-days*86400000;
           for(let i=days;i>=0;i--){
             p=Math.max(p*(1+(Math.random()-0.47)*0.025),s.p*0.4);
             const o=+p.toFixed(2);
@@ -3806,7 +3814,9 @@ function drawerTab(tab, btn){
             const c=+(p+chg).toFixed(2);
             const h=+(Math.max(o,c)*(1+Math.random()*0.008)).toFixed(2);
             const l=+(Math.min(o,c)*(1-Math.random()*0.008)).toFixed(2);
-            candleData.push({time:now-i*86400,open:o,high:h,low:l,close:c});
+            const d=new Date(baseMs+i*86400000);
+            const dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            candleData.push({time:dateStr,open:o,high:h,low:l,close:c});
           }
           candleData[candleData.length-1].close=s.p;
         }
@@ -7275,13 +7285,12 @@ function calcVolumeProfile(data, bins=10){
 
 // ── _genMockCandles ──
 function _genMockCandles(ticker, currentPrice, days=60){
-  if(!currentPrice||currentPrice<=0) return null; // FIX: ป้องกัน price=0
+  if(!currentPrice||currentPrice<=0) return null;
   const c=[],h=[],l=[],o=[],v=[],t=[];
-  let p=currentPrice*(0.75+Math.random()*0.1); // เริ่มที่ ~75-85% ของราคาปัจจุบัน
-  const now=Math.floor(Date.now()/1000);
-  const DAY=86400;
-  for(let i=days;i>=0;i--){
-    const chg=(Math.random()-0.46)*0.025; // bias ขึ้นเล็กน้อย
+  let p=currentPrice*(0.75+Math.random()*0.1);
+  const baseMs=Date.now()-days*86400000;
+  for(let i=0;i<=days;i++){
+    const chg=(Math.random()-0.46)*0.025;
     p=Math.max(p*(1+chg), currentPrice*0.5);
     const hi=p*(1+Math.random()*0.012);
     const lo=p*(1-Math.random()*0.012);
@@ -7290,9 +7299,10 @@ function _genMockCandles(ticker, currentPrice, days=60){
     l.push(+lo.toFixed(2));
     o.push(+(p*(1+(Math.random()-0.5)*0.008)).toFixed(2));
     v.push(Math.floor(500000+Math.random()*3000000));
-    t.push(now-i*DAY);
+    // ใช้ YYYY-MM-DD string สำหรับ LightweightCharts v3.8
+    const d=new Date(baseMs+i*86400000);
+    t.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
   }
-  // ปรับจุดสุดท้ายให้ตรงกับราคาปัจจุบัน
   c[c.length-1]=currentPrice;
   return{c,h,l,o,v,t,_mock:true};
 }
