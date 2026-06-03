@@ -6987,7 +6987,7 @@ setTimeout(()=>{
 const _thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
 var earningsData=[
   {t:'NVDA',n:'Nvidia',d:'28 พ.ค. 2026',st:'soon',eps:'$0.89',rev:'$44.1B'},
-  {t:'CRWD',n:'CrowdStrike',d:'ปลาย พ.ค. 2026',st:'soon',eps:'$0.66',rev:'$1.1B'},
+  {t:'CRWD',n:'CrowdStrike',d:'3 มิ.ย. 2026',st:'soon',eps:'$0.66',rev:'$1.1B'},
   {t:'HIMS',n:'Hims & Hers',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.06',rev:'$586M'},
   {t:'ASTS',n:'AST SpaceMobile',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat Rev',eps:'-$0.31',rev:'$8M'},
   {t:'OKLO',n:'Oklo Inc',d:'12 พ.ค. 2026',st:'done',res:'⚠️ In-line',eps:'-$0.11',rev:'$0.4M'},
@@ -7004,7 +7004,9 @@ var earningsData=[
   {t:'MSFT',n:'Microsoft',d:'30 เม.ย. 2026',st:'done',res:'✅ Beat',eps:'$3.22',rev:'$68.4B'},
   {t:'GOOGL',n:'Alphabet',d:'29 เม.ย. 2026',st:'done',res:'✅ Beat',eps:'$2.01',rev:'$89.1B'},
   {t:'RBRK',n:'Rubrik',d:'มิ.ย. 2026',st:'future',eps:'~-$0.28',rev:'~$285M'},
-  {t:'MU',n:'Micron',d:'มิ.ย. 2026',st:'future',eps:'~$2.10',rev:'~$10.8B'},
+  {t:'MU',n:'Micron',d:'25 มิ.ย. 2026',st:'future',eps:'~$2.10',rev:'~$10.8B'},
+  {t:'ORCL',n:'Oracle Corp',d:'11 มิ.ย. 2026',st:'soon',eps:'~$1.65',rev:'~$14.8B'},
+  {t:'ADBE',n:'Adobe Inc',d:'12 มิ.ย. 2026',st:'soon',eps:'~$5.00',rev:'~$5.8B'},
   {t:'NOW',n:'ServiceNow',d:'ก.ค. 2026',st:'future',eps:'~$4.08',rev:'~$3.1B'},
   {t:'LLY',n:'Eli Lilly',d:'ก.ค. 2026',st:'future',eps:'~$5.80',rev:'~$13.5B'},
   {t:'TSM',n:'Taiwan Semi',d:'ก.ค. 2026',st:'future',eps:'~NT$14.2',rev:'~$30B'},
@@ -7015,7 +7017,7 @@ var earningsData=[
   {t:'VRT',n:'Vertiv',d:'ก.ค. 2026',st:'future',eps:'~$0.90',rev:'~$2.5B'},
   {t:'HOOD',n:'Robinhood',d:'ก.ค. 2026',st:'future',eps:'~$0.25',rev:'~$620M'},
   {t:'SOFI',n:'SoFi',d:'ก.ค. 2026',st:'future',eps:'~$0.05',rev:'~$720M'},
-  {t:'AVGO',n:'Broadcom',d:'ก.ย. 2026',st:'future',eps:'~$1.62',rev:'~$15.8B'},
+  {t:'AVGO',n:'Broadcom',d:'4 มิ.ย. 2026',st:'soon',eps:'~$2.40',rev:'~$22.1B'},
   {t:'CRWV',n:'CoreWeave',d:'ส.ค. 2026',st:'future',eps:'~-$0.55',rev:'~$1.2B'},
   {t:'NBIS',n:'Nebius',d:'ส.ค. 2026',st:'future',eps:'~-$0.12',rev:'~$150M'},
   {t:'IREN',n:'IREN Ltd',d:'ส.ค. 2026',st:'future',eps:'~$0.02',rev:'~$95M'},
@@ -8731,6 +8733,36 @@ async function fetchAndRenderEarnings(){
         );
         clearTimeout(tid);
         if(r.ok){ const d=await r.json(); items=d?.earningsCalendar||[]; usedLive=true; }
+      }
+
+      // [NEW] เพิ่ม Yahoo Finance earnings เพื่อได้วันที่แม่นขึ้น
+      // ดึงเฉพาะหุ้นที่ยังไม่มีวันแน่นอน (hardcoded เดิม)
+      if(items.length>0){
+        const apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
+        const missingTickers=stocks.map(s=>s.t).filter(t=>!apiTickers.has(t)).slice(0,20);
+        if(missingTickers.length>0){
+          const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
+            try{
+              const yh=ticker.replace('.', '-');
+              const r=await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yh}?modules=calendarEvents`,{
+                headers:{'User-Agent':'Mozilla/5.0'},
+                signal:AbortSignal.timeout(5000)
+              });
+              if(!r.ok) return null;
+              const d=await r.json();
+              const earnings=d?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
+              if(!earnings?.earningsDate?.[0]) return null;
+              const ts=earnings.earningsDate[0].raw*1000;
+              const dateStr=new Date(ts).toISOString().slice(0,10);
+              return {symbol:ticker, date:dateStr, epsEstimate:earnings.epsEstimate?.raw||null, revenueEstimate:null, hour:'amc'};
+            }catch{ return null; }
+          }));
+          const yahooItems=yahooResults.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
+          if(yahooItems.length>0){
+            items=[...items,...yahooItems];
+            console.log('[Yahoo Earnings] added',yahooItems.length,'tickers');
+          }
+        }
       }
 
       if(items.length>0){
