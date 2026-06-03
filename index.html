@@ -23,8 +23,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
-<!-- [FIX 1] Preload LightweightCharts — โหลดล่วงหน้าตอนแอปเริ่ม ไม่รอให้เปิด drawer แล้วค่อยโหลด -->
-<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -3725,7 +3723,7 @@ function drawerTab(tab, btn){
         <button class="tf-btn" onclick="_switchTF(this,180)">6M</button>
         <button class="tf-btn" onclick="_switchTF(this,365)">1Y</button>
       </div>
-      <div id="lwChartContainer" style="height:220px;overflow:hidden;margin:0 -16px 8px -16px;background:#0a101a;width:calc(100% + 32px)"></div>
+      <div id="tvChartContainer" style="height:240px;overflow:hidden;margin:0 -16px 8px -16px;width:calc(100% + 32px);border-radius:0;background:#0a101a"></div>
       <div class="ind-table">
         <div class="ind-row"><span class="ind-name">🎯 Buy Score</span>${scoreTxt}</div>
         <div class="ind-row"><span class="ind-name">RSI (14)</span><span class="ind-val ${rsi>=70?'bear':rsi<=30?'bull':'neut'}">${rsi} ${rsi>=70?'Overbought':rsi<=30?'Oversold':'Neutral'}</span></div>
@@ -3765,189 +3763,43 @@ function drawerTab(tab, btn){
           </div>
         </div>
       </div>`;
-    // Draw Lightweight Chart — cache instance ต่อ ticker
-    const _initLWChart=()=>{
-      const container=document.getElementById('lwChartContainer');
+    // ── TradingView Widget ──
+    const _initTVChart=(intervalDays)=>{
+      const container=document.getElementById('tvChartContainer');
       if(!container) return;
-      // Reuse chart ถ้า ticker เดิมและ chart ยังอยู่
-      if(container._lwChart && container._lwTicker === s.t && !container._needsRedraw){
-        return;
-      }
-      container._lwTicker = s.t;
-      container._needsRedraw = false;
-      const days=_currentChartDays||30;
-      // [FIX] อ่าน raw และ hasReal ใหม่ทุกครั้งที่ _initLWChart ถูกเรียก ไม่ใช่จาก closure เดิม
-      // เพราะ fetchCandles อาจเสร็จหลัง closure ถูกสร้างแล้ว
-
-      const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p);
-      const r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
-
-      const _drawLW=()=>{
-        if(typeof LightweightCharts==='undefined') return;
-        // อ่านค่าสดจาก cache ตอนที่จะวาดจริง
-        const raw=candleCache[s.t]?.data;
-        const hasReal=raw&&raw.c&&raw.t&&raw.o&&raw.h&&raw.l&&!raw._mock&&raw.c.length>=5;
-        container.innerHTML='';
-
-        // ── สร้าง candleData ──
-        let candleData=[];
-        if(hasReal){
-          const n=Math.min(raw.c.length,days);
-          for(let i=raw.c.length-n;i<raw.c.length;i++){
-            const ts=raw.t[i],o=+raw.o[i],h=+raw.h[i],l=+raw.l[i],c=+raw.c[i];
-            if(!ts||isNaN(o)||isNaN(h)||isNaN(l)||isNaN(c)||h<l) continue;
-            // แปลง unix timestamp → YYYY-MM-DD string สำหรับ LightweightCharts v3.8
-            let timeVal;
-            if(typeof ts==='string'&&ts.includes('-')){
-              timeVal=ts; // already date string
-            } else {
-              const d=new Date(ts>9999999999?ts:ts*1000);
-              timeVal=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-            }
-            candleData.push({time:timeVal,open:o,high:h,low:l,close:c});
-          }
-        } else {
-          // mock OHLC — ใช้ YYYY-MM-DD string เพราะ LightweightCharts v3.8 daily ต้องการ string ไม่ใช่ unix timestamp
-          let p=s.p*0.85;
-          const baseMs=Date.now()-days*86400000;
-          for(let i=days;i>=0;i--){
-            p=Math.max(p*(1+(Math.random()-0.47)*0.025),s.p*0.4);
-            const o=+p.toFixed(2);
-            const chg=p*(Math.random()-0.5)*0.01;
-            const c=+(p+chg).toFixed(2);
-            const h=+(Math.max(o,c)*(1+Math.random()*0.008)).toFixed(2);
-            const l=+(Math.min(o,c)*(1-Math.random()*0.008)).toFixed(2);
-            const d=new Date(baseMs+i*86400000);
-            const dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-            candleData.push({time:dateStr,open:o,high:h,low:l,close:c});
-          }
-          candleData[candleData.length-1].close=s.p;
-        }
-
-        // dedup + sort
-        const seen=new Set();
-        candleData=candleData.filter(d=>{if(seen.has(d.time))return false;seen.add(d.time);return true;}).sort((a,b)=>a.time-b.time);
-
-        // [production — debug log removed]
-
-        if(!candleData.length) return;
-
-        // [FIX 2b] รอ drawer animation เสร็จก่อนวัด width เพื่อป้องกัน width=0
-        const w = (()=>{
-          let ww = container.getBoundingClientRect().width;
-          if(ww < 10) ww = container.parentElement?.getBoundingClientRect().width || 0;
-          if(ww < 10) ww = window.innerWidth || 360;
-          return ww;
-        })();
-        const chart=LightweightCharts.createChart(container,{
-          width:w, height:200,
-          layout:{background:{color:'#070d18'},textColor:'rgba(139,153,181,0.9)'},
-          grid:{vertLines:{color:'rgba(255,255,255,0.03)'},horzLines:{color:'rgba(255,255,255,0.03)'}},
-          rightPriceScale:{borderColor:'rgba(255,255,255,0.08)',scaleMargins:{top:0.1,bottom:0.1}},
-          timeScale:{borderColor:'rgba(255,255,255,0.08)',timeVisible:true,secondsVisible:false},
-          crosshair:{mode:1,vertLine:{color:'rgba(201,168,76,0.4)',width:1,style:2},horzLine:{color:'rgba(201,168,76,0.4)',width:1,style:2}},
-          handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},
-          handleScale:{mouseWheel:true,pinch:true},
-        });
-
-        const cs=chart.addCandlestickSeries({
-          upColor:'#00e676',downColor:'#ff4d6a',
-          borderUpColor:'#00e676',borderDownColor:'#ff4d6a',
-          wickUpColor:'rgba(0,230,118,0.6)',wickDownColor:'rgba(255,77,106,0.6)',
-          priceLineVisible:false,lastValueVisible:false,
-        });
-        cs.setData(candleData);
-
-        // volume
-        if(hasReal&&raw.v&&raw.v.length){
-          try{
-            const volS=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol',scaleMargins:{top:0.85,bottom:0},lastValueVisible:false,priceLineVisible:false});
-            const n=Math.min(raw.c.length,days);
-            const vs=raw.v.slice(-n);
-            volS.setData(candleData.map((d,i)=>({time:d.time,value:vs[i]||0,color:d.close>=d.open?'rgba(0,230,118,0.15)':'rgba(255,77,106,0.15)'})));
-          }catch(e){}
-        }
-
-        // S/R lines
-        const showS2=s.p<s1,showR2=s.p>r1;
-        [[r2,'R2','#00c853',showR2],[r1,'R1','#00e676',true],[s1,'S1','#ff4d6a',true],[s2,'S2','#cc3344',showS2]].forEach(([price,label,clr,showLabel])=>{
-          if(price>0) cs.createPriceLine({price,color:clr,lineWidth:1,lineStyle:2,axisLabelVisible:showLabel,title:label});
-        });
-        cs.createPriceLine({price:s.p,color:'rgba(201,168,76,0.9)',lineWidth:1,lineStyle:0,axisLabelVisible:true,title:'●'});
-
-        chart.timeScale().fitContent();
-
-        // ให้ touch บนกราฟไม่ bubble ไป page swipe
-        ['touchstart','touchmove','touchend'].forEach(ev=>
-          container.addEventListener(ev,e=>e.stopPropagation(),{passive:true})
-        );
-        // resize
-        try{
-          if(container._ro) container._ro.disconnect();
-          const ro=new ResizeObserver(()=>{const nw=container.getBoundingClientRect().width;if(nw>10)chart.resize(nw,200);});
-          ro.observe(container); container._ro=ro;
-        }catch(e){}
-      };
-
-      // [FIX 2a] รอ LightweightCharts ให้พร้อมก่อน render ไม่ใช่ return เงียบๆ
-      const _waitAndDrawLW = (retries) => {
-        if(typeof LightweightCharts !== 'undefined'){
-          _drawLW();
-        } else if(retries > 0){
-          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
-          setTimeout(()=>_waitAndDrawLW(retries-1), 300);
-        } else {
-          // fallback: inject script แล้วรอ onload
-          container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดกราฟ...</div>';
-          const sc=document.createElement('script');
-          sc.src='https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js';
-          sc.onload=()=>{ if(currentDrawerTicker===s.t && currentDrawerTab==='tech') _drawLW(); };
-          sc.onerror=()=>{ container.innerHTML='<div style="color:var(--red);text-align:center;padding:60px 0;font-size:12px">❌ โหลดกราฟไม่ได้ กรุณาตรวจสอบ network</div>'; };
-          document.head.appendChild(sc);
-        }
-      };
-      _waitAndDrawLW(10);
-
-      // fetch candles จริงแล้ว redraw — force redraw เพราะได้ข้อมูลใหม่
-      if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
-        container.innerHTML='<div style="color:var(--text3);text-align:center;padding:60px 0;font-size:12px">⏳ กำลังโหลดข้อมูล...</div>';
-        fetchCandles(s.t,days).then(()=>{
-          if(currentDrawerTicker===s.t&&currentDrawerTab==='tech'){
-            const c2=document.getElementById('lwChartContainer');
-            if(c2){ c2._needsRedraw=true; c2._lwChart=null; }
-            _initLWChart();
-          }
-        }).catch(()=>{});
-      }
+      // แปลง days → TradingView interval
+      const tvInterval = intervalDays<=30?'D': intervalDays<=90?'W':'M';
+      const tvRange    = intervalDays<=30?'1M': intervalDays<=90?'3M': intervalDays<=180?'6M':'12M';
+      container.innerHTML=`
+        <iframe
+          src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${s.t}&symbol=${encodeURIComponent(s.t)}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0&backgroundColor=rgba(7,13,24,1)&gridColor=rgba(255,255,255,0.03)&lineColor=%2300e676&upColor=%2300e676&downColor=%23ff4d6a&borderUpColor=%2300e676&borderDownColor=%23ff4d6a&wickUpColor=%2300e676&wickDownColor=%23ff4d6a"
+          style="width:100%;height:240px;border:none;display:block"
+          allowtransparency="true"
+          scrolling="no"
+        ></iframe>`;
+      // ป้องกัน touch bubble ไป page swipe
+      ['touchstart','touchmove','touchend'].forEach(ev=>
+        container.addEventListener(ev,e=>e.stopPropagation(),{passive:true})
+      );
     };
-    // [FIX 2c] รอ drawer open transition (420ms) ก่อนวัด width และ render chart
-    const _drawerOpenDelay = container._lwChart ? 0 : 450;
+    // [FIX 2c] รอ drawer open transition (420ms) ก่อน render
     setTimeout(()=>{
       requestAnimationFrame(()=>{
-      if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
-        _initLWChart();
-        const dayMap={30:0,90:1,180:2,365:3};
-        const idx=dayMap[_currentChartDays]??0;
-        document.querySelectorAll('.tf-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-      }
-    });
-    }, _drawerOpenDelay);
+        if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
+          _initTVChart(_currentChartDays||30);
+          const dayMap={30:0,90:1,180:2,365:3};
+          const idx=dayMap[_currentChartDays]??0;
+          document.querySelectorAll('.tf-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+        }
+      });
+    }, 450);
     }; // end _renderTech
     _renderTech();
-    // ถ้ายังไม่มี candle → fetch แล้ว re-render (เฉพาะถ้ายังอยู่ tech tab)
-    if(!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock){
-      if(hasApiKey()) fetchCandles(s.t,60).then(()=>{
-        if(currentDrawerTicker===s.t && currentDrawerTab==='tech'){
-          const c3=document.getElementById('lwChartContainer');
-          if(c3){ c3._needsRedraw=true; c3._lwChart=null; }
-          _renderTech();
-        }
-      }).catch(()=>{});
-    }
   } else if(tab==='ai'){
     const hist=aiHistory[s.t]||[];
     body.innerHTML=`
       <div style="display:flex;flex-direction:column;height:100%;min-height:0">
+
       <div class="ai-chat" id="aiChat">
         ${hist.length?hist.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.content}</div>`).join(''):
           `<div class="ai-msg bot">👋 สวัสดีครับ! ถามเกี่ยวกับ ${s.t} ได้เลย เช่น "วิเคราะห์หุ้นตัวนี้ให้หน่อย" หรือ "ควรซื้อตอนนี้ไหม"</div>`}
@@ -7322,51 +7174,26 @@ function _genMockCandles(ticker, currentPrice, days=60){
 
 // ── Timeframe switcher ──
 async function _switchTF(btn, days){
-  // Force redraw เมื่อเปลี่ยน timeframe
-  const c = document.getElementById('lwChartContainer');
-  if(c) c._needsRedraw = true;
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const ticker=currentDrawerTicker;
+  if(!ticker) return;
+  _currentChartDays=days;
+  // อัพเดท TradingView widget ตาม timeframe ที่เลือก
+  const container=document.getElementById('tvChartContainer');
+  if(!container) return;
+  const tvInterval = days<=30?'D': days<=90?'W':'M';
+  const tvRange    = days<=30?'1M': days<=90?'3M': days<=180?'6M':'12M';
+  container.innerHTML=`
+    <iframe
+      src="https://s.tradingview.com/widgetembed/?frameElementId=tv_${ticker}_${days}&symbol=${encodeURIComponent(ticker)}&interval=${tvInterval}&range=${tvRange}&theme=dark&style=1&locale=en&hide_top_toolbar=0&hide_legend=0&save_image=0&backgroundColor=rgba(7,13,24,1)&gridColor=rgba(255,255,255,0.03)&upColor=%2300e676&downColor=%23ff4d6a&borderUpColor=%2300e676&borderDownColor=%23ff4d6a&wickUpColor=%2300e676&wickDownColor=%23ff4d6a"
+      style="width:100%;height:240px;border:none;display:block"
+      allowtransparency="true"
+      scrolling="no"
+    ></iframe>`;
+  // อัพเดท indicator ด้านล่างด้วย
   try{
-    document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const ticker=currentDrawerTicker;
-    if(!ticker) return;
-    _currentChartDays=days;
-    // ไม่ล้าง cache เดิม แค่ขอข้อมูลใหม่ตาม days
-    await fetchCandles(ticker,days);
     await updateRSIFromCandles(ticker);
-    // วาด LW chart ใหม่ — ใช้ข้อมูลตาม cacheKey ที่แยกตาม days
-    const cacheKey=`${ticker}_${days}`;
-    const chartData = candleCache[cacheKey]?.data || candleCache[ticker]?.data;
-    const containerId='lwChartContainer';
-    const container=document.getElementById(containerId);
-    if(container&&chartData?.c&&typeof LightweightCharts!=='undefined'){
-      const s=stocksMap.get(ticker);
-      const allPrices=chartData.c;
-      const allTs=chartData.t||null;
-      const prices=allPrices.slice(-days);
-      const timestamps=allTs?allTs.slice(-days):null;
-      const p=s?.p||prices[prices.length-1]||0;
-      container.innerHTML='';
-      const chart=LightweightCharts.createChart(container,{
-        width:container.offsetWidth||360,height:280,
-        layout:{background:{color:'#0a101a'},textColor:'#8b99b5'},
-        grid:{vertLines:{color:'rgba(255,255,255,0.04)'},horzLines:{color:'rgba(255,255,255,0.04)'}},
-        rightPriceScale:{borderColor:'rgba(255,255,255,0.1)'},
-        timeScale:{borderColor:'rgba(255,255,255,0.1)',timeVisible:true},
-      });
-      const isUp=s?.c>=0;
-      const lineSeries=chart.addLineSeries({color:isUp?'#00e676':'#ff4d6a',lineWidth:2,priceLineVisible:false});
-      lineSeries.setData(prices.map((pr,i)=>({time:timestamps[i],value:pr})));
-      const addLine=(price,label,clr)=>{
-        if(!price||price<=0) return;
-        lineSeries.createPriceLine({price,color:clr,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:label});
-      };
-      addLine(getS1(ticker,p),'S1','rgba(255,100,100,0.9)');
-      addLine(getS2(ticker,p),'S2','rgba(200,60,60,0.7)');
-      addLine(getR1(ticker,p),'R1','rgba(0,230,118,0.9)');
-      addLine(getR2(ticker,p),'R2','rgba(0,180,90,0.7)');
-      chart.timeScale().fitContent();
-    }
     if(currentDrawerTab==='tech') drawerTab('tech',document.querySelector('.drawer-tab[onclick*="tech"]'));
   }catch(e){}
 }
