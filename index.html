@@ -8867,8 +8867,8 @@ async function fetchAndRenderEarnings(){
           try{ localStorage.setItem('_sp_earnings_cache',JSON.stringify({data:merged,ts:Date.now()})); }catch{}
           window.earningsData=merged;
           renderEarningsData(merged, usedLive);
-          // [NEW] Auto-check ผลจริงหลังตลาดปิด
-          setTimeout(()=>autoCheckEarningsResults(), 2000);
+          // [NEW] Auto-check ผลจริง — ทั้งวันที่ผ่านมาแล้วและวันนี้หลังตลาดปิด
+          setTimeout(()=>autoCheckEarningsResults(), 1500);
 
           // [NEW] Auto-check Beat/Miss — ถ้ามีหุ้นรอผลวันนี้ ให้ refresh ทุก 30 นาที
           const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
@@ -8910,52 +8910,66 @@ async function fetchAndRenderEarnings(){
 async function fetchActualEarnings(ticker) {
   try {
     const r = await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`, {
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(8000)
     });
     if (!r.ok) return null;
     const d = await r.json();
     if (!d.ok || !d.data?.length) return null;
-    // ดึง quarter ล่าสุด
     const latest = d.data[0];
     return {
-      epsActual: latest.actual,
-      epsEstimate: latest.estimate,
-      revActual: null, // Finnhub /stock/earnings ไม่มี revenue
-      period: latest.period
+      epsActual: latest.actual ?? null,
+      epsEstimate: latest.estimate ?? null,
+      period: latest.period || ''
     };
   } catch { return null; }
 }
 
-// Auto-check Beat/Miss สำหรับหุ้นที่ประกาศวันนี้
+// Auto-check Beat/Miss — รวม AVGO, CRWD และทุกตัวที่วันผ่านไปแล้วหรือประกาศวันนี้
 async function autoCheckEarningsResults() {
   const et = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
   const etMins = et.getHours() * 60 + et.getMinutes();
-  // เช็คเฉพาะหลัง BMO ปิด (10:00 ET) หรือหลัง AMC ปิด (16:30 ET)
-  if (etMins < 600 && etMins < 990) return;
   const todayET = et.toISOString().slice(0, 10);
-  const pending = (window.earningsData || []).filter(e =>
-    e._date === todayET && e._live && (!e.res || e.res === '✅ Done')
-  );
+
+  const pending = (window.earningsData || []).filter(e => {
+    if (!e._live || !e._date) return false;
+    // มีผลแล้ว skip (ยกเว้น Done ที่ยังไม่มีตัวเลข)
+    if (e.res && e.res !== '—' && !e.res.includes('Done') && e.res !== '') return false;
+    if (e._date < todayET) return true; // วันผ่านไปแล้ว
+    if (e._date === todayET) {
+      if (e.hour === 'bmo' && etMins >= 600) return true;
+      if (e.hour === 'amc' && etMins >= 990) return true;
+      if (!e.hour && etMins >= 960) return true;
+    }
+    return false;
+  });
+
   if (!pending.length) return;
+  console.log('[Earnings] auto-check:', pending.map(e => e.t).join(', '));
+
   let updated = false;
   for (const e of pending) {
-    // ข้ามถ้าเป็น BMO แต่ยังก่อน 10:00 ET
-    if (e.hour === 'bmo' && etMins < 600) continue;
-    // ข้ามถ้าเป็น AMC แต่ยังก่อน 16:30 ET
-    if (e.hour === 'amc' && etMins < 990) continue;
     const actual = await fetchActualEarnings(e.t);
-    if (!actual?.epsActual) continue;
-    const epsBeat = actual.epsActual >= actual.epsEstimate;
-    const epsPct = actual.epsEstimate !== 0
-      ? ((actual.epsActual - actual.epsEstimate) / Math.abs(actual.epsEstimate) * 100).toFixed(0)
-      : 0;
-    const pctStr = epsPct !== 0 ? ` ${epsPct > 0 ? '+' : ''}${epsPct}%` : '';
-    const estStr = actual.epsEstimate != null ? ` (Est. $${actual.epsEstimate.toFixed(2)})` : '';
-    e.res = epsBeat ? `✅ Beat${pctStr}${estStr}` : `❌ Miss${pctStr}${estStr}`;
-    e.epsActual = `$${actual.epsActual.toFixed(2)}`;
+    if (!actual) {
+      // ดึงไม่ได้ แสดง — แทน
+      if (!e.res || e.res === '') { e.res = '—'; e.st = 'done'; updated = true; }
+      continue;
+    }
+    const epsAct = actual.epsActual;
+    const epsEst = actual.epsEstimate;
+    if (epsAct != null && epsEst != null) {
+      const epsBeat = epsAct >= epsEst;
+      const epsPct = epsEst !== 0 ? ((epsAct - epsEst) / Math.abs(epsEst) * 100).toFixed(1) : 0;
+      const pctStr = epsPct != 0 ? ` ${epsPct > 0 ? '+' : ''}${epsPct}%` : '';
+      e.res = epsBeat ? `✅ Beat${pctStr} (Est. $${epsEst.toFixed(2)})` : `❌ Miss${pctStr} (Est. $${epsEst.toFixed(2)})`;
+    } else if (epsAct != null) {
+      e.res = `— EPS $${epsAct.toFixed(2)}`;
+    } else {
+      e.res = '—';
+    }
+    if (epsAct != null) e.epsActual = `$${epsAct.toFixed(2)}`;
     e.st = 'done';
     updated = true;
-    console.log(`[Earnings] ${e.t} result: ${e.res}`);
+    console.log(`[Earnings] ${e.t}: ${e.res}`);
   }
   if (updated) {
     try { localStorage.setItem('_sp_earnings_cache', JSON.stringify({data: window.earningsData, ts: Date.now()})); } catch {}
