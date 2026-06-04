@@ -6819,6 +6819,13 @@ async function loadWorkerPriceCache(){
     const tid=setTimeout(()=>ctrl.abort(),8000);
     const r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal});
     clearTimeout(tid);
+    // 503 = cache ยังไม่พร้อม (Cron ยังไม่รัน) — retry ใน 30 วินาที
+    if(r.status===503){
+      console.warn('[prices] Worker cache not ready, retry in 30s');
+      _workerCacheLoading=false;
+      setTimeout(()=>loadWorkerPriceCache(),30000);
+      return;
+    }
     if(!r.ok) return;
     const d=await r.json();
     if(d.ok&&d.quotes){
@@ -6949,7 +6956,9 @@ async function initYahooPrices(){
     const tid=setTimeout(()=>ctrl.abort(),5000);
     const r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal});
     clearTimeout(tid);
-    if(r.ok){
+    // 503 = cache ยังไม่พร้อม — ข้ามไป fallback Yahoo แทน
+    if(r.status===503){ console.warn('[initYahooPrices] Worker cache not ready, falling back to Yahoo'); }
+    else if(r.ok){
       const d=await r.json();
       if(d.ok&&d.quotes){
         window._workerPriceCache=d.quotes;
@@ -11301,9 +11310,9 @@ async function runAISignalScan(){
   const btn = document.getElementById('aiSignalScanBtn');
   const results = document.getElementById('aiSignalResults');
 
-  // ดึงรายการหุ้น — พอร์ต + watchlist
+  // FIX 1: watchTickers ใช้ watchlist Set จริง ไม่ใช่ s.watch ที่ไม่มีอยู่
   const portTickers = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
-  const watchTickers = stocks.filter(s=>s.watch).map(s=>s.t);
+  const watchTickers = [...(watchlist||new Set())].filter(t=>t);
   const allTickers = [...new Set([...portTickers, ...watchTickers])].slice(0,15);
 
   if(!allTickers.length){
@@ -11322,13 +11331,14 @@ async function runAISignalScan(){
   // สร้าง stock summary สำหรับ context
   const stockSummary = allTickers.map(t=>{
     const s = stocksMap.get(t);
-    const port = portfolio.find(p=>p.t===t);
+    const port = (portfolio||[]).find(p=>p.t===t);
     if(!s) return `${t}: ไม่มีข้อมูล`;
     const pnl = port ? ((s.p-(port.avg||port.price||s.p))*(port.shares||0)) : 0;
     const pnlPct = port?.avg ? ((s.p-port.avg)/port.avg*100).toFixed(1) : '0';
     return `${t}: ราคา $${s.p} เปลี่ยน ${s.c>=0?'+':''}${s.c}% ${port?`[พอร์ต: ${port.shares}หุ้น avg $${port.avg||port.price} P&L ${pnl>=0?'+':''}$${pnl.toFixed(0)} (${pnlPct}%)]`:'[watchlist]'}`;
   }).join('\n');
 
+  const systemPrompt = 'คุณคือนักวิเคราะห์หุ้นผู้เชี่ยวชาญ ตอบ JSON array เท่านั้น ไม่มี markdown ทุก field เป็นภาษาไทย signal ต้องเป็น buy/sell/hold เท่านั้น entry/target/stop ต้องเป็นตัวเลขเท่านั้น';
   const prompt = `วิเคราะห์หุ้นต่อไปนี้และให้สัญญาณการซื้อขาย โดยค้นหาข่าวล่าสุดและปัจจัยที่เกี่ยวข้องก่อน:
 
 ${stockSummary}
@@ -11346,45 +11356,118 @@ PORT SIZE: $${PORT_SIZE.toLocaleString()}
   "ticker": "NVDA",
   "signal": "buy",
   "confidence": 85,
-  "headline": "สรุปสัญญาณ 1 ประโยค",
-  "reason": "เหตุผลหลัก 2-3 ประโยค",
+  "headline": "สรุปสัญญาณ 1 ประโยคภาษาไทย",
+  "reason": "เหตุผลหลัก 2-3 ประโยคภาษาไทย",
   "entry": 950,
   "target": 1100,
   "stop": 880,
   "risk_reward": "1:2.4",
   "timeframe": "1-2 สัปดาห์",
   "tags": ["Momentum","AI Sector"],
-  "warning": "ความเสี่ยงที่ต้องระวัง"
+  "warning": "ความเสี่ยงที่ต้องระวังภาษาไทย"
 }]
-signal ต้องเป็น buy/sell/hold เท่านั้น`;
+กฎสำคัญ: signal ต้องเป็น buy/sell/hold เท่านั้น (ตัวพิมพ์เล็ก), entry/target/stop ต้องเป็นตัวเลข ห้ามใส่ null หรือ string`;
 
+  // FIX 5: helper แปลง + validate raw signals
+  function _parseAndValidateSignals(text){
+    try{
+      const clean = text.replace(/```json|```/g,'').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
+      const raw = match ? JSON.parse(match[0]) : JSON.parse(clean);
+      // FIX 3+4: validate ทุก field
+      const VALID_SIGNALS = new Set(['buy','sell','hold']);
+      return raw.filter(s=>s&&s.ticker).map(s=>({
+        ticker:   String(s.ticker).toUpperCase().trim(),
+        // FIX 4: normalize signal — lowercase + ตรวจ valid
+        signal:   VALID_SIGNALS.has(String(s.signal||'').toLowerCase())
+                    ? String(s.signal).toLowerCase()
+                    : 'hold',
+        confidence: Math.min(99, Math.max(1, parseInt(s.confidence)||50)),
+        headline:   s.headline||'',
+        reason:     s.reason||'',
+        // FIX 3: entry/target/stop ต้องเป็น number, fallback จากราคาปัจจุบัน
+        entry:   (()=>{ const v=parseFloat(s.entry); const cur=stocksMap.get(String(s.ticker).toUpperCase())?.p; return isNaN(v)||v<=0 ? (cur||null) : v; })(),
+        target:  (()=>{ const v=parseFloat(s.target); return isNaN(v)||v<=0 ? null : v; })(),
+        stop:    (()=>{ const v=parseFloat(s.stop);   return isNaN(v)||v<=0 ? null : v; })(),
+        risk_reward: s.risk_reward||'--',
+        timeframe:   s.timeframe||'--',
+        tags:        Array.isArray(s.tags)?s.tags:[],
+        warning:     s.warning||''
+      }));
+    }catch{ return []; }
+  }
+
+  let signals = [];
+
+  // FIX 2: Worker → Claude direct → Gemini → Groq
   try{
     const response = await _fetchWithTimeout(ALERT_WORKER+'/ai',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        system:'คุณคือนักวิเคราะห์หุ้นผู้เชี่ยวชาญ ตอบ JSON array เท่านั้น ไม่มี markdown',
-        messages:[{role:'user',content:prompt}],
-        max_tokens:3000
-      })
+      body:JSON.stringify({ system:systemPrompt, messages:[{role:'user',content:prompt}], max_tokens:3000 })
     });
-
     const data = await response.json();
     const text = data.text || (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('') || '';
-    let signals = [];
-    try{
-      const clean = text.replace(/```json|```/g,'').trim();
-      const match = clean.match(/\[[\s\S]*\]/);
-      signals = match ? JSON.parse(match[0]) : JSON.parse(clean);
-    }catch{ signals = []; }
-
-    _aiSignalData = signals;
-    renderAISignalCards(signals);
-    try{ _lsSet('_ai_signals_cache', JSON.stringify({ts:Date.now(), signals})); }catch{}
-
+    signals = _parseAndValidateSignals(text);
   }catch(e){
-    results.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--text3)">⚠️ เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง</div>`;
+    console.warn('[AI Signal] Worker failed:', e.message, '— trying Claude direct');
   }
+
+  // Fallback: Claude direct
+  if(!signals.length){
+    try{
+      results.innerHTML = `<div style="text-align:center;padding:20px 0;color:var(--text3)">
+        <div style="font-size:12px">Worker ไม่ตอบสนอง — ใช้ Claude โดยตรง...</div>
+      </div>`;
+      const text = await _callClaudeDirect(systemPrompt, prompt, 3000);
+      if(text) signals = _parseAndValidateSignals(text);
+    }catch(e){ console.warn('[AI Signal] Claude direct failed:', e.message); }
+  }
+
+  // Fallback: Gemini
+  if(!signals.length){
+    try{
+      results.innerHTML = `<div style="text-align:center;padding:20px 0;color:var(--text3)">
+        <div style="font-size:12px">ลอง Gemini...</div>
+      </div>`;
+      const text = await _callGeminiDirect(systemPrompt, prompt, 3000);
+      if(text) signals = _parseAndValidateSignals(text);
+    }catch(e){ console.warn('[AI Signal] Gemini failed:', e.message); }
+  }
+
+  // Fallback: Groq (ฟรี เร็ว)
+  if(!signals.length){
+    try{
+      results.innerHTML = `<div style="text-align:center;padding:20px 0;color:var(--text3)">
+        <div style="font-size:12px">ลอง Groq...</div>
+      </div>`;
+      const text = await _callGroq(systemPrompt, prompt, 3000);
+      if(text) signals = _parseAndValidateSignals(text);
+    }catch(e){ console.warn('[AI Signal] Groq failed:', e.message); }
+  }
+
+  if(!signals.length){
+    // ตรวจว่ามี key อะไรบ้าง
+    const hasAnyKey = !!(localStorage.getItem('anthropicKey')||localStorage.getItem('geminiKey')||localStorage.getItem('groqKey'));
+    results.innerHTML = `<div style="text-align:center;padding:30px 20px;color:var(--text3)">
+      <div style="font-size:22px;margin-bottom:10px">⚠️</div>
+      ${hasAnyKey
+        ? `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">วิเคราะห์ไม่สำเร็จ</div>
+           <div style="font-size:11px;line-height:1.6">Worker และ API ทั้งหมดไม่ตอบสนอง<br>ลองใหม่อีกครั้งในภายหลัง</div>`
+        : `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">ยังไม่มี API Key</div>
+           <div style="font-size:11px;line-height:1.6;margin-bottom:12px">ต้องใส่ API Key อย่างน้อย 1 ตัวใน Settings<br>แนะนำ Groq (ฟรี) หรือ Claude API</div>
+           <button onclick="navTo('settings')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:10px;padding:8px 18px;font-size:12px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">⚙️ ไปที่ Settings</button>`
+      }
+    </div>`;
+    btn.disabled = false;
+    btn.innerHTML = '🤖 วิเคราะห์สัญญาณ AI';
+    return;
+  }
+
+  _aiSignalData = signals;
+  renderAISignalCards(signals);
+  // FIX 5: บันทึก cache พร้อม version
+  try{ _lsSet('_ai_signals_cache', JSON.stringify({ts:Date.now(), v:2, signals})); }catch{}
 
   btn.disabled = false;
   btn.innerHTML = '🤖 วิเคราะห์สัญญาณ AI';
@@ -11394,12 +11477,12 @@ function renderAISignalCards(signals){
   const results = document.getElementById('aiSignalResults');
   if(!results) return;
 
-  // โหลด cache ถ้ายังไม่มีข้อมูล
+  // FIX 5: โหลด cache พร้อมตรวจ version
   if(!signals.length){
     try{
       const cache = JSON.parse(_lsGet('_ai_signals_cache')||'{}');
       const age = Date.now() - (cache.ts||0);
-      if(cache.signals?.length && age < 6*3600000){
+      if(cache.signals?.length && age < 6*3600000 && (cache.v||0)>=2){
         signals = cache.signals;
         _aiSignalData = signals;
       }
@@ -11475,12 +11558,12 @@ function renderAISignalCards(signals){
   }).join('');
 }
 
-// โหลด cache ตอนเปิดหน้า signals
+// โหลด cache ตอนเปิดหน้า signals — FIX 5: ตรวจ version
 function initAISignals(){
   try{
     const cache = JSON.parse(_lsGet('_ai_signals_cache')||'{}');
     const age = Date.now() - (cache.ts||0);
-    if(cache.signals?.length && age < 6*3600000){
+    if(cache.signals?.length && age < 6*3600000 && (cache.v||0)>=2){
       _aiSignalData = cache.signals;
     }
   }catch{}
@@ -12190,9 +12273,10 @@ function initElitePage(){
   if(cached && cached.results.length > 0){
     _eliteScanResults = cached.results;
     renderEliteScanResults(cached.results, cached.age);
-    // ถ้า cache ไม่มี pros/cons → enrich แบบ background
+    // ถ้า cache ไม่มี pros/cons หรือ headline ยังเป็น English → enrich แบบ background
     const missingAnalysis = cached.results.some(function(r){
-      return !r.news.pros||!r.news.pros.length||!r.news.why||!r.news.read_game;
+      return !r.news.pros||!r.news.pros.length||!r.news.why||!r.news.read_game
+        || _isEnglish(r.news.headline); // ยังไม่ได้แปล
     });
     if(missingAnalysis){
       setTimeout(async function(){
@@ -12330,8 +12414,8 @@ async function _eliteDirectFallback(overlay){
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:4000,
-        system:'You are a senior financial analyst. Analyze news for Thai investors. ALL text fields MUST be in Thai. STRICT RULES: (1) stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) — NEVER ETFs (SPY QQQ TLT GLD) — NEVER fake tickers. (2) sentiment must be exactly one of: bullish bearish neutral. (3) impact must be integer 1-10. (4) watch: use exact keywords FOMC CPI NFP GDP or ticker+Earnings. (5) read_game: specific second-order effect of this exact news only. Respond ONLY with valid JSON array. No markdown.',
-        messages:[{role:'user',content:'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ตอบ JSON array ภาษาไทย:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อภาษาไทย","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bearish","markets":["USD","Oil"],"pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เพราะอะไร","watch":"FOMC, CPI (ชื่อ event จริงเท่านั้น)","read_game":"second-order effect เฉพาะข่าวนี้","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]'}]
+        system:'You are a senior financial analyst. Analyze news for Thai investors. CRITICAL: ALL text fields MUST be in Thai language — translate from English if needed. STRICT RULES: (1) headline field MUST be Thai translation of the original — do NOT leave it in English. (2) stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) — NEVER ETFs (SPY QQQ TLT GLD) — NEVER fake tickers. (3) sentiment must be exactly one of: bullish bearish neutral. (4) impact must be integer 1-10. (5) watch: use exact keywords FOMC CPI NFP GDP or ticker+Earnings. (6) read_game: specific second-order effect of this exact news only. Respond ONLY with valid JSON array. No markdown.',
+        messages:[{role:'user',content:'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย — ถ้า headline เป็น English ต้องแปลเป็นไทยก่อน ตอบ JSON array ภาษาไทยทั้งหมด:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อภาษาไทย (แปลจาก English)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"bearish","markets":["USD","Oil"],"pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เพราะอะไร","watch":"FOMC, CPI (ชื่อ event จริงเท่านั้น)","read_game":"second-order effect เฉพาะข่าวนี้","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]'}]
       })
     });
     if(!resp.ok) return _mapNewsToResults(allNews);
@@ -12353,20 +12437,52 @@ async function _eliteDirectFallback(overlay){
   }
 }
 
+// ตรวจว่า text เป็นภาษาอังกฤษหรือเปล่า (ไม่มีอักษรไทยเลย)
+function _isEnglish(text){
+  if(!text) return false;
+  return !/[\u0E00-\u0E7F]/.test(text);
+}
+
 function _mapNewsToResults(allNews){
   return allNews.map(function(item){
     const baseItem = {
       headline:item.headline, summary:item.summary,
       impact:5, sentiment:'neutral', markets:item.person.tickers||[],
       pros:[], cons:[], why:'', watch:'', read_game:'',
-      stocks_buy:[], stocks_watch:[], _sourcesCount:1
+      stocks_buy:[], stocks_watch:[], _sourcesCount:1,
+      _needsTranslation: _isEnglish(item.headline)
     };
     return {person:item.person, news: buildNewsAnalysis(baseItem, item.url||'')};
   });
 }
 
+// แสดง overlay บอก user ว่าไม่มี API key เมื่อ Elite scan ไม่สำเร็จเลย
+function _showEliteNoApiOverlay(overlay){
+  if(!overlay) return;
+  const hasAnyKey = !!(
+    localStorage.getItem('anthropicKey') ||
+    localStorage.getItem('groqKey') ||
+    localStorage.getItem('geminiKey') ||
+    localStorage.getItem('tavilyKey') ||
+    localStorage.getItem('gnewsKey')
+  );
+  overlay.style.display = 'flex';
+  overlay.innerHTML = hasAnyKey
+    ? `<div style="font-size:22px">😔</div>
+       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">วิเคราะห์ไม่สำเร็จ</div>
+       <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">API ทั้งหมดไม่ตอบสนองในขณะนี้</div>
+       <button onclick="runEliteScan(true)" style="margin-top:10px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔄 ลองใหม่</button>`
+    : `<div style="font-size:22px">🔑</div>
+       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ยังไม่มี API Key</div>
+       <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">ใส่ API Key ใน Settings เพื่อใช้ Elite<br>แนะนำ Groq (ฟรี) หรือ Claude API</div>
+       <button onclick="navTo('settings')" style="margin-top:10px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">⚙️ ไปที่ Settings</button>`;
+}
+
 async function _eliteClaudeSearch(overlay, _ank){
-  if(!_ank){ toast('⚠️ ใส่ Claude API Key ใน Settings'); return []; }
+  if(!_ank){
+    _showEliteNoApiOverlay(overlay);
+    return [];
+  }
   if(overlay) overlay.innerHTML = `
     <div style="font-size:22px">🤖</div>
     <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Claude กำลังค้นข่าว...</div>
@@ -12434,7 +12550,7 @@ async function _eliteEnrichResults(results, overlay, forceAll){
 
 async function _eliteEnrichResultsInner(results, overlay, forceAll){
   const needsEnrich = forceAll ? results : results.filter(function(r){
-    return !r.news.pros || !r.news.pros.length || !r.news.why;
+    return !r.news.pros || !r.news.pros.length || !r.news.why || _isEnglish(r.news.headline);
   });
   if(!needsEnrich.length) return results;
 
@@ -12449,8 +12565,8 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
     return '- '+r.person.name+' (id:'+r.person.id+'): '+r.news.headline;
   }).join('\n');
 
-  const sys = 'Senior financial analyst for Thai investors. STRICT: stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) NEVER ETFs (SPY QQQ TLT). sentiment: bullish/bearish/neutral. JSON array only, no markdown, all text in Thai.';
-  const msg = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย:\n'+newsItems+'\n\nตอบ JSON array (ภาษาไทยทั้งหมด):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย","summary_th":"สรุป 2 ประโยค","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลสำคัญ","watch":"FOMC, CPI, NFP (event names only)","read_game":"second-order effect เฉพาะข่าวนี้","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const sys = 'Senior financial analyst for Thai investors. CRITICAL: ALL fields must be in Thai language. If headline is in English, you MUST translate it to Thai. STRICT: stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) NEVER ETFs (SPY QQQ TLT). sentiment: bullish/bearish/neutral. JSON array only, no markdown.';
+  const msg = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย (ถ้า headline เป็นภาษาอังกฤษให้แปลเป็นไทยก่อน):\n'+newsItems+'\n\nตอบ JSON array (ทุก field ต้องเป็นภาษาไทย):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย (แปลจาก English ถ้าจำเป็น)","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลสำคัญ","watch":"FOMC, CPI, NFP (event names only)","read_game":"second-order effect เฉพาะข่าวนี้","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   let text = null;
 
@@ -12686,8 +12802,8 @@ async function runEliteScan(forceRefresh=false){
       _eliteScanResults = results;
       renderEliteScanResults(results, 0);
     }
-    // Enrich เสมอทุก path
-    const needsEnrich = results.some(function(r){ return !r.news.pros || !r.news.pros.length || !r.news.why; });
+    // Enrich เสมอทุก path — รวมถึง headline ที่ยังเป็น English
+    const needsEnrich = results.some(function(r){ return !r.news.pros || !r.news.pros.length || !r.news.why || _isEnglish(r.news.headline); });
     if(results.length > 0 && needsEnrich){
       const enriched = await _eliteEnrichResults(results, overlay, true);
       if(enriched && enriched.length){
@@ -12699,8 +12815,13 @@ async function runEliteScan(forceRefresh=false){
     }
 
     _eliteScanResults = results;
-    if(results.length > 0) saveEliteCache(results);
-    renderEliteScanResults(results, 0);
+    if(results.length > 0){
+      saveEliteCache(results);
+      renderEliteScanResults(results, 0);
+    } else {
+      // ไม่มีผลเลย — แสดง no-API overlay
+      _showEliteNoApiOverlay(overlay);
+    }
 
     // ── ลบ fallback เดิม ──
     if(false){
@@ -12743,10 +12864,7 @@ async function runEliteScan(forceRefresh=false){
 
   }catch(e){
     console.log('[ELITE] Error:', e.message);
-    if(overlay) overlay.innerHTML = `
-      <div style="font-size:20px">⚠️</div>
-      <div style="font-size:12px;color:var(--text3);text-align:center;padding:0 16px">${e.message||'เชื่อมต่อไม่ได้'}</div>
-      <button onclick="runEliteScan(true)" style="margin-top:8px;background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.4);border-radius:10px;padding:8px 20px;font-size:11px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif">🔄 ลองใหม่</button>`;
+    _showEliteNoApiOverlay(overlay);
   }
 
   _eliteScanning = false;
