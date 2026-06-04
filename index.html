@@ -2717,11 +2717,11 @@ function makeCard(s){
         <div class="card-stat-lbl">Mkt Cap</div>
       </div>
       <div class="card-stat">
-        <div class="card-stat-val" style="color:${parseFloat(s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.rev||'N/A'}</div>
+        <div class="card-stat-val" style="color:${parseFloat(s.revLive||s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.revLive||s.rev||'N/A'}</div>
         <div class="card-stat-lbl">Rev Growth</div>
       </div>
       <div class="card-stat">
-        <div class="card-stat-val">${s.pe?`P/E ${s.pe}`:'N/A'}</div>
+        <div class="card-stat-val">${(s.peLive||s.pe)?`P/E ${s.peLive||s.pe}`:'N/A'}</div>
         <div class="card-stat-lbl">Valuation</div>
         <div class="rsi-bar"><div class="rsi-dot" style="left:${rsi}%"></div></div>
       </div>
@@ -6515,6 +6515,37 @@ if(document.readyState!=='complete'){
 }
 // เริ่ม preload candles หลัง live เริ่มแล้ว 4 วินาที (ไม่แย่ง bandwidth)
 setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
+
+// [NEW] โหลด metrics (Market Cap, P/E) จาก Worker ทุกตัว background
+setTimeout(async()=>{
+  try{
+    const BATCH=10;
+    for(let i=0;i<stocks.length;i+=BATCH){
+      const batch=stocks.slice(i,i+BATCH).map(s=>s.t).join(',');
+      try{
+        const r=await fetch(`${PRICES_WORKER}/metrics/batch?t=${batch}`,{signal:AbortSignal.timeout(8000)});
+        if(!r.ok) continue;
+        const d=await r.json();
+        if(!d.ok||!d.metrics) continue;
+        for(const [ticker,m] of Object.entries(d.metrics)){
+          const s=stocksMap.get(ticker);
+          if(!s||!m) continue;
+          if(m.mktcap!=null){
+            const mcM=m.mktcap;
+            s.mktcapLive=mcM>=1000000?`$${(mcM/1000000).toFixed(1)}T`:mcM>=1000?`$${(mcM/1000).toFixed(1)}B`:`$${mcM.toFixed(0)}M`;
+          }
+          if(m.pe!=null) s.peLive=+m.pe.toFixed(1);
+          if(m.beta!=null) s.betaLive=+m.beta.toFixed(2);
+          if(m.revGrowth!=null) s.revLive=(m.revGrowth*100).toFixed(1)+'%';
+        }
+        // re-render cards ให้เห็นข้อมูลใหม่
+        if(typeof renderStocks==='function') renderStocks();
+      }catch{}
+      await new Promise(r=>setTimeout(r,500));
+    }
+    console.log('[Metrics] updated',stocks.length,'stocks');
+  }catch(e){ console.warn('[Metrics] error',e); }
+}, 6000); // รอ 6 วินาทีหลังเปิดแอป
 
 // ── Preload candles สำหรับหุ้นยอดนิยม (background, ไม่บล็อก UI) ──
 async function _preloadCandles(){
