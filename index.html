@@ -4685,7 +4685,7 @@ function renderAlerts(){
        <div><div style="color:${stats.avgPct>=0?'var(--green)':'var(--red)'};font-size:16px;font-weight:700">${stats.avgPct>=0?'+':''}${stats.avgPct}%</div><div style="font-size:10px;color:var(--text3)">AVG P&L</div></div>
        <div><div style="color:var(--text);font-size:16px;font-weight:700">${stats.wins}W / ${stats.losses}L</div><div style="font-size:10px;color:var(--text3)">RECORD</div></div>
      </div>` :
-    '<div style="color:var(--text3)">ยังไม่มีสัญญาณที่มีผลแล้ว</div>';
+    '<div style="text-align:center;padding:40px 20px"><div style="font-size:36px;margin-bottom:12px">⏳</div><div style="font-size:14px;font-weight:700;font-family:\'Syne\',sans-serif;color:var(--text2);margin-bottom:6px">ยังไม่มีสัญญาณที่มีผลแล้ว</div><div style="font-size:11px;color:var(--text3);line-height:1.6">สัญญาณจะแสดงที่นี่เมื่อ<br>ราคาถึง R1 หรือ S1 (Exit Signal)</div></div>';
 
   if(list) list.innerHTML = merged.length ? merged.map((t,i)=>`
     <div class="alert-item ${t.result||'pending'}" onclick="_showSignalDetail(${i})" style="cursor:pointer">
@@ -4695,7 +4695,7 @@ function renderAlerts(){
       ${t.exitPrice?`<div class="alert-detail" style="margin-top:2px">Exit ${t.exitPrice}</div>`:''}
       <div class="alert-result ${t.result||'pending'}">${t.result==='win'?`✅ +${t.pct}%`:t.result==='loss'?`❌ ${t.pct}%`:'⏳ รอผล'}</div>
     </div>
-  `).join('') : '<div class="alert-empty">🔔 ยังไม่มีสัญญาณ<br><br>รอ Buy Signal จากระบบครับ</div>';
+  `).join('') : '<div style="text-align:center;padding:50px 20px"><div style="font-size:40px;margin-bottom:14px">🔔</div><div style="font-size:14px;font-weight:700;font-family:\'Syne\',sans-serif;color:var(--text2);margin-bottom:8px">ยังไม่มีสัญญาณ</div><div style="font-size:11px;color:var(--text3);line-height:1.8">รอ Buy Signal จากระบบ<br>หรือตั้ง Price Alert ด้านบน<br><span style="color:var(--gold)">ตลาด NY เปิด 21:30 - 04:00 น.</span></div></div>';
 
   // เก็บ merged log ไว้ใช้ตอนกด
   window._mergedSignalLog = merged;
