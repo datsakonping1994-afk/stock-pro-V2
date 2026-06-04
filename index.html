@@ -1199,7 +1199,7 @@ canvas.bigchart{width:100%;height:100%}
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
     <button onclick="closeModal('earningsModal')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
-    <button onclick="localStorage.removeItem('_sp_earnings_cache');fetchAndRenderEarnings()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
+    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear');}catch{}await fetchAndRenderEarnings();this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
   </div>
   <div id="earningsBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
@@ -8733,8 +8733,8 @@ async function fetchAndRenderEarnings(){
   try{
       // ดึง earnings calendar ผ่าน PRICES_WORKER ก่อน (ประหยัด Finnhub quota)
       const today=new Date();
-      const from=new Date(today); from.setDate(from.getDate()-30);
-      const to=new Date(today); to.setDate(to.getDate()+60);
+      const from=new Date(today); from.setDate(from.getDate()-45);
+      const to=new Date(today); to.setDate(to.getDate()+45);
       const fmt=d=>d.toISOString().slice(0,10);
 
       let items=[];
@@ -8744,7 +8744,7 @@ async function fetchAndRenderEarnings(){
       try{
         const ctrl=new AbortController();
         const tid=setTimeout(()=>ctrl.abort(),6000);
-        const r=await fetch(`${PRICES_WORKER}/earnings?from=${fmt(from)}&to=${fmt(to)}`,{signal:ctrl.signal});
+        const r=await fetch(`${PRICES_WORKER}/earnings?from=${fmt(from)}&to=${fmt(to)}&force=1`,{signal:ctrl.signal});
         clearTimeout(tid);
         if(r.ok){ const d=await r.json(); if(d.ok&&d.items?.length){ items=d.items; usedLive=true; } }
       }catch{}
