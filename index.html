@@ -11131,12 +11131,6 @@ function filterAISignals(type, btn){
 async function runAISignalScan(){
   const btn = document.getElementById('aiSignalScanBtn');
   const results = document.getElementById('aiSignalResults');
-  const ank = localStorage.getItem('anthropicKey')||'';
-
-  if(!ank){
-    toast('⚠️ ต้องใส่ Claude API Key ใน Settings ก่อน');
-    return;
-  }
 
   // ดึงรายการหุ้น — พอร์ต + watchlist
   const portTickers = (portfolio||[]).filter(p=>p.shares>0).map(p=>p.t);
@@ -11196,31 +11190,27 @@ PORT SIZE: $${PORT_SIZE.toLocaleString()}
 signal ต้องเป็น buy/sell/hold เท่านั้น`;
 
   try{
-    const response = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+    const response = await _fetchWithTimeout(ALERT_WORKER+'/ai',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':ank,
-        'anthropic-version':'2023-06-01',
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5',
-        max_tokens:3000,
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:prompt}]
+        system:'คุณคือนักวิเคราะห์หุ้นผู้เชี่ยวชาญ ตอบ JSON array เท่านั้น ไม่มี markdown',
+        messages:[{role:'user',content:prompt}],
+        max_tokens:3000
       })
     });
 
     const data = await response.json();
-    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+    const text = data.text || (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('') || '';
     let signals = [];
     try{
-      signals = JSON.parse(text.replace(/```json|```/g,'').trim());
+      const clean = text.replace(/```json|```/g,'').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
+      signals = match ? JSON.parse(match[0]) : JSON.parse(clean);
     }catch{ signals = []; }
 
     _aiSignalData = signals;
     renderAISignalCards(signals);
-    // บันทึก cache
     try{ _lsSet('_ai_signals_cache', JSON.stringify({ts:Date.now(), signals})); }catch{}
 
   }catch(e){
