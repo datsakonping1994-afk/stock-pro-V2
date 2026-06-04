@@ -8469,11 +8469,15 @@ async function _renderNewsItems(pane, items, ticker, isStatic=false){
   pane.innerHTML=staticTag+'<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">🤖 กำลังแปลเป็นภาษาไทย...</div>';
   let translated=[];
   try{
-    const texts=items.map(n=>n.h||n.headline||'');
+    // [FIX] ส่งทั้ง title และ description ไปแปล
+    const texts=items.map(n=>({
+      title: n.h||n.headline||n.title||'',
+      desc: n.summary||n.x||n.description||n.desc||''
+    }));
     const r=await _fetchWithTimeout('https://gemini-proxy.datsakonping1994.workers.dev',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({texts})
+      body:JSON.stringify({texts, mode:'news'})
     });
     if(r.ok){
       const data=await r.json();
@@ -8485,12 +8489,19 @@ async function _renderNewsItems(pane, items, ticker, isStatic=false){
   }catch{}
   pane.innerHTML=staticTag+items.map((n,i)=>{
     // [FIX] normalize field names จาก sources ต่างๆ
-    const headline=translated[i]?.title||translated[i]?.headline||n.headline||n.h||n.title||n.name||'';
-    const summary=translated[i]?.summary||translated[i]?.description||n.summary||n.x||n.description||n.desc||'';
+    const rawTitle = n.headline||n.h||n.title||n.name||'';
+    const rawSummary = n.summary||n.x||n.description||n.desc||n.content||'';
+    const headline = translated[i]?.title||translated[i]?.headline||rawTitle;
+    // [FIX] ป้องกัน subtitle ซ้ำกับ title — ตรวจว่า summary ต่างจาก title พอ
+    let summary = translated[i]?.summary||translated[i]?.description||rawSummary;
+    // ถ้า summary ซ้ำหรือคล้ายมากกับ headline ให้ว่าง
+    if(summary && (summary===headline || summary===rawTitle ||
+      summary.replace(/\s+/g,'').slice(0,30) === headline.replace(/\s+/g,'').slice(0,30))) {
+      summary = '';
+    }
     const source=n.source||n.s||n.publisher||'';
     const date=n.d||n.publishedAt||n.date||'';
     const url=n.url||n.u||n.link||'#';
-    const img=n.image||n.urlToImage||n.img||'';
     return`<a href="${url}" target="_blank" rel="noopener" style="text-decoration:none;display:block;margin-bottom:10px">
       <div style="background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.3)">
         <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:6px">${headline}</div>
