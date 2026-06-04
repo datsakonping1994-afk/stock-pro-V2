@@ -3070,7 +3070,8 @@ function _renderFNG(d){
   valEl.textContent=v;
   valEl.style.color=color;
   if(labelEl) labelEl.textContent='/100';
-  if(textEl) textEl.textContent=th+(d.rating?` (${d.rating})`:'');
+  // [FIX] ไม่แสดง rating ซ้ำถ้ามีความหมายเดียวกับ th
+  if(textEl) textEl.textContent=th;
   if(emoji) emoji.textContent=em;
 
   // arc animation (circumference = 2π×22 ≈ 138)
