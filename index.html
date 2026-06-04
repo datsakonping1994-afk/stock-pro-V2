@@ -5066,25 +5066,56 @@ async function _analyzeEarningsResult(ticker, btn){
   btn.textContent='⏳ กำลังวิเคราะห์...';
   btn.disabled=true;
   const s=stocksMap.get(ticker);
-  const prompt=`หุ้น: ${ticker} (${e.n||s?.n||''})
-ผลประกอบการล่าสุด:
-- EPS จริง: ${e.epsActual||'N/A'} | คาด: ${e.eps||'N/A'}
-- Revenue จริง: ${e.revActual||'N/A'} | คาด: ${e.rev||'N/A'}
-- สถานะ: ${e.res||'N/A'}
-- ราคาหุ้นปัจจุบัน: $${s?.p||'N/A'} (${s?.c>=0?'+':''}${s?.c||0}%)
 
-วิเคราะห์ผลนี้ให้เข้าใจง่าย 3 ข้อ:
-1) ผลออกมาดีหรือแย่กว่าที่คาด เพราะอะไร
-2) กระทบราคาหุ้นยังไง ระยะสั้น 1-5 วัน
-3) ควรทำอะไร ซื้อ/ถือ/ขาย พร้อมเหตุผล`;
-  const sys='คุณคือที่ปรึกษาการลงทุนที่อธิบายผลประกอบการให้เข้าใจง่าย ไม่ใช้ศัพท์เทคนิค ตอบภาษาไทย';
-  const reply=await callAI_Quick(sys,prompt,400);
+  // ดึงข้อมูลทุกอย่างที่มีในแอป
+  const ind=window._indicators?.[ticker]||{};
+  const sig=window._signals?.[ticker]||{};
+  const port=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return [];}})();
+  const pos=port.find(p=>p.t===ticker);
+  const news=(window.liveNewsCache?.[ticker]?.items||[]).slice(0,3).map(n=>n.h||n.headline||'').filter(Boolean);
+
+  const prompt=`วิเคราะห์ผลประกอบการ ${ticker} (${e.n||s?.n||''}) อย่างละเอียด
+
+📊 ผลประกอบการล่าสุด:
+- EPS จริง: ${e.epsActual||'ยังไม่มี'} | คาด: ${e.eps||'N/A'} | สถานะ: ${e.res||'N/A'}
+- Revenue จริง: ${e.revActual||'ยังไม่มี'} | คาด: ${e.rev||'N/A'}
+- วันประกาศ: ${e.d} ${e.hourLabel||''}
+
+💰 ราคาและ Technical:
+- ราคาปัจจุบัน: $${s?.p||'N/A'} (${s?.c>=0?'+':''}${(s?.c||0).toFixed(2)}%)
+- RSI: ${ind.rsi||sig.rsi||'N/A'}
+- Buy Score: ${sig.score||'N/A'}/100
+- แนวรับ S1: $${sig.s1||'N/A'} | แนวต้าน R1: $${sig.r1||'N/A'}
+- Short Interest: ${s?.short||'N/A'}%
+
+📈 Fundamental:
+- P/E: ${s?.pe||'N/A'} | Market Cap: ${s?.mktcap||'N/A'}
+- Revenue Growth: ${s?.rev||'N/A'} | Beta: ${s?.beta||'N/A'}
+- Analyst Target: $${s?.target||'N/A'}
+- Dividend: ${s?.div||'ไม่มี'}
+
+${pos?`💼 พอร์ตของฉัน:
+- ถือ ${pos.shares} หุ้น | เข้าที่ $${pos.avgPrice}
+- P&L: ${((( s?.p||pos.avgPrice)-pos.avgPrice)/pos.avgPrice*100).toFixed(2)}%`:''}
+
+${news.length?`📰 ข่าวล่าสุด:
+${news.map((n,i)=>`${i+1}. ${n}`).join('\n')}`:''}
+
+วิเคราะห์ 4 ข้อ ตอบภาษาไทยเข้าใจง่าย ไม่ใช้ ** หรือ #:
+1) ผลออกมาดีหรือแย่กว่าคาด และเพราะอะไร
+2) Technical บอกอะไร RSI/Score/แนวรับต้าน
+3) กระทบราคาระยะสั้น 1-5 วัน
+4) ควรทำอะไร ${pos?'(มีหุ้นอยู่แล้ว)':'(ยังไม่มี)'} ซื้อเพิ่ม/ถือ/ขาย พร้อมเหตุผล`;
+
+  const sys='คุณคือที่ปรึกษาการลงทุนคนไทยระดับโปร วิเคราะห์ครบทุกมิติ ตอบภาษาไทยเท่านั้น ไม่ใช้ Markdown ห้ามแนะนำให้ลงทุนโดยตรง';
+  const reply=await callAI_Quick(sys,prompt,600);
   const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
   if(resEl){
     resEl.style.display='block';
     resEl.innerHTML=reply?`<div style="font-size:12px;color:var(--text2);line-height:1.7">${mdToHtml(reply)}</div>`:'<div style="color:var(--text3)">ไม่สามารถวิเคราะห์ได้</div>';
   }
   btn.textContent='✅ วิเคราะห์แล้ว';
+  btn.disabled=false;
 }
 
 // ── AI คาดการณ์ผลประกอบการที่จะมาถึง ──
@@ -5094,16 +5125,29 @@ async function _analyzeEarningsPreview(ticker, btn){
   btn.textContent='⏳ กำลังคาดการณ์...';
   btn.disabled=true;
   const s=stocksMap.get(ticker);
-  const prompt=`หุ้น: ${ticker} (${e.n||s?.n||''})
-กำลังจะประกาศผลประกอบการ: ${e.d}
-EPS ที่นักวิเคราะห์คาด: ${e.eps||'N/A'}
-Revenue ที่คาด: ${e.rev||'N/A'}
-ราคาปัจจุบัน: $${s?.p||'N/A'} | Revenue Growth: ${s?.rev||'N/A'} | P/E: ${s?.pe||'N/A'}
+  const ind=window._indicators?.[ticker]||{};
+  const sig=window._signals?.[ticker]||{};
+  const port=(()=>{try{return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{return [];}})();
+  const pos=port.find(p=>p.t===ticker);
+  const news=(window.liveNewsCache?.[ticker]?.items||[]).slice(0,3).map(n=>n.h||n.headline||'').filter(Boolean);
 
-คาดการณ์ผล 3 ข้อ:
-1) จะ Beat หรือ Miss คาดการณ์ไหม โอกาสกี่เปอร์เซ็นต์ เพราะอะไร
-2) ถ้า Beat ราคาน่าจะขึ้นเท่าไหร่ / ถ้า Miss ลงเท่าไหร่
-3) ควรทำอะไรก่อนประกาศผล ถือ/ขายบางส่วน/ซื้อเพิ่ม`;
+  const prompt=`คาดการณ์ผลประกอบการ ${ticker} (${e.n||s?.n||''})
+
+📊 ข้อมูลที่มี:
+- วันประกาศ: ${e.d} ${e.hourLabel||''}
+- EPS ที่นักวิเคราะห์คาด: ${e.eps||'N/A'} | Revenue คาด: ${e.rev||'N/A'}
+- ราคาปัจจุบัน: $${s?.p||'N/A'} (${s?.c>=0?'+':''}${(s?.c||0).toFixed(2)}%)
+- RSI: ${ind.rsi||sig.rsi||'N/A'} | Buy Score: ${sig.score||'N/A'}/100
+- P/E: ${s?.pe||'N/A'} | Market Cap: ${s?.mktcap||'N/A'}
+- Revenue Growth: ${s?.rev||'N/A'} | Beta: ${s?.beta||'N/A'}
+- Short Interest: ${s?.short||'N/A'}%
+${pos?`- ถือ ${pos.shares} หุ้น เข้าที่ $${pos.avgPrice}`:''}
+${news.length?`\n📰 ข่าวล่าสุด:\n${news.map((n,i)=>`${i+1}. ${n}`).join('\n')}`:''}
+
+คาดการณ์ 3 ข้อ ตอบภาษาไทย ไม่ใช้ ** หรือ #:
+1) จะ Beat หรือ Miss โอกาสกี่เปอร์เซ็นต์ เพราะอะไร
+2) ถ้า Beat ราคาน่าขึ้นเท่าไหร่ / ถ้า Miss ลงเท่าไหร่
+3) ควรทำอะไรก่อนประกาศ ${pos?'(มีหุ้นอยู่แล้ว)':''}`;
   const sys='คุณคือที่ปรึกษาการลงทุนคนไทย ตอบภาษาไทยเท่านั้น ไม่ใช้ ** หรือ Markdown ตัดสินใจชัดเจน ไม่พูดกลางๆ';
   const reply=await callAI_Quick(sys,prompt,400);
   const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
