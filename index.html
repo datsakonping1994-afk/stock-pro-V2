@@ -7032,45 +7032,9 @@ setTimeout(()=>{
 // ═══════════════════════════════════════
 
 const _thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
-var earningsData=[
-  {t:'NVDA',n:'Nvidia',d:'28 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.89',rev:'$44.1B'},
-  {t:'CRWD',n:'CrowdStrike',d:'3 มิ.ย. 2026',st:'done',eps:'$0.66',rev:'$1.1B'},
-  {t:'AVGO',n:'Broadcom',d:'4 มิ.ย. 2026',st:'done',eps:'~$2.40',rev:'~$22.1B'},
-  {t:'HIMS',n:'Hims & Hers',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.06',rev:'$586M'},
-  {t:'ASTS',n:'AST SpaceMobile',d:'11 พ.ค. 2026',st:'done',res:'✅ Beat Rev',eps:'-$0.31',rev:'$8M'},
-  {t:'OKLO',n:'Oklo Inc',d:'12 พ.ค. 2026',st:'done',res:'⚠️ In-line',eps:'-$0.11',rev:'$0.4M'},
-  {t:'RKLB',n:'Rocket Lab',d:'8 พ.ค. 2026',st:'done',res:'✅ Beat +34%',eps:'-$0.04',rev:'$200M'},
-  {t:'AAOI',n:'Applied Opto',d:'7 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'-$0.01',rev:'$134M'},
-  {t:'IONQ',n:'IonQ',d:'7 พ.ค. 2026',st:'done',res:'⚠️ Miss',eps:'-$0.21',rev:'$46M'},
-  {t:'AXON',n:'Axon Enterprise',d:'7 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$1.60',rev:'$807M'},
-  {t:'ARM',n:'Arm Holdings',d:'6 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.58',rev:'$1.4B'},
-  {t:'AMD',n:'AMD',d:'6 พ.ค. 2026',st:'done',res:'✅ Beat +11%',eps:'$1.37',rev:'$10.25B'},
-  {t:'PLTR',n:'Palantir',d:'5 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$0.13',rev:'$863M'},
-  {t:'AMZN',n:'Amazon',d:'1 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$1.36',rev:'$155B'},
-  {t:'AAPL',n:'Apple',d:'1 พ.ค. 2026',st:'done',res:'✅ Beat',eps:'$1.62',rev:'$94.5B'},
-  {t:'META',n:'Meta',d:'30 เม.ย. 2026',st:'done',res:'✅ Beat',eps:'$5.22',rev:'$41.4B'},
-  {t:'MSFT',n:'Microsoft',d:'30 เม.ย. 2026',st:'done',res:'✅ Beat',eps:'$3.22',rev:'$68.4B'},
-  {t:'GOOGL',n:'Alphabet',d:'29 เม.ย. 2026',st:'done',res:'✅ Beat',eps:'$2.01',rev:'$89.1B'},
-  {t:'RBRK',n:'Rubrik',d:'มิ.ย. 2026',st:'future',eps:'~-$0.28',rev:'~$285M'},
-  {t:'MU',n:'Micron',d:'25 มิ.ย. 2026',st:'future',eps:'~$2.10',rev:'~$10.8B'},
-  {t:'ORCL',n:'Oracle Corp',d:'11 มิ.ย. 2026',st:'soon',eps:'~$1.65',rev:'~$14.8B'},
-  {t:'ADBE',n:'Adobe Inc',d:'12 มิ.ย. 2026',st:'soon',eps:'~$5.00',rev:'~$5.8B'},
-  {t:'NOW',n:'ServiceNow',d:'ก.ค. 2026',st:'future',eps:'~$4.08',rev:'~$3.1B'},
-  {t:'LLY',n:'Eli Lilly',d:'ก.ค. 2026',st:'future',eps:'~$5.80',rev:'~$13.5B'},
-  {t:'TSM',n:'Taiwan Semi',d:'ก.ค. 2026',st:'future',eps:'~NT$14.2',rev:'~$30B'},
-  {t:'JPM',n:'JPMorgan',d:'ก.ค. 2026',st:'future',eps:'~$4.62',rev:'~$44B'},
-  {t:'INTC',n:'Intel',d:'ก.ค. 2026',st:'future',eps:'~$0.02',rev:'~$12.6B'},
-  {t:'NFLX',n:'Netflix',d:'ก.ค. 2026',st:'future',eps:'~$7.05',rev:'~$11.0B'},
-  {t:'ANET',n:'Arista',d:'ก.ค. 2026',st:'future',eps:'~$2.70',rev:'~$2.1B'},
-  {t:'VRT',n:'Vertiv',d:'ก.ค. 2026',st:'future',eps:'~$0.90',rev:'~$2.5B'},
-  {t:'HOOD',n:'Robinhood',d:'ก.ค. 2026',st:'future',eps:'~$0.25',rev:'~$620M'},
-  {t:'SOFI',n:'SoFi',d:'ก.ค. 2026',st:'future',eps:'~$0.05',rev:'~$720M'},
-  {t:'AVGO',n:'Broadcom',d:'4 มิ.ย. 2026',st:'soon',eps:'~$2.40',rev:'~$22.1B'},
-  {t:'CRWV',n:'CoreWeave',d:'ส.ค. 2026',st:'future',eps:'~-$0.55',rev:'~$1.2B'},
-  {t:'NBIS',n:'Nebius',d:'ส.ค. 2026',st:'future',eps:'~-$0.12',rev:'~$150M'},
-  {t:'IREN',n:'IREN Ltd',d:'ส.ค. 2026',st:'future',eps:'~$0.02',rev:'~$95M'},
-  {t:'KTOS',n:'Kratos',d:'ส.ค. 2026',st:'future',eps:'~$0.18',rev:'~$360M'},
-];
+// earningsData — ใช้เป็น fallback เฉพาะตอน API ไม่ตอบ
+// ข้อมูลจริงดึงจาก Finnhub + Yahoo Finance ผ่าน worker-prices และ cache ใน KV
+var earningsData=[];
 
 async function safeFetch(url, opt={}, retry=2){
   for(let i=0;i<=retry;i++){
@@ -8888,10 +8852,12 @@ async function fetchAndRenderEarnings(){
             };
           });
 
-          // merge: API ก่อน, hardcoded เป็น fallback สำหรับที่ API ไม่มี
+          // merge: API ก่อน, hardcoded เป็น fallback สำหรับที่ API ไม่มี — dedup ด้วย ticker
           const apiTickers=new Set(apiData.map(e=>e.t));
           const fallback=earningsData.filter(e=>!apiTickers.has(e.t));
-          const merged=[...apiData,...fallback];
+          // dedup API data เองด้วย (กรณี API ส่งซ้ำ)
+          const apiDeduped=[...new Map(apiData.map(e=>[e.t,e])).values()];
+          const merged=[...apiDeduped,...fallback];
           merged.sort((a,b)=>{
             const da=_parseEarningsDate(a.d)||new Date('2099-01-01');
             const db=_parseEarningsDate(b.d)||new Date('2099-01-01');
