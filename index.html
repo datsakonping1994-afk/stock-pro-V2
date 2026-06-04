@@ -5080,7 +5080,10 @@ async function _analyzeEarningsResult(ticker, btn){
   const sys='คุณคือที่ปรึกษาการลงทุนที่อธิบายผลประกอบการให้เข้าใจง่าย ไม่ใช้ศัพท์เทคนิค ตอบภาษาไทย';
   const reply=await callAI_Quick(sys,prompt,400);
   const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
-  if(resEl) resEl.textContent=reply||'ไม่สามารถวิเคราะห์ได้';
+  if(resEl){
+    resEl.style.display='block';
+    resEl.innerHTML=reply?`<div style="font-size:12px;color:var(--text2);line-height:1.7">${mdToHtml(reply)}</div>`:'<div style="color:var(--text3)">ไม่สามารถวิเคราะห์ได้</div>';
+  }
   btn.textContent='✅ วิเคราะห์แล้ว';
 }
 
@@ -5101,10 +5104,13 @@ Revenue ที่คาด: ${e.rev||'N/A'}
 1) จะ Beat หรือ Miss คาดการณ์ไหม โอกาสกี่เปอร์เซ็นต์ เพราะอะไร
 2) ถ้า Beat ราคาน่าจะขึ้นเท่าไหร่ / ถ้า Miss ลงเท่าไหร่
 3) ควรทำอะไรก่อนประกาศผล ถือ/ขายบางส่วน/ซื้อเพิ่ม`;
-  const sys='คุณคือที่ปรึกษาการลงทุนที่ตัดสินใจชัดเจน ไม่พูดกลางๆ ตอบภาษาไทยเข้าใจง่าย';
+  const sys='คุณคือที่ปรึกษาการลงทุนคนไทย ตอบภาษาไทยเท่านั้น ไม่ใช้ ** หรือ Markdown ตัดสินใจชัดเจน ไม่พูดกลางๆ';
   const reply=await callAI_Quick(sys,prompt,400);
   const resEl=document.querySelector(`.earn-ai-result-${ticker}`);
-  if(resEl) resEl.textContent=reply||'ไม่สามารถคาดการณ์ได้';
+  if(resEl){
+    resEl.style.display='block';
+    resEl.innerHTML=reply?`<div style="font-size:12px;color:var(--text2);line-height:1.7">${mdToHtml(reply)}</div>`:'<div style="color:var(--text3)">ไม่สามารถคาดการณ์ได้</div>';
+  }
   btn.textContent='✅ คาดการณ์แล้ว';
 }
 
@@ -8728,6 +8734,21 @@ async function translateNewsItems(items){
 // ── fetchAndRenderEarnings ──
 async function fetchAndRenderEarnings(){
   const body=document.getElementById('earningsBody');
+
+  // เช็ค localStorage cache ก่อน (TTL 6 ชั่วโมง) — ไม่โหลดซ้ำถ้ายังไม่หมดอายุ
+  try{
+    const ec=localStorage.getItem('_sp_earnings_cache');
+    if(ec){
+      const {data,ts}=JSON.parse(ec);
+      if(Date.now()-ts<21600000&&data?.length>0){ // 6 ชั่วโมง
+        window.earningsData=data;
+        renderEarningsData(data, true);
+        setTimeout(()=>autoCheckEarningsResults(), 1500);
+        return;
+      }
+    }
+  }catch{}
+
   body.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--dim);padding:12px 0">⏳ กำลังดึงข้อมูล Earnings...</div>';
 
   // FIX: key อยู่ใน Worker — ดึง earnings ได้เลยเสมอ
@@ -8842,7 +8863,7 @@ async function fetchAndRenderEarnings(){
                 res=`⚠️ EPS Miss${pctStr} / Rev Beat`;
               }
             } else if(isPast){
-              res='✅ Done';
+              res='✅ รายงานแล้ว';
             }
             const hour=e.hour||''; // bmo=ก่อนตลาดเปิด, amc=หลังตลาดปิด
             const hourLabel=hour==='bmo'?'🌅 BMO':hour==='amc'?'🌙 AMC':'';
@@ -8901,18 +8922,6 @@ async function fetchAndRenderEarnings(){
         }
       }
     }catch(e){}
-  // fallback: ลองโหลดจาก cache ก่อน ถ้าไม่มีค่อยใช้ hardcoded
-  try{
-    const ec=localStorage.getItem('_sp_earnings_cache');
-    if(ec){
-      const {data,ts}=JSON.parse(ec);
-      if(Date.now()-ts<3600000){ // cache ไม่เกิน 1 ชั่วโมง
-        window.earningsData=data;
-        renderEarningsData(data, true);
-        return;
-      }
-    }
-  }catch{}
   renderEarningsData(earningsData, false);
 }
 
