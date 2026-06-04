@@ -8792,8 +8792,17 @@ async function fetchAndRenderEarnings(){
       }
 
       if(items.length>0){
-        // แสดงทุกตัวที่ Finnhub/Yahoo ส่งมา ไม่จำกัดเฉพาะ watchlist
-        const matched=items.map(e=>({...e, symbol:e.symbol||e.t})).filter(e=>e.symbol&&e.date);
+        // กรองเฉพาะหุ้นที่มีใน watchlist/stocks list
+        const tickers=new Set(stocks.map(s=>s.t));
+        // เพิ่ม popular tickers ที่ควรแสดงเสมอ
+        const alwaysShow=new Set(['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','NVDA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU']);
+        const matched=items
+          .filter(e=>{
+            const sym=e.symbol||e.t;
+            return tickers.has(sym)||alwaysShow.has(sym);
+          })
+          .map(e=>({...e, symbol:e.symbol||e.t}))
+          .filter(e=>e.symbol&&e.date);
 
         if(matched.length>0){
           // แปลงเป็น format เดียวกับ earningsData
