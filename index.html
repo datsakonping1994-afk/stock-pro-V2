@@ -3482,10 +3482,9 @@ async function fetchAnalystData(ticker){
           if(revG>=-100&&revG<=500){ s.revLive=revG.toFixed(1)+'%'; metricOk=true; }
         }
         if(m['marketCapitalization']!=null){
-          const mc=m['marketCapitalization'];
-          const mcB=mc/1000; // Finnhub หน่วย million → billion
-          if(mcB>=0.01&&mcB<=10000){
-            s.mktcapLive=mcB>=1000?`$${(mcB/1000).toFixed(1)}T`:`$${mcB.toFixed(1)}B`;
+          const mcM=m['marketCapitalization']; // Finnhub หน่วย = millions USD
+          if(mcM>=1){
+            s.mktcapLive=mcM>=1000000?`$${(mcM/1000000).toFixed(1)}T`:mcM>=1000?`$${(mcM/1000).toFixed(1)}B`:`$${mcM.toFixed(0)}M`;
             metricOk=true;
           }
         }
