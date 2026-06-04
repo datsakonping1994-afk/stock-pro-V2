@@ -11918,8 +11918,8 @@ async function _eliteDirectFallback(overlay){
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:4000,
-        system:'You are a financial analyst. Analyze news for Thai investors. ALL text fields (headline, summary, pros, cons, why, watch, read_game) MUST be in Thai language. Respond ONLY with valid JSON array. No markdown.',
-        messages:[{role:'user',content:'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนหุ้นไทย ต้องตอบเป็นภาษาไทยทั้งหมด ตอบ JSON array:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย (แปลจากอังกฤษถ้าจำเป็น)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"negative","markets":["USD","Oil"],"pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ (ภาษาไทย)","watch":"สิ่งที่ควรจับตา (ภาษาไทย)","read_game":"วิเคราะห์เชิงลึก (ภาษาไทย)","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
+        system:'You are a financial analyst. Analyze news for Thai investors. ALL text fields MUST be in Thai. For read_game: write specific insight about THIS news (e.g. sector rotation, second-order effect) NOT generic sentences. For watch: specify real event/date/number to monitor (e.g. FOMC June 11-12, CPI June 12) NOT generic sentences. Respond ONLY with valid JSON array. No markdown.',
+        messages:[{role:'user',content:'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนหุ้นไทย ต้องตอบเป็นภาษาไทยทั้งหมด ตอบ JSON array:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อข่าวภาษาไทย (แปลจากอังกฤษถ้าจำเป็น)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"negative","markets":["USD","Oil"],"pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เพราะอะไรถึงสำคัญ (ภาษาไทย)","watch":"ระบุ event/วันที่จริงที่ต้องติดตาม เช่น FOMC 11 มิ.ย. CPI 12 มิ.ย.","read_game":"insight เฉพาะข่าวนี้ เช่น sector rotation หรือ second-order effect ที่เกิดขึ้น","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]'}]
       })
     });
     if(!resp.ok) return _mapNewsToResults(allNews);
@@ -11971,7 +11971,7 @@ async function _eliteClaudeSearch(overlay, _ank){
   const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;}).slice(0,10);
   const nameList = topPeople.map(function(p){return p.name+'('+p.id+')';}).join(', ');
   const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-  const prompt = 'Today is '+today+'. Search for significant market news (last 24h) for: '+nameList+'\nReturn ONLY JSON array:\n[{"id":"trump","headline":"หัวข้อภาษาไทย","summary":"สรุป","impact":8,"sentiment":"negative","markets":["USD"],"pros":["ข้อดี"],"cons":["ความเสี่ยง"],"why":"เหตุผล","watch":"สิ่งจับตา","read_game":"วิเคราะห์","stocks_buy":["SPY"],"stocks_watch":[]}]';
+  const prompt = 'Today is '+today+'. Search for significant market news (last 24h) for: '+nameList+'\nReturn ONLY JSON array:\n[{"id":"trump","headline":"หัวข้อภาษาไทย","summary":"สรุป","impact":8,"sentiment":"negative","markets":["USD"],"pros":["ข้อดี"],"cons":["ความเสี่ยง"],"why":"เหตุผล","watch":"event/วันที่จริงที่ต้องติดตาม","read_game":"insight เฉพาะเจาะจงกับข่าวนี้","stocks_buy":["SPY"],"stocks_watch":[]}]';
   try{
     const resp1 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -12055,7 +12055,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
   }).join('\n');
 
   const sys = 'คุณคือนักวิเคราะห์การเงินไทย ตอบ JSON array เท่านั้น ไม่มี markdown';
-  const msg = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย:\n'+newsItems+'\n\nตอบ JSON array (ภาษาไทยทั้งหมด):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย","summary_th":"สรุป 2 ประโยค","pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เหตุผลสำคัญ","watch":"สิ่งจับตา","read_game":"วิเคราะห์เชิงลึก","impact":7,"stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const msg = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย:\n'+newsItems+'\n\nตอบ JSON array (ภาษาไทยทั้งหมด):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย","summary_th":"สรุป 2 ประโยค","pros":["ข้อดี1","ข้อดี2"],"cons":["ความเสี่ยง1","ความเสี่ยง2"],"why":"เหตุผลสำคัญ","watch":"event/วันที่จริงที่ต้องติดตาม เช่น FOMC CPI earnings","read_game":"insight เฉพาะข่าวนี้ไม่ใช่ประโยคกว้างๆ","impact":7,"stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   let text = null;
 
