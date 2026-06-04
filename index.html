@@ -8869,6 +8869,9 @@ async function fetchAndRenderEarnings(){
             } else if(isPast){
               res='✅ Done';
             }
+            const hour=e.hour||''; // bmo=ก่อนตลาดเปิด, amc=หลังตลาดปิด
+            const hourLabel=hour==='bmo'?'🌅 BMO':hour==='amc'?'🌙 AMC':'';
+            const hourTime=hour==='bmo'?'~09:30 ET':'~16:00 ET';
             return{
               t:e.symbol,
               n:s?.n||e.symbol,
@@ -8878,7 +8881,9 @@ async function fetchAndRenderEarnings(){
               epsActual:epsAct!=null?`$${epsAct.toFixed(2)}`:null,
               rev:revEst!=null?`$${(revEst/1e9).toFixed(1)}B`:null,
               revActual:revAct!=null?`$${(revAct/1e9).toFixed(1)}B`:null,
-              res, _live:true
+              res, _live:true,
+              hour, hourLabel, hourTime,
+              _date: e.date // เก็บวันที่ ISO สำหรับ auto-check
             };
           });
 
@@ -8891,10 +8896,28 @@ async function fetchAndRenderEarnings(){
             const db=_parseEarningsDate(b.d)||new Date('2099-01-01');
             return da-db;
           });
-          // บันทึก Earnings ลง localStorage cache ไว้ 1 วัน
+          // บันทึก cache ไว้ 1 ชั่วโมง
           try{ localStorage.setItem('_sp_earnings_cache',JSON.stringify({data:merged,ts:Date.now()})); }catch{}
           window.earningsData=merged;
           renderEarningsData(merged, usedLive);
+
+          // [NEW] Auto-check Beat/Miss — ถ้ามีหุ้นรอผลวันนี้ ให้ refresh ทุก 30 นาที
+          const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+          const etMins=et.getHours()*60+et.getMinutes();
+          const todayET=et.toISOString().slice(0,10);
+          const pendingToday=merged.filter(e=>{
+            if(!e._date||!e._live) return false;
+            const isTodayET = e._date === todayET;
+            // BMO: รอผลหลัง 9:30 ET, AMC: รอผลหลัง 16:00 ET
+            const bmoDone = e.hour==='bmo' && etMins >= 570;
+            const amcDone = e.hour==='amc' && etMins >= 960;
+            const anyDone = !e.hour && etMins >= 960;
+            return isTodayET && (bmoDone||amcDone||anyDone) && e.res==='✅ Done';
+          });
+          if(pendingToday.length > 0 && etMins < 1200){
+            console.log('[Earnings] auto-refresh scheduled for',pendingToday.length,'pending results');
+            setTimeout(()=>fetchAndRenderEarnings(), 30*60*1000);
+          }
           return;
         }
       }
@@ -8904,7 +8927,7 @@ async function fetchAndRenderEarnings(){
     const ec=localStorage.getItem('_sp_earnings_cache');
     if(ec){
       const {data,ts}=JSON.parse(ec);
-      if(Date.now()-ts<86400000){ // cache ไม่เกิน 1 วัน
+      if(Date.now()-ts<3600000){ // cache ไม่เกิน 1 ชั่วโมง
         window.earningsData=data;
         renderEarningsData(data, true);
         return;
@@ -8957,6 +8980,7 @@ function renderEarningsData(data, isLive=false){
       </div>
       <div class="earn-row-bottom">
         <span class="earn-date">📅 ${e.d}</span>
+        ${e.hourLabel?`<span style="font-size:10px;color:var(--text3);background:rgba(255,255,255,0.06);border-radius:5px;padding:1px 6px">${e.hourLabel} ${e.hourTime}</span>`:''}
         <span class="earn-eps">EPS ${epsStr}</span>
         <span class="earn-rev">REV ${revStr}</span>
       </div>
