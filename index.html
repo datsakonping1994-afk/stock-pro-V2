@@ -8849,7 +8849,7 @@ async function fetchAndRenderEarnings(){
             const hourTime=hour==='bmo'?'~09:30 ET':'~16:00 ET';
             return{
               t:e.symbol,
-              n:s?.n||e.symbol,
+              n:s?.n||stocksMap.get(e.symbol)?.n||e.name||e.symbol,
               d:fmtThDate(e.date),
               st,
               eps:epsEst!=null?`$${epsEst.toFixed(2)}`:null,
@@ -8942,9 +8942,10 @@ async function autoCheckEarningsResults() {
 
   const pending = (window.earningsData || []).filter(e => {
     if (!e._live || !e._date) return false;
-    // มีผลแล้ว skip (ยกเว้น Done ที่ยังไม่มีตัวเลข)
-    if (e.res && e.res !== '—' && !e.res.includes('Done') && e.res !== '') return false;
-    if (e._date < todayET) return true; // วันผ่านไปแล้ว
+    // เช็คทุกตัวที่ผ่านมาแล้วและยังไม่มีผล Beat/Miss
+    const hasResult = e.res && e.res !== '—' && e.res !== '✅ Done' && e.res !== '';
+    if (hasResult) return false;
+    if (e._date < todayET) return true; // วันผ่านไปแล้ว — รวม FPS, SLNH ฯลฯ
     if (e._date === todayET) {
       if (e.hour === 'bmo' && etMins >= 600) return true;
       if (e.hour === 'amc' && etMins >= 990) return true;
