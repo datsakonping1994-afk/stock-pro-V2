@@ -8996,6 +8996,8 @@ async function autoCheckEarningsResults() {
     renderEarningsData(window.earningsData, true);
   }
 }
+
+function goCard(ticker){
   closeModal('earningsModal');
   const stocksNavItem=document.querySelector('#bottomnav .nav-item:nth-child(2)');
   navTo('stocks', stocksNavItem);
