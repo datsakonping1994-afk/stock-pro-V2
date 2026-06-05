@@ -6819,11 +6819,11 @@ async function loadWorkerPriceCache(){
     const tid=setTimeout(()=>ctrl.abort(),8000);
     const r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal});
     clearTimeout(tid);
-    // 503 = cache ยังไม่พร้อม (Cron ยังไม่รัน) — retry ใน 30 วินาที
-    if(r.status===503){
-      console.warn('[prices] Worker cache not ready, retry in 30s');
+    // 503/202 = cache ยังไม่พร้อม (warming up) — retry ใน 10 วินาที
+    if(r.status===503 || r.status===202){
+      console.warn('[prices] Worker cache warming, retry in 10s');
       _workerCacheLoading=false;
-      setTimeout(()=>loadWorkerPriceCache(),30000);
+      setTimeout(()=>loadWorkerPriceCache(),10000);
       return;
     }
     if(!r.ok) return;
@@ -6956,8 +6956,8 @@ async function initYahooPrices(){
     const tid=setTimeout(()=>ctrl.abort(),5000);
     const r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal});
     clearTimeout(tid);
-    // 503 = cache ยังไม่พร้อม — ข้ามไป fallback Yahoo แทน
-    if(r.status===503){ console.warn('[initYahooPrices] Worker cache not ready, falling back to Yahoo'); }
+    // 503/202 = cache ยังไม่พร้อม — ข้ามไป fallback Yahoo แทน
+    if(r.status===503||r.status===202){ console.warn('[initYahooPrices] Worker cache warming, falling back to Yahoo'); }
     else if(r.ok){
       const d=await r.json();
       if(d.ok&&d.quotes){
