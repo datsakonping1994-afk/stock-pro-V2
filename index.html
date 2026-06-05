@@ -4646,30 +4646,78 @@ async function fetchRemoteHistory(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r = await fetch(SIGNAL_WORKER + '/score/?action=list', {signal:ctrl.signal});
+    const r = await fetch(SIGNAL_WORKER + '/signals/log', {signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     return await r.json();
   }catch{ return null; }
 }
 
+function _renderAlertsList(merged){
+  const statsEl = document.getElementById('alertsStats');
+  const list = document.getElementById('alertsList');
+  const stats = merged.length ? (() => {
+    const done = merged.filter(t => t.result !== null && t.pct != null);
+    if(!done.length) return null;
+    const wins = done.filter(t => t.result === 'win').length;
+    const avgPct = done.reduce((a,t) => a + (t.pct||0), 0) / done.length;
+    return {total: done.length, wins, losses: done.length - wins, winRate: +(wins/done.length*100).toFixed(1), avgPct: +avgPct.toFixed(2)};
+  })() : null;
+  if(statsEl) statsEl.innerHTML = stats ?
+    `<div style="color:var(--text);font-size:13px;font-weight:600;margin-bottom:6px">สถิติรวม ${stats.total} สัญญาณ</div>
+     <div style="display:flex;gap:16px">
+       <div><div style="color:var(--green);font-size:16px;font-weight:700">${stats.winRate}%</div><div style="font-size:10px;color:var(--text3)">WIN RATE</div></div>
+       <div><div style="color:${stats.avgPct>=0?'var(--green)':'var(--red)'};font-size:16px;font-weight:700">${stats.avgPct>=0?'+':''}${stats.avgPct}%</div><div style="font-size:10px;color:var(--text3)">AVG P&L</div></div>
+       <div><div style="color:var(--text);font-size:16px;font-weight:700">${stats.wins}W / ${stats.losses}L</div><div style="font-size:10px;color:var(--text3)">RECORD</div></div>
+     </div>` :
+    '<div style="text-align:center;padding:40px 20px"><div style="font-size:36px;margin-bottom:12px">⏳</div><div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text2);margin-bottom:6px">ยังไม่มีสัญญาณที่มีผลแล้ว</div><div style="font-size:11px;color:var(--text3);line-height:1.6">สัญญาณจะแสดงที่นี่เมื่อ<br>ราคาถึง R1 หรือ S1 (Exit Signal)</div></div>';
+  if(list) list.innerHTML = merged.length ? merged.map((t,i)=>`
+    <div class="alert-item ${t.result||'pending'}" onclick="_showSignalDetail(${i})" style="cursor:pointer">
+      <div class="alert-ticker">${t.ticker}</div>
+      <div class="alert-detail">เข้า ${t.price} · Score ${t.score||'--'} · ${new Date(t.time).toLocaleDateString('th-TH')}</div>
+      <div class="alert-detail" style="margin-top:2px;color:var(--text3)">S1 ${t.s1||'--'} · R1 ${t.r1||'--'}</div>
+      ${t.exitPrice?`<div class="alert-detail" style="margin-top:2px">Exit ${t.exitPrice}</div>`:''}
+      <div class="alert-result ${t.result||'pending'}">${t.result==='win'?`✅ +${t.pct}%`:t.result==='loss'?`❌ ${t.pct}%`:'⏳ รอผล'}</div>
+    </div>
+  `).join('') : '<div style="text-align:center;padding:50px 20px"><div style="font-size:40px;margin-bottom:14px">🔔</div><div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text2);margin-bottom:8px">ยังไม่มีสัญญาณ</div><div style="font-size:11px;color:var(--text3);line-height:1.8">รอ Buy Signal จากระบบ<br>หรือตั้ง Price Alert ด้านบน<br><span style="color:var(--gold)">ตลาด NY เปิด 21:30 - 04:00 น.</span></div></div>';
+  window._mergedSignalLog = merged;
+}
+
 function renderAlerts(){
   updateTradeResults();
   const localLog = _loadTradeLog().reverse();
-
-  // ดึงจาก Worker KV ด้วย
   const statsEl = document.getElementById('alertsStats');
-  const list = document.getElementById('alertsList');
-  if(statsEl) statsEl.innerHTML = '<div style="color:var(--text3)">⏳ กำลังโหลดประวัติ...</div>';
+  if(statsEl) statsEl.innerHTML = '<div style="color:var(--text3)">⏳ กำลังโหลด...</div>';
 
-  let merged = localLog;
-  // โหลด remote แบบ background ไม่บล็อก
+  // แสดง local ก่อนทันที
+  _renderAlertsList(localLog);
+
+  let merged = [...localLog];
+  // โหลด remote แบบ background — re-render เมื่อมีข้อมูลใหม่
   fetchRemoteHistory().then(remoteLog=>{
     if(!remoteLog||!remoteLog.length) return;
+    // normalize field names (worker ใช้ ticker, local ใช้ ticker)
+    const normalized = remoteLog.map(r=>({
+      ticker: r.ticker||r.t,
+      price: r.price,
+      score: r.score,
+      s1: r.s1,
+      r1: r.r1,
+      time: r.time,
+      result: r.result||null,
+      pct: r.pct||null
+    }));
     const localKeys=new Set(localLog.map(t=>t.ticker+':'+t.time?.slice(0,16)));
-    const newRemote=remoteLog.filter(t=>!localKeys.has(t.ticker+':'+(t.time||'')?.slice(0,16)));
+    const newRemote=normalized.filter(t=>!localKeys.has(t.ticker+':'+(t.time||'')?.slice(0,16)));
     if(!newRemote.length) return;
+    // บันทึก remote ลง localStorage ด้วย เพื่อให้ครั้งถัดไปเร็วกว่า
+    const currentLog = _loadTradeLog();
+    const currentKeys = new Set(currentLog.map(t=>t.ticker+':'+t.time?.slice(0,16)));
+    const toSave = newRemote.filter(t=>!currentKeys.has(t.ticker+':'+(t.time||'')?.slice(0,16)));
+    if(toSave.length){ _saveTradeLog([...currentLog,...toSave]); }
     merged=[...localLog,...newRemote].sort((a,b)=>new Date(b.time)-new Date(a.time));
+    // [FIX] re-render หลัง remote data มา
+    _renderAlertsList(merged);
   }).catch(()=>{});
 
   const stats = merged.length ? (() => {
