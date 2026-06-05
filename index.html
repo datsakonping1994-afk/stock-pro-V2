@@ -3278,7 +3278,9 @@ function openDrawer(ticker){
   document.getElementById('drawerPrice').textContent=fmt(s.p);
   const chg=document.getElementById('drawerChg');
   chg.textContent=(s.c>=0?'+':'')+(+s.c).toFixed(2)+'%';
-  chg.className='card-chg '+(s.c>=0?'up':'dn');
+  // VIX กลับสี: ขึ้น=แดง ลง=เขียว
+  const _vixInvert = s.t==='VIX';
+  chg.className='card-chg '+((_vixInvert?(s.c<0):(s.c>=0))?'up':'dn');
   // อัพเดท watchlist star ใน drawer
   const dWlBtn=document.getElementById('drawerWlBtn');
   if(dWlBtn){
