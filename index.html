@@ -3134,7 +3134,9 @@ function _renderFNG(d){
 
 // ── Mover row with logo ──
 function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
-  const isUp=s.c>=0;
+  // VIX กลับสี: ขึ้น=แดง ลง=เขียว
+  const isVIX = s.t === 'VIX';
+  const isUp = isVIX ? s.c < 0 : s.c >= 0;
   const logoId=`${idPrefix}-${s.t}`;
   const div=document.createElement('div');
   div.className='mover-row';
@@ -3149,7 +3151,7 @@ function makeMoverRow(s, subLabel=null, idPrefix='mlogo'){
     </div>
     <div>
       <div class="mover-price">${fmt(s.p)}</div>
-      <div class="mover-chg ${isUp?'up':'dn'}">${isUp?'+':''}${(+s.c).toFixed(2)}%</div>
+      <div class="mover-chg ${isUp?'up':'dn'}">${s.c>=0?'+':''}${(+s.c).toFixed(2)}%</div>
     </div>
   `;
   return {div, logoId};
