@@ -4618,15 +4618,21 @@ function logTrade(ticker, price, score, aiAnalysis=''){
   const now = Date.now();
   const dup = log.find(t => t.ticker===ticker && (now - new Date(t.time).getTime()) < 5*60*1000);
   if(dup){ console.log(`[LOG] ${ticker} SKIP ซ้ำ`); return; }
-  log.push({ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null, aiAnalysis});
+  const entry = {ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null, aiAnalysis};
+  log.push(entry);
   _saveTradeLog(log);
-  // บันทึก Worker KV (background) — FIX: เพิ่ม timeout 5s กัน hang
+  // [FIX] refresh Trade Log UI ทันที ถ้าอยู่หน้า alerts
+  try{
+    const panel = document.getElementById('panelTradeLog');
+    if(panel && panel.style.display !== 'none') renderAlerts();
+  }catch{}
+  // บันทึก Worker KV (background) — sync ขึ้น PRICES_WORKER signal_log
   const _ltCtrl=new AbortController();
   setTimeout(()=>_ltCtrl.abort(),5000);
-  fetch(SIGNAL_WORKER + '/score/?action=save', {
+  fetch(PRICES_WORKER + '/signals/save', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ticker, price, score, s1, s2, r1}),
+    body: JSON.stringify(entry),
     signal: _ltCtrl.signal
   }).catch(() => {});
 }
@@ -4686,7 +4692,7 @@ async function fetchRemoteHistory(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r = await fetch(SIGNAL_WORKER + '/signals/log', {signal:ctrl.signal});
+    const r = await fetch(PRICES_WORKER + '/signals/log', {signal:ctrl.signal});
     clearTimeout(tid);
     if(!r.ok) return null;
     return await r.json();
