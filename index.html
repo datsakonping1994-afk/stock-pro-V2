@@ -806,7 +806,7 @@ canvas.bigchart{width:100%;height:100%}
       <button class="ctrl-btn active" onclick="sortStocks('chg',this)">% Change</button>
       <button class="ctrl-btn" onclick="sortStocks('name',this)">A–Z</button>
       <button class="ctrl-btn" onclick="sortStocks('rsi',this)">RSI</button>
-      <button class="ctrl-btn" onclick="sortStocks('mcap',this)">Market Cap</button>
+      <button class="ctrl-btn" onclick="sortStocks('score',this)">🎯 Score</button>
       <button class="ctrl-btn" onclick="sortStocks('near',this)">ใกล้แนวรับ</button>
       <button class="ctrl-btn" onclick="sortStocks('div',this)">💰 ปันผล</button>
       <button class="ctrl-btn" onclick="sortStocks('fundscore',this)">⭐ Fund Score</button>
@@ -2712,9 +2712,17 @@ function makeCard(s){
       </div>
     </div>
     <div class="card-stats">
-      <div class="card-stat">
-        <div class="card-stat-val">${s.mktcapLive||s.mktcap||'N/A'}${s.mktcapLive?'<span style="font-size:8px;color:var(--accent);margin-left:2px">●</span>':''}</div>
-        <div class="card-stat-lbl">Mkt Cap</div>
+      <div class="card-stat" id="bscore-cell-${safeId}">
+        ${(()=>{
+          const _sig=(candleCache[s.t]?.data&&!candleCache[s.t]?.data?._mock)?_calcBuyScore(s.t,s.p,s1,r1):null;
+          const _bs=_sig?.score??null;
+          if(_bs!=null) s._buyScore=_bs;
+          if(_bs==null) return '<div class="card-stat-val" style="color:var(--text3)">--</div><div class="card-stat-lbl">Score</div>';
+          const _bsColor=_bs>=60?'var(--green)':_bs>=40?'var(--gold)':'var(--red)';
+          const _bsLabel=_bs>=60?'Buy':_bs>=40?'Hold':'Avoid';
+          return '<div class="card-stat-val" style="color:'+_bsColor+';font-weight:800">'+_bs+'<span style="font-size:9px;opacity:0.7">/100</span></div>'
+               + '<div class="card-stat-lbl" style="color:'+_bsColor+'">'+_bsLabel+'</div>';
+        })()}
       </div>
       <div class="card-stat">
         <div class="card-stat-val" style="color:${parseFloat(s.revLive||s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.revLive||s.rev||'N/A'}</div>
@@ -2898,6 +2906,25 @@ function sortStocks(by,btn){
   document.querySelectorAll('.ctrl-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderCards();
+
+  // ถ้า sort by Score — โหลด candle ที่ยังขาดแล้ว re-sort ใหม่
+  if(by==='score'){
+    const missing=stocks.filter(s=>
+      !HIDDEN_TICKERS.has(s.t) &&
+      (!candleCache[s.t]?.data || candleCache[s.t]?.data?._mock)
+    ).map(s=>s.t);
+    if(!missing.length) return;
+    // โหลด candle ทีละ batch แล้ว re-render
+    (async()=>{
+      const BATCH=8;
+      for(let i=0;i<missing.length;i+=BATCH){
+        await Promise.allSettled(missing.slice(i,i+BATCH).map(t=>fetchCandles(t,60).catch(()=>{})));
+        // clear score cache แล้ว re-render ทุก batch
+        stocks.forEach(s=>{ s._buyScore=null; });
+        if(currentSort==='score') renderCards();
+      }
+    })();
+  }
 }
 
 function filterStocks(){
@@ -2919,7 +2946,20 @@ function getVisibleStocks(){
   if(currentSort==='chg') list.sort((a,b)=>b.c-a.c);
   else if(currentSort==='name') list.sort((a,b)=>a.t.localeCompare(b.t));
   else if(currentSort==='rsi') list.sort((a,b)=>(rsiData[a.t]||50)-(rsiData[b.t]||50));
-  else if(currentSort==='mcap') list.sort((a,b)=>parseMcap(b.mktcapLive||b.mktcap)-parseMcap(a.mktcapLive||a.mktcap));
+  else if(currentSort==='score'){
+    // คำนวณ score ครั้งเดียว แล้ว cache ไว้บน object
+    list.forEach(s=>{
+      if(s._buyScore==null){
+        if(candleCache[s.t]?.data && !candleCache[s.t]?.data?._mock){
+          const sig=_calcBuyScore(s.t,s.p,getS1(s.t,s.p),getR1(s.t,s.p));
+          s._buyScore=sig?.score||0;
+        } else {
+          s._buyScore=0;
+        }
+      }
+    });
+    list.sort((a,b)=>(b._buyScore||0)-(a._buyScore||0));
+  }
   else if(currentSort==='near'){
     list.sort((a,b)=>{
       const pa=(a.p-getS1(a.t,a.p))/getS1(a.t,a.p)*100;
