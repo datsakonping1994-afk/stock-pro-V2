@@ -9446,94 +9446,157 @@ function renderEarningsData(data, isLive=false){
       ${aiBtn?`<div style="padding:2px 0 0">${aiBtn}<div class="earn-ai-result-${e.t}" style="font-size:12px;color:var(--text2);margin-top:6px;white-space:pre-line;line-height:1.6"></div></div>`:''}
     </div>`;
   }
-  const soon=data.filter(e=>_getEarningsSt(e)==='soon');
-  const done=data.filter(e=>_getEarningsSt(e)==='done');
-  const future=data.filter(e=>_getEarningsSt(e)==='future'||(!_parseEarningsDate(e.d)&&e.st==='future'));
+  const _data = _earnWLOnly ? data.filter(e=>stocks.some(s=>s.t===e.t)) : data;
+  const soon=_data.filter(e=>_getEarningsSt(e)==='soon');
+  const done=_data.filter(e=>_getEarningsSt(e)==='done');
+  const future=_data.filter(e=>_getEarningsSt(e)==='future'||(!_parseEarningsDate(e.d)&&e.st==='future'));
   const srcLabel=isLive
     ?'<span style="font-size:10px;color:var(--accent);font-family:\'IBM Plex Mono\',monospace">● Live จาก Finnhub</span>'
     :'<span style="font-size:10px;color:var(--dim);font-family:\'IBM Plex Mono\',monospace">⚠️ ข้อมูลสำรอง</span>';
   body.innerHTML=
-    `<div style="text-align:right;padding:0 0 6px">${srcLabel}</div>`+
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 6px"><span>${srcLabel}</span><button onclick="_toggleEarningsWatchlist(this)" id="earnWLBtn" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--gold);cursor:pointer">⭐ Watchlist</button></div>`+
     `<div class="earn-hdr"><span>Ticker</span><span>บริษัท</span><span>วันที่</span><span>EPS</span><span>Rev</span><span>สถานะ</span></div>`+
     (soon.length?`<div class="earn-grp" style="color:var(--yellow)">⏳ เร็วๆ นี้</div>`+soon.map(row).join(''):'')+
     (done.length?`<div class="earn-grp" style="color:var(--green)">✅ รายงานแล้ว</div>`+done.map(row).join(''):'')+
     (future.length?`<div class="earn-grp" style="color:var(--dim)">📅 อนาคต</div>`+future.map(row).join(''):'');
 }
 
-// ── ดึง Earnings History จาก Finnhub + Worker ──
+// ── ดึง Earnings History จาก Finnhub + Worker (Full Version) ──
 async function _showEarningsHistory(ticker, btn){
   const resultEl = document.querySelector('.earn-ai-result-'+ticker);
   if(!resultEl) return;
 
-  // Toggle
   if(resultEl.dataset.loaded==='1'){
     resultEl.style.display = resultEl.style.display==='none'?'block':'none';
+    btn.textContent = resultEl.style.display==='none' ? '📊 ดูข้อมูล' : '📊 ซ่อน';
     return;
   }
 
   btn.disabled=true;
-  btn.textContent='⏳ กำลังดึงข้อมูล...';
+  btn.innerHTML='⏳ กำลังดึงข้อมูล...';
   resultEl.style.display='block';
   resultEl.innerHTML='<div style="color:var(--text3);font-size:11px">⏳ โหลด...</div>';
 
   try{
-    // ดึง earnings history จาก Worker (Finnhub)
+    // ดึง earnings history + metrics พร้อมกัน
     const ctrl = new AbortController();
-    setTimeout(()=>ctrl.abort(), 8000);
-    const r = await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`, {signal:ctrl.signal});
-    const d = await r.json();
-    const history = (d.ok && d.data) ? d.data.slice(0,6).reverse() : [];
+    setTimeout(()=>ctrl.abort(), 10000);
+    const [earnRes, metricRes] = await Promise.allSettled([
+      fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`, {signal:ctrl.signal}).then(r=>r.json()),
+      fetch(`${PRICES_WORKER}/metrics?t=${ticker}`, {signal:ctrl.signal}).then(r=>r.json()),
+    ]);
 
-    // ดึงราคาปัจจุบัน
+    const history = (earnRes.status==='fulfilled'&&earnRes.value.ok) ? earnRes.value.data.slice(0,8).reverse() : [];
+    const metrics = (metricRes.status==='fulfilled'&&metricRes.value.ok) ? metricRes.value : null;
     const curStock = stocksMap.get(ticker);
-    const curPrice = curStock?.p || 0;
 
     let html = '';
 
     if(history.length){
-      // Summary row
       const latest = history[history.length-1];
       const beats = history.filter(h=>h.actual!=null&&h.estimate!=null&&h.actual>=h.estimate).length;
       const total  = history.filter(h=>h.actual!=null).length;
 
-      html += `<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      // ── EPS Growth YoY ──
+      const cur = history[history.length-1];
+      const yoy = history.length>=5 ? history[history.length-5] : null;
+      const prev = history.length>=2 ? history[history.length-2] : null;
+      let epsGrowthHtml = '';
+      if(cur?.actual!=null && yoy?.actual!=null && yoy.actual!==0){
+        const g = ((cur.actual-yoy.actual)/Math.abs(yoy.actual)*100).toFixed(1);
+        const c = g>=0?'var(--green)':'var(--red)';
+        epsGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">EPS Growth YoY</span><br>
+          <b style="color:${c};font-size:14px">${g>=0?'+':''}${g}%</b>
+        </div>`;
+      } else if(cur?.actual!=null && prev?.actual!=null && prev.actual!==0){
+        const g = ((cur.actual-prev.actual)/Math.abs(prev.actual)*100).toFixed(1);
+        const c = g>=0?'var(--green)':'var(--red)';
+        epsGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">EPS Growth QoQ</span><br>
+          <b style="color:${c};font-size:14px">${g>=0?'+':''}${g}%</b>
+        </div>`;
+      }
+
+      // ── Revenue Growth YoY ──
+      let revGrowthHtml = '';
+      if(metrics?.revGrowth!=null){
+        const rg = (+metrics.revGrowth*100).toFixed(1);
+        const rc = rg>=0?'var(--green)':'var(--red)';
+        revGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">Rev Growth YoY</span><br>
+          <b style="color:${rc};font-size:14px">${rg>=0?'+':''}${rg}%</b>
+        </div>`;
+      }
+
+      // ── Summary cards ──
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:10px">
         <div style="background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
           <span style="color:var(--text3)">Beat Rate</span><br>
           <b style="color:var(--green);font-size:14px">${total>0?Math.round(beats/total*100):0}%</b>
           <span style="color:var(--text3);font-size:10px"> (${beats}/${total})</span>
         </div>
-        ${curPrice>0?`<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
-          <span style="color:var(--text3)">ราคาปัจจุบัน</span><br>
-          <b style="color:var(--text);font-size:14px">$${curPrice.toFixed(2)}</b>
+        ${epsGrowthHtml}
+        ${revGrowthHtml}
+        ${metrics?.pe!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">P/E</span><br>
+          <b style="color:var(--text);font-size:14px">${(+metrics.pe).toFixed(1)}x</b>
         </div>`:''}
       </div>`;
 
-      // EPS history table
-      html += `<div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif;letter-spacing:1px">ประวัติ EPS (${history.length} ไตรมาสล่าสุด)</div>`;
-      html += `<div style="display:flex;flex-direction:column;gap:4px">`;
+      // ── EPS history table ──
+      html += `<div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif;letter-spacing:1px">📋 ประวัติ EPS (${history.length} ไตรมาส)</div>`;
+      html += `<div style="display:flex;flex-direction:column;gap:3px">`;
       for(const q of history.slice().reverse()){
-        const beat = q.actual!=null && q.estimate!=null ? q.actual >= q.estimate : null;
-        const diff = q.actual!=null && q.estimate!=null && q.estimate!==0
+        const beat = q.actual!=null&&q.estimate!=null ? q.actual>=q.estimate : null;
+        const diff = q.actual!=null&&q.estimate!=null&&q.estimate!==0
           ? ((q.actual-q.estimate)/Math.abs(q.estimate)*100).toFixed(1) : null;
         const color = beat===true?'var(--green)':beat===false?'var(--red)':'var(--text3)';
         const icon  = beat===true?'✅':beat===false?'❌':'—';
-        html += `<div style="display:grid;grid-template-columns:80px 1fr 1fr 60px;gap:4px;align-items:center;
+        html += `<div style="display:grid;grid-template-columns:80px 1fr 1fr 64px;gap:4px;align-items:center;
                              background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 8px;font-size:11px">
           <span style="color:var(--text3)">${q.period||q.quarter||'—'}</span>
           <span>คาด <b>${q.estimate!=null?'$'+q.estimate:'—'}</b></span>
           <span>จริง <b style="color:${color}">${q.actual!=null?'$'+q.actual:'—'}</b></span>
-          <span style="color:${color};text-align:right">${icon}${diff?` ${diff>0?'+':''}${diff}%`:''}</span>
+          <span style="color:${color};text-align:right;font-size:10px">${icon}${diff?` ${+diff>0?'+':''}${diff}%`:''}</span>
         </div>`;
       }
       html += `</div>`;
 
-      // Next estimate
-      if(latest.estimate!=null){
-        html += `<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:8px;font-size:11px">
-          <span style="color:var(--gold);font-weight:700">📌 EPS คาดไตรมาสถัดไป: </span>
-          <b style="color:var(--text)">$${latest.estimate}</b>
+      // ── Guidance / Next estimate ──
+      if(latest?.estimate!=null){
+        const nextEps = latest.estimate;
+        const yoyEst = history.length>=5&&history[history.length-5]?.actual!=null
+          ? ((nextEps-history[history.length-5].actual)/Math.abs(history[history.length-5].actual)*100).toFixed(1) : null;
+        html += `<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:8px;font-size:11px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="color:var(--gold);font-weight:700">📌 EPS คาดไตรมาสถัดไป</span><br>
+            <b style="color:var(--text);font-size:13px">$${nextEps}</b>
+            ${yoyEst?`<span style="color:${yoyEst>=0?'var(--green)':'var(--red)'};font-size:10px;margin-left:4px">(YoY ${yoyEst>=0?'+':''}${yoyEst}%)</span>`:''}
+          </div>
+          ${metrics?.eps!=null?`<div style="text-align:right">
+            <span style="color:var(--text3);font-size:10px">EPS TTM</span><br>
+            <b style="color:var(--text)">$${(+metrics.eps).toFixed(2)}</b>
+          </div>`:''}
         </div>`;
       }
+
+      // ── Watchlist Alert button ──
+      const inWatchlist = stocks.some(s=>s.t===ticker);
+      html += `<div style="margin-top:8px;display:flex;gap:6px">
+        <button onclick="event.stopPropagation();_toggleEarningsAlert('${ticker}',this)"
+          style="flex:1;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.25);
+                 border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:var(--ice);cursor:pointer"
+          id="earn-alert-btn-${ticker}">
+          ${localStorage.getItem('earn_alert_'+ticker)?'🔔 แจ้งเตือนแล้ว':'🔕 ตั้งแจ้งเตือน'}
+        </button>
+        <button onclick="event.stopPropagation();goCard('${ticker}')"
+          style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);
+                 border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer">
+          📈 ดูหุ้น
+        </button>
+      </div>`;
+
     } else {
       html = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:8px">ไม่มีข้อมูล EPS history</div>';
     }
@@ -9546,6 +9609,29 @@ async function _showEarningsHistory(ticker, btn){
     btn.textContent = '📊 ดูผลจริง + ประวัติ EPS';
   }
   btn.disabled=false;
+}
+
+
+let _earnWLOnly = false;
+function _toggleEarningsWatchlist(btn){
+  _earnWLOnly = !_earnWLOnly;
+  btn.style.background = _earnWLOnly?'rgba(255,215,0,0.25)':'rgba(255,215,0,0.1)';
+  btn.textContent = _earnWLOnly?'⭐ ทั้งหมด':'⭐ Watchlist';
+  if(window.earningsData) renderEarningsData(window.earningsData, true);
+}
+
+
+function _toggleEarningsAlert(ticker, btn){
+  const key = 'earn_alert_'+ticker;
+  if(localStorage.getItem(key)){
+    localStorage.removeItem(key);
+    btn.textContent = '🔕 ตั้งแจ้งเตือน';
+    toast('🔕 ยกเลิกแจ้งเตือน '+ticker+' แล้ว');
+  } else {
+    localStorage.setItem(key, '1');
+    btn.textContent = '🔔 แจ้งเตือนแล้ว';
+    toast('🔔 จะแจ้งเตือนก่อน '+ticker+' ประกาศ 1 วัน');
+  }
 }
 
 
