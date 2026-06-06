@@ -10024,6 +10024,118 @@ Sector: ${sectorText}
   }
 }
 
+
+// ══════════════════════════════════════════════
+//  SLIP PARSER — Multi-AI Fallback Chain
+//  1. Gemini Flash (ฟรี)  2. Groq Vision (ฟรี)  3. Claude Haiku
+// ══════════════════════════════════════════════
+let _slipData = null;
+const SLIP_PROMPT = 'อ่านสลิปซื้อขายหุ้นนี้แล้วตอบ JSON เท่านั้น ห้ามอธิบายเพิ่ม: {"action":"buy","ticker":"AMSC","price":44.06,"shares":2.3728876,"date":"2026-06-05"} - action: ซื้อ/Buy=buy | ขาย/Sell=sell - ticker: ชื่อหุ้นอังกฤษ - price: ราคาที่ได้จริง - shares: จำนวน - date: YYYY-MM-DD ถ้าไม่ใช่สลิปตอบ {"error":"not_a_slip"}';
+
+async function _parseSlipGemini(b64,mime){
+  const key=localStorage.getItem('geminiKey')||'';
+  if(!key) return null;
+  try{
+    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
+    const d=await r.json();
+    const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
+  }catch(e){console.warn('[slip:gemini]',e.message);}
+  return null;
+}
+
+async function _parseSlipGroq(b64,mime){
+  const key=localStorage.getItem('groqKey')||'';
+  if(!key) return null;
+  try{
+    const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',max_tokens:200,messages:[{role:'user',content:[{type:'image_url',image_url:{url:'data:'+mime+';base64,'+b64}},{type:'text',text:SLIP_PROMPT}]}]})},10000);
+    const d=await r.json();
+    const t=d.choices?.[0]?.message?.content||'';
+    const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
+  }catch(e){console.warn('[slip:groq]',e.message);}
+  return null;
+}
+
+async function _parseSlipClaude(b64,mime){
+  const key=_ank||'';
+  if(!key) return null;
+  try{
+    const r=await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:b64}},{type:'text',text:SLIP_PROMPT}]}]})},12000);
+    const d=await r.json();
+    const t=d.content?.[0]?.text||'';
+    const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
+  }catch(e){console.warn('[slip:claude]',e.message);}
+  return null;
+}
+
+async function parseSlipImage(input){
+  const file=input.files[0]; if(!file) return;
+  input.value='';
+  const preview=document.getElementById('slipPreview');
+  const status=document.getElementById('slipParseStatus');
+  const result=document.getElementById('slipParseResult');
+  const confirmBtn=document.getElementById('slipConfirmBtn');
+  preview.style.display='block';
+  status.innerHTML='⏳ กำลังอ่านสลิป...';
+  result.innerHTML=''; confirmBtn.style.display='none'; _slipData=null;
+  try{
+    const mime=file.type||'image/jpeg';
+    const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(',')[1]);rd.onerror=rej;rd.readAsDataURL(file);});
+    const providers=[
+      {name:'Gemini Flash',fn:()=>_parseSlipGemini(b64,mime)},
+      {name:'Groq Vision', fn:()=>_parseSlipGroq(b64,mime)},
+      {name:'Claude Haiku',fn:()=>_parseSlipClaude(b64,mime)},
+    ];
+    let parsed=null;
+    for(const p of providers){
+      status.innerHTML='⏳ กำลังลอง <b>'+p.name+'</b>...';
+      parsed=await p.fn();
+      if(parsed&&!parsed.error){status.innerHTML='✅ <b>'+p.name+'</b> อ่านสำเร็จ';break;}
+    }
+    if(!parsed||parsed.error){status.textContent='❌ AI อ่านไม่ได้ — ลองรูปที่ชัดกว่านี้ครับ';return;}
+    _slipData=parsed;
+    const isBuy=parsed.action==='buy';
+    const color=isBuy?'var(--green)':'var(--red)';
+    result.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-top:8px">'
+      +'<div><span style="color:var(--text3)">Ticker:</span> <b>'+parsed.ticker+'</b></div>'
+      +'<div><span style="color:var(--text3)">Action:</span> <b style="color:'+color+'">'+(isBuy?'🟢 ซื้อ':'🔴 ขาย')+'</b></div>'
+      +'<div><span style="color:var(--text3)">ราคา:</span> <b>$'+(+parsed.price).toFixed(2)+'</b></div>'
+      +'<div><span style="color:var(--text3)">จำนวน:</span> <b>'+(+parsed.shares).toFixed(4)+'</b></div>'
+      +'<div><span style="color:var(--text3)">วันที่:</span> '+(parsed.date||'--')+'</div>'
+      +'<div><span style="color:var(--text3)">มูลค่า:</span> $'+((+parsed.price)*(+parsed.shares)).toFixed(2)+'</div>'
+      +'</div>';
+    confirmBtn.style.display='block';
+    document.getElementById('portTicker').value=parsed.ticker;
+    document.getElementById('portPrice').value=(+parsed.price).toFixed(2);
+    document.getElementById('portShares').value=(+parsed.shares).toFixed(4);
+    _updateBuyPreview();
+  }catch(e){status.textContent='❌ Error: '+e.message;}
+}
+
+function confirmSlip(){
+  if(!_slipData) return;
+  const {action,ticker,price,shares}=_slipData;
+  if(action==='buy'){
+    document.getElementById('portTicker').value=ticker;
+    document.getElementById('portPrice').value=(+price).toFixed(2);
+    document.getElementById('portShares').value=(+shares).toFixed(4);
+    addPortPosition();
+  } else {
+    const pos=portfolio.find(p=>p.t===ticker);
+    if(!pos){toast('⚠️ ไม่มี '+ticker+' ในพอร์ต');return;}
+    const newShares=+(pos.shares-(+shares)).toFixed(4);
+    if(newShares<=0.0001){portfolio.splice(portfolio.indexOf(pos),1);toast('✅ ขาย '+ticker+' ออกทั้งหมดแล้ว');}
+    else{pos.shares=newShares;toast('✅ ขาย '+ticker+' เหลือ '+newShares+' หุ้น');}
+    savePortfolio(); renderPortfolio();
+  }
+  cancelSlip();
+}
+
+function cancelSlip(){
+  document.getElementById('slipPreview').style.display='none';
+  _slipData=null;
+}
+
 function addPortPosition(){
   const rawTicker = document.getElementById('portTicker')?.value.trim().toUpperCase();
   // sanitize: อนุญาตเฉพาะ A-Z, 0-9, .
