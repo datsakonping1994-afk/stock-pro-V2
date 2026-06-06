@@ -14097,18 +14097,56 @@ async function summarizeEvent(idx, btn){
 4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
 ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
 
-      const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-5',
-          max_tokens:1000,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages:[{role:'user',content:prompt}]
-        })
-      });
-      const data = await resp.json();
-      text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+      // Try Claude with web_search first, fallback to Groq/Gemini
+      let usedAI = '';
+      if(_ank){
+        try{
+          const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+            body:JSON.stringify({
+              model:'claude-sonnet-4-20250514',
+              max_tokens:1000,
+              tools:[{type:'web_search_20250305',name:'web_search'}],
+              messages:[{role:'user',content:prompt}]
+            })
+          }, 20000);
+          const data = await resp.json();
+          if(resp.ok) text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+          usedAI = 'Claude';
+        }catch(e){ console.warn('[elite:claude]',e.message); }
+      }
+      // Groq fallback
+      if(!text){
+        const groqKey=localStorage.getItem('groqKey')||localStorage.getItem('groqKey2')||'';
+        if(groqKey){
+          try{
+            const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:prompt}]})
+            }, 15000);
+            const gd = await gr.json();
+            if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
+            usedAI = 'Groq';
+          }catch(e){ console.warn('[elite:groq]',e.message); }
+        }
+      }
+      // Gemini fallback
+      if(!text){
+        const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
+        if(gemKey){
+          try{
+            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+            }, 12000);
+            const gmd = await gem.json();
+            if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.[0]?.text||'';
+            usedAI = 'Gemini';
+          }catch(e){ console.warn('[elite:gemini]',e.message); }
+        }
+      }
       if(text) try{ localStorage.setItem(cacheKey, JSON.stringify({text, ts:Date.now()})); }catch{}
     }
 
@@ -14118,7 +14156,7 @@ async function summarizeEvent(idx, btn){
       const html = text.replace(/\n/g,'<br>');
       box.innerHTML = `
         <div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.18);border-radius:10px;padding:11px 12px">
-          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:7px">📋 สรุปผลการรายงาน${cached?' · <span style="color:var(--text3);font-weight:400">cache</span>':''}</div>
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:7px">📋 สรุปผลการรายงาน${cached?' · <span style="color:var(--text3);font-weight:400">cache</span>':usedAI?' · <span style="color:var(--text3);font-weight:400">'+usedAI+'</span>':''}</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.8">${html}</div>
         </div>`;
     }
@@ -14210,7 +14248,7 @@ async function forecastEvent(idx, btn){
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
         body:JSON.stringify({
-          model:'claude-sonnet-4-5',
+          model:'claude-sonnet-4-20250514',
           max_tokens:1500,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           messages:[{role:'user',content:prompt}]
