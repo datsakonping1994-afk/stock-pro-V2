@@ -9966,29 +9966,59 @@ async function _showMDA(ticker, btn){
     const transcriptList = transcriptRes.status==='fulfilled'
       ? (transcriptRes.value?.transcripts||[]) : [];
 
-    // Web search ด้วย Claude ถ้ามี key
+    // Web search — Tavily ก่อน (ฟรี ไม่ต้องใช้เงิน)
     let webContext = '';
-    const _ank = localStorage.getItem('anthropicKey')||'';
-    if(_ank){
+    btn.innerHTML = '🔍 ค้นข้อมูล MD&A...';
+
+    const tvKeys = [localStorage.getItem('tavilyKey'),localStorage.getItem('tavilyKey2'),localStorage.getItem('tavilyKey3')].filter(Boolean);
+    for(const tvKey of tvKeys){
       try{
-        btn.innerHTML = '🔍 ค้นข้อมูล...';
-        const sr = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+        const tr = await _fetchWithTimeout('https://api.tavily.com/search',{
           method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':_ank,
-                   'anthropic-version':'2023-06-01',
-                   'anthropic-dangerous-direct-browser-access':'true'},
+          headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
-            model:'claude-sonnet-4-20250514',
-            max_tokens:800,
-            tools:[{type:'web_search_20250305',name:'web_search'}],
-            messages:[{role:'user',content:`Search for ${ticker} latest earnings call highlights, management guidance, CEO comments, and business outlook. Include any mentions of revenue drivers, challenges, and future plans.`}]
+            api_key: tvKey,
+            query: `${ticker} earnings call CEO comments management guidance revenue drivers challenges outlook ${new Date().getFullYear()}`,
+            search_depth: 'advanced',
+            max_results: 8,
+            include_answer: true
           })
-        }, 20000);
-        if(sr.ok){
-          const sd = await sr.json();
-          webContext = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim().slice(0,2000);
+        }, 10000);
+        if(tr.ok){
+          const td = await tr.json();
+          const answer = td.answer||'';
+          const results = (td.results||[]).map(r=>`📰 ${r.title} (${r.published_date?.slice(0,10)||''}): ${r.content?.slice(0,300)||''}`).join('\n\n');
+          webContext = `${answer}
+
+${results}`.slice(0,4000);
+          if(webContext.trim()) break;
         }
-      }catch(e){ console.warn('[mda:search]',e.message); }
+      }catch(e){ console.warn('[mda:tavily]',e.message); }
+    }
+
+    // Fallback: Claude web_search ถ้า Tavily ไม่มี key
+    if(!webContext){
+      const _ank = localStorage.getItem('anthropicKey')||'';
+      if(_ank){
+        try{
+          const sr = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-api-key':_ank,
+                     'anthropic-version':'2023-06-01',
+                     'anthropic-dangerous-direct-browser-access':'true'},
+            body:JSON.stringify({
+              model:'claude-sonnet-4-20250514',
+              max_tokens:800,
+              tools:[{type:'web_search_20250305',name:'web_search'}],
+              messages:[{role:'user',content:`Search for ${ticker} latest earnings call highlights, management guidance, CEO comments, and business outlook.`}]
+            })
+          }, 20000);
+          if(sr.ok){
+            const sd = await sr.json();
+            webContext = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim().slice(0,2000);
+          }
+        }catch(e){ console.warn('[mda:claude]',e.message); }
+      }
     }
 
     // ให้ AI สรุปแบบ MD&A
