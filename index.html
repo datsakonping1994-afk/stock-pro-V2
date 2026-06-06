@@ -12396,7 +12396,7 @@ Provide detailed factual information with specific numbers.`}]
       }catch(e){ console.warn('[article:claude]',e.message); }
     }
 
-    // Fallback: Tavily ถ้าไม่มี Claude key
+    // Tavily — รันเสมอถ้า webNews ยังว่าง (ไม่ว่า Claude จะมี key หรือไม่)
     if(!webNews){
       const tvKeys = [localStorage.getItem('tavilyKey'),localStorage.getItem('tavilyKey2'),localStorage.getItem('tavilyKey3')].filter(Boolean);
       for(const tvKey of tvKeys){
@@ -12406,17 +12406,20 @@ Provide detailed factual information with specific numbers.`}]
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
               api_key: tvKey,
-              query: `${tickers.join(' ')} stock latest news earnings results guidance ${new Date().getFullYear()}`,
+              query: `${tickers.join(' ')} stock news ${new Date().toISOString().slice(0,7)} earnings analyst upgrade downgrade catalyst`,
               search_depth: 'advanced',
-              max_results: 5,
-              include_answer: true
+              max_results: 8,
+              include_answer: true,
+              include_raw_content: false
             })
           }, 10000);
           if(tr.ok){
             const td = await tr.json();
             const answer = td.answer||'';
-            const results = (td.results||[]).map(r=>`${r.title}: ${r.content?.slice(0,200)}`).join('\n');
-            webNews = (answer + '\n\n' + results).slice(0,3000);
+            const results = (td.results||[]).map(r=>
+              `📰 ${r.title} (${r.published_date?.slice(0,10)||''}): ${r.content?.slice(0,300)||''}`
+            ).join('\n\n');
+            webNews = `ข้อมูลจาก Web Search:\n${answer}\n\nบทความล่าสุด:\n${results}`.slice(0,4000);
             if(webNews.trim()) break;
           }
         }catch(e){ console.warn('[article:tavily]',e.message); }
