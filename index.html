@@ -950,27 +950,39 @@ canvas.bigchart{width:100%;height:100%}
         </div>
         <div class="settings-row">
           <div style="width:100%">
-            <div class="settings-label">Groq API Key <span style="font-size:10px;color:var(--green)">(ฟรี เร็วมาก)</span></div>
-            <div class="settings-sublabel"><a href="https://console.groq.com/keys" target="_blank" style="color:var(--green);text-decoration:underline">console.groq.com</a> → API Keys → gsk_...</div>
-            <input class="settings-input full" id="groqKeyInput" type="password" placeholder="gsk_...">
+            <div class="settings-label">Groq API Keys <span style="font-size:10px;color:var(--green)">(ฟรี เร็วมาก · rotate อัตโนมัติ)</span></div>
+            <div class="settings-sublabel"><a href="https://console.groq.com/keys" target="_blank" style="color:var(--green);text-decoration:underline">console.groq.com</a> → ใส่ได้สูงสุด 3 บัญชี</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <input class="settings-input full" id="groqKeyInput" type="password" placeholder="Key 1: gsk_...">
+              <input class="settings-input full" id="groqKeyInput2" type="password" placeholder="Key 2: gsk_... (สำรอง)">
+              <input class="settings-input full" id="groqKeyInput3" type="password" placeholder="Key 3: gsk_... (สำรอง)">
+            </div>
             <div id="groqKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGroqBtn" class="settings-btn" style="margin-top:6px" onclick="testGroqKey()">🧪 ทดสอบ</button>
           </div>
         </div>
         <div class="settings-row">
           <div style="width:100%">
-            <div class="settings-label">Tavily API Key <span style="font-size:10px;color:var(--gold)">(Elite Web Search · ฟรี 1000/เดือน)</span></div>
-            <div class="settings-sublabel"><a href="https://app.tavily.com" target="_blank" style="color:var(--gold);text-decoration:underline">app.tavily.com</a> → API Keys → tvly-...</div>
-            <input class="settings-input full" id="tavilyKeyInput" type="password" placeholder="tvly-...">
+            <div class="settings-label">Tavily API Keys <span style="font-size:10px;color:var(--gold)">(Elite Web Search · ฟรี 1000/เดือน · rotate อัตโนมัติ)</span></div>
+            <div class="settings-sublabel"><a href="https://app.tavily.com" target="_blank" style="color:var(--gold);text-decoration:underline">app.tavily.com</a> → ใส่ได้สูงสุด 3 บัญชี</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <input class="settings-input full" id="tavilyKeyInput" type="password" placeholder="Key 1: tvly-...">
+              <input class="settings-input full" id="tavilyKeyInput2" type="password" placeholder="Key 2: tvly-... (สำรอง)">
+              <input class="settings-input full" id="tavilyKeyInput3" type="password" placeholder="Key 3: tvly-... (สำรอง)">
+            </div>
             <div id="tavilyKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button class="settings-btn" style="margin-top:6px;background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.4);color:var(--gold)" onclick="testTavilyKey()">🧪 ทดสอบ</button>
           </div>
         </div>
         <div class="settings-row">
           <div style="width:100%">
-            <div class="settings-label">Gemini API Key <span style="font-size:10px;color:var(--green)">(ฟรี)</span></div>
-            <div class="settings-sublabel"><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--green);text-decoration:underline">aistudio.google.com</a> → Get API Key → AIza...</div>
-            <input class="settings-input full" id="geminiKeyInput" type="password" placeholder="AIza...">
+            <div class="settings-label">Gemini API Keys <span style="font-size:10px;color:var(--green)">(ฟรี · rotate อัตโนมัติ)</span></div>
+            <div class="settings-sublabel"><a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--green);text-decoration:underline">aistudio.google.com</a> → ใส่ได้สูงสุด 3 บัญชี</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <input class="settings-input full" id="geminiKeyInput" type="password" placeholder="Key 1: AIza...">
+              <input class="settings-input full" id="geminiKeyInput2" type="password" placeholder="Key 2: AIza... (สำรอง)">
+              <input class="settings-input full" id="geminiKeyInput3" type="password" placeholder="Key 3: AIza... (สำรอง)">
+            </div>
             <div id="geminiKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
             <button id="testGeminiBtn" class="settings-btn" style="margin-top:6px" onclick="testGeminiKey()">🧪 ทดสอบ</button>
           </div>
@@ -5983,6 +5995,10 @@ function loadSettings(){
     const tvk=localStorage.getItem('tavilyKey')||'';
     const tvkEl=document.getElementById('tavilyKeyInput');
     if(tvkEl) tvkEl.value=tvk;
+    const tvkEl2=document.getElementById('tavilyKeyInput2');
+    if(tvkEl2) tvkEl2.value=localStorage.getItem('tavilyKey2')||'';
+    const tvkEl3=document.getElementById('tavilyKeyInput3');
+    if(tvkEl3) tvkEl3.value=localStorage.getItem('tavilyKey3')||'';
     // โหลด Gemini key (อาจซ้ำกับด้านบน — ใช้ค่าเดิม)
     const gmkEl2=document.getElementById('geminiKeyInput');
     if(gmkEl2) gmkEl2.value=localStorage.getItem('geminiKey')||'';
@@ -6047,14 +6063,19 @@ function saveSettings(){
   // บันทึก Groq key
   try{
     const gk=document.getElementById('groqKeyInput')?.value?.trim()||'';
+    const gk2=document.getElementById('groqKeyInput2')?.value?.trim()||'';
+    const gk3=document.getElementById('groqKeyInput3')?.value?.trim()||'';
     if(gk) localStorage.setItem('groqKey',gk);
     else localStorage.removeItem('groqKey');
   }catch{}
   // บันทึก Tavily key
   try{
     const tvk=document.getElementById('tavilyKeyInput')?.value?.trim()||'';
-    if(tvk) localStorage.setItem('tavilyKey',tvk);
-    else localStorage.removeItem('tavilyKey');
+    const tvk2=document.getElementById('tavilyKeyInput2')?.value?.trim()||'';
+    const tvk3=document.getElementById('tavilyKeyInput3')?.value?.trim()||'';
+    if(tvk) localStorage.setItem('tavilyKey',tvk); else localStorage.removeItem('tavilyKey');
+    if(tvk2) localStorage.setItem('tavilyKey2',tvk2); else localStorage.removeItem('tavilyKey2');
+    if(tvk3) localStorage.setItem('tavilyKey3',tvk3); else localStorage.removeItem('tavilyKey3');
   }catch{}
   // บันทึก Gemini key
   try{
@@ -6086,24 +6107,86 @@ function saveSettings(){
 
 async function testTavilyKey(){
   const statusEl=document.getElementById('tavilyKeyStatus');
-  const key=document.getElementById('tavilyKeyInput')?.value?.trim()||'';
   if(!statusEl) return;
-  if(!key){ statusEl.style.display='block';statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ กรุณาใส่ Tavily Key ก่อน';return; }
-  statusEl.style.display='block';statusEl.style.background='rgba(255,255,255,0.05)';statusEl.style.border='1px solid rgba(255,255,255,0.1)';statusEl.style.color='var(--text2)';statusEl.textContent='⏳ กำลังทดสอบ...';
+  const keys=[
+    document.getElementById('tavilyKeyInput')?.value?.trim(),
+    document.getElementById('tavilyKeyInput2')?.value?.trim(),
+    document.getElementById('tavilyKeyInput3')?.value?.trim(),
+  ].filter(Boolean);
+  if(!keys.length){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,77,106,0.12)';
+    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='❌ กรุณาใส่ Tavily Key ก่อน';
+    return;
+  }
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ Tavily ทุก key...';
+  const results = await Promise.all(keys.map(async(key,i)=>{
+    try{
+      const r=await _fetchWithTimeout('https://api.tavily.com/search',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({api_key:key,query:'stock market',max_results:1})
+      },8000);
+      if(r.ok){ localStorage.setItem('tavilyKey'+(i>0?i+1:''),key); return {ok:true}; }
+      return {ok:false,status:r.status};
+    }catch(e){ return {ok:false,err:e.message}; }
+  }));
+  const lines=results.map((r,i)=>{
+    const label='Key '+(i+1);
+    if(r.ok) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
+    if(r.status===429) return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด</span>';
+    if(r.status===401||r.status===403) return '<span style="color:var(--red)">❌ '+label+' key ผิด</span>';
+    return '<span style="color:var(--red)">❌ '+label+' error '+(r.status||r.err||'')+'</span>';
+  });
+  const anyOk=results.some(r=>r.ok);
+  statusEl.style.background=anyOk?'rgba(0,230,118,0.1)':'rgba(255,77,106,0.12)';
+  statusEl.style.border=anyOk?'1px solid rgba(0,230,118,0.3)':'1px solid rgba(255,77,106,0.3)';
+  statusEl.innerHTML=lines.join('<br>');
+}
+
+
+// ── Test single Groq key ──
+async function _testOneGroqKey(key, idx){
   try{
-    const r=await fetch('https://api.tavily.com/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key,query:'test',max_results:1}),signal:AbortSignal.timeout(8000)});
-    if(r.ok){ localStorage.setItem('tavilyKey',key); statusEl.style.background='rgba(0,230,118,0.1)';statusEl.style.border='1px solid rgba(0,230,118,0.3)';statusEl.style.color='var(--green)';statusEl.textContent='✅ Tavily ใช้งานได้! (บันทึกแล้ว)'; }
-    else if(r.status===401||r.status===403){ statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ API Key ไม่ถูกต้อง'; }
-    else { statusEl.style.background='rgba(255,215,0,0.1)';statusEl.style.border='1px solid rgba(255,215,0,0.3)';statusEl.style.color='var(--yellow)';statusEl.textContent='⚠️ Tavily ตอบกลับ '+r.status; }
-  }catch(e){ statusEl.style.background='rgba(255,77,106,0.12)';statusEl.style.border='1px solid rgba(255,77,106,0.3)';statusEl.style.color='var(--red)';statusEl.textContent='❌ เชื่อมต่อล้มเหลว: '+e.message; }
+    const r = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'ok'}],max_tokens:5})
+    }, 8000);
+    if(r.ok){ localStorage.setItem('groqKey'+(idx>1?idx:''), key); return {ok:true,status:r.status}; }
+    return {ok:false, status:r.status};
+  }catch(e){ return {ok:false, err:e.message}; }
+}
+
+// ── Test single Gemini key ──
+async function _testOneGeminiKey(key, idx){
+  try{
+    const r = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:'ok'}]}],generationConfig:{maxOutputTokens:5}})
+    }, 8000);
+    if(r.ok){ localStorage.setItem('geminiKey'+(idx>1?idx:''), key); return {ok:true,status:r.status}; }
+    if(r.status===429) return {ok:'quota', status:429};
+    return {ok:false, status:r.status};
+  }catch(e){ return {ok:false, err:e.message}; }
 }
 
 async function testGroqKey(){
   const btn=document.getElementById('testGroqBtn');
   const statusEl=document.getElementById('groqKeyStatus');
   if(!statusEl) return;
-  const key=document.getElementById('groqKeyInput')?.value?.trim()||'';
-  if(!key){
+  const keys=[
+    document.getElementById('groqKeyInput')?.value?.trim(),
+    document.getElementById('groqKeyInput2')?.value?.trim(),
+    document.getElementById('groqKeyInput3')?.value?.trim(),
+  ].filter(Boolean);
+  if(!keys.length){
     statusEl.style.display='block';
     statusEl.style.background='rgba(255,215,0,0.1)';
     statusEl.style.border='1px solid rgba(255,215,0,0.3)';
@@ -6111,13 +6194,26 @@ async function testGroqKey(){
     statusEl.textContent='⚠️ กรุณาใส่ Groq API Key ก่อน';
     return;
   }
-  btn.disabled=true;
-  btn.textContent='⏳ กำลังตรวจสอบ...';
+  btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
   statusEl.style.display='block';
   statusEl.style.background='rgba(100,210,255,0.08)';
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
-  statusEl.textContent='⏳ กำลังทดสอบ Groq...';
+  statusEl.textContent='⏳ กำลังทดสอบ Groq ทุก key...';
+  const results = await Promise.all(keys.map((k,i)=>_testOneGroqKey(k,i+1)));
+  const lines = results.map((r,i)=>{
+    const label='Key '+(i+1);
+    if(r.ok===true) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
+    if(r.status===429) return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด</span>';
+    if(r.status===401) return '<span style="color:var(--red)">❌ '+label+' key ผิด</span>';
+    return '<span style="color:var(--red)">❌ '+label+' error '+(r.status||r.err||'')+'</span>';
+  });
+  const anyOk = results.some(r=>r.ok===true);
+  statusEl.style.background=anyOk?'rgba(0,230,118,0.1)':'rgba(255,77,106,0.12)';
+  statusEl.style.border=anyOk?'1px solid rgba(0,230,118,0.3)':'1px solid rgba(255,77,106,0.3)';
+  statusEl.innerHTML=lines.join('<br>');
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+  return; // skip old code below
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),12000);
@@ -6309,8 +6405,12 @@ async function testGeminiKey(){
   const btn=document.getElementById('testGeminiBtn');
   const statusEl=document.getElementById('geminiKeyStatus');
   if(!statusEl) return;
-  const key=document.getElementById('geminiKeyInput')?.value?.trim()||localStorage.getItem('geminiKey')||'';
-  if(!key){
+  const keys=[
+    document.getElementById('geminiKeyInput')?.value?.trim(),
+    document.getElementById('geminiKeyInput2')?.value?.trim(),
+    document.getElementById('geminiKeyInput3')?.value?.trim(),
+  ].filter(Boolean);
+  if(!keys.length){
     statusEl.style.display='block';
     statusEl.style.background='rgba(255,215,0,0.1)';
     statusEl.style.border='1px solid rgba(255,215,0,0.3)';
@@ -6318,13 +6418,26 @@ async function testGeminiKey(){
     statusEl.textContent='⚠️ กรุณาใส่ Gemini API Key ก่อน';
     return;
   }
-  btn.disabled=true;
-  btn.textContent='⏳ กำลังตรวจสอบ...';
+  btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
   statusEl.style.display='block';
   statusEl.style.background='rgba(100,210,255,0.08)';
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
-  statusEl.textContent='⏳ กำลังทดสอบ Gemini...';
+  statusEl.textContent='⏳ กำลังทดสอบ Gemini ทุก key...';
+  const results = await Promise.all(keys.map((k,i)=>_testOneGeminiKey(k,i+1)));
+  const lines = results.map((r,i)=>{
+    const label='Key '+(i+1);
+    if(r.ok===true) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
+    if(r.ok==='quota') return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด (key ถูกต้อง)</span>';
+    if(r.status===401||r.status===403) return '<span style="color:var(--red)">❌ '+label+' key ผิด</span>';
+    return '<span style="color:var(--red)">❌ '+label+' error '+(r.status||r.err||'')+'</span>';
+  });
+  const anyOk = results.some(r=>r.ok===true||r.ok==='quota');
+  statusEl.style.background=anyOk?'rgba(0,230,118,0.1)':'rgba(255,77,106,0.12)';
+  statusEl.style.border=anyOk?'1px solid rgba(0,230,118,0.3)':'1px solid rgba(255,77,106,0.3)';
+  statusEl.innerHTML=lines.join('<br>');
+  btn.disabled=false; btn.textContent='🧪 ทดสอบ';
+  return;
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),10000);
@@ -9304,11 +9417,18 @@ function renderEarningsData(data, isLive=false){
       ?`<span class="earn-badge earn-soon">${countdown(e.d)||'⏳'}</span>`
       :`<span style="color:var(--dim);font-size:11px">—</span>`;
     const liveTag=e._live?'<span style="font-size:10px;color:var(--accent);margin-left:3px">●</span>':'';
-    const aiBtn = isDone
-      ? `<button onclick="event.stopPropagation();_analyzeEarningsResult('${e.t}',this)" style="margin-top:6px;width:100%;background:linear-gradient(135deg,rgba(100,200,255,0.15),rgba(100,200,255,0.05));border:1px solid rgba(100,200,255,0.35);border-radius:8px;padding:7px;font-size:12px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif">🤖 AI วิเคราะห์ผล</button>`
-      : isSoon
-      ? `<button onclick="event.stopPropagation();_analyzeEarningsPreview('${e.t}',this)" style="margin-top:6px;width:100%;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05));border:1px solid rgba(255,215,0,0.35);border-radius:8px;padding:7px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif">🔮 AI คาดการณ์ผล</button>`
+    // ── Data button: ดึงข้อมูล EPS history จริง ──
+    const dataBtn = isDone || isSoon
+      ? `<button onclick="event.stopPropagation();_showEarningsHistory('${e.t}',this)"
+          style="margin-top:6px;width:100%;
+                 background:${isDone?'linear-gradient(135deg,rgba(0,230,118,0.12),rgba(0,230,118,0.04))':'linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,215,0,0.04))'};
+                 border:1px solid ${isDone?'rgba(0,230,118,0.3)':'rgba(255,215,0,0.3)'};
+                 border-radius:8px;padding:7px;font-size:12px;font-weight:700;
+                 color:${isDone?'var(--green)':'var(--gold)'};cursor:pointer;font-family:'Syne',sans-serif">
+          📊 ${isDone?'ดูผลจริง + ประวัติ EPS':'ดูประวัติ EPS + คาดการณ์'}
+        </button>`
       : '';
+    const aiBtn = dataBtn;
     return`<div class="earn-row" style="background:${bg};border-color:${bc}" onclick="goCard('${e.t}')">
       <div class="earn-row-top">
         <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -9339,6 +9459,95 @@ function renderEarningsData(data, isLive=false){
     (done.length?`<div class="earn-grp" style="color:var(--green)">✅ รายงานแล้ว</div>`+done.map(row).join(''):'')+
     (future.length?`<div class="earn-grp" style="color:var(--dim)">📅 อนาคต</div>`+future.map(row).join(''):'');
 }
+
+// ── ดึง Earnings History จาก Finnhub + Worker ──
+async function _showEarningsHistory(ticker, btn){
+  const resultEl = document.querySelector('.earn-ai-result-'+ticker);
+  if(!resultEl) return;
+
+  // Toggle
+  if(resultEl.dataset.loaded==='1'){
+    resultEl.style.display = resultEl.style.display==='none'?'block':'none';
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังดึงข้อมูล...';
+  resultEl.style.display='block';
+  resultEl.innerHTML='<div style="color:var(--text3);font-size:11px">⏳ โหลด...</div>';
+
+  try{
+    // ดึง earnings history จาก Worker (Finnhub)
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 8000);
+    const r = await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`, {signal:ctrl.signal});
+    const d = await r.json();
+    const history = (d.ok && d.data) ? d.data.slice(0,6).reverse() : [];
+
+    // ดึงราคาปัจจุบัน
+    const curStock = stocksMap.get(ticker);
+    const curPrice = curStock?.p || 0;
+
+    let html = '';
+
+    if(history.length){
+      // Summary row
+      const latest = history[history.length-1];
+      const beats = history.filter(h=>h.actual!=null&&h.estimate!=null&&h.actual>=h.estimate).length;
+      const total  = history.filter(h=>h.actual!=null).length;
+
+      html += `<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">Beat Rate</span><br>
+          <b style="color:var(--green);font-size:14px">${total>0?Math.round(beats/total*100):0}%</b>
+          <span style="color:var(--text3);font-size:10px"> (${beats}/${total})</span>
+        </div>
+        ${curPrice>0?`<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+          <span style="color:var(--text3)">ราคาปัจจุบัน</span><br>
+          <b style="color:var(--text);font-size:14px">$${curPrice.toFixed(2)}</b>
+        </div>`:''}
+      </div>`;
+
+      // EPS history table
+      html += `<div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif;letter-spacing:1px">ประวัติ EPS (${history.length} ไตรมาสล่าสุด)</div>`;
+      html += `<div style="display:flex;flex-direction:column;gap:4px">`;
+      for(const q of history.slice().reverse()){
+        const beat = q.actual!=null && q.estimate!=null ? q.actual >= q.estimate : null;
+        const diff = q.actual!=null && q.estimate!=null && q.estimate!==0
+          ? ((q.actual-q.estimate)/Math.abs(q.estimate)*100).toFixed(1) : null;
+        const color = beat===true?'var(--green)':beat===false?'var(--red)':'var(--text3)';
+        const icon  = beat===true?'✅':beat===false?'❌':'—';
+        html += `<div style="display:grid;grid-template-columns:80px 1fr 1fr 60px;gap:4px;align-items:center;
+                             background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 8px;font-size:11px">
+          <span style="color:var(--text3)">${q.period||q.quarter||'—'}</span>
+          <span>คาด <b>${q.estimate!=null?'$'+q.estimate:'—'}</b></span>
+          <span>จริง <b style="color:${color}">${q.actual!=null?'$'+q.actual:'—'}</b></span>
+          <span style="color:${color};text-align:right">${icon}${diff?` ${diff>0?'+':''}${diff}%`:''}</span>
+        </div>`;
+      }
+      html += `</div>`;
+
+      // Next estimate
+      if(latest.estimate!=null){
+        html += `<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:8px;font-size:11px">
+          <span style="color:var(--gold);font-weight:700">📌 EPS คาดไตรมาสถัดไป: </span>
+          <b style="color:var(--text)">$${latest.estimate}</b>
+        </div>`;
+      }
+    } else {
+      html = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:8px">ไม่มีข้อมูล EPS history</div>';
+    }
+
+    resultEl.innerHTML = html;
+    resultEl.dataset.loaded = '1';
+    btn.textContent = '📊 ' + (resultEl.style.display==='none'?'ดูผลจริง + ประวัติ EPS':'ซ่อน');
+  }catch(e){
+    resultEl.innerHTML = '<div style="color:var(--red);font-size:11px">❌ ดึงข้อมูลไม่ได้: '+e.message+'</div>';
+    btn.textContent = '📊 ดูผลจริง + ประวัติ EPS';
+  }
+  btn.disabled=false;
+}
+
 
 // ── _parseEarningsDate ──
 function _parseEarningsDate(dstr){
@@ -10033,26 +10242,30 @@ let _slipData = null;
 const SLIP_PROMPT = 'อ่านสลิปซื้อขายหุ้นนี้แล้วตอบ JSON เท่านั้น ห้ามอธิบายเพิ่ม: {"action":"buy","ticker":"AMSC","price":44.06,"shares":2.3728876,"date":"2026-06-05"} - action: ซื้อ/Buy=buy | ขาย/Sell=sell - ticker: ชื่อหุ้นอังกฤษ - price: ราคาที่ได้จริง - shares: จำนวน - date: YYYY-MM-DD ถ้าไม่ใช่สลิปตอบ {"error":"not_a_slip"}';
 
 async function _parseSlipGemini(b64,mime){
-  const key=localStorage.getItem('geminiKey')||'';
-  if(!key) return null;
-  try{
+  const keys=[localStorage.getItem('geminiKey'),localStorage.getItem('geminiKey2'),localStorage.getItem('geminiKey3')].filter(Boolean);
+  if(!keys.length) return null;
+  for(const key of keys){
+    try{
     const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
     const d=await r.json();
     const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-  }catch(e){console.warn('[slip:gemini]',e.message);}
+  }catch(e){console.warn('[slip:gemini key]',e.message); continue;}
+  }
   return null;
 }
 
 async function _parseSlipGroq(b64,mime){
-  const key=localStorage.getItem('groqKey')||'';
-  if(!key) return null;
+  const keys=[localStorage.getItem('groqKey'),localStorage.getItem('groqKey2'),localStorage.getItem('groqKey3')].filter(Boolean);
+  if(!keys.length) return null;
+  for(const key of keys){
   try{
     const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',max_tokens:200,messages:[{role:'user',content:[{type:'image_url',image_url:{url:'data:'+mime+';base64,'+b64}},{type:'text',text:SLIP_PROMPT}]}]})},10000);
     const d=await r.json();
     const t=d.choices?.[0]?.message?.content||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-  }catch(e){console.warn('[slip:groq]',e.message);}
+  }catch(e){console.warn('[slip:groq key]',e.message); continue;}
+  }
   return null;
 }
 
