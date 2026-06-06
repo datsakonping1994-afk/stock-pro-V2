@@ -1548,6 +1548,7 @@ canvas.bigchart{width:100%;height:100%}
     <div class="drawer-tab" onclick="drawerTab('fund',this)">Fundamental</div>
     <div class="drawer-tab" onclick="drawerTab('ai',this)">AI Chat</div>
     <div class="drawer-tab" onclick="drawerTab('news',this)">ข่าว</div>
+    <div class="drawer-tab" onclick="drawerTab('transcript',this)">📋 Transcript</div>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
 </div>
@@ -3963,6 +3964,17 @@ function drawerTab(tab, btn){
         <input class="ai-input" id="aiInput" placeholder="ถามเกี่ยวกับ ${s.t}..." onkeydown="if(event.key==='Enter')sendAI('${s.t}')">
         <button class="ai-send" onclick="sendAI('${s.t}')">↑</button>
       </div></div>`;
+  } else if(tab==='transcript'){
+    body.innerHTML = `<div style="padding:8px 0">
+      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);margin-bottom:10px">📋 EARNINGS CALL TRANSCRIPT</div>
+      <div id="transcriptBody"><div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">กด "ดึง Transcript" เพื่อโหลดข้อมูล</div></div>
+      <button onclick="_fetchEarningsTranscript('${s.t}',this)" 
+        style="width:100%;margin-top:10px;background:linear-gradient(135deg,rgba(100,210,255,0.12),rgba(100,210,255,0.04));
+               border:1px solid rgba(100,210,255,0.3);border-radius:10px;padding:10px;
+               font-size:12px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif">
+        📋 ดึง Earnings Call Transcript
+      </button>
+    </div>`;
   } else if(tab==='news'){
     body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">⏳ กำลังโหลดข่าว...</div>';
     renderNewsTab(s.t).catch(()=>{body.innerHTML='<div style="color:var(--text3)">ไม่พบข่าว</div>';});
@@ -5231,6 +5243,91 @@ ${exitReason}
 }
 
 // ── AI วิเคราะห์ผลประกอบการที่รายงานแล้ว ──
+// ══════════════════════════════════════════════
+//  EARNINGS CALL TRANSCRIPT
+//  ดึงจาก Finnhub แล้วให้ AI สรุปประเด็นสำคัญ
+// ══════════════════════════════════════════════
+async function _fetchEarningsTranscript(ticker, btn){
+  const body = document.getElementById('transcriptBody');
+  if(!body) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังดึง...';
+  body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">⏳ โหลด Transcript...</div>';
+
+  try{
+    // ดึง earnings transcript list จาก Finnhub
+    const r = await _fetchWithTimeout(
+      `https://finnhub.io/api/v1/stock/earnings-call-transcripts-list?symbol=${ticker}&token=${FINNHUB_KEY}`,
+      {}, 8000
+    );
+    const d = await r.json();
+    const list = d?.transcripts || [];
+
+    if(!list.length){
+      body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">❌ ไม่พบ Transcript จาก Finnhub<br><span style="font-size:10px">อาจต้องใช้ Finnhub Premium</span></div>';
+      btn.disabled = false;
+      btn.textContent = '📋 ดึง Earnings Call Transcript';
+      return;
+    }
+
+    // ดึง transcript ล่าสุด
+    const latest = list[0];
+    btn.textContent = '⏳ กำลังดึง transcript...';
+    const tr = await _fetchWithTimeout(
+      `https://finnhub.io/api/v1/stock/earnings-call-transcripts?id=${latest.id}&token=${FINNHUB_KEY}`,
+      {}, 10000
+    );
+    const td = await tr.json();
+    const rawText = (td?.transcript||[]).map(t=>t.speech||'').join(' ').slice(0,6000);
+
+    if(!rawText){
+      body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">❌ ไม่มีข้อความ Transcript</div>';
+      btn.disabled = false;
+      btn.textContent = '📋 ดึง Earnings Call Transcript';
+      return;
+    }
+
+    // ให้ AI สรุป transcript
+    btn.textContent = '🤖 AI กำลังสรุป...';
+    const sys = `คุณคือนักวิเคราะห์ที่สรุป Earnings Call ให้นักลงทุนรายย่อยเข้าใจง่าย ใช้ภาษาไทย ห้าม markdown`;
+    const prompt = `สรุป Earnings Call ของ ${ticker} นี้ให้กระชับ:
+
+${rawText}
+
+สรุป 5 หัวข้อ:
+1) ผลประกอบการ: Revenue, EPS, Gross Margin ที่ประกาศ
+2) Guidance: คาดการณ์ไตรมาสหน้า/ปีนี้
+3) จุดแข็ง: สิ่งที่ CEO/CFO เน้นว่าดี
+4) ความเสี่ยง: ปัญหาหรือความกังวลที่พูดถึง
+5) สรุปสำหรับนักลงทุน: ควรถือ/ซื้อ/ขาย เพราะอะไร`;
+
+    let summary = await callAI_Analyze(sys, prompt, 1000);
+    if(!summary) summary = 'ไม่สามารถสรุปได้';
+
+    // แสดงผล
+    const quarter = latest.quarter||'';
+    const year = latest.year||'';
+    body.innerHTML = `
+      <div style="margin-bottom:10px;padding:8px 10px;background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.2);border-radius:8px;font-size:10px">
+        <span style="color:var(--ice);font-weight:700">${ticker} Earnings Call Q${quarter} ${year}</span>
+        <span style="color:var(--text3);margin-left:8px">${list.length} transcript ที่พบ</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${(summary||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'')}</div>
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:6px">📄 Raw Transcript (${rawText.length} chars)</div>
+        <div style="max-height:200px;overflow-y:auto;font-size:10px;color:var(--text3);line-height:1.6;background:var(--bg3);border-radius:8px;padding:8px">${rawText.slice(0,2000)}...</div>
+      </div>`;
+
+    btn.textContent = '🔄 ดึงใหม่';
+  }catch(e){
+    body.innerHTML = `<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">❌ ${e.message}<br><span style="font-size:10px;color:var(--text3)">Finnhub Transcript ต้องใช้ Premium Plan</span></div>`;
+    btn.textContent = '📋 ดึง Earnings Call Transcript';
+  }
+  btn.disabled = false;
+}
+
+
 async function _analyzeEarningsResult(ticker, btn){
   const e=(window.earningsData||[]).find(x=>x.t===ticker);
   if(!e) return;
@@ -9478,17 +9575,30 @@ async function _showEarningsHistory(ticker, btn){
   resultEl.innerHTML='<div style="color:var(--text3);font-size:11px">⏳ โหลด...</div>';
 
   try{
-    // ดึง earnings history + metrics พร้อมกัน
-    const ctrl = new AbortController();
-    setTimeout(()=>ctrl.abort(), 10000);
-    const [earnRes, metricRes] = await Promise.allSettled([
-      fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`, {signal:ctrl.signal}).then(r=>r.json()),
-      fetch(`${PRICES_WORKER}/metrics?t=${ticker}`, {signal:ctrl.signal}).then(r=>r.json()),
+    // ดึง earnings history + metrics + Yahoo revenue พร้อมกัน
+    const yhTicker = ticker.replace('.','-');
+    const [earnRes, metricRes, yahooRes, ratingRes] = await Promise.allSettled([
+      fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
+      fetch(`${PRICES_WORKER}/metrics?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,recommendationTrend,financialData`,
+        {headers:{'User-Agent':'Mozilla/5.0'},signal:new AbortController().signal}).then(r=>r.json()),
+      fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_KEY}`,
+        {signal:new AbortController().signal}).then(r=>r.json()),
     ]);
 
     const history = (earnRes.status==='fulfilled'&&earnRes.value.ok) ? earnRes.value.data.slice(0,8).reverse() : [];
     const metrics = (metricRes.status==='fulfilled'&&metricRes.value.ok) ? metricRes.value : null;
     const curStock = stocksMap.get(ticker);
+
+    // Parse Yahoo revenue quarterly
+    const yahooData = yahooRes.status==='fulfilled' ? yahooRes.value?.quoteSummary?.result?.[0] : null;
+    const revQuarters = yahooData?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
+    const targetPrice = yahooData?.financialData?.targetMeanPrice?.raw||null;
+    const analystCount = yahooData?.financialData?.numberOfAnalystOpinions?.raw||null;
+    const recTrend = yahooData?.recommendationTrend?.trend?.[0]||null;
+
+    // Parse Finnhub ratings
+    const ratings = ratingRes.status==='fulfilled'&&Array.isArray(ratingRes.value) ? ratingRes.value.slice(0,3) : [];
 
     let html = '';
 
@@ -9562,6 +9672,59 @@ async function _showEarningsHistory(ticker, btn){
         </div>`;
       }
       html += `</div>`;
+
+      // ── Revenue History (จาก Yahoo) ──
+      if(revQuarters.length>0){
+        const revList = revQuarters.slice(0,6).reverse();
+        html += `<div style="font-size:10px;color:var(--text3);font-weight:700;margin:8px 0 4px;font-family:'Syne',sans-serif;letter-spacing:1px">💰 Revenue History (ไตรมาส)</div>`;
+        html += `<div style="display:flex;flex-direction:column;gap:3px">`;
+        for(let i=0;i<revList.length;i++){
+          const q = revList[i];
+          const rev = q.totalRevenue?.raw||null;
+          const prevQ = revList[i-1];
+          const prevRev = prevQ?.totalRevenue?.raw||null;
+          const revB = rev!=null ? (rev/1e9).toFixed(2)+'B' : '—';
+          let growthHtml = '';
+          if(rev!=null && prevRev!=null && prevRev!==0){
+            const g = ((rev-prevRev)/Math.abs(prevRev)*100).toFixed(1);
+            const c = g>=0?'var(--green)':'var(--red)';
+            growthHtml = `<span style="color:${c};font-size:10px">${g>=0?'+':''}${g}%</span>`;
+          }
+          const period = q.endDate?.fmt||'—';
+          html += `<div style="display:grid;grid-template-columns:80px 1fr 80px;gap:4px;align-items:center;
+                               background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 8px;font-size:11px">
+            <span style="color:var(--text3)">${period}</span>
+            <span><b>$${revB}</b></span>
+            <span style="text-align:right">${growthHtml}</span>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      // ── Analyst Rating ──
+      if(ratings.length>0||targetPrice!=null){
+        const latest = ratings[0]||{};
+        const buy=(latest.strongBuy||0)+(latest.buy||0);
+        const hold=latest.hold||0;
+        const sell=(latest.sell||0)+(latest.strongSell||0);
+        const total=buy+hold+sell;
+        const consensus = total>0?(buy/total>0.6?'🟢 Buy':buy/total>0.4?'🟡 Hold':'🔴 Sell'):'—';
+        html += `<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;font-size:11px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="color:var(--text3);font-weight:700">📊 Analyst Consensus</span>
+            <span style="font-weight:700">${consensus}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${total>0?`<span style="color:var(--green)">Buy: ${buy}</span>
+            <span style="color:var(--text3)">Hold: ${hold}</span>
+            <span style="color:var(--red)">Sell: ${sell}</span>`:''}
+            ${targetPrice!=null?`<span style="color:var(--gold);margin-left:auto">🎯 Target: $${targetPrice.toFixed(2)}${analystCount?' ('+analystCount+' analysts)':''}</span>`:''}
+          </div>
+          ${targetPrice!=null&&curStock?.p>0?`<div style="margin-top:4px;font-size:10px;color:${targetPrice>curStock.p?'var(--green)':'var(--red)'}">
+            Upside: ${((targetPrice-curStock.p)/curStock.p*100).toFixed(1)}% จากราคาปัจจุบัน $${curStock.p.toFixed(2)}
+          </div>`:''}
+        </div>`;
+      }
 
       // ── Guidance / Next estimate ──
       if(latest?.estimate!=null){
@@ -9817,9 +9980,95 @@ ${stats?`📊 ระบบ: Win Rate ${stats.winRate}% จาก ${stats.total} 
 5) 📋 กลยุทธ์วันนี้: สรุปว่าควรทำอะไร ซื้อ/ขาย/ถือ
 ตอบภาษาไทยธรรมดา ใช้ emoji แทน bullet`;
   // Timeout รวม 30 วินาที ป้องกันค้าง
+  // ── System Prompt: นักวิเคราะห์มืออาชีพ ──
+  const sys = `คุณคือ "StockPro Analyst" นักวิเคราะห์หุ้นสหรัฐฯ ระดับมืออาชีพที่มีประสบการณ์ 20 ปี
+คุณทำงานเหมือน sell-side analyst จาก Goldman Sachs หรือ Morgan Stanley
+หลักการวิเคราะห์:
+- Top-Down: Macro → Sector → Stock
+- ใช้ทั้ง Technical และ Fundamental ประกอบกัน
+- อ้างอิงข้อมูลจริงเสมอ ไม่พูดลอยๆ
+- ระบุราคาเข้า, Stop Loss, Target ชัดเจนทุกครั้งที่แนะนำหุ้น
+- บอกตรงๆ ว่าตลาดน่ากลัวหรือน่าซื้อ ไม่พูดกลางๆ
+- ใช้ภาษาไทยธรรมดา เข้าใจง่าย เหมือนคุยกับลูกค้า
+- ห้ามใช้ ** # markdown ทุกรูปแบบ`;
+
+  // ── Web Search ด้วย Claude ถ้ามี key ──
+  let webSearchContext = '';
+  const _ank = localStorage.getItem('anthropicKey')||'';
+  if(_ank){
+    try{
+      const searchResp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_ank,
+                 'anthropic-version':'2023-06-01',
+                 'anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:800,
+          tools:[{type:'web_search_20250305',name:'web_search'}],
+          messages:[{role:'user',content:`ค้นหาข่าวตลาดหุ้นสหรัฐฯ วันนี้ที่สำคัญ 5 ข่าว รวมถึง S&P500, Nasdaq, Fed, เงินเฟ้อ, เศรษฐกิจ ตอบเป็น bullet points ภาษาอังกฤษ กระชับ`}]
+        })
+      }, 20000);
+      if(searchResp.ok){
+        const sd = await searchResp.json();
+        const searchText = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+        if(searchText) webSearchContext = `\n\n🔍 ข่าวล่าสุดจาก Web Search:\n` + searchText.slice(0,1500);
+      }
+    }catch(e){ console.warn('[summary:search]',e.message); }
+  }
+
+  // ── Sector Performance ──
+  const sectorPerf = {};
+  stocks.forEach(s=>{
+    const sec = Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    if(!sectorPerf[sec]) sectorPerf[sec]={sum:0,count:0};
+    sectorPerf[sec].sum+=s.c; sectorPerf[sec].count++;
+  });
+  const sectorPerfText = Object.entries(sectorPerf)
+    .map(([k,v])=>({sec:k,avg:v.count>0?+(v.sum/v.count).toFixed(1):0}))
+    .sort((a,b)=>b.avg-a.avg)
+    .map(({sec,avg})=>`${sec}:${avg>=0?'+':''}${avg}%`)
+    .join(' | ');
+
+  // ── Portfolio context ──
+  let portContext = '';
+  if(portfolio.length>0){
+    const portSummary = portfolio.map(p=>{
+      const cur = stocksMap.get(p.t)?.p||0;
+      const pnl = cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
+      return `${p.t}:${pnl>=0?'+':''}${pnl}%`;
+    }).join(', ');
+    portContext = `
+💼 พอร์ตของคุณ: ${portSummary}`;
+  }
+
+  // ── Upcoming Events ──
+  const upcomingEvents = (ELITE_EVENTS||[])
+    .filter(ev=>{
+      const d=new Date(ev.date); const now=new Date();
+      const diff=(d-now)/86400000;
+      return diff>=0&&diff<=7;
+    })
+    .map(ev=>`${ev.title}(${ev.date})`)
+    .join(', ');
+
+  const fullPrompt = prompt + webSearchContext + `
+
+📊 Sector Performance วันนี้: ${sectorPerfText}${portContext}
+${upcomingEvents?`⏰ Events ที่จะเกิดใน 7 วัน: ${upcomingEvents}`:''}
+
+วิเคราะห์แบบ Top-Down ครบ 6 หัวข้อ ใช้ข้อมูลทั้งหมดข้างต้นประกอบ:
+
+1) 🌎 MACRO ภาพใหญ่: Fed, Dollar, Bond Yield, เศรษฐกิจ → ตลาดจะไปทางไหน
+2) 🔄 SECTOR ROTATION: กลุ่มไหนแข็งแกร่ง กลุ่มไหนหลีกเลี่ยง เพราะอะไร
+3) 🎯 หุ้นน่าซื้อวันนี้: ระบุ 3-5 ตัวชัดๆ พร้อมราคาเข้า, Stop Loss, Target และเหตุผลจาก Macro+Technical
+4) ⚠️ หุ้นที่ต้องระวัง: ระบุ 2-3 ตัว บอกเหตุผลชัดๆ
+5) 💼 วิเคราะห์พอร์ตคุณ: ตัวไหนน่าห่วง ตัวไหนดี ควรทำอะไร${portfolio.length===0?' (ยังไม่มีพอร์ต)':''}
+6) 📋 ACTION PLAN วันนี้: 3 สิ่งที่ต้องทำทันที ระบุชัดเจน`;
+
   const _aiResult = await Promise.race([
-    callAI_Analyze('คุณคือที่ปรึกษาการลงทุนที่พูดภาษาไทยเข้าใจง่าย ตัดสินใจชัดเจน ระบุชื่อหุ้นและราคาจริงๆ ไม่พูดกลางๆ อธิบายเหมือนคุยกับเพื่อนที่ไม่รู้เรื่องหุ้น', prompt, 2500),
-    new Promise(r=>setTimeout(()=>r('⚠️ AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'), 30000))
+    callAI_Analyze(sys, fullPrompt, 3000),
+    new Promise(r=>setTimeout(()=>r('⚠️ AI ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง'), 45000))
   ]);
   return _aiResult;
 }
@@ -13987,6 +14236,120 @@ async function analyzePortfolioImpact(personId, btn){
   btn.textContent = '💼 วิเคราะห์ผลกระทบต่อพอร์ตฉัน';
   btn.disabled = false;
 }
+
+// ══════════════════════════════════════════════
+//  ELITE: Auto-fetch Economic Calendar from Finnhub
+//  อัปเดตอัตโนมัติ + merge กับ hardcode events
+// ══════════════════════════════════════════════
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache';
+const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
+
+// Map Finnhub event names → Thai + emoji
+const FINNHUB_EVENT_MAP = {
+  'nonfarm':         { title:'US Jobs Report (NFP)', emoji:'💼', tags:['SP500','Nasdaq','Jobs'], detail:'ตัวเลขการจ้างงานนอกภาคเกษตร ชี้ความแข็งแกร่งของเศรษฐกิจ กระทบทิศทาง Fed โดยตรง' },
+  'cpi':             { title:'US CPI Inflation',     emoji:'📊', tags:['SP500','Fed','Inflation'], detail:'ดัชนีราคาผู้บริโภค ตัวเลขหลักที่ Fed ใช้ตัดสินใจดอกเบี้ย กระทบหุ้น Growth/Tech แรงมาก' },
+  'fomc':            { title:'Fed FOMC Meeting',     emoji:'🏛️', tags:['Fed','SP500','Nasdaq'], detail:'Fed ประกาศนโยบายดอกเบี้ย ตลาดจับตาสัญญาณลด rate และ dot plot ใหม่' },
+  'gdp':             { title:'US GDP',               emoji:'📈', tags:['SP500','Economy'], detail:'ตัวเลข GDP สะท้อนภาพรวมเศรษฐกิจสหรัฐ' },
+  'retail sales':    { title:'US Retail Sales',      emoji:'🛒', tags:['SP500','Consumer'], detail:'ยอดค้าปลีกสหรัฐ สะท้อนกำลังซื้อผู้บริโภค' },
+  'pce':             { title:'US PCE Inflation',     emoji:'💹', tags:['Fed','SP500','Inflation'], detail:'PCE Price Index — ตัวเลขเงินเฟ้อที่ Fed ให้ความสำคัญมากที่สุด' },
+  'ppi':             { title:'US PPI',               emoji:'🏭', tags:['SP500','Inflation'], detail:'ดัชนีราคาผู้ผลิต บอกแนวโน้มเงินเฟ้อล่วงหน้า' },
+  'unemployment':    { title:'US Jobless Claims',    emoji:'👷', tags:['SP500','Jobs'], detail:'จำนวนผู้ขอรับสวัสดิการว่างงาน บอกสุขภาพตลาดแรงงาน' },
+  'ism':             { title:'US ISM PMI',           emoji:'🏗️', tags:['SP500','Economy'], detail:'ดัชนีผู้จัดการฝ่ายจัดซื้อ บอกภาวะภาคการผลิต/บริการ' },
+  'housing':         { title:'US Housing Data',      emoji:'🏠', tags:['SP500','Consumer'], detail:'ข้อมูลภาคอสังหาริมทรัพย์ สะท้อนสภาวะเศรษฐกิจ' },
+  'trade balance':   { title:'US Trade Balance',     emoji:'⚖️', tags:['SP500','USD'], detail:'ดุลการค้าสหรัฐ กระทบค่าเงินดอลลาร์' },
+  'michigan':        { title:'Michigan Consumer Sentiment', emoji:'😊', tags:['SP500','Consumer'], detail:'ดัชนีความเชื่อมั่นผู้บริโภค มหาวิทยาลัยมิชิแกน' },
+  'durable goods':   { title:'US Durable Goods',     emoji:'🔧', tags:['SP500','Economy'], detail:'คำสั่งซื้อสินค้าคงทน บ่งชี้การลงทุนภาคธุรกิจ' },
+};
+
+function _mapFinnhubEvent(ev){
+  const name = (ev.event||'').toLowerCase();
+  for(const [key, mapped] of Object.entries(FINNHUB_EVENT_MAP)){
+    if(name.includes(key)){
+      return {
+        ...mapped,
+        title: mapped.title + (ev.event?.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i)?(' '+ev.event.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i)[0]):''),
+        date: ev.date,
+        time: ev.time||'',
+        logo: '',
+        markets: mapped.tags,
+        _fromAPI: true,
+        _impact: ev.impact||'medium',
+      };
+    }
+  }
+  // Unknown event — include only HIGH impact
+  if(ev.impact==='high'||ev.impact==='HIGH'){
+    return {
+      title: ev.event,
+      emoji: '📌',
+      tags: ['SP500'],
+      detail: ev.event,
+      date: ev.date,
+      time: ev.time||'',
+      logo: '',
+      markets: ['SP500'],
+      _fromAPI: true,
+      _impact: ev.impact,
+    };
+  }
+  return null;
+}
+
+async function fetchEliteEconomicCalendar(){
+  // Check cache
+  try{
+    const cached = JSON.parse(localStorage.getItem(ELITE_EVENTS_CACHE_KEY)||'null');
+    if(cached && Date.now()-cached.ts < ELITE_EVENTS_CACHE_TTL) return cached.events;
+  }catch{}
+
+  const key = localStorage.getItem('finnhubKey')||FINNHUB_KEY||'';
+  if(!key) return [];
+
+  // Fetch next 3 months
+  const from = new Date().toISOString().slice(0,10);
+  const to = new Date(Date.now()+90*24*60*60*1000).toISOString().slice(0,10);
+
+  try{
+    const r = await _fetchWithTimeout(
+      `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`,
+      {}, 8000
+    );
+    if(!r.ok) return [];
+    const d = await r.json();
+    const events = (d.economicCalendar||[])
+      .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
+      .map(_mapFinnhubEvent)
+      .filter(Boolean);
+
+    // Cache
+    try{ localStorage.setItem(ELITE_EVENTS_CACHE_KEY, JSON.stringify({events, ts:Date.now()})); }catch{}
+    return events;
+  }catch(e){
+    console.warn('[elite calendar]', e.message);
+    return [];
+  }
+}
+
+async function initEliteCalendar(){
+  const apiEvents = await fetchEliteEconomicCalendar();
+  if(!apiEvents.length) return;
+
+  // Merge: keep hardcoded, add new API events that don't overlap
+  const existingTitles = new Set(ELITE_EVENTS.map(e=>e.date+'|'+e.title.slice(0,10).toLowerCase()));
+  const newEvents = apiEvents.filter(ev=>{
+    const key = ev.date+'|'+(ev.title||'').slice(0,10).toLowerCase();
+    return !existingTitles.has(key);
+  });
+
+  // Add new events and sort by date
+  ELITE_EVENTS.push(...newEvents);
+  ELITE_EVENTS.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  // Re-render
+  renderEliteEvents();
+  console.log(`[elite] added ${newEvents.length} events from Finnhub`);
+}
+
 
 function renderEliteEvents(){
   const grid = document.getElementById('eliteEventsGrid');
