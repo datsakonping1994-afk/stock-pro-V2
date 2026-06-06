@@ -6101,21 +6101,34 @@ function loadSettings(){
     const ank=localStorage.getItem('anthropicKey')||'';
     const ankEl=document.getElementById('anthropicKeyInput');
     if(ankEl) ankEl.value=ank;
-    // โหลด Groq key
-    const gk=localStorage.getItem('groqKey')||'';
+    // โหลด Groq keys (1-3)
     const gkEl=document.getElementById('groqKeyInput');
-    if(gkEl) gkEl.value=gk;
-    // โหลด Tavily key
-    const tvk=localStorage.getItem('tavilyKey')||'';
+    if(gkEl) gkEl.value=localStorage.getItem('groqKey')||'';
+    const gkEl2=document.getElementById('groqKeyInput2');
+    if(gkEl2) gkEl2.value=localStorage.getItem('groqKey2')||'';
+    const gkEl3=document.getElementById('groqKeyInput3');
+    if(gkEl3) gkEl3.value=localStorage.getItem('groqKey3')||'';
+    // โหลด Gemini keys (1-3)
+    const gmkEl_1=document.getElementById('geminiKeyInput');
+    if(gmkEl_1) gmkEl_1.value=localStorage.getItem('geminiKey')||'';
+    const gmkEl2=document.getElementById('geminiKeyInput2');
+    if(gmkEl2) gmkEl2.value=localStorage.getItem('geminiKey2')||'';
+    const gmkEl3=document.getElementById('geminiKeyInput3');
+    if(gmkEl3) gmkEl3.value=localStorage.getItem('geminiKey3')||'';
+    // โหลด Alpha Vantage keys (1-3)
+    const avEl=document.getElementById('alphaVantageKeyInput');
+    if(avEl) avEl.value=localStorage.getItem('alphaVantageKey')||'';
+    const avEl2=document.getElementById('alphaVantageKeyInput2');
+    if(avEl2) avEl2.value=localStorage.getItem('alphaVantageKey2')||'';
+    const avEl3=document.getElementById('alphaVantageKeyInput3');
+    if(avEl3) avEl3.value=localStorage.getItem('alphaVantageKey3')||'';
+    // โหลด Tavily keys (1-3)
     const tvkEl=document.getElementById('tavilyKeyInput');
-    if(tvkEl) tvkEl.value=tvk;
+    if(tvkEl) tvkEl.value=localStorage.getItem('tavilyKey')||'';
     const tvkEl2=document.getElementById('tavilyKeyInput2');
     if(tvkEl2) tvkEl2.value=localStorage.getItem('tavilyKey2')||'';
     const tvkEl3=document.getElementById('tavilyKeyInput3');
     if(tvkEl3) tvkEl3.value=localStorage.getItem('tavilyKey3')||'';
-    // โหลด Gemini key (อาจซ้ำกับด้านบน — ใช้ค่าเดิม)
-    const gmkEl2=document.getElementById('geminiKeyInput');
-    if(gmkEl2) gmkEl2.value=localStorage.getItem('geminiKey')||'';
     // โหลด OpenRouter key
     const ork=localStorage.getItem('openrouterKey')||'';
     const orkEl=document.getElementById('openrouterKeyInput');
