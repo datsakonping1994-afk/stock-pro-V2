@@ -9581,7 +9581,7 @@ async function _showEarningsHistory(ticker, btn){
     const [earnRes, metricRes, yahooRes, ratingRes] = await Promise.allSettled([
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`${PRICES_WORKER}/metrics?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
-      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,recommendationTrend,financialData,defaultKeyStatistics,earningsTrend,cashflowStatementHistoryQuarterly`,
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,recommendationTrend,financialData,defaultKeyStatistics,earningsTrend,cashflowStatementHistoryQuarterly,balanceSheetHistoryQuarterly`,
         {headers:{'User-Agent':'Mozilla/5.0'},signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_KEY}`,
         {signal:new AbortController().signal}).then(r=>r.json()),
@@ -9633,9 +9633,21 @@ async function _showEarningsHistory(ticker, btn){
         </div>`;
       }
 
-      // ── Revenue Growth YoY ──
+      // ── Revenue Growth YoY — คำนวณจาก revenue quarters จริง ──
       let revGrowthHtml = '';
-      if(metrics?.revGrowth!=null){
+      // ใช้ Yahoo revQuarters: เทียบ Q0 vs Q4 (same quarter last year)
+      if(revQuarters.length>=5){
+        const r0 = revQuarters[0]?.totalRevenue?.raw||0;
+        const r4 = revQuarters[4]?.totalRevenue?.raw||0;
+        if(r0>0 && r4>0 && Math.abs((r0-r4)/r4) < 20){ // cap ที่ 2000% กัน bug
+          const rg = ((r0-r4)/r4*100).toFixed(1);
+          const rc = rg>=0?'var(--green)':'var(--red)';
+          revGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+            <span style="color:var(--text3)">Rev Growth YoY</span><br>
+            <b style="color:${rc};font-size:14px">${rg>=0?'+':''}${rg}%</b>
+          </div>`;
+        }
+      } else if(metrics?.revGrowth!=null && Math.abs(metrics.revGrowth) < 20){
         const rg = (+metrics.revGrowth*100).toFixed(1);
         const rc = rg>=0?'var(--green)':'var(--red)';
         revGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
@@ -9678,32 +9690,83 @@ async function _showEarningsHistory(ticker, btn){
       }
       html += `</div>`;
 
-      // ── Revenue History (จาก Yahoo) ──
+      // ── Revenue History พร้อม YoY + QoQ ──
       if(revQuarters.length>0){
-        const revList = revQuarters.slice(0,6).reverse();
-        html += `<div style="font-size:10px;color:var(--text3);font-weight:700;margin:8px 0 4px;font-family:'Syne',sans-serif;letter-spacing:1px">💰 Revenue History (ไตรมาส)</div>`;
+        const revList = revQuarters.slice(0,8).reverse();
+        html += `<div style="font-size:10px;color:var(--text3);font-weight:700;margin:8px 0 4px;font-family:'Syne',sans-serif;letter-spacing:1px">💰 Revenue History</div>`;
         html += `<div style="display:flex;flex-direction:column;gap:3px">`;
         for(let i=0;i<revList.length;i++){
           const q = revList[i];
           const rev = q.totalRevenue?.raw||null;
-          const prevQ = revList[i-1];
-          const prevRev = prevQ?.totalRevenue?.raw||null;
-          const revB = rev!=null ? (rev/1e9).toFixed(2)+'B' : '—';
-          let growthHtml = '';
-          if(rev!=null && prevRev!=null && prevRev!==0){
-            const g = ((rev-prevRev)/Math.abs(prevRev)*100).toFixed(1);
-            const c = g>=0?'var(--green)':'var(--red)';
-            growthHtml = `<span style="color:${c};font-size:10px">${g>=0?'+':''}${g}%</span>`;
+          const prevQoQ = i>0?revList[i-1]:null;
+          const prevYoY = i>=4?revList[i-4]:null;
+          const revB = rev!=null?(rev>=1e9?(rev/1e9).toFixed(2)+'B':(rev/1e6).toFixed(0)+'M'):'—';
+
+          // QoQ
+          let qoqHtml = '';
+          if(rev!=null&&prevQoQ?.totalRevenue?.raw&&prevQoQ.totalRevenue.raw!==0){
+            const g=((rev-prevQoQ.totalRevenue.raw)/Math.abs(prevQoQ.totalRevenue.raw)*100).toFixed(1);
+            const c=g>=0?'var(--green)':'var(--red)';
+            qoqHtml=`<span style="color:${c};font-size:9px">QoQ ${g>=0?'+':''}${g}%</span>`;
           }
-          const period = q.endDate?.fmt||'—';
-          html += `<div style="display:grid;grid-template-columns:80px 1fr 80px;gap:4px;align-items:center;
-                               background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 8px;font-size:11px">
+          // YoY
+          let yoyHtml = '';
+          if(rev!=null&&prevYoY?.totalRevenue?.raw&&prevYoY.totalRevenue.raw!==0){
+            const g=((rev-prevYoY.totalRevenue.raw)/Math.abs(prevYoY.totalRevenue.raw)*100).toFixed(1);
+            const c=g>=0?'var(--green)':'var(--red)';
+            yoyHtml=`<span style="color:${c};font-size:9px">YoY ${g>=0?'+':''}${g}%</span>`;
+          }
+          const period=q.endDate?.fmt||'—';
+          html+=`<div style="display:grid;grid-template-columns:70px 1fr auto auto;gap:4px;align-items:center;
+                              background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 8px;font-size:11px">
             <span style="color:var(--text3)">${period}</span>
             <span><b>$${revB}</b></span>
-            <span style="text-align:right">${growthHtml}</span>
+            ${yoyHtml||'<span></span>'}
+            ${qoqHtml||'<span></span>'}
           </div>`;
         }
-        html += `</div>`;
+        html+=`</div>`;
+
+        // ── Inventory & Accounts Receivable ──
+        const balanceSheetData = yahooData?.balanceSheetHistoryQuarterly?.balanceSheetStatements||[];
+        if(balanceSheetData.length>=2){
+          const bs0=balanceSheetData[0];
+          const bs1=balanceSheetData[1];
+          const inv0=bs0?.inventory?.raw||0;
+          const inv1=bs1?.inventory?.raw||0;
+          const ar0=bs0?.netReceivables?.raw||0;
+          const ar1=bs1?.netReceivables?.raw||0;
+          const rev0=revQuarters[0]?.totalRevenue?.raw||0;
+
+          let anomalies = [];
+          // Inventory buildup check
+          if(inv0>0&&inv1>0){
+            const invChg=((inv0-inv1)/inv1*100).toFixed(1);
+            const invColor=invChg>20?'var(--red)':invChg>10?'var(--gold)':'var(--green)';
+            anomalies.push(`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0">
+              <span style="color:var(--text3)">Inventory</span>
+              <span>$${(inv0/1e9).toFixed(2)}B <span style="color:${invColor}">(${invChg>=0?'+':''}${invChg}% QoQ${invChg>20?' ⚠️':invChg>10?' 📈':''})</span></span>
+            </div>`);
+          }
+          // AR check — AR/Revenue ratio (DSO proxy)
+          if(ar0>0&&rev0>0){
+            const dso=(ar0/rev0*90).toFixed(0); // Days Sales Outstanding approx
+            const arChg=ar1>0?((ar0-ar1)/ar1*100).toFixed(1):null;
+            const arColor=dso>60?'var(--red)':dso>45?'var(--gold)':'var(--green)';
+            anomalies.push(`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0">
+              <span style="color:var(--text3)">Accounts Receivable</span>
+              <span>$${(ar0/1e9).toFixed(2)}B <span style="color:${arColor}">(DSO ~${dso} วัน${dso>60?' ⚠️':''})</span></span>
+            </div>`);
+          }
+
+          if(anomalies.length){
+            html+=`<div style="margin-top:8px;padding:8px;background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:8px">
+              <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif">🔍 รายการผิดปกติ (Inventory & AR)</div>
+              ${anomalies.join('')}
+              <div style="font-size:9px;color:var(--text3);margin-top:4px">DSO>60 วัน = AR เพิ่มผิดปกติ อาจกระทบสภาพคล่อง | Inventory +20% = ระวังสต็อกค้าง</div>
+            </div>`;
+          }
+        }
       }
 
       // ── Analyst Rating ──
@@ -9746,7 +9809,7 @@ async function _showEarningsHistory(ticker, btn){
 
       // ── Key Financials Card ──
       const finCards = [
-        revenueGrowth!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px"><span style="color:var(--text3)">Rev Growth</span><br><b style="color:${revenueGrowth>=0?'var(--green)':'var(--red)'};font-size:13px">${(revenueGrowth*100).toFixed(1)}%</b></div>`:'',
+        revenueGrowth!=null&&Math.abs(revenueGrowth)<20?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px"><span style="color:var(--text3)">Rev Growth</span><br><b style="color:${revenueGrowth>=0?'var(--green)':'var(--red)'};font-size:13px">${(revenueGrowth*100).toFixed(1)}%</b></div>`:'',
         grossMargin!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px"><span style="color:var(--text3)">Gross Margin</span><br><b style="color:var(--text);font-size:13px">${(grossMargin*100).toFixed(1)}%</b></div>`:'',
         opMargin!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px"><span style="color:var(--text3)">Op Margin</span><br><b style="color:${opMargin>=0?'var(--text)':'var(--red)'};font-size:13px">${(opMargin*100).toFixed(1)}%</b></div>`:'',
         profitMargin!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px"><span style="color:var(--text3)">Net Margin</span><br><b style="color:${profitMargin>=0?'var(--text)':'var(--red)'};font-size:13px">${(profitMargin*100).toFixed(1)}%</b></div>`:'',
@@ -9820,21 +9883,27 @@ async function _showEarningsHistory(ticker, btn){
         </div>`;
       }
 
-      // ── Watchlist Alert button ──
-      const inWatchlist = stocks.some(s=>s.t===ticker);
-      html += `<div style="margin-top:8px;display:flex;gap:6px">
+      // ── Buttons row ──
+      html += `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         <button onclick="event.stopPropagation();_toggleEarningsAlert('${ticker}',this)"
           style="flex:1;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.25);
-                 border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:var(--ice);cursor:pointer"
+                 border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:var(--ice);cursor:pointer;min-width:100px"
           id="earn-alert-btn-${ticker}">
-          ${localStorage.getItem('earn_alert_'+ticker)?'🔔 แจ้งเตือนแล้ว':'🔕 ตั้งแจ้งเตือน'}
+          ${localStorage.getItem('earn_alert_'+ticker)?'🔔 แจ้งเตือนแล้ว':'🔕 แจ้งเตือน'}
+        </button>
+        <button onclick="event.stopPropagation();_showMDA('${ticker}',this)"
+          style="flex:1;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);
+                 border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;min-width:100px"
+          id="earn-mda-btn-${ticker}">
+          📋 MD&A
         </button>
         <button onclick="event.stopPropagation();goCard('${ticker}')"
-          style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);
-                 border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer">
+          style="background:rgba(255,255,255,0.06);border:1px solid var(--border);
+                 border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer">
           📈 ดูหุ้น
         </button>
-      </div>`;
+      </div>
+      <div id="earn-mda-result-${ticker}" style="display:none;margin-top:8px"></div>`;
 
     } else {
       html = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:8px">ไม่มีข้อมูล EPS history</div>';
@@ -9857,6 +9926,112 @@ function _toggleEarningsWatchlist(btn){
   btn.style.background = _earnWLOnly?'rgba(255,215,0,0.25)':'rgba(255,215,0,0.1)';
   btn.textContent = _earnWLOnly?'⭐ ทั้งหมด':'⭐ Watchlist';
   if(window.earningsData) renderEarningsData(window.earningsData, true);
+}
+
+
+// ══════════════════════════════════════════════
+//  MD&A — Management Discussion & Analysis
+//  ดึงจาก Web Search + ข่าวล่าสุด แล้วให้ AI สรุป
+// ══════════════════════════════════════════════
+async function _showMDA(ticker, btn){
+  const resultEl = document.getElementById('earn-mda-result-'+ticker);
+  if(!resultEl) return;
+
+  // Toggle
+  if(resultEl.dataset.loaded==='1'){
+    resultEl.style.display = resultEl.style.display==='none'?'block':'none';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ กำลังดึง MD&A...';
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:8px">⏳ กำลังค้นข้อมูล MD&A...</div>';
+
+  try{
+    // ดึงข่าวล่าสุด + earnings transcript จาก Finnhub
+    const today = new Date().toISOString().slice(0,10);
+    const weekAgo = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+
+    const [newsRes, transcriptRes] = await Promise.allSettled([
+      fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${weekAgo}&to=${today}&token=${FINNHUB_KEY}`, {signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
+      fetch(`https://finnhub.io/api/v1/stock/earnings-call-transcripts-list?symbol=${ticker}&token=${FINNHUB_KEY}`, {signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
+    ]);
+
+    // ข่าวล่าสุด
+    const news = newsRes.status==='fulfilled'&&Array.isArray(newsRes.value)
+      ? newsRes.value.slice(0,5).map(n=>n.headline).join('\n') : '';
+
+    // Transcript list
+    const transcriptList = transcriptRes.status==='fulfilled'
+      ? (transcriptRes.value?.transcripts||[]) : [];
+
+    // Web search ด้วย Claude ถ้ามี key
+    let webContext = '';
+    const _ank = localStorage.getItem('anthropicKey')||'';
+    if(_ank){
+      try{
+        btn.innerHTML = '🔍 ค้นข้อมูล...';
+        const sr = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':_ank,
+                   'anthropic-version':'2023-06-01',
+                   'anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:800,
+            tools:[{type:'web_search_20250305',name:'web_search'}],
+            messages:[{role:'user',content:`Search for ${ticker} latest earnings call highlights, management guidance, CEO comments, and business outlook. Include any mentions of revenue drivers, challenges, and future plans.`}]
+          })
+        }, 20000);
+        if(sr.ok){
+          const sd = await sr.json();
+          webContext = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim().slice(0,2000);
+        }
+      }catch(e){ console.warn('[mda:search]',e.message); }
+    }
+
+    // ให้ AI สรุปแบบ MD&A
+    btn.innerHTML = '🤖 AI สรุป MD&A...';
+    const sys = `คุณคือนักวิเคราะห์ที่สรุป MD&A (Management Discussion & Analysis) ให้นักลงทุนเข้าใจง่าย
+เขียนภาษาไทย กระชับ ตรงประเด็น ห้ามใช้ markdown`;
+
+    const prompt = `สรุป MD&A ของ ${ticker} จากข้อมูลต่อไปนี้:
+
+ข่าวล่าสุด (30 วัน):
+${news||'ไม่มีข้อมูล'}
+
+${webContext?`ข้อมูลจาก Web Search:
+${webContext}`:''}
+${transcriptList.length?`มี Earnings Call Transcript ${transcriptList.length} รายการ (ล่าสุด: Q${transcriptList[0]?.quarter||''} ${transcriptList[0]?.year||''})`:'' }
+
+สรุป 4 หัวข้อต่อไปนี้:
+
+1. ปัจจัยขับเคลื่อนรายได้: อะไรทำให้รายได้เติบโตหรือลดลง
+2. ปัญหาและความท้าทาย: ผู้บริหารพูดถึงความเสี่ยงหรือปัญหาอะไรบ้าง
+3. แนวโน้มไตรมาสถัดไป: Guidance และมุมมองของผู้บริหาร
+4. ประเมิน: บริษัทนี้กำลังเติบโตหรือชะลอตัว เพราะอะไร`;
+
+    let summary = await callAI_Analyze(sys, prompt, 1200);
+    if(!summary) summary = 'ไม่สามารถสรุป MD&A ได้ในขณะนี้';
+
+    resultEl.innerHTML = `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:10px;color:var(--gold);font-weight:700;font-family:'Syne',sans-serif">📋 MD&A — ${ticker}</div>
+          ${transcriptList.length?`<div style="font-size:9px;color:var(--text3)">มี Transcript ${transcriptList.length} รายการ</div>`:'<div style="font-size:9px;color:var(--text3)">ใช้ข่าว+Web Search</div>'}
+        </div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${summary.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'')}</div>
+      </div>`;
+
+    resultEl.dataset.loaded = '1';
+    btn.innerHTML = '📋 MD&A ✅';
+
+  }catch(e){
+    resultEl.innerHTML = `<div style="color:var(--red);font-size:11px;padding:8px">❌ ${e.message}</div>`;
+    btn.innerHTML = '📋 MD&A';
+  }
+  btn.disabled = false;
 }
 
 
@@ -12187,13 +12362,14 @@ ${t} ข่าวล่าสุด: ${headlines}`;
       }catch{}
     }
 
-    // ── Web Search ก่อนเขียน (Claude + web_search) ──
+    // ── Web Search ก่อนเขียน — ข่าวเป็นหลัก ──
     let webNews = '';
     const _ank = localStorage.getItem('anthropicKey')||'';
+    btn.innerHTML = '🔍 กำลังค้นข่าวล่าสุด...';
+
+    // ลอง Claude web_search ก่อน
     if(_ank){
       try{
-        btn.innerHTML = '🔍 กำลังค้นข่าวล่าสุด...';
-        const searchQ = `${tickers.join(' ')} stock news earnings analysis ${new Date().toISOString().slice(0,10)}`;
         const sr = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
           method:'POST',
           headers:{'Content-Type':'application/json','x-api-key':_ank,
@@ -12201,18 +12377,70 @@ ${t} ข่าวล่าสุด: ${headlines}`;
                    'anthropic-dangerous-direct-browser-access':'true'},
           body:JSON.stringify({
             model:'claude-sonnet-4-20250514',
-            max_tokens:600,
+            max_tokens:1500,
             tools:[{type:'web_search_20250305',name:'web_search'}],
-            messages:[{role:'user',content:`ค้นข่าวล่าสุดของ ${tickers.join(', ')} รวมถึง earnings, guidance, catalyst, ข่าวสำคัญ ตอบสรุปสั้นๆ ภาษาอังกฤษ`}]
+            messages:[{role:'user',content:`Search for the latest news about ${tickers.join(', ')} stock. Find:
+1. Latest earnings results (EPS, revenue vs estimates)
+2. Management guidance and forward outlook
+3. Recent major news (M&A, product launch, regulatory, CEO comments)
+4. Why the stock has been moving up or down recently
+5. Analyst upgrades/downgrades and price target changes
+Provide detailed factual information with specific numbers.`}]
           })
-        }, 20000);
+        }, 25000);
         if(sr.ok){
           const sd = await sr.json();
           const st = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
-          if(st) webNews = '\n\n🔍 Web Search News:\n' + st.slice(0,1200);
+          if(st) webNews = st.slice(0,3000);
         }
-      }catch(e){ console.warn('[article:search]',e.message); }
+      }catch(e){ console.warn('[article:claude]',e.message); }
     }
+
+    // Fallback: Tavily ถ้าไม่มี Claude key
+    if(!webNews){
+      const tvKeys = [localStorage.getItem('tavilyKey'),localStorage.getItem('tavilyKey2'),localStorage.getItem('tavilyKey3')].filter(Boolean);
+      for(const tvKey of tvKeys){
+        try{
+          const tr = await _fetchWithTimeout('https://api.tavily.com/search',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              api_key: tvKey,
+              query: `${tickers.join(' ')} stock latest news earnings results guidance ${new Date().getFullYear()}`,
+              search_depth: 'advanced',
+              max_results: 5,
+              include_answer: true
+            })
+          }, 10000);
+          if(tr.ok){
+            const td = await tr.json();
+            const answer = td.answer||'';
+            const results = (td.results||[]).map(r=>`${r.title}: ${r.content?.slice(0,200)}`).join('\n');
+            webNews = (answer + '\n\n' + results).slice(0,3000);
+            if(webNews.trim()) break;
+          }
+        }catch(e){ console.warn('[article:tavily]',e.message); }
+      }
+    }
+
+    // Fallback: Finnhub news ถ้าไม่มี key เลย
+    if(!webNews){
+      try{
+        const weekAgo = new Date(Date.now()-14*86400000).toISOString().slice(0,10);
+        const today = new Date().toISOString().slice(0,10);
+        const fnews = await _fetchWithTimeout(
+          `https://finnhub.io/api/v1/company-news?symbol=${tickers[0]}&from=${weekAgo}&to=${today}&token=${FINNHUB_KEY}`,
+          {}, 6000
+        );
+        if(fnews.ok){
+          const fdata = await fnews.json();
+          webNews = (fdata||[]).slice(0,8).map(n=>`${n.headline}: ${n.summary?.slice(0,150)||''}`).join('\n');
+        }
+      }catch(e){}
+    }
+
+    if(!webNews) webNews = 'ไม่พบข้อมูลข่าวล่าสุด';
+
 
     // ── Earnings + Financial data ──
     btn.innerHTML = '📊 กำลังดึงข้อมูลงบการเงิน...';
@@ -12317,35 +12545,33 @@ Analyst: ${analystLine}`;
     // สร้าง prompt
     btn.innerHTML = '✍️ AI กำลังเขียนบทความ...';
     const catTh = cat==='bullish'?'Bullish (น่าซื้อ)':cat==='bearish'?'Bearish (น่าขาย/ระวัง)':'Analysis (วิเคราะห์รอบด้าน)';
-    const sys = `คุณคือนักวิเคราะห์หุ้นมืออาชีพที่เขียนบทความสไตล์ลงทุนแมน
-หลักการเขียน:
-- โฟกัส 3 เรื่องหลัก: Earnings, ข่าวที่เกิดขึ้น, การตีความ "ทำไม"
-- ไม่ต้องพูดถึง RSI, MACD หรือ indicator technical
-- อธิบาย EPS Beat/Miss, Revenue growth, Guidance, Margin ให้ชัดเจน
-- ตีความว่า market มองถูกหรือผิด เช่น "งบดีแต่หุ้นร่วง เพราะ guidance ต่ำกว่าคาด"
-- วิเคราะห์ว่า Valuation แพงหรือถูก, Smart money ทำอะไรอยู่
-- เขียนเหมือนคนจริงๆ ไม่ใช่ robot
-ห้ามใช้ markdown, **, #, bullet point ทุกรูปแบบ
-เขียนเป็นย่อหน้าต่อเนื่องภาษาไทย`;
+    const sys = `คุณคือนักวิเคราะห์หุ้น sell-side ระดับมืออาชีพ
+กฎสำคัญ:
+- ใช้เฉพาะข้อมูลที่ให้มาเท่านั้น ถ้าไม่มีข้อมูลให้บอกตรงๆ ว่า "ยังไม่มีข้อมูลเพียงพอ"
+- ห้ามเดาหรือแต่งตัวเลขขึ้นมาเอง
+- ถ้าข้อมูลไม่เพียงพอให้ Rating ระบุเป็น "UNDER REVIEW"
+- ห้ามใช้ **, #, bullet ทุกรูปแบบ
+- เขียนเป็นย่อหน้าต่อเนื่องภาษาไทย อ่านเหมือนบทวิเคราะห์จริง`;
 
-    const prompt = `เขียนบทความวิเคราะห์หุ้น ${tickers.join(', ')} แบบ ${catTh}
+    const prompt = `เขียนบทวิเคราะห์หุ้น ${tickers.join(', ')} แบบ ${catTh}
 
-ข้อมูล Earnings:${earningsCtx||' ไม่มีข้อมูล'}
+ข้อมูลที่มี:
+${earningsCtx||'ไม่มีข้อมูลงบการเงิน'}
 ${newsCtx}${webNews}
 
-โครงสร้างบทความ (เขียนเป็นย่อหน้า ไม่มี header ไม่มี bullet):
+เขียนตามโครงสร้างมาตรฐานนักวิเคราะห์ 5 ส่วน (เป็นย่อหน้าต่อเนื่อง ห้าม header ห้าม bullet):
 
-ย่อหน้า 1 — เปิดด้วย hook ที่ดึงดูด เช่น เหตุการณ์ล่าสุดที่ทำให้หุ้นขึ้นหรือลง
+ส่วนที่ 1 - สรุปผู้บริหาร (Executive Summary): ระบุ Rating (Buy/Hold/Sell/Under Review), Target Price, Upside จากราคาปัจจุบัน และเหตุผลสั้นๆ
 
-ย่อหน้า 2 — งบการเงิน: EPS Beat หรือ Miss เท่าไหร่, Revenue โตกี่%, Gross Margin เปลี่ยนยังไง, Guidance ไตรมาสหน้าดีหรือแย่กว่าคาด
+ส่วนที่ 2 - ประเด็นสำคัญ (Key Investment Thesis): เหตุผลหลัก 3 ข้อว่าทำไมถึงแนะนำ Rating นี้ อิงข้อมูลจริงที่ให้มา
 
-ย่อหน้า 3 — ข่าวที่เกิดขึ้น: CEO, M&A, Product launch, Regulation หรืออะไรก็ตามที่ขับเคลื่อนราคา
+ส่วนที่ 3 - ผลประกอบการและแนวโน้ม (Earnings Outlook): วิเคราะห์งบล่าสุด EPS Beat/Miss, Revenue growth, Margin, Guidance ถ้าไม่มีข้อมูลระบุว่า "รอรายงานงบ"
 
-ย่อหน้า 4 — ตีความ "ทำไม": อธิบายว่า market มองอะไร เช่น งบดีแต่หุ้นร่วงเพราะ guidance ต่ำกว่าคาด, Valuation แพงเกินไป, หรือ Smart money ขายทำกำไร
+ส่วนที่ 4 - การประเมินมูลค่า (Valuation): Forward P/E เทียบ sector, Analyst Target Price, บอกว่าแพงหรือถูกเทียบกับ growth
 
-ย่อหน้า 5 — สรุป: thesis ของบทความนี้คืออะไร ${cat==='bullish'?'ทำไมถึงยังน่าซื้อ':cat==='bearish'?'ทำไมต้องระวัง':'มุมมองรอบด้าน'}
+ส่วนที่ 5 - ความเสี่ยง (Key Risks): 2-3 ปัจจัยเสี่ยงหลักที่อาจทำให้ผิดคาด
 
-ความยาวรวม 400-500 คำ ใช้ข้อมูลจาก Earnings และข่าวด้านบนให้มากที่สุด`;
+ความยาว 400-500 คำ ใช้ตัวเลขจริงเท่านั้น`;
 
     let article = await callAI_Analyze(sys, prompt, 2000);
     if(!article){ toast('❌ AI เขียนไม่ได้ ลองใหม่ครับ'); return; }
