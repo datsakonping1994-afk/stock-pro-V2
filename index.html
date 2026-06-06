@@ -961,6 +961,21 @@ canvas.bigchart{width:100%;height:100%}
             <button id="testGroqBtn" class="settings-btn" style="margin-top:6px" onclick="testGroqKey()">🧪 ทดสอบ</button>
           </div>
         </div>
+        <!-- Alpha Vantage -->
+        <div class="settings-row">
+          <div style="width:100%">
+            <div class="settings-label">Alpha Vantage API Key <span style="font-size:10px;color:var(--green)">(ฟรี · ข่าวหุ้น + Sentiment)</span></div>
+            <div class="settings-sublabel"><a href="https://alphavantage.co/support/#api-key" target="_blank" style="color:var(--green);text-decoration:underline">alphavantage.co</a> → ข่าวหุ้นพร้อม Bullish/Bearish score</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <input class="settings-input full" id="alphaVantageKeyInput" type="password" placeholder="Key 1: HQQF00...">
+              <input class="settings-input full" id="alphaVantageKeyInput2" type="password" placeholder="Key 2: (สำรอง)">
+              <input class="settings-input full" id="alphaVantageKeyInput3" type="password" placeholder="Key 3: (สำรอง)">
+            </div>
+            <div id="alphaVantageKeyStatus" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px"></div>
+            <button class="settings-btn" style="margin-top:6px" onclick="testAlphaVantageKey()">🧪 ทดสอบ</button>
+          </div>
+        </div>
+
         <div class="settings-row">
           <div style="width:100%">
             <div class="settings-label">Tavily API Keys <span style="font-size:10px;color:var(--gold)">(Elite Web Search · ฟรี 1000/เดือน · rotate อัตโนมัติ)</span></div>
@@ -4187,7 +4202,8 @@ function mdToHtml(text){
     .replace(/\n\n/g,'<br><br>')
     .replace(/\n/g,'<br>')
     // Bullet points
-    .replace(/^[•\-\*]\s+(.+)/gm,'<span style="margin-left:8px">• $1</span>')
+    .replace(/^•\s*([^:：]+[:：])(.*)$/gm,'<div style="margin:6px 0"><span style="color:var(--text);font-weight:700">• $1</span><span style="color:var(--text2)">$2</span></div>')
+    .replace(/^[\-\*]\s+(.+)/gm,'<div style="margin:3px 0;padding-left:12px">• $1</div>')
     .trim();
 }
 
@@ -6202,6 +6218,47 @@ function saveSettings(){
   stopLive();
   setTimeout(()=>{ startLive(); toast('✅ บันทึกแล้ว'); }, 300);
 }
+
+async function testAlphaVantageKey(){
+  const statusEl = document.getElementById('alphaVantageKeyStatus');
+  if(!statusEl) return;
+  const keys=[
+    document.getElementById('alphaVantageKeyInput')?.value?.trim(),
+    document.getElementById('alphaVantageKeyInput2')?.value?.trim(),
+    document.getElementById('alphaVantageKeyInput3')?.value?.trim(),
+  ].filter(Boolean);
+  if(!keys.length){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.textContent='⚠️ กรุณาใส่ Alpha Vantage API Key ก่อน';
+    return;
+  }
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.textContent='⏳ กำลังทดสอบทุก key...';
+  const results = await Promise.all(keys.map(async(key,i)=>{
+    try{
+      const r=await _fetchWithTimeout(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&limit=1&apikey=${key}`,{},8000);
+      const d=await r.json();
+      if(d.feed?.length>0){ localStorage.setItem('alphaVantageKey'+(i>0?i+1:''),key); return {ok:true}; }
+      if(d.Information) return {ok:'limit'};
+      return {ok:false};
+    }catch(e){ return {ok:false,err:e.message}; }
+  }));
+  const lines=results.map((r,i)=>{
+    const label='Key '+(i+1);
+    if(r.ok===true) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
+    if(r.ok==='limit') return '<span style="color:var(--gold)">⚠️ '+label+' Rate limit (key ถูกต้อง)</span>';
+    return '<span style="color:var(--red)">❌ '+label+' ผิดหรือหมดโควตา</span>';
+  });
+  const anyOk=results.some(r=>r.ok===true||r.ok==='limit');
+  statusEl.style.background=anyOk?'rgba(0,230,118,0.1)':'rgba(255,77,106,0.12)';
+  statusEl.style.border=anyOk?'1px solid rgba(0,230,118,0.3)':'1px solid rgba(255,77,106,0.3)';
+  statusEl.innerHTML=lines.join('<br>');
+}
+
 
 async function testTavilyKey(){
   const statusEl=document.getElementById('tavilyKeyStatus');
@@ -9769,28 +9826,58 @@ async function _showEarningsHistory(ticker, btn){
         }
       }
 
-      // ── Analyst Rating ──
+      // ── Analyst Rating — Consensus Bar ──
       if(ratings.length>0||targetPrice!=null){
         const latest = ratings[0]||{};
         const buy=(latest.strongBuy||0)+(latest.buy||0);
         const hold=latest.hold||0;
         const sell=(latest.sell||0)+(latest.strongSell||0);
         const total=buy+hold+sell;
-        const consensus = total>0?(buy/total>0.6?'🟢 Buy':buy/total>0.4?'🟡 Hold':'🔴 Sell'):'—';
-        html += `<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;font-size:11px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="color:var(--text3);font-weight:700">📊 Analyst Consensus</span>
-            <span style="font-weight:700">${consensus}</span>
+        const buyPct  = total>0?+(buy/total*100).toFixed(1):0;
+        const holdPct = total>0?+(hold/total*100).toFixed(1):0;
+        const sellPct = total>0?+(sell/total*100).toFixed(1):0;
+        const consensusLabel = total>0?(buyPct>60?'Strong Buy':buyPct>40?'Buy':holdPct>50?'Hold':'Sell'):'—';
+        const consensusColor = consensusLabel.includes('Buy')?'var(--green)':consensusLabel==='Hold'?'var(--gold)':'var(--red)';
+
+        html += `<div style="margin-top:8px;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;font-size:11px">
+
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="color:var(--text3);font-weight:700;font-family:'Syne',sans-serif;font-size:10px;letter-spacing:1px">📊 ANALYST CONSENSUS</span>
+            <span style="font-weight:800;color:${consensusColor};font-family:'Syne',sans-serif;font-size:12px">${consensusLabel}</span>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${total>0?`<span style="color:var(--green)">Buy: ${buy}</span>
-            <span style="color:var(--text3)">Hold: ${hold}</span>
-            <span style="color:var(--red)">Sell: ${sell}</span>`:''}
-            ${targetPrice!=null?`<span style="color:var(--gold);margin-left:auto">🎯 Target: $${targetPrice.toFixed(2)}${analystCount?' ('+analystCount+' analysts)':''}</span>`:''}
+
+          <!-- Consensus Bar -->
+          ${total>0?`
+          <!-- Labels row -->
+          <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:6px">
+            <span style="color:#4ade80">Buy: ${buy}</span>
+            <span style="color:#facc15">Hold: ${hold}</span>
+            <span style="color:#f87171">Sell: ${sell}</span>
           </div>
-          ${targetPrice!=null&&curStock?.p>0?`<div style="margin-top:4px;font-size:10px;color:${targetPrice>curStock.p?'var(--green)':'var(--red)'}">
-            Upside: ${((targetPrice-curStock.p)/curStock.p*100).toFixed(1)}% จากราคาปัจจุบัน $${curStock.p.toFixed(2)}
+          <!-- Bar -->
+          <div style="width:100%;height:12px;display:flex;border-radius:9999px;overflow:hidden;background:rgba(255,255,255,0.08);margin-bottom:4px">
+            ${buy>0?`<div style="width:${buyPct}%;background:#22c55e;height:100%"></div>`:''}
+            ${hold>0?`<div style="width:${holdPct}%;background:#eab308;height:100%"></div>`:''}
+            ${sell>0?`<div style="width:${sellPct}%;background:#ef4444;height:100%"></div>`:''}
           </div>`:''}
+
+          <!-- Target Price -->
+          ${targetPrice!=null?`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">
+            <div>
+              <span style="color:var(--text3);font-size:10px">🎯 Price Target</span>
+              <span style="color:var(--gold);font-weight:800;font-size:13px;margin-left:6px">$${targetPrice.toFixed(2)}</span>
+              ${analystCount?`<span style="color:var(--text3);font-size:9px"> (${analystCount} analysts)</span>`:''}
+            </div>
+            ${curStock?.p>0?`<div style="text-align:right">
+              <div style="font-size:10px;color:var(--text3)">Upside</div>
+              <div style="font-weight:800;font-size:13px;color:${targetPrice>curStock.p?'var(--green)':'var(--red)'}">
+                ${targetPrice>curStock.p?'+':''}${((targetPrice-curStock.p)/curStock.p*100).toFixed(1)}%
+              </div>
+            </div>`:''}
+          </div>`:''}
+
         </div>`;
       }
 
@@ -10023,8 +10110,16 @@ ${results}`.slice(0,4000);
 
     // ให้ AI สรุปแบบ MD&A
     btn.innerHTML = '🤖 AI สรุป MD&A...';
-    const sys = `คุณคือนักวิเคราะห์ที่สรุป MD&A (Management Discussion & Analysis) ให้นักลงทุนเข้าใจง่าย
-เขียนภาษาไทย กระชับ ตรงประเด็น ห้ามใช้ markdown`;
+    const sys = `คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์หุ้น หน้าที่คือสรุปข้อมูล MD&A จากเนื้อหาที่กำหนดให้
+กฎการจัดรูปแบบที่ต้องทำตามอย่างเคร่งครัด:
+1. แบ่งเนื้อหาเป็นหัวข้อย่อย: ปัจจัยขับเคลื่อนรายได้, ความท้าทาย/ความเสี่ยง, แนวโน้มไตรมาสถัดไป, ประเมินภาพรวม
+2. ขึ้นต้นแต่ละหัวข้อด้วย "• [ชื่อหัวข้อ]" แล้วตามด้วยเนื้อหารายละเอียด
+3. บังคับทำตัวหนา (Bold) ที่ตัวเลขสำคัญเสมอ เช่น **73%**, **$62B**, **4x**, **2026**, **2569**
+4. เว้นวรรคหน้าและหลังตัวเลขหรือสัญลักษณ์ให้สมดุลตามหลักภาษาไทย
+5. เขียนภาษาไทย กระชับ ใช้ข้อมูลจากเนื้อหาที่ให้มาเท่านั้น ถ้าไม่มีข้อมูลให้บอกตรงๆ
+
+ตัวอย่างรูปแบบที่ถูกต้อง:
+• ปัจจัยขับเคลื่อนรายได้: ความต้องการ AI ที่เพิ่มขึ้นทำให้รายได้ของ NVDA เพิ่มขึ้น **73%** ในไตรมาสที่ **4** ของปี **2569** โดยเฉพาะรายได้จากเซ็นเตอร์ข้อมูลที่เพิ่มขึ้น **75%** ถึง **62,000 ล้านดอลลาร์**`;
 
     const prompt = `สรุป MD&A ของ ${ticker} จากข้อมูลต่อไปนี้:
 
@@ -10051,7 +10146,7 @@ ${transcriptList.length?`มี Earnings Call Transcript ${transcriptList.length
           <div style="font-size:10px;color:var(--gold);font-weight:700;font-family:'Syne',sans-serif">📋 MD&A — ${ticker}</div>
           ${transcriptList.length?`<div style="font-size:9px;color:var(--text3)">มี Transcript ${transcriptList.length} รายการ</div>`:'<div style="font-size:9px;color:var(--text3)">ใช้ข่าว+Web Search</div>'}
         </div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${summary.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'')}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">${mdToHtml(summary)}</div>
       </div>`;
 
     resultEl.dataset.loaded = '1';
@@ -12456,6 +12551,34 @@ Provide detailed factual information with specific numbers.`}]
       }
     }
 
+    // Alpha Vantage NEWS_SENTIMENT — ถ้ามี key
+    if(!webNews){
+      const avKeys=[localStorage.getItem('alphaVantageKey'),localStorage.getItem('alphaVantageKey2'),localStorage.getItem('alphaVantageKey3')].filter(Boolean);
+      const avKey=avKeys[Math.floor(Date.now()/60000)%Math.max(avKeys.length,1)]||'';
+      if(avKey){
+        try{
+          const avr = await _fetchWithTimeout(
+            `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${tickers.slice(0,3).join(',')}&limit=10&sort=LATEST&apikey=${avKey}`,
+            {}, 8000
+          );
+          if(avr.ok){
+            const avd = await avr.json();
+            if(avd.feed?.length>0){
+              const avNews = avd.feed.slice(0,8).map(n=>{
+                const sentiment = n.overall_sentiment_label||'Neutral';
+                const score = n.overall_sentiment_score?`(${(+n.overall_sentiment_score).toFixed(2)})`:'';
+                const tickerSent = n.ticker_sentiment?.find(t=>tickers.includes(t.ticker));
+                const tSent = tickerSent?` | ${tickerSent.ticker}: ${tickerSent.ticker_sentiment_label}`:'';
+                return `📰 [${sentiment}${score}${tSent}] ${n.title} — ${n.summary?.slice(0,200)||''}`;
+              }).join('\n\n');
+              webNews = `ข้อมูลจาก Alpha Vantage News Sentiment:
+${avNews}`;
+            }
+          }
+        }catch(e){ console.warn('[article:alphavantage]',e.message); }
+      }
+    }
+
     // Fallback: Finnhub news ถ้าไม่มี key เลย
     if(!webNews){
       try{
@@ -12617,7 +12740,7 @@ ${newsCtx}${webNews}
       titleEl.value = autoTitle;
     }
 
-    contentEl.value = article.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').trim();
+    contentEl.value = article.trim();
     toast('✅ AI เขียนบทความให้แล้ว กด "บันทึก" ได้เลย');
 
   }catch(e){
@@ -12682,7 +12805,7 @@ function openArticleView(idx){
       <div style="font-size:11px;font-weight:700;color:${catColor};font-family:'Syne',sans-serif;margin-bottom:8px">${catLabel} · ${dateStr}</div>
       <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text);line-height:1.3;margin:0 0 12px">${art.title}</h1>
       ${tags?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${tags}</div>`:''}
-      <div style="font-size:14px;color:var(--text2);line-height:1.9;white-space:pre-line;font-family:'Inter',sans-serif">${art.content}</div>
+      <div style="font-size:14px;color:var(--text2);line-height:1.9;font-family:'Inter',sans-serif">${mdToHtml(art.content)}</div>
     </div>
   `;
   document.body.appendChild(modal);
