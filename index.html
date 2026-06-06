@@ -1267,15 +1267,70 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <!-- Add Position Form -->
-      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px;margin-bottom:14px">
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">➕ เพิ่มหุ้น</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center">
-          <input id="portTicker" placeholder="TICKER" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif;outline:none;text-transform:uppercase;width:100%" oninput="this.value=this.value.toUpperCase();_updateBuyPreview()">
-          <input id="portPrice" type="number" placeholder="ราคาซื้อ $" step="0.01" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif;outline:none;width:100%" oninput="_updateBuyPreview()">
-          <input id="portShares" type="number" placeholder="จำนวนหุ้น" step="0.01" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif;outline:none;width:100%" oninput="_updateBuyPreview()">
-          <button onclick="addPortPosition()" style="background:var(--gold);border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Syne',sans-serif;white-space:nowrap">+ Add</button>
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:14px">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--text3)">➕ เพิ่มหุ้น</div>
+          <button onclick="document.getElementById('slipInput').click()"
+            style="background:linear-gradient(135deg,rgba(100,210,255,0.15),rgba(100,210,255,0.05));
+                   border:1px solid rgba(100,210,255,0.35);border-radius:20px;
+                   padding:6px 14px;font-size:11px;font-weight:700;color:var(--ice);
+                   cursor:pointer;font-family:'Syne',sans-serif;
+                   display:flex;align-items:center;gap:5px;
+                   box-shadow:0 2px 8px rgba(100,210,255,0.1)">
+            📎 แนบสลิป
+          </button>
+          <input type="file" id="slipInput" accept="image/*" style="display:none" onchange="parseSlipImage(this)">
         </div>
-        <div id="_buyPreview" style="font-size:11px;color:var(--text3);min-height:16px;margin-top:8px;padding:0 2px"></div>
+
+        <!-- Slip Preview Card -->
+        <div id="slipPreview" style="display:none;margin-bottom:14px;
+          background:linear-gradient(135deg,rgba(100,210,255,0.06),rgba(100,210,255,0.02));
+          border:1px solid rgba(100,210,255,0.2);border-radius:12px;padding:14px">
+          <div id="slipParseStatus" style="font-family:'Syne',sans-serif;font-size:12px;font-weight:800;margin-bottom:10px">⏳ กำลังอ่านสลิป...</div>
+          <div id="slipParseResult"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="slipConfirmBtn" onclick="confirmSlip()"
+              style="display:none;flex:1;background:var(--green);border:none;
+                     border-radius:10px;padding:10px;font-size:13px;font-weight:800;
+                     color:#000;cursor:pointer;font-family:'Syne',sans-serif">
+              ✅ ยืนยัน
+            </button>
+            <button onclick="cancelSlip()"
+              style="background:var(--bg4);border:1px solid var(--border);
+                     border-radius:10px;padding:10px 16px;font-size:12px;
+                     font-weight:600;color:var(--text3);cursor:pointer">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Manual Input -->
+        <div style="display:grid;grid-template-columns:1.4fr 1.2fr 1.2fr auto;gap:6px;align-items:center;margin-top:4px">
+          <input id="portTicker" placeholder="TICKER" autocapitalize="characters"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                   padding:7px 8px;font-size:12px;font-weight:800;color:var(--text);
+                   font-family:'Syne',sans-serif;outline:none;text-transform:uppercase;width:100%;box-sizing:border-box"
+            oninput="this.value=this.value.toUpperCase();_updateBuyPreview()">
+          <input id="portPrice" type="number" placeholder="ราคาซื้อ $" step="0.01"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                   padding:7px 8px;font-size:12px;color:var(--text);
+                   font-family:'Inter',sans-serif;outline:none;width:100%;box-sizing:border-box"
+            oninput="_updateBuyPreview()">
+          <input id="portShares" type="number" placeholder="จำนวนหุ้น" step="0.0001"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                   padding:7px 8px;font-size:12px;color:var(--text);
+                   font-family:'Inter',sans-serif;outline:none;width:100%;box-sizing:border-box"
+            oninput="_updateBuyPreview()">
+          <button onclick="addPortPosition()"
+            style="background:var(--gold);border:none;border-radius:8px;
+                   padding:7px 12px;font-size:12px;font-weight:800;
+                   color:#000;cursor:pointer;font-family:'Syne',sans-serif;white-space:nowrap">
+            + Add
+          </button>
+        </div>
+        <div id="_buyPreview" style="font-size:10px;color:var(--text3);min-height:13px;margin-top:4px;padding:0 2px"></div>
       </div>
 
       <!-- Holdings List -->
@@ -3215,7 +3270,7 @@ function updateDashboard(){
   const vixEl=document.getElementById('vixVal');
   if(vixEl&&vixStock&&vixStock.p>0){
     vixEl.textContent=vixStock.p.toFixed(1);
-    vixEl.style.color=vixStock.p>30?'var(--red)':vixStock.p>20?'var(--gold)':'var(--green)';
+    vixEl.style.color=vixStock.p>25?'var(--red)':vixStock.p>18?'var(--gold)':'var(--green)';
   }
 
   // Mood
@@ -4630,6 +4685,8 @@ function logTrade(ticker, price, score, aiAnalysis=''){
     const panel = document.getElementById('panelTradeLog');
     if(panel && panel.style.display !== 'none') renderAlerts();
   }catch{}
+  // [FIX] แสดง popup เมื่อมี signal ใหม่ (ไม่ว่าจะเปิดหน้าไหน)
+  try{ showSignalToast(ticker, price, score); }catch{}
   // บันทึก Worker KV (background) — sync ขึ้น PRICES_WORKER signal_log
   const _ltCtrl=new AbortController();
   setTimeout(()=>_ltCtrl.abort(),5000);
@@ -4724,7 +4781,7 @@ function _renderAlertsList(merged){
   if(list) list.innerHTML = merged.length ? merged.map((t,i)=>`
     <div class="alert-item ${t.result||'pending'}" onclick="_showSignalDetail(${i})" style="cursor:pointer">
       <div class="alert-ticker">${t.ticker}</div>
-      <div class="alert-detail">เข้า ${t.price} · Score ${t.score||'--'} · ${new Date(t.time).toLocaleDateString('th-TH')}</div>
+      <div class="alert-detail">เข้า ${t.price} · Score ${t.score||'--'} · ${t.time?new Date(t.time).toLocaleDateString('th-TH'):'--'}</div>
       <div class="alert-detail" style="margin-top:2px;color:var(--text3)">S1 ${t.s1||'--'} · R1 ${t.r1||'--'}</div>
       ${t.exitPrice?`<div class="alert-detail" style="margin-top:2px">Exit ${t.exitPrice}</div>`:''}
       <div class="alert-result ${t.result||'pending'}">${t.result==='win'?`✅ +${t.pct}%`:t.result==='loss'?`❌ ${t.pct}%`:'⏳ รอผล'}</div>
@@ -4733,6 +4790,46 @@ function _renderAlertsList(merged){
   window._mergedSignalLog = merged;
 }
 
+
+async function _syncSignalLogFromKV(){
+  try{
+    const ctrl=new AbortController();
+    setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(PRICES_WORKER+'/signals/log',{signal:ctrl.signal});
+    if(!r.ok) return;
+    const remote=await r.json();
+    if(!Array.isArray(remote)||!remote.length) return;
+    const local=_loadTradeLog();
+    const localKeys=new Set(local.map(t=>t.ticker+':'+(t.time||'').slice(0,16)));
+    const toAdd=remote.filter(r=>!localKeys.has((r.ticker||r.t)+':'+(r.time||'').slice(0,16)));
+    if(toAdd.length){
+      const normalized=toAdd.map(r=>({
+        ticker:r.ticker||r.t, price:r.price, score:r.score,
+        s1:r.s1, r1:r.r1, time:r.time, result:r.result||null, pct:r.pct||null
+      }));
+      _saveTradeLog([...local,...normalized]);
+      console.log('[syncKV] added',toAdd.length,'signals from KV');
+      // re-render if on signals page
+      const panel=document.getElementById('panelTradeLog');
+      if(panel&&panel.style.display!=='none') renderAlerts();
+    }
+  }catch(e){ console.warn('[syncKV]',e.message); }
+}
+
+
+function showSignalToast(ticker, price, score){
+  const color = score>=65?'var(--green)':score>=50?'var(--gold)':'var(--red)';
+  const label = score>=65?'Strong Buy':score>=50?'Buy':'Watch';
+  const el=document.createElement('div');
+  el.style.cssText=`position:fixed;top:80px;left:50%;transform:translateX(-50%);
+    background:var(--bg2);border:1px solid ${color};border-radius:14px;
+    padding:12px 20px;z-index:9999;text-align:center;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:200px;animation:fadeIn .3s ease`;
+  el.innerHTML=`<div style="color:${color};font-weight:800;font-size:15px">🎯 ${label}: ${ticker}</div>
+    <div style="color:var(--text2);font-size:12px;margin-top:4px">$${price} · Score ${score}</div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .5s';setTimeout(()=>el.remove(),500);},4000);
+}
 function renderAlerts(){
   updateTradeResults();
   const localLog = _loadTradeLog().reverse();
@@ -6519,7 +6616,14 @@ function checkAllBuySignals(){
   // รัน async แบบ sequential ป้องกัน rate limit
   (async()=>{
     try{
-      for(const s of stocks){
+      // Restore small cap prices from sessionStorage
+  for(const t of ['AEHR','SNDK','AVAV','AMBA','OSS','ONDS','FPS','STX','NOK']){
+    try{
+      const sc=sessionStorage.getItem('_sp_price_'+t);
+      if(sc){const sd=JSON.parse(sc);if(Date.now()-sd.ts<300000){const ss=stocksMap.get(t);if(ss){ss.p=sd.p;ss.c=sd.c;}}}
+    }catch{}
+  }
+  for(const s of stocks){
         if(s.p>0 && !_isBuyAlerted(s.t)){
           await checkBuySignalFull(s.t,s.p);
         }
@@ -6852,12 +6956,13 @@ async function fetchSingleQuoteFast(s){
 
 // ── loadWorkerPriceCache — ดึงราคาทั้งหมดจาก Worker ครั้งเดียว ──
 async function loadWorkerPriceCache(){
-  // ── Local cache 2 นาที ──
+  // ── Local cache: แสดงก่อน แต่ยัง fetch Worker ต่อเสมอ ──
   try{
     const lc=sessionStorage.getItem("_sp_price_cache");
     if(lc){
       const obj=JSON.parse(lc);
-      if(obj.ts&&Date.now()-obj.ts<120000){
+      const localAge=Date.now()-obj.ts;
+      if(obj.ts&&localAge<60000){ // ใช้ local เฉพาะถ้าอายุ < 60 วินาที
         window._workerPriceCache=obj.quotes;
         let updated=0;
         for(const s of stocks){
@@ -6866,11 +6971,10 @@ async function loadWorkerPriceCache(){
         }
         if(updated>0){
           const stEl=$id("statusText");
-          const age=Math.floor((Date.now()-obj.ts)/1000);
+          const age=Math.floor(localAge/1000);
           if(stEl) stEl.textContent=`✅ ${updated} ตัว (Local Cache · อายุ ${age}s)`;
         }
-        _workerCacheLoading=false;
-        return;
+        // ยัง fetch Worker ต่อ (ไม่ return) เพื่ออัปเดต VIX และ price ใหม่
       }
     }
   }catch{}
@@ -6880,7 +6984,11 @@ async function loadWorkerPriceCache(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal});
+    let r, _retry=0;
+    while(_retry<2){
+      try{ r=await fetch(PRICES_WORKER+'/prices',{signal:ctrl.signal}); break; }
+      catch(e){ _retry++; if(_retry>=2) throw e; await new Promise(res=>setTimeout(res,2000)); }
+    }
     clearTimeout(tid);
     // 503/202 = cache ยังไม่พร้อม (warming up) — retry ใน 10 วินาที
     if(r.status===503 || r.status===202){
@@ -6905,13 +7013,18 @@ async function loadWorkerPriceCache(){
           updated++;
         }
       }
-      // อัปเดต SPY/QQQ
-      for(const sym of['SPY','QQQ']){
+      // อัปเดต SPY/QQQ/VIX
+      for(const sym of['SPY','QQQ','VIX']){
         const q=d.quotes[sym];
         if(q&&q.price>0){
-          marketCtx[sym].price=q.price;
-          marketCtx[sym].change=q.change||0;
-          marketCtx[sym].trend=q.change>0.5?'bullish':q.change<-0.5?'bearish':'neutral';
+          if(sym!=='VIX'){
+            marketCtx[sym].price=q.price;
+            marketCtx[sym].change=q.change||0;
+            marketCtx[sym].trend=q.change>0.5?'bullish':q.change<-0.5?'bearish':'neutral';
+          }
+          // อัปเดต VIX stock object
+          const vixStock=stocksMap.get('VIX');
+          if(sym==='VIX'&&vixStock){ vixStock.p=q.price; vixStock.c=q.change||0; }
         }
       }
       updateDashboard();
@@ -6919,6 +7032,26 @@ async function loadWorkerPriceCache(){
         const stEl=$id('statusText');
         if(stEl) stEl.textContent=`✅ ${updated} ตัว (Worker Cache · อายุ ${d.age||0}s)`;
         _updateMarketStatusBadge(true);
+      }
+      // FIX: fetch เดี่ยวสำหรับ small cap ที่ยังเป็น 0.00%
+      const SMALL_CAPS=['AEHR','SNDK','AVAV','AMBA','OSS','ONDS','FPS','STX','NOK'];
+      const zeroPriceStocks=stocks.filter(s=>s.c===0&&SMALL_CAPS.includes(s.t));
+      if(zeroPriceStocks.length>0){
+        const zeroTickers=zeroPriceStocks.map(s=>s.t);
+        await Promise.allSettled(zeroTickers.map(async t=>{
+          try{
+            const zr=await fetch(`${PRICES_WORKER}/price?t=${t}`,{signal:AbortSignal.timeout(5000)});
+            if(zr.ok){
+              const zd=await zr.json();
+              if(zd.ok&&zd.price>0){
+                const zs=stocksMap.get(t);
+                if(zs){zs.p=zd.price;zs.c=zd.change||0;updateCardLive(zs);
+                  try{sessionStorage.setItem('_sp_price_'+t,JSON.stringify({p:zd.price,c:zd.change,ts:Date.now()}));}catch{}
+                }
+              }
+            }
+          }catch{}
+        }));
       }
       // fallback: ถ้า SPY/QQQ ยังเป็น 0 ดึงจาก Yahoo Finance
       if(!marketCtx.SPY.change&&!marketCtx.QQQ.change){
