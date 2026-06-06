@@ -6182,6 +6182,29 @@ function saveSettings(){
     if(gk) localStorage.setItem('groqKey',gk);
     else localStorage.removeItem('groqKey');
   }catch{}
+  // บันทึก Alpha Vantage key
+  try{
+    const av=document.getElementById('alphaVantageKeyInput')?.value?.trim()||'';
+    const av2=document.getElementById('alphaVantageKeyInput2')?.value?.trim()||'';
+    const av3=document.getElementById('alphaVantageKeyInput3')?.value?.trim()||'';
+    if(av) localStorage.setItem('alphaVantageKey',av); else localStorage.removeItem('alphaVantageKey');
+    if(av2) localStorage.setItem('alphaVantageKey2',av2); else localStorage.removeItem('alphaVantageKey2');
+    if(av3) localStorage.setItem('alphaVantageKey3',av3); else localStorage.removeItem('alphaVantageKey3');
+  }catch{}
+  // บันทึก Groq key 2,3
+  try{
+    const gk2=document.getElementById('groqKeyInput2')?.value?.trim()||'';
+    const gk3=document.getElementById('groqKeyInput3')?.value?.trim()||'';
+    if(gk2) localStorage.setItem('groqKey2',gk2); else localStorage.removeItem('groqKey2');
+    if(gk3) localStorage.setItem('groqKey3',gk3); else localStorage.removeItem('groqKey3');
+  }catch{}
+  // บันทึก Gemini key 2,3
+  try{
+    const gmk2=document.getElementById('geminiKeyInput2')?.value?.trim()||'';
+    const gmk3=document.getElementById('geminiKeyInput3')?.value?.trim()||'';
+    if(gmk2) localStorage.setItem('geminiKey2',gmk2); else localStorage.removeItem('geminiKey2');
+    if(gmk3) localStorage.setItem('geminiKey3',gmk3); else localStorage.removeItem('geminiKey3');
+  }catch{}
   // บันทึก Tavily key
   try{
     const tvk=document.getElementById('tavilyKeyInput')?.value?.trim()||'';
