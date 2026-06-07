@@ -1932,8 +1932,11 @@ async function loadHistEarnings(ticker){
 
     if(raw.length>0){
       // Finnhub format: [{period, actual, estimate}] เรียงใหม่สุดก่อน → reverse เป็นเก่า→ใหม่
-      const mapped = raw.slice(0,8).reverse().map((e,i)=>{
-        const revRaw = revQtrs[raw.slice(0,8).reverse().length-1-i]?.totalRevenue?.raw||null;
+      const rawReversed = raw.slice(0,8).reverse(); // เก่า→ใหม่
+      const mapped = rawReversed.map((e,i)=>{
+        // revQtrs[0] = quarter ล่าสุด, rawReversed[last] = quarter ล่าสุด → map กลับ
+        const revIdx = rawReversed.length - 1 - i;
+        const revRaw = revQtrs[revIdx]?.totalRevenue?.raw||null;
         const revB = revRaw!=null
           ? (revRaw>=1e9 ? +(revRaw/1e9).toFixed(2) : +(revRaw/1e6).toFixed(0)/1000)
           : null;
@@ -3431,6 +3434,15 @@ function openDrawer(ticker){
     if(currentDrawerTab==='fund') drawerTab('fund', document.querySelector('.drawer-tab[onclick*="fund"]'));
   });
 
+  // โหลด histEarnings (EPS/Revenue quarterly) ล่วงหน้า — ไม่ต้องรอเปิด Earnings Calendar
+  if(!histEarnings[ticker]){
+    loadHistEarnings(ticker).then(()=>{
+      if(currentDrawerTicker===ticker && currentDrawerTab==='fund'){
+        drawerTab('fund', document.querySelector('.drawer-tab.active'));
+      }
+    }).catch(()=>{});
+  }
+
   // โหลด candles background — ไม่บล็อก drawer เปิด
   var _snapTicker = ticker;
   function _reRenderTechIfActive(){
@@ -4047,16 +4059,6 @@ async function drawerTab(tab, btn){
     const s1 = getS1(s.t,s.p);
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
-
-    // ── ดึง EPS/Revenue ล่าสุดจาก Yahoo Finance ถ้ายังไม่มีใน histEarnings ──
-    if(!histEarnings[s.t]){
-      loadHistEarnings(s.t).then(()=>{
-        // re-render fund tab เมื่อได้ข้อมูลแล้ว (ถ้ายังอยู่ fund tab)
-        if(currentDrawerTab==='fund' && currentDrawerTicker===s.t){
-          drawerTab('fund', document.querySelector('.drawer-tab.active'));
-        }
-      }).catch(()=>{});
-    }
 
     // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → histEarnings (Yahoo) → estimate fallback → N/A
     // FIX: ไม่ fallback ไป epsLive (TTM) เพราะซ้ำกับบรรทัด EPS (TTM) ด้านบน
