@@ -1913,7 +1913,7 @@ function getSector(tickerOrStock){
 
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
 // format: {q: 'Q1\'24', eps: actual, epsEst: estimate, rev: actual $B, revEst: $B}
-// ── Historical Earnings: ดึง live จาก Worker /stock/earnings ──
+// ── Historical Earnings: ดึง live จาก Worker /stock/earnings + Yahoo Finance ──
 const histEarnings={}; // populated dynamically
 async function loadHistEarnings(ticker){
   if(histEarnings[ticker]) return histEarnings[ticker];
@@ -1921,19 +1921,18 @@ async function loadHistEarnings(ticker){
     const yhTicker = ticker.replace('.', '-');
     const [earnRes, yahooRes] = await Promise.allSettled([
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
-      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,earningsHistory`,
         {signal:AbortSignal.timeout(5000)}).then(r=>r.json()),
     ]);
     const d = (earnRes.status==='fulfilled') ? earnRes.value : null;
     const raw = d?.data||[];
+    const yahooData = (yahooRes.status==='fulfilled') ? yahooRes.value?.quoteSummary?.result?.[0] : null;
+    const revQtrs = yahooData?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
+    const yahooEpsHistory = yahooData?.earningsHistory?.history||[];
+
     if(raw.length>0){
-      // ดึง revenue quarters จาก Yahoo เพื่อใส่ใน chart
-      const revQtrs = (yahooRes.status==='fulfilled')
-        ? (yahooRes.value?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[])
-        : [];
       // Finnhub format: [{period, actual, estimate}] เรียงใหม่สุดก่อน → reverse เป็นเก่า→ใหม่
       const mapped = raw.slice(0,8).reverse().map((e,i)=>{
-        // หา revenue quarter ที่ตรงกับ period ถ้ามี
         const revRaw = revQtrs[raw.slice(0,8).reverse().length-1-i]?.totalRevenue?.raw||null;
         const revB = revRaw!=null
           ? (revRaw>=1e9 ? +(revRaw/1e9).toFixed(2) : +(revRaw/1e6).toFixed(0)/1000)
@@ -1942,12 +1941,38 @@ async function loadHistEarnings(ticker){
           q: e.period||'',
           eps: e.actual!=null ? +e.actual : null,
           epsEst: e.estimate!=null ? +e.estimate : null,
-          rev: revB,      // หน่วย $B จาก Yahoo
-          revEst: null,   // Finnhub ไม่มี rev estimate ใน /stock/earnings
+          rev: revB,
+          revEst: null,
         };
       });
       histEarnings[ticker]=mapped;
       return mapped;
+    }
+
+    // Finnhub ไม่มีข้อมูล → fallback ใช้ Yahoo earningsHistory + incomeStatement
+    if(yahooEpsHistory.length>0 || revQtrs.length>0){
+      const maxLen = Math.max(yahooEpsHistory.length, revQtrs.length);
+      const mapped = [];
+      for(let i=0; i<Math.min(maxLen,8); i++){
+        const yhEps = yahooEpsHistory[i];
+        const yhRev = revQtrs[i];
+        const revRaw = yhRev?.totalRevenue?.raw||null;
+        const revB = revRaw!=null
+          ? (revRaw>=1e9 ? +(revRaw/1e9).toFixed(2) : +(revRaw/1e6).toFixed(0)/1000)
+          : null;
+        mapped.push({
+          q: yhEps?.quarter?.fmt || yhRev?.endDate?.fmt || '',
+          eps: yhEps?.epsActual?.raw!=null ? +yhEps.epsActual.raw : null,
+          epsEst: yhEps?.epsEstimate?.raw!=null ? +yhEps.epsEstimate.raw : null,
+          rev: revB,
+          revEst: null,
+        });
+      }
+      if(mapped.length>0){
+        mapped.reverse(); // เรียงเก่า→ใหม่
+        histEarnings[ticker]=mapped;
+        return mapped;
+      }
     }
   }catch(e){ console.warn('loadHistEarnings error',e); }
   return null;
@@ -4022,14 +4047,26 @@ async function drawerTab(tab, btn){
     const s1 = getS1(s.t,s.p);
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
-    // แสดง Actual ก่อน ถ้าไม่มีถึงแสดง Estimate
-    // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → estimate fallback → N/A
+
+    // ── ดึง EPS/Revenue ล่าสุดจาก Yahoo Finance ถ้ายังไม่มีใน histEarnings ──
+    if(!histEarnings[s.t]){
+      loadHistEarnings(s.t).then(()=>{
+        // re-render fund tab เมื่อได้ข้อมูลแล้ว (ถ้ายังอยู่ fund tab)
+        if(currentDrawerTab==='fund' && currentDrawerTicker===s.t){
+          drawerTab('fund', document.querySelector('.drawer-tab.active'));
+        }
+      }).catch(()=>{});
+    }
+
+    // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → histEarnings (Yahoo) → estimate fallback → N/A
     // FIX: ไม่ fallback ไป epsLive (TTM) เพราะซ้ำกับบรรทัด EPS (TTM) ด้านบน
+    const _histRevData = histEarnings[s.t];
+    const _latestHistEps = _histRevData?.length ? _histRevData[_histRevData.length-1]?.eps : null;
+    const _latestRev = _histRevData?.length ? _histRevData[_histRevData.length-1]?.rev : null;
     const epsVal = eData?.epsActual
+      || (_latestHistEps!=null ? '$'+_latestHistEps.toFixed(2) : null)
       || (eData?.eps ? eData.eps+' (คาด)' : 'N/A');
     // Revenue ล่าสุด: ใช้ revActual จาก earnings calendar → histEarnings (Yahoo quarterly)
-    const _histRev = histEarnings[s.t];
-    const _latestRev = _histRev?.length ? _histRev[_histRev.length-1]?.rev : null;
     const revVal = eData?.revActual
       || (_latestRev!=null ? '$'+_latestRev+'B' : null)
       || (eData?.rev ? eData.rev+' (คาด)' : 'N/A');
