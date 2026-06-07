@@ -6957,6 +6957,9 @@ setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
 // ── initLiveData: ดึง fundamentals + sector ทุกตัว หลังเปิดแอป 6 วินาที ──
 setTimeout(()=>{ initLiveData().then(()=>{ if(typeof renderStocks==='function') renderStocks(); }).catch(e=>console.warn('initLiveData err',e)); }, 6000);
 
+// ── initEliteCalendar: ดึง economic calendar หลังเปิดแอป 10 วินาที ──
+setTimeout(()=>{ initEliteCalendar().catch(e=>console.warn('initEliteCalendar err',e)); }, 10000);
+
 // [NEW] โหลด metrics (Market Cap, P/E) จาก Worker ทุกตัว background
 setTimeout(async()=>{
   try{
@@ -13964,7 +13967,7 @@ let _eliteScanning = false;
 
 const ELITE_CACHE_KEY = '_elite_cache';
 const ELITE_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 ชั่วโมง — auto-rescan
-const ELITE_CACHE_VERSION = 3; // bump เมื่อ news schema เปลี่ยน — auto-bust old cache
+const ELITE_CACHE_VERSION = 4; // bump เมื่อ news schema เปลี่ยน — auto-bust old cache
 
 function saveEliteCache(results){
   try{
@@ -15202,23 +15205,41 @@ async function fetchEliteEconomicCalendar(){
   const from = new Date().toISOString().slice(0,10);
   const to = new Date(Date.now()+90*24*60*60*1000).toISOString().slice(0,10);
 
+  let events = [];
+
+  // ลอง Worker ก่อน
   try{
-    const r = await _fetchWithTimeout(
-      `${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`,
-      {}, 8000
-    );
-    if(!r.ok) return [];
-    const d = await r.json();
-    const events = (d.economicCalendar||d.events||[])
-      .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
-      .map(_mapFinnhubEvent)
-      .filter(Boolean);
-    try{ localStorage.setItem(ELITE_EVENTS_CACHE_KEY, JSON.stringify({events, ts:Date.now()})); }catch{}
-    return events;
-  }catch(e){
-    console.warn('[elite calendar]', e.message);
-    return [];
+    const r = await _fetchWithTimeout(`${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`, {}, 8000);
+    if(r.ok){
+      const d = await r.json();
+      events = (d.economicCalendar||d.events||[])
+        .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
+        .map(_mapFinnhubEvent).filter(Boolean);
+    }
+  }catch(e){ console.warn('[elite calendar] Worker failed, trying Finnhub direct', e.message); }
+
+  // Fallback: Finnhub โดยตรง
+  if(!events.length){
+    const key = localStorage.getItem('finnhubKey')||FINNHUB_KEY||'';
+    if(key){
+      try{
+        const r2 = await _fetchWithTimeout(
+          `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`, {}, 8000
+        );
+        if(r2.ok){
+          const d2 = await r2.json();
+          events = (d2.economicCalendar||[])
+            .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
+            .map(_mapFinnhubEvent).filter(Boolean);
+        }
+      }catch(e2){ console.warn('[elite calendar] Finnhub direct also failed', e2.message); }
+    }
   }
+
+  if(events.length){
+    try{ localStorage.setItem(ELITE_EVENTS_CACHE_KEY, JSON.stringify({events, ts:Date.now()})); }catch{}
+  }
+  return events;
 }
 
 async function initEliteCalendar(){
