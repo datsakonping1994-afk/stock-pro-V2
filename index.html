@@ -15413,10 +15413,16 @@ async function initEliteCalendar(){
   // อัปเดต header เสมอ
   const headerEl = document.getElementById('eliteEventsHeader');
   if(headerEl){
-    const hasFallback = unique.some(e=>e._fallback);
-    headerEl.innerHTML = hasFallback
-      ? `<span style="color:var(--gold)">ประมาณการ</span> <button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`
-      : `<span style="color:var(--green)">● Live</span> · ${unique.length} รายการ <button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`;
+    const liveCount = unique.filter(e=>!e._fallback).length;
+    const fallbackCount = unique.filter(e=>e._fallback).length;
+    const refreshBtn = `<button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`;
+    if(liveCount > 0 && fallbackCount > 0){
+      headerEl.innerHTML = `<span style="color:var(--green)">● Live ${liveCount}</span> <span style="color:var(--text3)">+ประมาณการ ${fallbackCount}</span> ${refreshBtn}`;
+    } else if(liveCount > 0){
+      headerEl.innerHTML = `<span style="color:var(--green)">● Live</span> · ${unique.length} รายการ ${refreshBtn}`;
+    } else {
+      headerEl.innerHTML = `<span style="color:var(--gold)">ประมาณการ</span> · ${unique.length} รายการ ${refreshBtn}`;
+    }
   }
   // render เสมอ (ไม่ต้องรอ tab visible)
   renderEliteEvents();
