@@ -9505,9 +9505,10 @@ async function fetchAndRenderEarnings(){
             // Beat/Miss — ดู EPS และ Revenue ประกอบกัน พร้อม % surprise
             let res=null;
             if(isPast&&epsAct!=null&&epsEst!=null){
-              const epsBeat=epsAct>=epsEst;
-              const revBeat=revAct!=null&&revEst!=null?revAct>=revEst:null;
               const epsPct=epsEst!==0?((epsAct-epsEst)/Math.abs(epsEst)*100):0;
+              // FIX: tolerance ±1% — Miss แค่ไม่ถึง 1% ถือว่า Inline (ป้องกัน whisper vs consensus)
+              const epsBeat = epsAct>=epsEst || epsPct>=-1.0;
+              const revBeat=revAct!=null&&revEst!=null?revAct>=revEst:null;
               // FIX: toFixed(1) แทน toFixed(0) กันแสดง -0%
               const pctStr=Math.abs(epsPct)>=0.05?` ${epsPct>0?'+':''}${epsPct.toFixed(1)}%`:'';
               const estStr=epsEst!=null?` (Est. $${epsEst.toFixed(2)})`:'';
@@ -9641,8 +9642,9 @@ async function autoCheckEarningsResults() {
     const epsAct = actual.epsActual;
     const epsEst = actual.epsEstimate;
     if (epsAct != null && epsEst != null) {
-      const epsBeat = epsAct >= epsEst;
       const epsPct = epsEst !== 0 ? ((epsAct - epsEst) / Math.abs(epsEst) * 100).toFixed(1) : 0;
+      // FIX: tolerance ±1% — Miss แค่ไม่ถึง 1% ถือว่า Beat (ป้องกัน whisper vs consensus)
+      const epsBeat = epsAct >= epsEst || +epsPct >= -1.0;
       const pctStr = Math.abs(epsPct) >= 0.05 ? ` ${epsPct > 0 ? '+' : ''}${epsPct}%` : '';
       e.res = epsBeat ? `✅ Beat${pctStr} (Est. $${epsEst.toFixed(2)})` : `❌ Miss${pctStr} (Est. $${epsEst.toFixed(2)})`;
     } else if (epsAct != null) {
