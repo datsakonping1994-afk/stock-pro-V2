@@ -15146,7 +15146,7 @@ async function analyzePortfolioImpact(personId, btn){
 //  ELITE: Auto-fetch Economic Calendar from Finnhub
 //  อัปเดตอัตโนมัติ + merge กับ hardcode events
 // ══════════════════════════════════════════════
-const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache';
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v2';
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
 // เฉพาะ event ที่กระทบตลาดหุ้นหนักจริงๆ
@@ -15226,12 +15226,19 @@ async function fetchEliteEconomicCalendar(){
 
 async function initEliteCalendar(){
   const apiEvents = await fetchEliteEconomicCalendar();
-  // ใช้เฉพาะ API data — ไม่ merge กับ hardcoded
+  // dedup โดยใช้ title+date เป็น key
+  const seen = new Set();
+  const unique = apiEvents.filter(ev=>{
+    const key = ev.title+'|'+ev.date;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   ELITE_EVENTS.length = 0;
-  ELITE_EVENTS.push(...apiEvents);
+  ELITE_EVENTS.push(...unique);
   ELITE_EVENTS.sort((a,b)=>new Date(a.date)-new Date(b.date));
   renderEliteEvents();
-  console.log(`[elite] loaded ${apiEvents.length} events from API`);
+  console.log(`[elite] loaded ${unique.length} events from API`);
 }
 
 
@@ -15264,7 +15271,11 @@ function renderEliteEvents(){
     'EV':      'rgba(0,230,118,0.1)|rgba(0,230,118,0.25)|var(--green)',
   };
   grid.innerHTML = ELITE_EVENTS.map((ev,idx) => {
-    const evDate = new Date(ev.date + (ev.time ? 'T'+ev.time : 'T00:00:00'));
+    // parse date ให้ถูกต้องทุก platform
+    const datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
+    const timePart = (ev.time||'').slice(0,5)||'00:00';
+    const evDate = new Date(datePart+'T'+timePart+':00');
+    if(isNaN(evDate.getTime())) return ''; // skip invalid date
     const isPast = evDate < now;
     const diffDays = Math.ceil((evDate - now) / 86400000);
     const urgency = isPast ? 'later' : diffDays <= 0 ? 'urgent' : diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
