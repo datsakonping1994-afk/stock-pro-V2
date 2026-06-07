@@ -3571,10 +3571,14 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — valid range -100% to 500%
+        // Revenue Growth — Finnhub ส่งเป็น decimal (0.15 = 15%) valid -1.0 to 5.0 ก่อนคูณ 100
         if(m['revenueGrowthTTMYoy']!=null){
-          const revG=m['revenueGrowthTTMYoy']*100;
-          if(revG>=-100&&revG<=500){ s.revLive=revG.toFixed(1)+'%'; metricOk=true; }
+          const rawG=+m['revenueGrowthTTMYoy'];
+          // ถ้าค่า > 5 หรือ < -1 แสดงว่า format ผิด (เช่น ส่งมาเป็น % แล้ว) ให้หาร 100 ก่อน
+          const revGDecimal = (rawG>5||rawG<-1) ? rawG/100 : rawG;
+          if(revGDecimal>=-1&&revGDecimal<=5){
+            s.revLive=((revGDecimal*100).toFixed(1))+'%'; metricOk=true;
+          }
         }
         if(m['marketCapitalization']!=null){
           const mcM=m['marketCapitalization']; // Finnhub หน่วย = millions USD
@@ -3970,8 +3974,9 @@ async function drawerTab(tab, btn){
     const s1 = getS1(s.t,s.p);
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
-    const epsVal = eData?.eps || 'N/A';
-    const revVal = eData?.rev || 'N/A';
+    // แสดง Actual ก่อน ถ้าไม่มีถึงแสดง Estimate
+    const epsVal = eData?.epsActual || (eData?.eps ? eData.eps+' (คาด)' : 'N/A');
+    const revVal = eData?.revActual || (eData?.rev ? eData.rev+' (คาด)' : 'N/A');
     const _earnDisplay = s.earnLive||s.earn;
     const _daysToEarn = _earnDisplay ? _getEarningsDaysLeft(_earnDisplay) : null;
     const _showEarnPreview = _daysToEarn !== null && _daysToEarn >= 0 && _daysToEarn <= 14;
@@ -3989,10 +3994,11 @@ async function drawerTab(tab, btn){
     }
     const chgCls = s.c>=0?'bull':'bear';
     const chgTxt = (s.c>=0?'+':'')+s.c+'%';
-    const peCls  = s.pe?'neut':'bear';
+    const peDisplay = s.peLive || s.pe;  // peLive มาจาก background metrics fetch ล่าสุด
+    const peCls  = peDisplay?'neut':'bear';
     const epsCls = (epsVal!=='N/A'&&!String(epsVal).startsWith('-'))?'bull':'bear';
     const revCls = parseFloat(s.revLive||s.rev||0)>0?'bull':'bear';
-    const profitRow = s.pe
+    const profitRow = peDisplay
       ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
       : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>';
     const earnResRow = eData?.res ? (()=>{
@@ -4031,7 +4037,7 @@ async function drawerTab(tab, btn){
       '<div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">'+(s.mktcapLive||s.mktcap||'N/A')+(s.mktcapLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       profitRow +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">💰 ผลประกอบการ</div>' +
-      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(s.pe||'N/A')+(s.pe?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(peDisplay||'N/A')+(s.peLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       (s.epsLive?'<div class="ind-row"><span class="ind-name">EPS (TTM)</span><span class="ind-val bull">$'+s.epsLive+' <span style="font-size:9px;color:var(--accent)">●</span></span></div>':'') +
       '<div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val '+epsCls+'">'+epsVal+'</span></div>' +
       '<div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val">'+revVal+'</span></div>' +
