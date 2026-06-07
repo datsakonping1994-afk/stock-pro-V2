@@ -6956,8 +6956,12 @@ setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
 // ── initLiveData: ดึง fundamentals + sector ทุกตัว หลังเปิดแอป 6 วินาที ──
 setTimeout(()=>{ initLiveData().then(()=>{ if(typeof renderStocks==='function') renderStocks(); }).catch(e=>console.warn('initLiveData err',e)); }, 6000);
 
-// ── initEliteCalendar: ดึง economic calendar หลังเปิดแอป 10 วินาที ──
-setTimeout(()=>{ initEliteCalendar().catch(e=>console.warn('initEliteCalendar err',e)); }, 10000);
+// ── initEliteCalendar: ดึง economic calendar หลังเปิดแอป 8 วินาที ──
+setTimeout(()=>{
+  initEliteCalendar().then(()=>{
+    console.log('[Calendar] loaded', ELITE_EVENTS.length, 'events');
+  }).catch(e=>console.warn('initEliteCalendar err',e));
+}, 8000);
 
 // [NEW] โหลด metrics (Market Cap, P/E) จาก Worker ทุกตัว background
 setTimeout(async()=>{
