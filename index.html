@@ -1503,16 +1503,13 @@ canvas.bigchart{width:100%;height:100%}
 
   </div>
 
-</div><!-- /elite-tab-map -->
-
-<!-- EVENTS TAB -->
-<div id="elite-tab-events" style="display:none">
-  <div style="padding:10px 14px 6px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
-  <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
-    <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
+  <div id="elite-tab-events" style="display:none">
+    <div style="padding:10px 14px 6px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
+    <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
+      <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
+    </div>
+    <div style="height:30px"></div>
   </div>
-  <div style="height:30px"></div>
-</div>
 
 </div>
 
@@ -14016,9 +14013,10 @@ function switchEliteTab(tab){
   document.querySelectorAll('.elite-subtab').forEach(el=>{
     el.classList.toggle('active', el.id === 'eliteSubTab-'+tab);
   });
-  document.getElementById('elite-tab-map').style.display = tab==='map' ? 'block' : 'none';
-  document.getElementById('elite-tab-events').style.display = tab==='events' ? 'block' : 'none';
-  // โหลด calendar ทันทีเมื่อเปิด events tab
+  const mapEl = document.getElementById('elite-tab-map');
+  const evEl  = document.getElementById('elite-tab-events');
+  if(mapEl) mapEl.style.display = tab==='map' ? 'block' : 'none';
+  if(evEl)  evEl.style.display  = tab==='events' ? 'block' : 'none';
   if(tab==='events'){
     const grid = document.getElementById('eliteEventsGrid');
     if(ELITE_EVENTS.length){
@@ -14033,7 +14031,6 @@ function switchEliteTab(tab){
 }
 
 function initElitePage(){
-  // calendar จะโหลดเมื่อเปิด events tab — ไม่โหลดล่วงหน้าเพื่อป้องกัน race condition
   updateEliteNotifUI();
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
