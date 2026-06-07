@@ -15133,68 +15133,35 @@ async function analyzePortfolioImpact(personId, btn){
 //  ELITE: Auto-fetch Economic Calendar from Finnhub
 //  อัปเดตอัตโนมัติ + merge กับ hardcode events
 // ══════════════════════════════════════════════
-const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v6';
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v3';
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
 // เฉพาะ event ที่กระทบตลาดหุ้นหนักจริงๆ
-const FINNHUB_EVENT_MAP = [
-  { keys:['nonfarm','nfp','payroll'],                                    title:'US Jobs Report (NFP)',    emoji:'💼', tags:['SP500','Nasdaq','Jobs'],    detail:'ตัวเลขการจ้างงาน — กระทบ Fed rate decision โดยตรง ถ้าแข็งแกร่ง = Fed ไม่รีบลด' },
-  { keys:['cpi','consumer price'],                                       title:'US CPI Inflation',        emoji:'🔥', tags:['Fed','SP500','Inflation'],  detail:'เงินเฟ้อ — ตัวเลขที่ตลาดกลัวที่สุด ถ้าสูงกว่าคาด Growth/Tech ร่วงแรง' },
-  { keys:['fomc','federal funds rate','interest rate decision'],         title:'Fed FOMC Decision',       emoji:'🏛️', tags:['Fed','SP500','Nasdaq'],     detail:'Fed ประกาศดอกเบี้ย — กระทบทุกหุ้นในตลาด ต้องจับตา dot plot' },
-  { keys:['pce','personal consumption expenditure'],                     title:'US PCE Inflation',        emoji:'💹', tags:['Fed','SP500','Inflation'],  detail:'PCE — เงินเฟ้อที่ Fed ดูมากที่สุด กระทบ rate decision โดยตรง' },
-  { keys:['gdp','gross domestic'],                                       title:'US GDP',                  emoji:'📈', tags:['SP500','Economy'],          detail:'GDP — ถ้าต่ำกว่าคาดอาจเป็น recession fear กระทบทุกหุ้น' },
-  { keys:['ppi','producer price'],                                       title:'US PPI',                  emoji:'🏭', tags:['SP500','Inflation'],        detail:'ราคาผู้ผลิต — บอกเงินเฟ้อล่วงหน้า กระทบ margin บริษัท' },
-  { keys:['retail sales'],                                               title:'US Retail Sales',         emoji:'🛒', tags:['SP500','Consumer','Economy'],detail:'ยอดค้าปลีก — วัดการใช้จ่ายผู้บริโภค กระทบ Consumer sector' },
-  { keys:['unemployment','jobless','initial claims','continuing claims'],title:'US Unemployment Claims',  emoji:'👷', tags:['SP500','Jobs'],             detail:'ตัวเลขว่างงาน — สัญญาณสุขภาพตลาดแรงงาน' },
-  { keys:['ism manufacturing','manufacturing pmi','pmi manufacturing'],  title:'ISM Manufacturing PMI',   emoji:'🏗️', tags:['SP500','Economy'],          detail:'ดัชนีผู้จัดการฝ่ายผลิต — วัดสุขภาพ sector การผลิต' },
-  { keys:['ism services','services pmi','pmi services','non-manuf'],     title:'ISM Services PMI',        emoji:'⚙️', tags:['SP500','Economy'],          detail:'ดัชนีภาคบริการ — กว่า 70% ของ US economy' },
-  { keys:['consumer confidence','consumer sentiment','michigan'],        title:'Consumer Confidence',     emoji:'😊', tags:['SP500','Consumer'],         detail:'ความเชื่อมั่นผู้บริโภค — สัญญาณการใช้จ่ายล่วงหน้า' },
-  { keys:['housing','home sales','building permit','existing home'],     title:'US Housing Data',         emoji:'🏠', tags:['SP500','Economy'],          detail:'ข้อมูลที่อยู่อาศัย — กระทบ rate-sensitive sectors' },
-];
-
-// Finnhub ส่ง impact เป็น integer (3=high, 2=medium, 1=low)
-// ForexFactory ส่งเป็น string "High"/"Medium"/"Low"
-function _isHighImpact(ev){
-  var imp = ev.impact;
-  if(imp === 3 || imp === '3') return true;
-  if(typeof imp === 'string') return imp.toLowerCase() === 'high';
-  return false;
-}
+const FINNHUB_EVENT_MAP = {
+  'nonfarm':  { title:'US Jobs Report (NFP)', emoji:'💼', tags:['SP500','Nasdaq','Jobs'],   detail:'ตัวเลขการจ้างงาน — กระทบ Fed rate decision โดยตรง ถ้าแข็งแกร่ง = Fed ไม่รีบลด' },
+  'cpi':      { title:'US CPI Inflation',     emoji:'🔥', tags:['Fed','SP500','Inflation'], detail:'เงินเฟ้อ — ตัวเลขที่ตลาดกลัวที่สุด ถ้าสูงกว่าคาด Growth/Tech ร่วงแรง' },
+  'fomc':     { title:'Fed FOMC Decision',    emoji:'🏛️', tags:['Fed','SP500','Nasdaq'],    detail:'Fed ประกาศดอกเบี้ย — กระทบทุกหุ้นในตลาด ต้องจับตา dot plot' },
+  'pce':      { title:'US PCE Inflation',     emoji:'💹', tags:['Fed','SP500','Inflation'], detail:'PCE — เงินเฟ้อที่ Fed ดูมากที่สุด กระทบ rate decision โดยตรง' },
+  'gdp':      { title:'US GDP',               emoji:'📈', tags:['SP500','Economy'],         detail:'GDP — ถ้าต่ำกว่าคาดอาจเป็น recession fear กระทบทุกหุ้น' },
+  'ppi':      { title:'US PPI',               emoji:'🏭', tags:['SP500','Inflation'],       detail:'ราคาผู้ผลิต — บอกเงินเฟ้อล่วงหน้า กระทบ margin บริษัท' },
+};
 
 function _mapFinnhubEvent(ev){
   const name = ((ev.event||ev.title||'')).toLowerCase();
-  for(const mapped of FINNHUB_EVENT_MAP){
-    if(mapped.keys.some(function(k){ return name.includes(k); })){
+  for(const [key, mapped] of Object.entries(FINNHUB_EVENT_MAP)){
+    if(name.includes(key)){
       return {
-        title:   mapped.title,
-        emoji:   mapped.emoji,
-        tags:    mapped.tags,
-        detail:  mapped.detail,
-        date:    ev.date,
-        time:    ev.time||'',
-        logo:    '',
+        ...mapped,
+        date: ev.date,
+        time: ev.time||'',
+        logo: '',
         markets: mapped.tags,
         _fromAPI: true,
-        _impact:  ev.impact,
+        _impact: ev.impact||'high',
       };
     }
   }
-  // ไม่รู้จัก → แสดง generic สำหรับ US high impact event
-  var country = (ev.country||'').toUpperCase();
-  if(_isHighImpact(ev) && (country === 'US' || country === 'USD' || country === '')){
-    return {
-      title:   (ev.event||ev.title||'Economic Event').trim(),
-      emoji:   '📊',
-      tags:    ['SP500','Economy'],
-      detail:  'High impact US economic event — อาจกระทบตลาดหุ้น',
-      date:    ev.date,
-      time:    ev.time||'',
-      logo:    '',
-      markets: ['SP500','Economy'],
-      _fromAPI: true,
-      _impact:  ev.impact,
-    };
-  }
+  // ไม่รู้จัก → ข้ามทิ้ง
   return null;
 }
 
@@ -15215,7 +15182,7 @@ async function fetchEliteEconomicCalendar(){
     if(r.ok){
       const d = await r.json();
       events = (d.economicCalendar||d.events||[])
-        .filter(function(ev){ return _isHighImpact(ev); })
+        .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='High'))
         .map(_mapFinnhubEvent).filter(Boolean);
     }
   }catch(e){ console.warn('[elite calendar] Worker failed, trying Finnhub direct', e.message); }
@@ -15232,8 +15199,16 @@ async function fetchEliteEconomicCalendar(){
         console.log('[elite calendar] Finnhub status:', r2.status);
         if(r2.ok){
           const d2 = await r2.json();
-          console.log('[elite calendar] Finnhub raw count:', (d2.economicCalendar||[]).length);
-          events = (d2.economicCalendar||[])
+          const raw = d2.economicCalendar||[];
+          console.log('[elite calendar] Finnhub raw count:', raw.length);
+          // DEBUG: แสดง 3 events แรก เพื่อดู format จริง
+          if(raw.length > 0){
+            const sample = raw.slice(0,3).map(ev=>({event:ev.event||ev.title,impact:ev.impact,country:ev.country,date:ev.date}));
+            alert('[ELITE DEBUG] Finnhub sample:\n' + JSON.stringify(sample, null, 2));
+          } else {
+            alert('[ELITE DEBUG] Finnhub returned 0 events\nStatus: ' + r2.status);
+          }
+          events = raw
             .filter(function(ev){ return _isHighImpact(ev); })
             .map(_mapFinnhubEvent).filter(Boolean);
           console.log('[elite calendar] Filtered events:', events.length);
