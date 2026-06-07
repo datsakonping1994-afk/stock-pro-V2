@@ -1723,7 +1723,7 @@ async function initLiveData(){
           if(!s||!met) continue;
           if(met.pe!=null){ const pe=+met.pe; if(pe>=-500&&pe<=5000) s.pe=+pe.toFixed(1); }
           if(met.eps!=null){ const eps=+met.eps; if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2); }
-          if(met.revGrowth!=null){ const g=+met.revGrowth*100; if(g>=-100&&g<=2000) s.revLive=g.toFixed(1)+'%'; }
+          if(met.revGrowth!=null){ const rg=_normalizeRevGrowth(met.revGrowth); if(rg!=null) s.revLive=rg; }
           if(met.mktcap!=null){ const mc=+met.mktcap; if(mc>=1) s.mktcapLive=mc>=1000000?`$${(mc/1000000).toFixed(1)}T`:mc>=1000?`$${(mc/1000).toFixed(1)}B`:`$${mc.toFixed(0)}M`; }
           if(met.beta!=null){ const b=+met.beta; if(b>=-5&&b<=10) s.beta=+b.toFixed(2); }
           if(met.div!=null){ const dv=+met.div; if(dv>=0&&dv<=30) s.divLive=dv.toFixed(2)+'%'; }
@@ -1793,7 +1793,28 @@ const rsiData={}; // RSI คำนวณ live จาก candle data
 // ── Fundamental Extra Data: D/E ratio and Free Cash Flow (ดึง live จาก Worker) ──
 const fundExtra={}; // populated by initLiveData via /metrics endpoint
 
-// ── คำนวณ Fundamental Score (0-100) ──
+// ── Helper: normalize Revenue Growth จาก API ──
+// Finnhub/Worker อาจส่งในรูป decimal (0.15=15%), % (15.0), หรือค่าแปลกๆ
+// return string "xx.x%" หรือ null ถ้าไม่น่าเชื่อถือ
+function _normalizeRevGrowth(raw){
+  if(raw==null||isNaN(+raw)) return null;
+  const v = +raw;
+  // ขั้นตอน 1: decimal format (-1.0 ถึง 20.0) → คูณ 100 เป็น %
+  // เช่น 0.15 = 15%, 7.2576 = 725.76% (หุ้นที่เคยรายได้เกือบศูนย์)
+  if(v>=-1.0&&v<=20.0) return (v*100).toFixed(1)+'%';
+  // ขั้นตอน 2: % format (-100 ถึง 500) ใช้ได้เลย
+  if(v>=-100&&v<=500) return v.toFixed(1)+'%';
+  // ขั้นตอน 3: 500–2000 → อาจเป็น decimal ที่ใหญ่มาก (เช่น 725.76 = หารด้วย 100 → 7.26%)
+  // หรือเป็น basis points (บางครั้ง API ส่งมา)
+  if(v>500&&v<=2000){
+    const asBp = v/100; // treat as basis points → %
+    if(asBp<=500) return asBp.toFixed(1)+'%';
+  }
+  // ขั้นตอน 4: เกิน 2000 = ค่า nonsense (เช่น 72576 จาก EOSE) → ทิ้ง
+  return null;
+}
+
+
 function calcFundScore(s){
   let score=0;
   const fe=fundExtra[s.t]||{};
@@ -1883,17 +1904,34 @@ const histEarnings={}; // populated dynamically
 async function loadHistEarnings(ticker){
   if(histEarnings[ticker]) return histEarnings[ticker];
   try{
-    const r=await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)});
-    const d=await r.json();
-    const raw=d?.data||[];
+    const yhTicker = ticker.replace('.', '-');
+    const [earnRes, yahooRes] = await Promise.allSettled([
+      fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
+        {signal:AbortSignal.timeout(5000)}).then(r=>r.json()),
+    ]);
+    const d = (earnRes.status==='fulfilled') ? earnRes.value : null;
+    const raw = d?.data||[];
     if(raw.length>0){
-      // Finnhub format: [{period, actual, estimate}]
-      const mapped=raw.slice(0,8).reverse().map(e=>({
-        q:e.period||'',
-        eps:e.actual!=null?+e.actual:null,
-        epsEst:e.estimate!=null?+e.estimate:null,
-        rev:null, revEst:null,
-      }));
+      // ดึง revenue quarters จาก Yahoo เพื่อใส่ใน chart
+      const revQtrs = (yahooRes.status==='fulfilled')
+        ? (yahooRes.value?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[])
+        : [];
+      // Finnhub format: [{period, actual, estimate}] เรียงใหม่สุดก่อน → reverse เป็นเก่า→ใหม่
+      const mapped = raw.slice(0,8).reverse().map((e,i)=>{
+        // หา revenue quarter ที่ตรงกับ period ถ้ามี
+        const revRaw = revQtrs[raw.slice(0,8).reverse().length-1-i]?.totalRevenue?.raw||null;
+        const revB = revRaw!=null
+          ? (revRaw>=1e9 ? +(revRaw/1e9).toFixed(2) : +(revRaw/1e6).toFixed(0)/1000)
+          : null;
+        return {
+          q: e.period||'',
+          eps: e.actual!=null ? +e.actual : null,
+          epsEst: e.estimate!=null ? +e.estimate : null,
+          rev: revB,      // หน่วย $B จาก Yahoo
+          revEst: null,   // Finnhub ไม่มี rev estimate ใน /stock/earnings
+        };
+      });
       histEarnings[ticker]=mapped;
       return mapped;
     }
@@ -3571,14 +3609,10 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — Finnhub ส่งเป็น decimal (0.15 = 15%) valid -1.0 to 5.0 ก่อนคูณ 100
+        // Revenue Growth — normalize ผ่าน helper (รองรับ decimal/pct/basis-points format)
         if(m['revenueGrowthTTMYoy']!=null){
-          const rawG=+m['revenueGrowthTTMYoy'];
-          // ถ้าค่า > 5 หรือ < -1 แสดงว่า format ผิด (เช่น ส่งมาเป็น % แล้ว) ให้หาร 100 ก่อน
-          const revGDecimal = (rawG>5||rawG<-1) ? rawG/100 : rawG;
-          if(revGDecimal>=-1&&revGDecimal<=5){
-            s.revLive=((revGDecimal*100).toFixed(1))+'%'; metricOk=true;
-          }
+          const rg=_normalizeRevGrowth(m['revenueGrowthTTMYoy']);
+          if(rg!=null){ s.revLive=rg; metricOk=true; }
         }
         if(m['marketCapitalization']!=null){
           const mcM=m['marketCapitalization']; // Finnhub หน่วย = millions USD
@@ -3975,8 +4009,16 @@ async function drawerTab(tab, btn){
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
     // แสดง Actual ก่อน ถ้าไม่มีถึงแสดง Estimate
-    const epsVal = eData?.epsActual || (eData?.eps ? eData.eps+' (คาด)' : 'N/A');
-    const revVal = eData?.revActual || (eData?.rev ? eData.rev+' (คาด)' : 'N/A');
+    // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → epsLive จาก Finnhub metric → estimate fallback
+    const epsVal = eData?.epsActual
+      || (s.epsLive ? '$'+s.epsLive+' (TTM)' : null)
+      || (eData?.eps ? eData.eps+' (คาด)' : 'N/A');
+    // Revenue ล่าสุด: ใช้ revActual จาก earnings calendar → คำนวณจาก histEarnings ถ้ามี
+    const _histRev = histEarnings[s.t];
+    const _latestRev = _histRev?.length ? _histRev[_histRev.length-1]?.rev : null;
+    const revVal = eData?.revActual
+      || (_latestRev!=null ? '$'+_latestRev+'B' : null)
+      || (eData?.rev ? eData.rev+' (คาด)' : 'N/A');
     const _earnDisplay = s.earnLive||s.earn;
     const _daysToEarn = _earnDisplay ? _getEarningsDaysLeft(_earnDisplay) : null;
     const _showEarnPreview = _daysToEarn !== null && _daysToEarn >= 0 && _daysToEarn <= 14;
@@ -3994,13 +4036,23 @@ async function drawerTab(tab, btn){
     }
     const chgCls = s.c>=0?'bull':'bear';
     const chgTxt = (s.c>=0?'+':'')+s.c+'%';
-    const peDisplay = s.peLive || s.pe;  // peLive มาจาก background metrics fetch ล่าสุด
+    // peLive = จาก background fetch (อาจเป็น Non-GAAP/Adjusted), s.pe = จาก Finnhub direct (GAAP TTM)
+    // ใช้ค่าที่สูงกว่า (GAAP) เป็นหลัก เพราะสะท้อนความเป็นจริงมากกว่า
+    const peGAAP = s.pe;       // จาก Finnhub direct API = TTM GAAP P/E
+    const peNonG = s.peLive;   // จาก Worker batch = อาจเป็น Non-GAAP/Forward
+    // ถ้า GAAP มีและสมเหตุสมผล (>5) ใช้ GAAP ก่อน ไม่งั้นใช้ Non-GAAP
+    const peDisplay = (peGAAP&&peGAAP>5) ? peGAAP : peNonG;
+    const peLabel   = (peGAAP&&peGAAP>5&&peNonG&&peNonG!==peGAAP)
+      ? `P/E Ratio <span style="font-size:9px;color:var(--text3)">(Non-GAAP: ${peNonG})</span>`
+      : 'P/E Ratio';
     const peCls  = peDisplay?'neut':'bear';
     const epsCls = (epsVal!=='N/A'&&!String(epsVal).startsWith('-'))?'bull':'bear';
     const revCls = parseFloat(s.revLive||s.rev||0)>0?'bull':'bear';
     const profitRow = peDisplay
       ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
-      : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>';
+      : (s.epsLive&&+s.epsLive<0)
+        ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>'
+        : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val neut">— ไม่มีข้อมูล</span></div>';
     const earnResRow = eData?.res ? (()=>{
       const isMiss=eData.res.includes('Miss')||eData.res.includes('❌');
       const isBeat=eData.res.includes('Beat')||eData.res.includes('✅');
@@ -4037,7 +4089,7 @@ async function drawerTab(tab, btn){
       '<div class="ind-row"><span class="ind-name">Market Cap</span><span class="ind-val">'+(s.mktcapLive||s.mktcap||'N/A')+(s.mktcapLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       profitRow +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">💰 ผลประกอบการ</div>' +
-      '<div class="ind-row"><span class="ind-name">P/E Ratio</span><span class="ind-val '+peCls+'">'+(peDisplay||'N/A')+(s.peLive?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
+      '<div class="ind-row"><span class="ind-name">'+peLabel+'</span><span class="ind-val '+peCls+'">'+(peDisplay||'N/A')+(peDisplay?' <span style="font-size:9px;color:var(--accent)">●</span>':'')+'</span></div>' +
       (s.epsLive?'<div class="ind-row"><span class="ind-name">EPS (TTM)</span><span class="ind-val bull">$'+s.epsLive+' <span style="font-size:9px;color:var(--accent)">●</span></span></div>':'') +
       '<div class="ind-row"><span class="ind-name">EPS (ล่าสุด)</span><span class="ind-val '+epsCls+'">'+epsVal+'</span></div>' +
       '<div class="ind-row"><span class="ind-name">Revenue (ล่าสุด)</span><span class="ind-val">'+revVal+'</span></div>' +
@@ -6994,7 +7046,7 @@ setTimeout(async()=>{
           }
           if(m.pe!=null) s.peLive=+m.pe.toFixed(1);
           if(m.beta!=null) s.betaLive=+m.beta.toFixed(2);
-          if(m.revGrowth!=null) s.revLive=(m.revGrowth*100).toFixed(1)+'%';
+          if(m.revGrowth!=null){ const rg=_normalizeRevGrowth(m.revGrowth); if(rg!=null) s.revLive=rg; }
         }
         // re-render cards ให้เห็นข้อมูลใหม่
         if(typeof renderStocks==='function') renderStocks();
@@ -7801,7 +7853,7 @@ async function _switchTF(btn, days){
 }
 
 // ── Polygon.io config ──
-let POLYGON_KEY = (()=>{ try{ return localStorage.getItem('polygonKey')||'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; }catch{ return 'H4aNSuAK_NrGDRn5RMyoxySpfMq5R1SY'; } })();
+let POLYGON_KEY = (()=>{ try{ return localStorage.getItem('polygonKey')||''; }catch{ return ''; } })();
 
 // ── fetchPolygonQuote — ดึงราคา Real-time จาก Polygon.io (1 request) ──
 async function fetchPolygonQuote(ticker){
@@ -9364,7 +9416,6 @@ async function fetchAndRenderEarnings(){
             try{
               const yh=ticker.replace('.', '-');
               const r=await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yh}?modules=calendarEvents`,{
-                headers:{'User-Agent':'Mozilla/5.0'},
                 signal:AbortSignal.timeout(5000)
               });
               if(!r.ok) return null;
@@ -9483,7 +9534,9 @@ async function fetchAndRenderEarnings(){
             const bmoDone = e.hour==='bmo' && etMins >= 570;
             const amcDone = e.hour==='amc' && etMins >= 960;
             const anyDone = !e.hour && etMins >= 960;
-            return isTodayET && (bmoDone||amcDone||anyDone) && e.res==='✅ Done';
+            // FIX: กรองเฉพาะที่ยังไม่มีผล Beat/Miss จริง (ไม่ใช่ '✅ Done' ที่ไม่มีใน system)
+            const noResult = !e.res || e.res === '' || e.res === '✅ รายงานแล้ว';
+            return isTodayET && (bmoDone||amcDone||anyDone) && noResult;
           });
           if(pendingToday.length > 0 && etMins < 1200){
             console.log('[Earnings] auto-refresh scheduled for',pendingToday.length,'pending results');
@@ -9522,10 +9575,11 @@ async function autoCheckEarningsResults() {
 
   const pending = (window.earningsData || []).filter(e => {
     if (!e._live || !e._date) return false;
-    // เช็คทุกตัวที่ผ่านมาแล้วและยังไม่มีผล Beat/Miss
-    const hasResult = e.res && e.res !== '—' && e.res !== '✅ Done' && e.res !== '';
-    if (hasResult) return false;
-    if (e._date < todayET) return true; // วันผ่านไปแล้ว — รวม FPS, SLNH ฯลฯ
+    // เช็คทุกตัวที่ผ่านมาแล้วและยังไม่มีผล Beat/Miss จริง
+    // FIX: '✅ รายงานแล้ว' = ยังไม่มีผลตัวเลข ให้ดึงต่อ; Beat/Miss = มีแล้ว skip
+    const hasRealResult = e.res && e.res !== '—' && e.res !== '' && e.res !== '✅ รายงานแล้ว';
+    if (hasRealResult) return false;
+    if (e._date < todayET) return true; // วันผ่านไปแล้ว
     if (e._date === todayET) {
       if (e.hour === 'bmo' && etMins >= 600) return true;
       if (e.hour === 'amc' && etMins >= 990) return true;
@@ -9662,7 +9716,7 @@ async function _showEarningsHistory(ticker, btn){
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`${PRICES_WORKER}/metrics?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,recommendationTrend,financialData,defaultKeyStatistics,earningsTrend,cashflowStatementHistoryQuarterly,balanceSheetHistoryQuarterly`,
-        {headers:{'User-Agent':'Mozilla/5.0'},signal:new AbortController().signal}).then(r=>r.json()),
+        {signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_KEY}`,
         {signal:new AbortController().signal}).then(r=>r.json()),
     ]);
@@ -12629,7 +12683,7 @@ ${avNews}`;
         const yhT = t.replace('.','-');
         const yr = await _fetchWithTimeout(
           `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhT}?modules=incomeStatementHistoryQuarterly,cashflowStatementHistoryQuarterly,financialData,defaultKeyStatistics,earningsTrend`,
-          {headers:{'User-Agent':'Mozilla/5.0'}}, 8000
+          {}, 8000
         );
         const yd = await yr.json();
         const yhData = yd?.quoteSummary?.result?.[0];
