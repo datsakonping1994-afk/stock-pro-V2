@@ -14123,78 +14123,85 @@ async function _eliteDirectFallback(overlay){
     return arr.findIndex(function(x){return x.id===p.id;})===i;
   }).slice(0,10);
 
-  const newsSource = gnewsKey2 ? 'GNews' : tavilyKey ? 'Tavily' : 'Claude';
+  const newsSource = 'Finnhub';
   if(overlay) overlay.innerHTML = `
     <div style="font-size:22px">📰</div>
-    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${newsSource} กำลังค้นข่าวจริง...</div>
-    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ข่าวล่าสุด 24 ชม. · ${topPeople.slice(0,6).length} คน</div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">Finnhub กำลังค้นข่าวจริง...</div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:0 16px">ข่าวล่าสุด 48 ชม. · ${topPeople.slice(0,6).length} คน</div>
     <div style="display:flex;gap:6px;margin-top:8px"><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div></div>`;
 
   let allNews = [];
 
-  // ── GNews ดึงข่าวแต่ละคน ──
-  const gnewsKey = localStorage.getItem('gnewsKey') || _GNEWS_KEY || '';
-  if(gnewsKey){
-    try{
-      const searches = topPeople.slice(0,6).map(function(person){
-        const q = encodeURIComponent('"' + person.name + '"');
-        return fetch('https://gnews.io/api/v4/search?q='+q+'&lang=en&max=2&sortby=publishedAt&apikey='+gnewsKey, {
-          signal: AbortSignal.timeout(12000)
-        }).then(function(r){
-          if(!r.ok){ console.warn('[GNews] '+person.name+' status:'+r.status); return null; }
-          return r.json();
-        }).then(function(data){
-          if(!data || !data.articles || !data.articles.length) return null;
-          const top = data.articles[0];
-          return {
-            id: person.id, person: person,
-            headline: top.title || '',
-            summary: top.description ? top.description.slice(0,400) : (top.content||'').slice(0,400),
-            url: top.url || ''
-          };
-        }).catch(function(e){ console.warn('[GNews]',e.message); return null; });
+  // ── Finnhub General News — real-time ไม่มี quota ปัญหา ──
+  try{
+    const fk = FINNHUB_KEY || '';
+    if(fk){
+      const r = await fetch(`https://finnhub.io/api/v1/news?category=general&minId=0&token=${fk}`, {
+        signal: AbortSignal.timeout(8000)
       });
-      const searchResults = await Promise.allSettled(searches);
-      allNews = searchResults
-        .filter(function(r){ return r.status==='fulfilled' && r.value; })
-        .map(function(r){ return r.value; });
-      if(allNews.length) console.log('[GNews] got', allNews.length, 'articles');
-      else console.warn('[GNews] all searches failed, trying fallback');
-    }catch(e){ console.warn('[GNews error]', e.message); }
-  }
+      if(r.ok){
+        const d = await r.json();
+        const cutoff = Date.now() - 48 * 3600 * 1000; // เฉพาะ 48 ชั่วโมง
+        const recentNews = (d || []).filter(a => (a.datetime * 1000) >= cutoff);
 
-  if(!allNews.length && tavilyKey){
-    const searches = topPeople.slice(0,6).map(function(person){
-      return fetch('https://api.tavily.com/search',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          api_key: tavilyKey,
-          query: person.name + ' news market impact today 2025',
-          max_results: 2,
-          search_depth: 'basic',
-          include_answer: false,
-          days: 1
-        }),
-        signal: AbortSignal.timeout(15000)
-      }).then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(data){
-          if(!data || !data.results || !data.results.length) return null;
-          const top = data.results[0];
-          return {
-            id: person.id,
-            person: person,
-            headline: top.title || '',
-            summary: top.content ? top.content.slice(0,300) : '',
-            url: top.url || ''
-          };
-        }).catch(function(){ return null; });
-    });
+        // จับคู่ข่าวกับแต่ละ person
+        topPeople.slice(0, 6).forEach(function(person){
+          const keywords = person.name.toLowerCase().split(' ').filter(w => w.length > 2);
+          const matched = recentNews.filter(a => {
+            const text = (a.headline + ' ' + (a.summary || '')).toLowerCase();
+            return keywords.some(kw => text.includes(kw));
+          });
+          if(matched.length > 0){
+            const top = matched[0];
+            allNews.push({
+              id: person.id, person: person,
+              headline: top.headline || '',
+              summary: (top.summary || '').slice(0, 400),
+              url: top.url || ''
+            });
+          }
+        });
+        if(allNews.length) console.log('[Finnhub] got', allNews.length, 'articles');
+        else console.warn('[Finnhub] no matching articles in 48h');
+      }
+    }
+  }catch(e){ console.warn('[Finnhub news error]', e.message); }
 
-    const searchResults = await Promise.allSettled(searches);
-    allNews = searchResults
-      .filter(function(r){ return r.status==='fulfilled' && r.value; })
-      .map(function(r){ return r.value; });
+  // Fallback: Finnhub Company News สำหรับตัวที่ยังไม่มีข่าว
+  if(allNews.length < 3){
+    const PERSON_TICKERS = {
+      jensen:'NVDA', cook:'AAPL', musk:'TSLA', nadella:'MSFT',
+      zuck:'META', altman:'MSFT', pichai:'GOOGL', bezos:'AMZN',
+      dimon:'JPM', powell:'', trump:'', xi:'', buffett:'BRK.B'
+    };
+    const fk = FINNHUB_KEY || '';
+    const foundIds = new Set(allNews.map(n => n.id));
+    const missing = topPeople.slice(0, 6).filter(p => !foundIds.has(p.id) && PERSON_TICKERS[p.id]);
+    if(fk && missing.length){
+      const to = new Date().toISOString().slice(0, 10);
+      const from = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+      await Promise.allSettled(missing.map(async person => {
+        const ticker = PERSON_TICKERS[person.id];
+        if(!ticker) return;
+        try{
+          const r = await fetch(
+            `https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${from}&to=${to}&token=${fk}`,
+            { signal: AbortSignal.timeout(5000) }
+          );
+          if(!r.ok) return;
+          const d = await r.json();
+          if(d && d.length > 0){
+            const top = d[0];
+            allNews.push({
+              id: person.id, person: person,
+              headline: top.headline || '',
+              summary: (top.summary || '').slice(0, 400),
+              url: top.url || ''
+            });
+          }
+        }catch{}
+      }));
+    }
   }
 
   if(!allNews.length){
