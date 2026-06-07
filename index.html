@@ -14014,9 +14014,9 @@ function switchEliteTab(tab){
   if(tab==='events'){
     const grid = document.getElementById('eliteEventsGrid');
     if(grid && !ELITE_EVENTS.length){
-      grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังโหลดกำหนดการ...</div></div>';
+      grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ Finnhub...</div></div>';
       initEliteCalendar().catch(e=>{
-        if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⚠️ โหลดไม่ได้ กรุณาใส่ Finnhub Key ใน Settings</div>';
+        if(grid) grid.innerHTML=`<div style="text-align:center;padding:30px;color:var(--red);font-size:12px">❌ Error: ${e.message}<br><span style="color:var(--text3);font-size:10px">กรุณาใส่ Finnhub Key ใน Settings</span></div>`;
       });
     } else {
       renderEliteEvents();
@@ -15229,7 +15229,15 @@ async function fetchEliteEconomicCalendar(){
 }
 
 async function initEliteCalendar(){
+  const grid = document.getElementById('eliteEventsGrid');
+  if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูลจาก Finnhub...</div>';
+
   const apiEvents = await fetchEliteEconomicCalendar();
+
+  if(!apiEvents.length){
+    if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--red);font-size:12px">❌ ดึงข้อมูลไม่ได้<br><span style="color:var(--text3);font-size:10px">เช็ค Console สำหรับรายละเอียด</span></div>';
+    return;
+  }
   // dedup โดยใช้ title+date เป็น key
   const seen = new Set();
   const unique = apiEvents.filter(ev=>{
