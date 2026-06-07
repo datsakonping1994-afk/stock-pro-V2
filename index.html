@@ -15266,7 +15266,10 @@ async function fetchEliteEconomicCalendar(){
 
 async function initEliteCalendar(){
   const grid = document.getElementById('eliteEventsGrid');
-  if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูลจาก Finnhub...</div>';
+  if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูล Economic Calendar...</div>';
+
+  // ล้าง cache เก่าทุก version
+  ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 
   const apiEvents = await fetchEliteEconomicCalendar();
 
