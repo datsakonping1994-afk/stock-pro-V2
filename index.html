@@ -1611,118 +1611,83 @@ function $id(id){
 function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]); }
 
 const STOCKS_DEFAULT=[
-  // t=ticker, n=name, p=price, c=change%, pe=P/E, mktcap, rev=revGrowth, earn=nextEarnDate
-  // div=dividend yield%, beta=beta, short=short float%, target=analyst target price
-  {t:"RKLB",n:"Rocket Lab",p:105.47,c:34.22,pe:null,mktcap:"38.4B",rev:"32%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"12.4%",target:28.0},
-  {t:"EOSE",n:"Eos Energy",p:8.01,c:25.94,pe:null,mktcap:"0.8B",rev:"120%",earn:"ส.ค. 2026",div:null,beta:3.2,short:"18.1%",target:12.0},
-  {t:"SLNH",n:"Soluna Holdings",p:1.83,c:20.39,pe:null,mktcap:"0.1B",rev:"22%",earn:"ส.ค. 2026",div:null,beta:3.8,short:"9.2%",target:4.0},
-  {t:"MU",n:"Micron Technology",p:105.0,c:0,pe:12.8,mktcap:"116B",rev:"38%",earn:"มิ.ย. 2026",div:"0.5%",beta:1.6,short:"1.8%",target:140.0},
-  {t:"NVTS",n:"Navitas Semi",p:7.2,c:0,pe:null,mktcap:"0.8B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"8.4%",target:10.0},
-  {t:"ASTS",n:"AST SpaceMobile",p:28.5,c:0,pe:null,mktcap:"6.1B",rev:"350%",earn:"ส.ค. 2026",div:null,beta:3.1,short:"14.2%",target:45.0},
-  {t:"INTC",n:"Intel",p:21.0,c:0,pe:null,mktcap:"89B",rev:"-8%",earn:"ก.ค. 2026",div:"2.4%",beta:1.0,short:"3.6%",target:25.0},
-  {t:"AMD",n:"AMD",p:112.0,c:0,pe:null,mktcap:"182B",rev:"36%",earn:"มิ.ย. 2026",div:null,beta:1.7,short:"2.1%",target:160.0},
-  {t:"HIMS",n:"Hims & Hers",p:35.0,c:0,pe:null,mktcap:"6.3B",rev:"69%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"22.8%",target:42.0},
-  {t:"IREN",n:"IREN Ltd",p:13.5,c:0,pe:null,mktcap:"1.3B",rev:"180%",earn:"ส.ค. 2026",div:null,beta:3.5,short:"11.6%",target:20.0},
-  {t:"ASML",n:"ASML Holding",p:725.0,c:0,pe:38.4,mktcap:"285B",rev:"22%",earn:"ก.ค. 2026",div:"1.0%",beta:1.3,short:"0.6%",target:900.0},
-  {t:"CRWD",n:"CrowdStrike",p:450.0,c:0,pe:null,mktcap:"107B",rev:"25%",earn:"มิ.ย. 2026",div:null,beta:1.4,short:"1.2%",target:520.0},
-  {t:"AVGO",n:"Broadcom",p:225.0,c:0,pe:31.2,mktcap:"1.0T",rev:"25%",earn:"ก.ย. 2026",div:"1.3%",beta:1.2,short:"0.8%",target:260.0},
-  {t:"IONQ",n:"IonQ",p:54.0,c:0,pe:null,mktcap:"10.2B",rev:"755%",earn:"ส.ค. 2026",div:null,beta:2.9,short:"16.3%",target:75.0},
-  {t:"AAPL",n:"Apple",p:198.0,c:0,pe:31.4,mktcap:"3.0T",rev:"5%",earn:"ก.ค. 2026",div:"0.5%",beta:1.2,short:"0.6%",target:240.0},
-  {t:"NVDA",n:"Nvidia",p:131.0,c:0,pe:38.2,mktcap:"3.2T",rev:"78%",earn:"28 พ.ค. 2026",div:"0.03%",beta:1.7,short:"1.0%",target:175.0},
-  {t:"KTOS",n:"Kratos Defense",p:33.0,c:0,pe:null,mktcap:"5.5B",rev:"18%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"5.8%",target:42.0},
-  {t:"RBRK",n:"Rubrik",p:82.0,c:0,pe:null,mktcap:"16.8B",rev:"38%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.4%",target:105.0},
-  {t:"AAOI",n:"Applied Optoelectronics",p:28.5,c:0,pe:null,mktcap:"13.3B",rev:"45%",earn:"ส.ค. 2026",div:null,beta:3.76,short:"22.6%",target:151.0},
-  {t:"HOOD",n:"Robinhood",p:61.0,c:0,pe:null,mktcap:"53.3B",rev:"50%",earn:"ก.ค. 2026",div:null,beta:2.2,short:"4.8%",target:75.0},
-  {t:"OKLO",n:"Oklo",p:42.0,c:0,pe:null,mktcap:"8.9B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:2.6,short:"19.5%",target:55.0},
-  {t:"TEM",n:"Tempus AI",p:55.0,c:0,pe:null,mktcap:"10.6B",rev:"75%",earn:"ส.ค. 2026",div:null,beta:2.3,short:"8.7%",target:70.0},
-  {t:"GOOGL",n:"Alphabet",p:175.0,c:0,pe:19.8,mktcap:"2.1T",rev:"12%",earn:"ก.ค. 2026",div:"0.5%",beta:1.1,short:"0.5%",target:215.0},
-  {t:"NVO",n:"Novo-Nordisk",p:71.0,c:0,pe:21.3,mktcap:"313B",rev:"22%",earn:"ส.ค. 2026",div:"1.8%",beta:0.7,short:"1.2%",target:100.0},
-  {t:"AMZN",n:"Amazon",p:220.0,c:0,pe:34.2,mktcap:"2.3T",rev:"9%",earn:"ก.ค. 2026",div:null,beta:1.3,short:"0.6%",target:275.0},
-  {t:"PLTR",n:"Palantir",p:125.0,c:0,pe:null,mktcap:"269B",rev:"85%",earn:"ส.ค. 2026",div:null,beta:2.5,short:"4.2%",target:145.0},
-  {t:"CRDO",n:"Credo Technology",p:78.0,c:0,pe:null,mktcap:"4.7B",rev:"65%",earn:"ส.ค. 2026",div:null,beta:2.0,short:"7.3%",target:95.0},
-  {t:"ANET",n:"Arista Networks",p:95.0,c:0,pe:44.8,mktcap:"119B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.4,short:"1.1%",target:120.0},
-  {t:"VRT",n:"Vertiv Holdings",p:105.0,c:0,pe:null,mktcap:"40.5B",rev:"20%",earn:"ก.ค. 2026",div:"0.1%",beta:1.8,short:"2.6%",target:135.0},
-  {t:"ARM",n:"Arm Holdings",p:135.0,c:0,pe:58.4,mktcap:"141B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"1.8%",target:170.0},
-  {t:"TSM",n:"Taiwan Semi",p:178.0,c:0,pe:24.6,mktcap:"924B",rev:"38%",earn:"ก.ค. 2026",div:"1.6%",beta:1.1,short:"0.4%",target:230.0},
-  {t:"ISRG",n:"Intuitive Surgical",p:570.0,c:0,pe:68.4,mktcap:"204B",rev:"19%",earn:"ก.ค. 2026",div:null,beta:1.0,short:"0.7%",target:650.0},
-  {t:"NFLX",n:"Netflix",p:1120.0,c:0,pe:44.2,mktcap:"474B",rev:"13%",earn:"ก.ค. 2026",div:null,beta:1.3,short:"0.9%",target:1300.0},
-  {t:"META",n:"Meta Platforms",p:600.0,c:0,pe:22.1,mktcap:"1.5T",rev:"33%",earn:"ก.ค. 2026",div:"0.3%",beta:1.2,short:"0.5%",target:750.0},
-  {t:"MSFT",n:"Microsoft",p:420.0,c:0,pe:32.1,mktcap:"3.1T",rev:"13%",earn:"ก.ค. 2026",div:"0.8%",beta:0.9,short:"0.4%",target:520.0},
-  {t:"JPM",n:"JPMorgan Chase",p:270.0,c:0,pe:13.2,mktcap:"785B",rev:"9%",earn:"ก.ค. 2026",div:"2.0%",beta:1.1,short:"0.6%",target:310.0},
-  {t:"XOM",n:"Exxon Mobil",p:115.0,c:0,pe:13.8,mktcap:"498B",rev:"-3%",earn:"ส.ค. 2026",div:"3.5%",beta:0.9,short:"1.2%",target:130.0},
-  {t:"SOFI",n:"SoFi Technologies",p:18.0,c:0,pe:null,mktcap:"20.0B",rev:"33%",earn:"ก.ค. 2026",div:null,beta:1.9,short:"9.4%",target:22.0},
-  {t:"SPGI",n:"S&P Global",p:540.0,c:0,pe:42.3,mktcap:"177B",rev:"11%",earn:"ก.ค. 2026",div:"0.8%",beta:1.0,short:"0.5%",target:620.0},
-  {t:"MP",n:"MP Materials",p:20.0,c:0,pe:null,mktcap:"2.4B",rev:"28%",earn:"ส.ค. 2026",div:null,beta:1.6,short:"12.8%",target:28.0},
-  {t:"ELF",n:"e.l.f. Beauty",p:32.0,c:0,pe:null,mktcap:"3.5B",rev:"31%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"15.2%",target:45.0},
-  {t:"AMSC",n:"American Superconductor",p:22.0,c:0,pe:null,mktcap:"0.8B",rev:"42%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"10.3%",target:35.0},
-  {t:"APP",n:"Applovin",p:320.0,c:0,pe:85.0,mktcap:"120B",rev:"44%",earn:"ส.ค. 2026",div:null,beta:2.1,short:"3.8%",target:380.0},
-  {t:"COST",n:"Costco Wholesale",p:975.0,c:0,pe:52.0,mktcap:"420B",rev:"8%",earn:"ก.ย. 2026",div:"0.7%",beta:0.7,short:"1.2%",target:1050.0},
-  {t:"UNH",n:"UnitedHealth Group",p:295.0,c:0,pe:18.0,mktcap:"420B",rev:"12%",earn:"ก.ค. 2026",div:"1.8%",beta:0.5,short:"0.9%",target:620.0},
-  {t:"BRK.B",n:"Berkshire Hathaway B",p:455.0,c:0,pe:21.0,mktcap:"950B",rev:"5%",earn:"ส.ค. 2026",div:null,beta:0.9,short:"0.4%",target:520.0},
-  {t:"NOW",n:"ServiceNow",p:990.0,c:0,pe:null,mktcap:"206B",rev:"21%",earn:"ก.ค. 2026",div:null,beta:1.2,short:"0.7%",target:1150.0},
-  {t:"LLY",n:"Eli Lilly",p:830.0,c:0,pe:48.3,mktcap:"808B",rev:"45%",earn:"ก.ค. 2026",div:"0.7%",beta:0.5,short:"0.8%",target:1050.0},
-  {t:"NBIS",n:"Nebius Group",p:42.0,c:0,pe:null,mktcap:"3.0B",rev:"467%",earn:"ส.ค. 2026",div:null,beta:2.4,short:"6.1%",target:60.0},
-  {t:"AXON",n:"Axon Enterprise",p:500.0,c:0,pe:null,mktcap:"38.0B",rev:"34%",earn:"ส.ค. 2026",div:null,beta:1.3,short:"2.8%",target:620.0},
-  {t:"TMDX",n:"Transmedics",p:67.0,c:0,pe:null,mktcap:"2.4B",rev:"88%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"14.2%",target:100.0},
-  {t:"CRWV",n:"CoreWeave",p:58.0,c:0,pe:null,mktcap:"22.0B",rev:"420%",earn:"ส.ค. 2026",div:null,beta:2.2,short:"5.6%",target:80.0},
-  {t:"MELI",n:"MercadoLibre",p:2250.0,c:0,pe:43.1,mktcap:"114B",rev:"49%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"1.0%",target:2800.0},
-  {t:"QCOM",n:"Qualcomm",p:155.0,c:0,pe:15.2,mktcap:"170B",rev:"13%",earn:"ก.ค. 2026",div:"2.2%",beta:1.3,short:"2.0%",target:195.0},
-  {t:"AMAT",n:"Applied Materials",p:175.0,c:0,pe:17.8,mktcap:"147B",rev:"7%",earn:"ส.ค. 2026",div:"1.0%",beta:1.5,short:"1.4%",target:220.0},
-  {t:"LRCX",n:"Lam Research",p:850.0,c:0,pe:19.4,mktcap:"112B",rev:"24%",earn:"ก.ค. 2026",div:"1.1%",beta:1.5,short:"1.2%",target:1050.0},
-  {t:"CRM",n:"Salesforce",p:285.0,c:0,pe:32.1,mktcap:"274B",rev:"9%",earn:"มิ.ย. 2026",div:"0.5%",beta:1.3,short:"1.0%",target:360.0},
-  {t:"ADBE",n:"Adobe",p:370.0,c:0,pe:24.8,mktcap:"161B",rev:"11%",earn:"มิ.ย. 2026",div:null,beta:1.3,short:"1.5%",target:480.0},
-  {t:"SNOW",n:"Snowflake",p:155.0,c:0,pe:null,mktcap:"52B",rev:"29%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.2%",target:195.0},
-  {t:"DDOG",n:"Datadog",p:115.0,c:0,pe:null,mktcap:"37B",rev:"25%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"2.4%",target:145.0},
-  {t:"MDB",n:"MongoDB",p:190.0,c:0,pe:null,mktcap:"13B",rev:"22%",earn:"มิ.ย. 2026",div:null,beta:1.6,short:"3.8%",target:250.0},
-  {t:"NET",n:"Cloudflare",p:110.0,c:0,pe:null,mktcap:"36B",rev:"27%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"2.6%",target:140.0},
-  {t:"TSLA",n:"Tesla",p:295.0,c:0,pe:85.2,mktcap:"949B",rev:"2%",earn:"ก.ค. 2026",div:null,beta:2.3,short:"3.2%",target:300.0},
-  {t:"V",n:"Visa",p:338.0,c:0,pe:31.4,mktcap:"685B",rev:"9%",earn:"ก.ค. 2026",div:"0.7%",beta:0.9,short:"0.5%",target:400.0},
-  {t:"MA",n:"Mastercard",p:535.0,c:0,pe:36.2,mktcap:"498B",rev:"11%",earn:"ก.ค. 2026",div:"0.6%",beta:1.0,short:"0.5%",target:640.0},
-  {t:"WMT",n:"Walmart",p:98.0,c:0,pe:34.2,mktcap:"791B",rev:"5%",earn:"ส.ค. 2026",div:"1.0%",beta:0.5,short:"0.4%",target:115.0},
-  {t:"FPS",n:"Forgent Power Solutions",p:42.59,c:-1.46,pe:null,mktcap:"12.97B",rev:"0%",earn:"ส.ค. 2026",div:null,beta:1.5,short:null,target:51.0},
-  {t:"NOK",n:"Nokia",p:4.5,c:0,pe:12.3,mktcap:"25B",rev:"3%",earn:"ก.ค. 2026",div:"3.2%",beta:0.7,short:"1.2%",target:6.0},
-  {t:"DELL",n:"Dell Technologies",p:115.0,c:0,pe:18.5,mktcap:"80B",rev:"8%",earn:"ส.ค. 2026",div:"1.5%",beta:1.1,short:"1.8%",target:145.0},
-  {t:"ONDS",n:"Ondas Holdings",p:3.5,c:0,pe:null,mktcap:"0.3B",rev:"25%",earn:"ส.ค. 2026",div:null,beta:2.8,short:"8.5%",target:8.0},
-  {t:"OSS",n:"One Stop Systems",p:8.5,c:0,pe:null,mktcap:"0.1B",rev:"15%",earn:"ส.ค. 2026",div:null,beta:1.8,short:"5.2%",target:12.0},
-  {t:"AEHR",n:"Aehr Test Systems",p:12.0,c:0,pe:null,mktcap:"0.4B",rev:"18%",earn:"ก.ค. 2026",div:null,beta:2.2,short:"14.3%",target:18.0},
-  {t:"SNDK",n:"SanDisk",p:48.0,c:0,pe:null,mktcap:"8.5B",rev:"22%",earn:"ส.ค. 2026",div:null,beta:1.5,short:"3.8%",target:62.0},
-  {t:"AVAV",n:"AeroVironment",p:185.0,c:0,pe:38.2,mktcap:"4.5B",rev:"25%",earn:"ก.ค. 2026",div:null,beta:1.4,short:"6.1%",target:230.0},
-  {t:"STX",n:"Seagate Technology",p:92.0,c:0,pe:18.4,mktcap:"21B",rev:"28%",earn:"ก.ค. 2026",div:"2.8%",beta:1.3,short:"2.6%",target:115.0},
-  {t:"VST",n:"Vistra Energy",p:135.0,c:0,pe:22.1,mktcap:"42B",rev:"18%",earn:"ส.ค. 2026",div:"0.8%",beta:1.6,short:"3.4%",target:168.0},
-  {t:"AMBA",n:"Ambarella",p:62.0,c:0,pe:null,mktcap:"2.3B",rev:"20%",earn:"ก.ย. 2026",div:null,beta:1.9,short:"8.7%",target:82.0},
-  {t:"ORCL",n:"Oracle Corp",p:190.0,c:0,pe:32.5,mktcap:"530B",rev:"12%",earn:"มิ.ย. 2026",div:"1.2%",beta:1.1,short:"1.5%",target:220.0},
+  // t=ticker, n=name — ข้อมูลอื่นทั้งหมดดึง live จาก Worker
+  {t:"RKLB",n:"Rocket Lab"},{t:"EOSE",n:"Eos Energy"},{t:"SLNH",n:"Soluna Holdings"},
+  {t:"MU",n:"Micron Technology"},{t:"NVTS",n:"Navitas Semi"},{t:"ASTS",n:"AST SpaceMobile"},
+  {t:"INTC",n:"Intel"},{t:"AMD",n:"AMD"},{t:"HIMS",n:"Hims & Hers"},{t:"IREN",n:"IREN Ltd"},
+  {t:"ASML",n:"ASML Holding"},{t:"CRWD",n:"CrowdStrike"},{t:"AVGO",n:"Broadcom"},
+  {t:"IONQ",n:"IonQ"},{t:"AAPL",n:"Apple"},{t:"NVDA",n:"Nvidia"},{t:"KTOS",n:"Kratos Defense"},
+  {t:"RBRK",n:"Rubrik"},{t:"AAOI",n:"Applied Optoelectronics"},{t:"HOOD",n:"Robinhood"},
+  {t:"OKLO",n:"Oklo"},{t:"TEM",n:"Tempus AI"},{t:"GOOGL",n:"Alphabet"},{t:"NVO",n:"Novo-Nordisk"},
+  {t:"AMZN",n:"Amazon"},{t:"PLTR",n:"Palantir"},{t:"CRDO",n:"Credo Technology"},
+  {t:"ANET",n:"Arista Networks"},{t:"VRT",n:"Vertiv Holdings"},{t:"ARM",n:"Arm Holdings"},
+  {t:"TSM",n:"Taiwan Semi"},{t:"ISRG",n:"Intuitive Surgical"},{t:"NFLX",n:"Netflix"},
+  {t:"META",n:"Meta Platforms"},{t:"MSFT",n:"Microsoft"},{t:"JPM",n:"JPMorgan Chase"},
+  {t:"XOM",n:"Exxon Mobil"},{t:"SOFI",n:"SoFi Technologies"},{t:"SPGI",n:"S&P Global"},
+  {t:"MP",n:"MP Materials"},{t:"ELF",n:"e.l.f. Beauty"},{t:"AMSC",n:"American Superconductor"},
+  {t:"APP",n:"Applovin"},{t:"COST",n:"Costco Wholesale"},{t:"UNH",n:"UnitedHealth Group"},
+  {t:"BRK.B",n:"Berkshire Hathaway B"},{t:"NOW",n:"ServiceNow"},{t:"LLY",n:"Eli Lilly"},
+  {t:"NBIS",n:"Nebius Group"},{t:"AXON",n:"Axon Enterprise"},{t:"TMDX",n:"Transmedics"},
+  {t:"CRWV",n:"CoreWeave"},{t:"MELI",n:"MercadoLibre"},{t:"QCOM",n:"Qualcomm"},
+  {t:"AMAT",n:"Applied Materials"},{t:"LRCX",n:"Lam Research"},{t:"CRM",n:"Salesforce"},
+  {t:"ADBE",n:"Adobe"},{t:"SNOW",n:"Snowflake"},{t:"DDOG",n:"Datadog"},{t:"MDB",n:"MongoDB"},
+  {t:"NET",n:"Cloudflare"},{t:"TSLA",n:"Tesla"},{t:"V",n:"Visa"},{t:"MA",n:"Mastercard"},
+  {t:"WMT",n:"Walmart"},{t:"FPS",n:"Forgent Power Solutions"},{t:"NOK",n:"Nokia"},
+  {t:"DELL",n:"Dell Technologies"},{t:"ONDS",n:"Ondas Holdings"},{t:"OSS",n:"One Stop Systems"},
+  {t:"AEHR",n:"Aehr Test Systems"},{t:"SNDK",n:"SanDisk"},{t:"AVAV",n:"AeroVironment"},
+  {t:"STX",n:"Seagate Technology"},{t:"VST",n:"Vistra Energy"},{t:"AMBA",n:"Ambarella"},
+  {t:"ORCL",n:"Oracle Corp"},
   // ── ETF ──
-  {t:"SMH",n:"Semiconductor ETF",p:218.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:"0.6%",beta:1.6,short:null,target:null},
-  {t:"VIX",n:"Volatility Index",p:18.0,c:0,pe:null,mktcap:"ETF",rev:"--",earn:null,div:null,beta:null,short:null,target:null},
-];
+  {t:"SMH",n:"Semiconductor ETF"},{t:"VIX",n:"Volatility Index"},
+]
 
 // ── stocks persistence ──
+// Migration: clear localStorage ถ้าเป็น format เก่า (มี hardcode data)
+try{
+  const _saved = localStorage.getItem('_sp_stocks');
+  if(_saved){
+    const _arr = JSON.parse(_saved);
+    // ถ้า saved มี pe หรือ mktcap hardcode อยู่ = format เก่า ให้ลบทิ้ง
+    if(Array.isArray(_arr) && _arr[0] && (_arr[0].mktcap || _arr[0].earn || _arr[0].rev)){
+      localStorage.removeItem('_sp_stocks');
+      console.log('[Migration] cleared old hardcoded stock data');
+    }
+  }
+}catch{}
+
 let stocks=(()=>{
   try{
     const saved=localStorage.getItem('_sp_stocks');
     if(saved){
       const arr=JSON.parse(saved);
       if(Array.isArray(arr)&&arr.length>0){
-        // Merge: เอา metadata จาก STOCKS_DEFAULT ทับ localStorage (ราคาคง saved ไว้)
         const defMap={};
         STOCKS_DEFAULT.forEach(d=>defMap[d.t]=d);
-        // เพิ่ม ticker ใหม่ที่ไม่มีใน saved
         const savedTickers=new Set(arr.map(s=>s.t));
+        // Merge: คงราคาและ live fields จาก saved, เพิ่ม ticker ใหม่
         const merged=arr.map(s=>{
           const def=defMap[s.t];
           if(!def) return s;
-          // Reset ราคาถ้าห่างจาก default มากเกินไป (>80%) = ราคาเก่าผิดพลาด
-          const priceOk = s.p>0 && def.p>0 && Math.abs(s.p-def.p)/def.p <= 0.8;
-          return {...def, p:priceOk?s.p:def.p, c:priceOk?s.c:0};
+          return {
+            t:s.t, n:def.n||s.n,
+            p:s.p||0, c:s.c||0,
+            pe:s.pe||null, mktcap:s.mktcap||null, rev:s.rev||null,
+            earn:s.earn||null, div:s.div||null, beta:s.beta||null,
+            short:s.short||null, target:s.target||null,
+            mktcapLive:s.mktcapLive||null, revLive:s.revLive||null,
+            earnLive:s.earnLive||null, divLive:s.divLive||null,
+            epsLive:s.epsLive||null, high52:s.high52||null, low52:s.low52||null,
+            sectorLive:s.sectorLive||null,
+          };
         });
         STOCKS_DEFAULT.forEach(d=>{
-          if(!savedTickers.has(d.t)) merged.push(JSON.parse(JSON.stringify(d)));
+          if(!savedTickers.has(d.t)) merged.push({t:d.t, n:d.n, p:0, c:0});
         });
         return merged;
       }
     }
   }catch{}
-  return JSON.parse(JSON.stringify(STOCKS_DEFAULT));
+  return STOCKS_DEFAULT.map(d=>({t:d.t, n:d.n, p:0, c:0}));
 })();
 
 function saveStocks(){
@@ -1738,7 +1703,72 @@ function _rebuildStocksMap(){
 }
 _rebuildStocksMap();
 
-// ── localStorage cache: ลด disk reads ──
+// ── initLiveData: ดึง fundamentals ทุกตัวตอน startup ──
+async function initLiveData(){
+  const ETF_SET = new Set(['SMH','VIX']);
+  const tickers = stocks.filter(s=>!ETF_SET.has(s.t)).map(s=>s.t);
+  const BATCH = 10;
+  for(let i=0; i<tickers.length; i+=BATCH){
+    const chunk = tickers.slice(i, i+BATCH);
+    try{
+      const r = await fetch(`${PRICES_WORKER}/metrics/batch?t=${chunk.join(',')}`,{signal:AbortSignal.timeout(8000)});
+      const d = await r.json();
+      if(d?.metrics){
+        for(const [ticker, met] of Object.entries(d.metrics)){
+          const s = stocksMap.get(ticker);
+          if(!s||!met) continue;
+          if(met.pe!=null){ const pe=+met.pe; if(pe>=-500&&pe<=5000) s.pe=+pe.toFixed(1); }
+          if(met.eps!=null){ const eps=+met.eps; if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2); }
+          if(met.revGrowth!=null){ const g=+met.revGrowth*100; if(g>=-100&&g<=2000) s.revLive=g.toFixed(1)+'%'; }
+          if(met.mktcap!=null){ const mc=+met.mktcap; if(mc>=1) s.mktcapLive=mc>=1000000?`$${(mc/1000000).toFixed(1)}T`:mc>=1000?`$${(mc/1000).toFixed(1)}B`:`$${mc.toFixed(0)}M`; }
+          if(met.beta!=null){ const b=+met.beta; if(b>=-5&&b<=10) s.beta=+b.toFixed(2); }
+          if(met.div!=null){ const dv=+met.div; if(dv>=0&&dv<=30) s.divLive=dv.toFixed(2)+'%'; }
+          const curP=s.p||0;
+          if(met.high52!=null){ const h=+met.high52; if(h>0&&(!curP||h<=curP*5)) s.high52=h; }
+          if(met.low52!=null){ const l=+met.low52; if(l>0&&(!curP||l>=curP*0.1)) s.low52=l; }
+          if(met.shortFloat!=null){ const sf=+met.shortFloat; if(sf>=0&&sf<=100) s.short=sf.toFixed(1)+'%'; }
+          // D/E และ FCF → fundExtra
+          if(!fundExtra[ticker]) fundExtra[ticker]={};
+          if(met.de!=null) fundExtra[ticker].de=+met.de;
+          if(met.fcf!=null){
+            const fcfB=met.fcf/1e9;
+            fundExtra[ticker].fcf=(fcfB>=0?'$':'$')+fcfB.toFixed(1).replace('-','-$')+'B';
+          }
+        }
+      }
+    }catch(e){ console.warn('initLiveData metrics error',e); }
+    // ดึง target + earnDate + sector profile ทีละตัว
+    for(const ticker of chunk){
+      try{
+        const [tgtRes, profRes] = await Promise.allSettled([
+          fetch(`${PRICES_WORKER}/stock/target?t=${ticker}`,{signal:AbortSignal.timeout(6000)}),
+          fetch(`${PRICES_WORKER}/stock/profile?t=${ticker}`,{signal:AbortSignal.timeout(6000)}),
+        ]);
+        const s = stocksMap.get(ticker);
+        if(s){
+          if(tgtRes.status==='fulfilled'){
+            const tgt = await tgtRes.value.json().catch(()=>({}));
+            if(tgt.target!=null){ const t=+tgt.target; if(t>0) s.target=+t.toFixed(2); }
+            if(tgt.nextEarn) s.earnLive=tgt.nextEarn;
+          }
+          if(profRes.status==='fulfilled'){
+            const prof = await profRes.value.json().catch(()=>({}));
+            if(prof.industry) s.sectorLive=prof.industry;
+            if(prof.name && !s.n) s.n=prof.name;
+            if(prof.logo) s.logoLive=prof.logo;
+            if(prof.webUrl) s.webUrlLive=prof.webUrl;
+          }
+        }
+      }catch{}
+      await new Promise(r=>setTimeout(r,150));
+    }
+    if(i+BATCH<tickers.length) await new Promise(r=>setTimeout(r,500));
+  }
+  saveStocks();
+  console.log('[LiveData] init complete');
+}
+
+
 const _lsCache = {};
 function _lsGet(key){
   if(key in _lsCache) return _lsCache[key];
@@ -1754,33 +1784,10 @@ function _lsDel(key){
   try{ localStorage.removeItem(key); }catch{}
 }
 
-const rsiData={SMH:52.0,VIX:45.0,NVDA:61.7,AAPL:68.9,MSFT:60.1,GOOGL:67.2,META:53.2,AMZN:48.7,TSLA:55.0,AXON:62.4,CRWD:52.9,PLTR:48.2,RKLB:47.3,ASTS:46.9,AMD:41.5,INTC:36.8,MU:43.1,AVGO:49.2,ARM:58.6,TSM:46.3,ASML:50.6,IONQ:38.4,OKLO:55.7,HIMS:39.4,LLY:42.6,NVO:41.3,ISRG:52.8,NOW:58.3,NFLX:49.5,JPM:44.3,XOM:38.2,V:58.0,MA:57.0,QCOM:50.0,AMAT:48.0,LRCX:47.0,CRM:52.0,ADBE:45.0,SNOW:42.0,DDOG:50.0,MDB:44.0,NET:48.0,AAOI:55.0,NOK:45.0,DELL:48.0,ONDS:42.0,EOSE:38.0,SLNH:44.0,NVTS:41.0,IREN:46.0,KTOS:54.0,RBRK:51.0,HOOD:58.0,TEM:49.0,CRDO:56.0,ANET:53.0,VRT:57.0,SOFI:46.0,SPGI:52.0,MP:40.0,ELF:43.0,AMSC:48.0,APP:62.0,COST:55.0,UNH:38.0,NBIS:44.0,TMDX:47.0,CRWV:52.0,MELI:54.0,WMT:56.0,FPS:45.0,OSS:40.0,AEHR:36.0,SNDK:49.0,AVAV:55.0,STX:51.0,VST:58.0,AMBA:46.0};
+const rsiData={}; // RSI คำนวณ live จาก candle data
 
-// ── Fundamental Extra Data: D/E ratio and Free Cash Flow ──
-const fundExtra={
-  NVDA:{de:0.42,fcf:'$40B'},AAPL:{de:1.77,fcf:'$108B'},MSFT:{de:0.35,fcf:'$74B'},
-  GOOGL:{de:0.07,fcf:'$69B'},META:{de:0.06,fcf:'$52B'},AMZN:{de:0.51,fcf:'$38B'},
-  TSLA:{de:0.09,fcf:'$3.5B'},AVGO:{de:1.04,fcf:'$19B'},NFLX:{de:0.68,fcf:'$7.0B'},
-  AMD:{de:0.04,fcf:'$2.1B'},INTC:{de:0.48,fcf:'-$12B'},MU:{de:0.28,fcf:'$4.2B'},
-  ASML:{de:0.42,fcf:'$8.2B'},TSM:{de:0.31,fcf:'$22B'},ARM:{de:0.05,fcf:'$1.1B'},
-  CRWD:{de:0.26,fcf:'$1.2B'},PLTR:{de:0.00,fcf:'$0.9B'},NOW:{de:0.22,fcf:'$3.5B'},
-  CRM:{de:0.14,fcf:'$9.1B'},ADBE:{de:0.41,fcf:'$7.8B'},SNOW:{de:0.00,fcf:'$0.3B'},
-  DDOG:{de:0.00,fcf:'$0.7B'},NET:{de:0.37,fcf:'$0.3B'},MDB:{de:0.44,fcf:'$0.3B'},
-  LLY:{de:1.88,fcf:'$8.3B'},NVO:{de:0.49,fcf:'$9.4B'},ISRG:{de:0.00,fcf:'$2.1B'},
-  HIMS:{de:0.00,fcf:'$0.2B'},V:{de:0.98,fcf:'$20B'},MA:{de:2.31,fcf:'$12B'},
-  JPM:{de:null,fcf:null},XOM:{de:0.21,fcf:'$16B'},
-  SOFI:{de:null,fcf:null},QCOM:{de:0.56,fcf:'$3.1B'},AMAT:{de:0.40,fcf:'$5.8B'},
-  LRCX:{de:1.02,fcf:'$4.0B'},AXON:{de:0.21,fcf:'$0.8B'},VRT:{de:0.89,fcf:'$1.1B'},
-  ANET:{de:0.00,fcf:'$2.1B'},MELI:{de:1.34,fcf:'$2.8B'},RBRK:{de:0.12,fcf:'$0.5B'},
-  HOOD:{de:0.00,fcf:'$0.6B'},
-  NOK:{de:0.35,fcf:'$1.2B'},
-  DELL:{de:null,fcf:'$3.5B'},
-  WMT:{de:0.57,fcf:'$19B'},SPGI:{de:0.74,fcf:'$4.7B'},
-  RKLB:{de:0.62,fcf:'-$0.3B'},ASTS:{de:0.85,fcf:'-$0.4B'},OKLO:{de:0.00,fcf:'-$0.1B'},
-  IONQ:{de:0.00,fcf:'-$0.3B'},TEM:{de:0.22,fcf:'-$0.6B'},CRWV:{de:1.54,fcf:'-$2.1B'},
-  NBIS:{de:0.18,fcf:'-$0.2B'},KTOS:{de:0.32,fcf:'$0.1B'},MP:{de:0.45,fcf:'-$0.2B'},
-  FPS:{de:0.30,fcf:null},
-};
+// ── Fundamental Extra Data: D/E ratio and Free Cash Flow (ดึง live จาก Worker) ──
+const fundExtra={}; // populated by initLiveData via /metrics endpoint
 
 // ── คำนวณ Fundamental Score (0-100) ──
 function calcFundScore(s){
@@ -1788,8 +1795,8 @@ function calcFundScore(s){
   const fe=fundExtra[s.t]||{};
   // 1. กำไร/ขาดทุน
   if(s.pe) score+=20; else score+=0;
-  // 2. Revenue Growth
-  const rev=parseFloat(s.rev||0);
+  // 2. Revenue Growth (prefer live)
+  const rev=parseFloat(s.revLive||s.rev||0);
   if(rev>=50) score+=25;
   else if(rev>=20) score+=18;
   else if(rev>=10) score+=12;
@@ -1817,8 +1824,9 @@ function calcFundScore(s){
     else if(sh<10) score+=5;
     else if(sh>15) score-=5;
   }
-  // 6. Dividend (bonus)
-  if(s.div&&parseFloat(s.div)>0) score+=5;
+  // 6. Dividend (prefer live)
+  const divVal=parseFloat(s.divLive||s.div||0);
+  if(divVal>0) score+=5;
   // 7. Free Cash Flow
   if(fe.fcf){
     const fcfStr=fe.fcf||'';
@@ -1841,7 +1849,7 @@ function getFundRating(score){
 }
 
 // S1 อัพเดทตามราคาจริง พ.ค. 2026
-const sup0={SMH:200.0,VIX:14.0,RKLB:95.00,EOSE:7.00,SLNH:1.45,MU:92.00,NVTS:5.80,ASTS:24.50,INTC:18.50,AMD:95.00,HIMS:30.00,IREN:11.20,ASML:640.0,CRWD:390.0,AVGO:190.0,IONQ:44.00,AAPL:188.0,NVDA:108.0,KTOS:28.50,RBRK:60.00,AAOI:25.00,HOOD:52.00,OKLO:37.00,TEM:48.00,GOOGL:155.0,NVO:62.00,AMZN:195.0,PLTR:108.0,CRDO:65.00,ANET:82.00,VRT:88.00,ARM:118.0,TSM:155.0,ISRG:510.0,NFLX:980.0,META:540.0,MSFT:380.0,JPM:240.0,XOM:108.0,SOFI:15.00,SPGI:480.0,MP:18.00,NOW:860.0,LLY:720.0,NBIS:35.00,AXON:430.0,TMDX:58.00,CRWV:48.00,MELI:1950.0,QCOM:135.0,AMAT:152.0,LRCX:740.0,CRM:248.0,ADBE:330.0,SNOW:135.0,DDOG:95.00,MDB:165.0,NET:92.00,TSLA:240.0,V:308.0,MA:475.0,WMT:88.00,ELF:28.00,AMSC:18.00,APP:280.0,COST:920.0,UNH:260.0,"BRK.B":420.0,FPS:38.00,NOK:4.00,DELL:105.0,ONDS:3.00,OSS:7.00,AEHR:10.00,SNDK:42.00,AVAV:165.0,STX:82.00,VST:120.0,AMBA:55.00};
+const sup0={}; // Support levels คำนวณจาก candle data เท่านั้น
 
 const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX','AAOI'],
@@ -1856,53 +1864,39 @@ const sectorMap={'ETF':['SMH','VIX'],
   'พลังงาน':['XOM','EOSE','SLNH','MP','AMSC','UUUU','NNE','FPS'],
 };
 
+// ── getSector: prefer live sector จาก Finnhub profile ──
+function getSector(tickerOrStock){
+  const t = typeof tickerOrStock==='string' ? tickerOrStock : tickerOrStock?.t;
+  const s = typeof tickerOrStock==='object' ? tickerOrStock : stocksMap.get(t);
+  if(s?.sectorLive) return s.sectorLive;
+  return Object.entries(sectorMap).find(([,v])=>v.includes(t))?.[0]||'อื่นๆ';
+}
+
 // ── Historical Earnings (8 quarters, Q1-Q4 2024 + Q1-Q4 2025) ──
 // format: {q: 'Q1\'24', eps: actual, epsEst: estimate, rev: actual $B, revEst: $B}
-const histEarnings={
-  NVDA:[
-    {q:"Q1'24",eps:0.61,epsEst:0.52,rev:26.0,revEst:24.6},{q:"Q2'24",eps:0.68,epsEst:0.64,rev:30.0,revEst:28.7},
-    {q:"Q3'24",eps:0.81,epsEst:0.74,rev:35.1,revEst:33.2},{q:"Q4'24",eps:0.89,epsEst:0.85,rev:39.3,revEst:38.0},
-    {q:"Q1'25",eps:0.94,epsEst:0.89,rev:44.1,revEst:43.3},{q:"Q2'25",eps:null,epsEst:1.02,rev:null,revEst:48.0}
-  ],
-  AAPL:[
-    {q:"Q1'24",eps:2.18,epsEst:2.10,rev:119.6,revEst:117.9},{q:"Q2'24",eps:1.53,epsEst:1.50,rev:85.8,revEst:84.7},
-    {q:"Q3'24",eps:1.64,epsEst:1.60,rev:94.9,revEst:94.3},{q:"Q4'24",eps:2.40,epsEst:2.35,rev:124.3,revEst:123.2},
-    {q:"Q1'25",eps:1.65,epsEst:1.61,rev:90.8,revEst:89.5},{q:"Q2'25",eps:null,epsEst:1.72,rev:null,revEst:93.0}
-  ],
-  MSFT:[
-    {q:"Q1'24",eps:2.93,epsEst:2.82,rev:61.9,revEst:60.9},{q:"Q2'24",eps:3.23,epsEst:3.10,rev:64.7,revEst:64.5},
-    {q:"Q3'24",eps:3.30,epsEst:3.22,rev:65.6,revEst:64.5},{q:"Q4'24",eps:3.46,epsEst:3.32,rev:70.1,revEst:68.9},
-    {q:"Q1'25",eps:3.46,epsEst:3.35,rev:70.1,revEst:68.7},{q:"Q2'25",eps:null,epsEst:3.65,rev:null,revEst:73.5}
-  ],
-  GOOGL:[
-    {q:"Q1'24",eps:1.89,epsEst:1.51,rev:80.5,revEst:78.6},{q:"Q2'24",eps:1.89,epsEst:1.84,rev:84.7,revEst:84.2},
-    {q:"Q3'24",eps:2.12,epsEst:1.84,rev:88.3,revEst:86.5},{q:"Q4'24",eps:2.15,epsEst:2.12,rev:86.3,revEst:85.3},
-    {q:"Q1'25",eps:2.81,epsEst:2.01,rev:90.2,revEst:89.2},{q:"Q2'25",eps:null,epsEst:2.25,rev:null,revEst:93.5}
-  ],
-  META:[
-    {q:"Q1'24",eps:4.71,epsEst:4.30,rev:36.5,revEst:36.2},{q:"Q2'24",eps:5.16,epsEst:4.73,rev:39.1,revEst:38.3},
-    {q:"Q3'24",eps:6.03,epsEst:5.25,rev:40.6,revEst:40.3},{q:"Q4'24",eps:8.02,epsEst:6.76,rev:48.4,revEst:47.1},
-    {q:"Q1'25",eps:6.43,epsEst:5.28,rev:42.3,revEst:41.4},{q:"Q2'25",eps:null,epsEst:6.80,rev:null,revEst:43.9}
-  ],
-  AMZN:[
-    {q:"Q1'24",eps:0.98,epsEst:0.83,rev:143.3,revEst:142.6},{q:"Q2'24",eps:1.26,epsEst:1.03,rev:148.0,revEst:148.6},
-    {q:"Q3'24",eps:1.43,epsEst:1.14,rev:158.9,revEst:157.3},{q:"Q4'24",eps:1.86,epsEst:1.49,rev:187.8,revEst:187.3},
-    {q:"Q1'25",eps:1.59,epsEst:1.36,rev:155.7,revEst:155.0},{q:"Q2'25",eps:null,epsEst:1.80,rev:null,revEst:162.5}
-  ],
-  TSLA:[
-    {q:"Q1'24",eps:0.45,epsEst:0.51,rev:21.3,revEst:22.1},{q:"Q2'24",eps:0.52,epsEst:0.62,rev:25.2,revEst:24.8},
-    {q:"Q3'24",eps:0.72,epsEst:0.60,rev:25.2,revEst:25.5},{q:"Q4'24",eps:0.73,epsEst:0.76,rev:25.7,revEst:27.2},
-    {q:"Q1'25",eps:0.27,epsEst:0.41,rev:19.3,revEst:21.3},{q:"Q2'25",eps:null,epsEst:0.44,rev:null,revEst:23.1}
-  ],
-  NVTS:[{q:"Q1'24",eps:-0.12,epsEst:-0.11,rev:20.3,revEst:19.5},{q:"Q2'24",eps:-0.11,epsEst:-0.10,rev:22.1,revEst:21.0},{q:"Q3'24",eps:-0.09,epsEst:-0.10,rev:24.2,revEst:23.0},{q:"Q4'24",eps:-0.11,epsEst:-0.09,rev:22.0,revEst:23.5},{q:"Q1'25",eps:null,epsEst:-0.09,rev:null,revEst:23.0}],
-  RKLB:[{q:"Q1'24",eps:-0.11,epsEst:-0.10,rev:92.8,revEst:90.0},{q:"Q2'24",eps:-0.09,epsEst:-0.09,rev:106.3,revEst:104.0},{q:"Q3'24",eps:-0.10,epsEst:-0.09,rev:104.8,revEst:105.0},{q:"Q4'24",eps:-0.09,epsEst:-0.09,rev:143.2,revEst:130.0},{q:"Q1'25",eps:null,epsEst:-0.08,rev:null,revEst:150.0}],
-  PLTR:[{q:"Q1'24",eps:0.08,epsEst:0.08,rev:634.3,revEst:624.7},{q:"Q2'24",eps:0.09,epsEst:0.09,rev:678.1,revEst:652.1},{q:"Q3'24",eps:0.10,epsEst:0.09,rev:725.5,revEst:701.0},{q:"Q4'24",eps:0.14,epsEst:0.11,rev:828.0,revEst:776.6},{q:"Q1'25",eps:0.13,epsEst:0.13,rev:884.4,revEst:862.7},{q:"Q2'25",eps:null,epsEst:0.14,rev:null,revEst:921.0}],
-  AMD:[{q:"Q1'24",eps:0.62,epsEst:0.61,rev:5.5,revEst:5.5},{q:"Q2'24",eps:0.69,epsEst:0.68,rev:5.8,revEst:5.7},{q:"Q3'24",eps:0.92,epsEst:0.92,rev:6.8,revEst:6.7},{q:"Q4'24",eps:1.09,epsEst:1.08,rev:7.7,revEst:7.5},{q:"Q1'25",eps:0.96,epsEst:0.94,rev:7.4,revEst:7.1},{q:"Q2'25",eps:null,epsEst:1.10,rev:null,revEst:8.0}],
-  CRWD:[{q:"Q1'24",eps:0.93,epsEst:0.90,rev:921.0,revEst:905.0},{q:"Q2'24",eps:1.04,epsEst:0.98,rev:963.9,revEst:955.9},{q:"Q3'24",eps:0.93,epsEst:0.81,rev:1.01e3,revEst:982.4},{q:"Q4'24",eps:1.29,epsEst:1.04,rev:1.1e3,revEst:1.07e3},{q:"Q1'25",eps:1.10,epsEst:1.02,rev:1.1e3,revEst:1.10e3},{q:"Q2'25",eps:null,epsEst:1.17,rev:null,revEst:1.20e3}],
-  NFLX:[{q:"Q1'24",eps:5.28,epsEst:4.49,rev:9.4,revEst:9.3},{q:"Q2'24",eps:4.88,epsEst:4.74,rev:9.6,revEst:9.5},{q:"Q3'24",eps:5.40,epsEst:5.12,rev:9.8,revEst:9.8},{q:"Q4'24",eps:4.27,epsEst:4.20,rev:10.2,revEst:10.1},{q:"Q1'25",eps:6.61,epsEst:5.72,rev:10.5,revEst:10.5},{q:"Q2'25",eps:null,epsEst:7.03,rev:null,revEst:11.0}],
-  LLY:[{q:"Q1'24",eps:2.58,epsEst:2.46,rev:8.8,revEst:8.9},{q:"Q2'24",eps:3.92,epsEst:2.60,rev:11.3,revEst:9.9},{q:"Q3'24",eps:1.18,epsEst:1.45,rev:11.4,revEst:12.1},{q:"Q4'24",eps:5.32,epsEst:4.88,rev:13.5,revEst:13.0},{q:"Q1'25",eps:3.34,epsEst:3.02,rev:12.7,revEst:12.6},{q:"Q2'25",eps:null,epsEst:4.50,rev:null,revEst:14.5}],
-  V:[{q:"Q1'24",eps:2.51,epsEst:2.44,rev:8.8,revEst:8.6},{q:"Q2'24",eps:2.42,epsEst:2.42,rev:8.9,revEst:8.9},{q:"Q3'24",eps:2.71,epsEst:2.68,rev:9.1,revEst:9.1},{q:"Q4'24",eps:2.65,epsEst:2.58,rev:9.5,revEst:9.4},{q:"Q1'25",eps:2.76,epsEst:2.68,rev:9.6,revEst:9.6},{q:"Q2'25",eps:null,epsEst:2.95,rev:null,revEst:10.0}],
-};
+// ── Historical Earnings: ดึง live จาก Worker /stock/earnings ──
+const histEarnings={}; // populated dynamically
+async function loadHistEarnings(ticker){
+  if(histEarnings[ticker]) return histEarnings[ticker];
+  try{
+    const r=await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)});
+    const d=await r.json();
+    const raw=d?.data||[];
+    if(raw.length>0){
+      // Finnhub format: [{period, actual, estimate}]
+      const mapped=raw.slice(0,8).reverse().map(e=>({
+        q:e.period||'',
+        eps:e.actual!=null?+e.actual:null,
+        epsEst:e.estimate!=null?+e.estimate:null,
+        rev:null, revEst:null,
+      }));
+      histEarnings[ticker]=mapped;
+      return mapped;
+    }
+  }catch(e){ console.warn('loadHistEarnings error',e); }
+  return null;
+}
+
 
 // ── Insider Activity Data (ย้อนหลัง 6 เดือน) ──
 const insiderData={}; // ข้อมูล fallback ว่าง — ใช้ Finnhub live แทน
@@ -1982,35 +1976,19 @@ async function renderInsiderAsync(ticker, containerId){
   renderInsider(ticker, containerId);
 }
 
-// ── Peer Comparison
+// ── Peer Groups: ดึง live จาก Worker /stock/peers ──
+const peerGroups={}; // populated dynamically
+async function loadPeerGroups(ticker){
+  if(peerGroups[ticker]) return peerGroups[ticker];
+  try{
+    const r=await fetch(`${PRICES_WORKER}/stock/peers?t=${ticker}`,{signal:AbortSignal.timeout(6000)});
+    const d=await r.json();
+    const peers=(d?.peers||[]).filter(p=>p!==ticker).slice(0,3);
+    if(peers.length>0){ peerGroups[ticker]=peers; return peers; }
+  }catch(e){ console.warn('loadPeerGroups error',e); }
+  return [];
+}
 
-// ── Peer Comparison (กลุ่มหุ้นเดียวกัน) ──
-const peerGroups={
-  // [ticker]: [peer1, peer2, peer3, ...]
-  NVDA:['AMD','INTC','AVGO'],AMD:['NVDA','INTC','QCOM'],INTC:['NVDA','AMD','QCOM'],
-  AVGO:['NVDA','QCOM','AMAT'],QCOM:['AMD','AVGO','INTC'],AMAT:['LRCX','ASML','QCOM'],
-  LRCX:['AMAT','ASML','MU'],ASML:['AMAT','LRCX','TSM'],TSM:['INTC','AVGO','ASML'],
-  MU:['AMD','NVDA','INTC'],ARM:['NVDA','AMD','QCOM'],CRDO:['AVGO','ANET','NVDA'],
-  AAPL:['MSFT','GOOGL','META'],MSFT:['AAPL','GOOGL','AMZN'],GOOGL:['META','MSFT','AMZN'],
-  META:['GOOGL','MSFT','AAPL'],AMZN:['MSFT','GOOGL','NFLX'],PLTR:['CRM','SNOW','DDOG'],
-  NOW:['CRM','ADBE','PLTR'],CRM:['NOW','ADBE','SNOW'],ADBE:['CRM','NOW','MSFT'],
-  SNOW:['DDOG','MDB','NET'],DDOG:['SNOW','NET','MDB'],MDB:['SNOW','DDOG','NET'],
-  NET:['CRWD','DDOG','SNOW'],CRWD:['NET','RBRK','AXON'],RBRK:['CRWD','NET','PLTR'],
-  NFLX:['META','GOOGL','AMZN'],AXON:['CRWD','KTOS','PLTR'],
-  ANET:['CRWD','VRT','NBIS'],VRT:['ANET','NVDA','CRWV'],
-  RKLB:['ASTS','KTOS','IONQ'],ASTS:['RKLB','IONQ','OKLO'],KTOS:['RKLB','AXON','PLTR'],
-  IONQ:['OKLO','RKLB','ASTS'],OKLO:['IONQ','ASTS','RKLB'],TEM:['HIMS','LLY','NVO'],
-  LLY:['NVO','ISRG','TMDX'],NVO:['LLY','HIMS','ISRG'],ISRG:['LLY','TMDX','NVO'],
-  HIMS:['NVO','LLY','TEM'],TMDX:['ISRG','LLY','NVO'],
-  JPM:['V','MA','SOFI'],HOOD:['SOFI','JPM','V'],SOFI:['HOOD','JPM','V'],
-  V:['MA','JPM','SOFI'],MA:['V','JPM','SOFI'],
-  TSLA:['NIO','VRT','ANET'],
-  WMT:['COST','AMZN','SPGI'],
-  XOM:['SLNH','MP','EOSE'],EOSE:['XOM','MP','SLNH'],MP:['XOM','EOSE','SLNH'],
-  MELI:['AMZN','V','MA'],SPGI:['MSFT','V','JPM'],
-  CRWV:['ANET','VRT','NBIS'],NBIS:['CRWV','ANET','VRT'],
-  IREN:['EOSE','SLNH','XOM'],NVTS:['AMD','AVGO','QCOM'],SLNH:['XOM','EOSE','MP'],
-};
 
 // ── Finnhub key ย้ายไปเก็บใน Cloudflare Worker secret แล้ว ──
 // Client ไม่มี key อีกต่อไป — ทุก request ผ่าน WORKER endpoint
@@ -2768,7 +2746,7 @@ function makeCard(s){
           <div class="card-ticker">${s.t}</div>
           <div class="card-name">${s.n}</div>
           <div class="card-badges">
-            ${s.earn?`<div class="card-badge earn">📅 ${s.earn}</div>`:''}
+            ${(s.earnLive||s.earn)?`<div class="card-badge earn">📅 ${s.earnLive||s.earn}</div>`:''}
             <div class="card-badge">RSI ${rsi}</div>
             ${shortSqueezeTag}
           </div>
@@ -2943,26 +2921,10 @@ function buildLogoFallback(t){
 }
 
 function getLogoUrl(t){
-  const m={
-    NVDA:'nvidia.com', AAPL:'apple.com', MSFT:'microsoft.com', GOOGL:'google.com',
-    META:'meta.com', AMZN:'amazon.com', TSLA:'tesla.com', AMD:'amd.com',
-    INTC:'intel.com', AVGO:'broadcom.com', PLTR:'palantir.com', CRWD:'crowdstrike.com',
-    NFLX:'netflix.com', NOW:'servicenow.com', AXON:'axon.com', ANET:'arista.com',
-    VRT:'vertiv.com', ARM:'arm.com', TSM:'tsmc.com', ASML:'asml.com',
-    JPM:'jpmorganchase.com', XOM:'exxonmobil.com', V:'visa.com', MA:'mastercard.com',
-    PYPL:'paypal.com', WMT:'walmart.com',
-    CRM:'salesforce.com', ADBE:'adobe.com', SNOW:'snowflake.com', DDOG:'datadoghq.com',
-    MDB:'mongodb.com', NET:'cloudflare.com', RKLB:'rocketlabusa.com', HOOD:'robinhood.com',
-    SOFI:'sofi.com', LLY:'lilly.com', NVO:'novonordisk.com', ISRG:'intuitivesurgical.com',
-    QCOM:'qualcomm.com', AMAT:'appliedmaterials.com', LRCX:'lamresearch.com',
-    MU:'micron.com', ASTS:'ast-science.com', HIMS:'hims.com', IREN:'iren.com',
-    IONQ:'ionq.com', OKLO:'oklo.com', TEM:'tempus.com', CRDO:'credotechnology.com',
-    SPGI:'spglobal.com', MP:'mpmaterials.com', NBIS:'nebius.com', TMDX:'transmedics.com',
-    CRWV:'coreweave.com', MELI:'mercadolibre.com',
-    KTOS:'kratosdefense.com', RBRK:'rubrik.com', EOSE:'eosenergy.com',
-    SLNH:'solunaholdings.com', NVTS:'navitassemi.com',
-  };
-  return m[t]||(t.toLowerCase()+'.com');
+  const s=stocksMap.get(t);
+  if(s?.logoLive) return s.logoLive;
+  // fallback: Clearbit with guessed domain
+  return `https://logo.clearbit.com/${t.toLowerCase()}.com`;
 }
 
 // ── Sector buttons ──
@@ -3053,7 +3015,7 @@ function getVisibleStocks(){
   }
   else if(currentSort==='div'){
     // กรองเฉพาะหุ้นที่มีปันผล แล้วเรียงจากมากไปน้อย
-    list=list.filter(s=>s.div&&parseFloat(s.div)>0);
+    list=list.filter(s=>(s.divLive||s.div)&&parseFloat(s.divLive||s.div)>0);
     list.sort((a,b)=>parseFloat(b.div||0)-parseFloat(a.div||0));
   }
   else if(currentSort==='fundscore'){
@@ -3436,10 +3398,11 @@ document.getElementById('drawer').addEventListener('touchend',e=>{
 },{passive:true});
 
 // ── renderEarningsChart — Canvas bar chart ──
-function renderEarningsChart(ticker, containerId){
-  const data=histEarnings[ticker];
+async function renderEarningsChart(ticker, containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
+  el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px 0">กำลังโหลด...</div>';
+  const data=await loadHistEarnings(ticker);
   if(!data||!data.length){
     el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px 0">ไม่มีข้อมูล Earnings ย้อนหลัง</div>';
     return;
@@ -3767,10 +3730,11 @@ function renderInsider(ticker, containerId){
 }
 
 // ── renderPeerComparison ──
-function renderPeerComparison(ticker, containerId){
+async function renderPeerComparison(ticker, containerId){
   const el=document.getElementById(containerId);
   if(!el) return;
-  const peers=peerGroups[ticker]||[];
+  el.innerHTML='<div style="color:var(--text3);font-size:11px;text-align:center;padding:16px 0">กำลังโหลด...</div>';
+  const peers=await loadPeerGroups(ticker);
   const tickers=[ticker,...peers.slice(0,3)];
   const peerStocks=tickers.map(t=>stocksMap.get(t)).filter(Boolean);
   if(peerStocks.length<2){
@@ -3784,10 +3748,10 @@ function renderPeerComparison(ticker, containerId){
   peerStocks.forEach(s=>{
     const isCurrent=s.t===ticker;
     const peStr=s.pe?s.pe.toString():'N/A';
-    const revStr=s.rev||'N/A';
-    const mcStr=s.mktcap||'N/A';
+    const revStr=s.revLive||s.rev||'N/A';
+    const mcStr=s.mktcapLive||s.mktcap||'N/A';
     const peColor=s.pe?(s.pe<25?'var(--green)':s.pe<50?'var(--gold)':'var(--red)'):'var(--text3)';
-    const revNum=parseFloat(s.rev||0);
+    const revNum=parseFloat(s.revLive||s.rev||0);
     const revColor=revNum>=20?'var(--green)':revNum>=0?'var(--gold)':'var(--red)';
     html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:8px 0;border-bottom:1px solid var(--border);${isCurrent?'background:rgba(201,168,76,0.05);border-radius:6px;':''}">
       <span style="font-size:12px;font-weight:${isCurrent?'800':'600'};color:${isCurrent?'var(--gold)':'var(--text)'}; font-family:'Syne',sans-serif">${s.t}${isCurrent?' ◈':''}</span>
@@ -3798,10 +3762,11 @@ function renderPeerComparison(ticker, containerId){
   });
 
   // Bar chart: Revenue Growth comparison
-  const maxRev=Math.max(...peerStocks.map(s=>Math.abs(parseFloat(s.rev||0))));
+  const maxRev=Math.max(...peerStocks.map(s=>Math.abs(parseFloat(s.revLive||s.rev||0))));
   html+=`<div style="margin-top:12px"><div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-family:'Syne',sans-serif;margin-bottom:8px">Revenue Growth เปรียบเทียบ</div>`;
   peerStocks.forEach(s=>{
-    const rev=parseFloat(s.rev||0);
+    const revDisplay=s.revLive||s.rev||'N/A';
+    const rev=parseFloat(s.revLive||s.rev||0);
     const pct=maxRev>0?Math.abs(rev)/maxRev*100:0;
     const color=rev>=20?'var(--green)':rev>=0?'var(--gold)':'var(--red)';
     const isCurrent=s.t===ticker;
@@ -3810,7 +3775,7 @@ function renderPeerComparison(ticker, containerId){
       <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.5s ease"></div>
       </div>
-      <span style="font-size:11px;font-weight:600;color:${color};width:38px;text-align:right">${s.rev||'N/A'}</span>
+      <span style="font-size:11px;font-weight:600;color:${color};width:38px;text-align:right">${revDisplay}</span>
     </div>`;
   });
   html+='</div>';
@@ -3818,7 +3783,7 @@ function renderPeerComparison(ticker, containerId){
 }
 
 
-function drawerTab(tab, btn){
+async function drawerTab(tab, btn){
   document.querySelectorAll('.drawer-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   currentDrawerTab = tab;
@@ -3997,14 +3962,14 @@ function drawerTab(tab, btn){
   } else if(tab==='fund'){
     // ── Fundamental Tab ──
     try {
-    const sector = Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    const sector = getSector(s);
     const s1 = getS1(s.t,s.p);
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
     const epsVal = eData?.eps || 'N/A';
     const revVal = eData?.rev || 'N/A';
-    // ── Earnings Preview (ถ้าอยู่ใน 14 วัน) ──
-    const _daysToEarn = s.earn ? _getEarningsDaysLeft(s.earn) : null;
+    const _earnDisplay = s.earnLive||s.earn;
+    const _daysToEarn = _earnDisplay ? _getEarningsDaysLeft(_earnDisplay) : null;
     const _showEarnPreview = _daysToEarn !== null && _daysToEarn >= 0 && _daysToEarn <= 14;
     const candles = candleCache[s.t]?.data;
     let high52='N/A', low52='N/A', pctHiRow='', pctLoRow='';
@@ -4022,7 +3987,7 @@ function drawerTab(tab, btn){
     const chgTxt = (s.c>=0?'+':'')+s.c+'%';
     const peCls  = s.pe?'neut':'bear';
     const epsCls = (epsVal!=='N/A'&&!String(epsVal).startsWith('-'))?'bull':'bear';
-    const revCls = parseFloat(s.rev||0)>0?'bull':'bear';
+    const revCls = parseFloat(s.revLive||s.rev||0)>0?'bull':'bear';
     const profitRow = s.pe
       ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
       : '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bear">❌ ยังขาดทุน</span></div>';
@@ -4032,8 +3997,9 @@ function drawerTab(tab, btn){
       const cls=isBeat?'bull':isMiss?'bear':'neut';
       return '<div class="ind-row"><span class="ind-name">ผล Earnings ล่าสุด</span><span class="ind-val '+cls+'">'+eData.res+'</span></div>';
     })() : '';
-    const earnDateRow = s.earn
-      ? '<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">'+s.earn+'</span></div>' : '';
+    const earnDateRow = _earnDisplay
+      ? '<div class="ind-row"><span class="ind-name">Earnings Date</span><span class="ind-val neut">'+_earnDisplay+'</span></div>' : '';
+    const divDisplay = s.divLive||s.div;
 
     body.innerHTML =
       '<div class="ind-table">' +
@@ -4041,7 +4007,7 @@ function drawerTab(tab, btn){
       (_showEarnPreview ? (
         '<div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(14,20,32,0.99));border:1px solid rgba(255,215,0,0.3);border-radius:14px;padding:14px;margin-bottom:14px">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
-            '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow)">📅 EARNINGS PREVIEW — อีก '+_daysToEarn+'d ('+s.earn+')</div>' +
+            '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--yellow)">📅 EARNINGS PREVIEW — อีก '+_daysToEarn+'d ('+_earnDisplay+')</div>' +
             '<button onclick="runEarningsPreview(\''+s.t+'\')" id="earnPreviewBtn_'+s.t+'" style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.35);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--yellow);cursor:pointer;font-family:\'Syne\',sans-serif">⚡ AI Preview</button>' +
           '</div>' +
           '<div id="earnPreviewText_'+s.t+'" style="font-size:12px;color:var(--text3);line-height:1.7">กด "AI Preview" เพื่อให้ AI สรุปว่า earnings รอบนี้น่าจะออกมาดีหรือแย่</div>' +
@@ -4074,7 +4040,7 @@ function drawerTab(tab, btn){
       '<div class="ind-row"><span class="ind-name">เปลี่ยนแปลงวันนี้</span><span class="ind-val '+chgCls+'">$'+s.p.toFixed(2)+' ('+chgTxt+')</span></div>' +
       (s.target?'<div class="ind-row"><span class="ind-name">🎯 Analyst Target</span><span class="ind-val '+(s.p<s.target?'bull':'bear')+'">$'+s.target.toLocaleString()+' ('+(s.p<s.target?'+':'')+((s.target-s.p)/s.p*100).toFixed(1)+'%)</span></div>':'') +
       '<div style="font-family:\'Syne\',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">⚠️ ความเสี่ยง</div>' +
-      (s.div?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+s.div+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
+      (divDisplay?'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val bull">'+divDisplay+'</span></div>':'<div class="ind-row"><span class="ind-name">💰 Dividend Yield</span><span class="ind-val" style="color:var(--text3)">ไม่มีปันผล</span></div>') +
       (s.beta!=null?'<div class="ind-row"><span class="ind-name">📉 Beta (ความผันผวน)</span><span class="ind-val '+(s.beta>1.5?'bear':s.beta<0.8?'bull':'neut')+'">'+s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)')+'</span></div>':'') +
       (s.analystConsensus?
         '<div style="background:rgba(100,200,100,0.06);border:1px solid rgba(100,200,100,0.2);border-radius:12px;padding:12px;margin-bottom:10px">' +
@@ -4140,26 +4106,26 @@ function drawerTab(tab, btn){
       pctFromHi52=((s.p-hi)/hi*100).toFixed(1)+'%';
       pctFromLo52=('+'+((s.p-lo)/lo*100).toFixed(1)+'%');
     }
-    // Peer data
-    const peers=(peerGroups[s.t]||[]).slice(0,3);
+    // Peer data (async)
+    const peers=await loadPeerGroups(s.t);
     const peerStocksData=peers.map(t=>stocksMap.get(t)).filter(Boolean);
     const peerSummary=peerStocksData.length
-      ? peerStocksData.map(p=>`${p.t}(PE:${p.pe||'N/A'} RevG:${p.rev||'N/A'} MCap:${p.mktcap||'N/A'})`).join(', ')
+      ? peerStocksData.map(p=>`${p.t}(PE:${p.pe||'N/A'} RevG:${p.revLive||p.rev||'N/A'} MCap:${p.mktcapLive||p.mktcap||'N/A'})`).join(', ')
       : 'N/A';
     const fundPrompt=
       'บริษัท: '+s.t+' ('+s.n+')\n'+
       'Sector: '+sector+'\n'+
-      'Market Cap: '+s.mktcap+'\n'+
+      'Market Cap: '+(s.mktcapLive||s.mktcap||'N/A')+'\n'+
       'P/E Ratio: '+(s.pe||'ยังขาดทุน')+'\n'+
       'EPS: '+epsVal+'\n'+
       'Revenue: '+revVal+'\n'+
-      'Revenue Growth: '+s.rev+'\n'+
+      'Revenue Growth: '+(s.revLive||s.rev||'N/A')+'\n'+
       'ผล Earnings ล่าสุด: '+(eData?.res||'N/A')+'\n'+
-      'Earnings Date: '+(s.earn||'N/A')+'\n'+
+      'Earnings Date: '+(s.earnLive||s.earn||'N/A')+'\n'+
       '52W High: '+hi52txt+' (ห่าง '+pctFromHi52+')\n'+
       '52W Low: '+lo52txt+' (ห่าง '+pctFromLo52+')\n'+
       'Beta: '+(s.beta!=null?s.beta+' '+(s.beta>1.5?'(ผันผวนสูง)':s.beta<0.8?'(เสถียร)':'(ปานกลาง)'):'N/A')+'\n'+
-      'Dividend Yield: '+(s.div||'ไม่มีปันผล')+'\n'+
+      'Dividend Yield: '+(s.divLive||s.div||'ไม่มีปันผล')+'\n'+
       'Short Float: '+(s.short||'N/A')+(s.short&&parseFloat(s.short)>15?' ⚠️ Squeeze Risk':'')+'\n'+
       'Analyst Target: '+(s.target?'$'+s.target+' (upside '+upside+')':'N/A')+'\n'+
       'D/E Ratio: '+(fe.de!=null?fe.de:'N/A')+'\n'+
@@ -4561,7 +4527,7 @@ function buildFullIndicatorContext(ticker, price){
 
   // ── Fundamental ──
   let ctx=`📊 ข้อมูลหุ้น ${ticker} (${s.n})
-ราคา: $${price} (${s.c>=0?'+':''}${(+s.c).toFixed(2)}%) | MCap: ${s.mktcap} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.rev} | Earnings: ${s.earn||'N/A'}
+ราคา: $${price} (${s.c>=0?'+':''}${(+s.c).toFixed(2)}%) | MCap: ${s.mktcapLive||s.mktcap||'N/A'} | P/E: ${s.pe||'N/A'} | RevGrowth: ${s.revLive||s.rev||'N/A'} | Earnings: ${s.earnLive||s.earn||'N/A'}
 แนวรับ S1: $${s1.toFixed(2)} | S2: $${getS2(ticker,price).toFixed(2)} | แนวต้าน R1: $${r1.toFixed(2)} | R2: $${getR2(ticker,price).toFixed(2)} | ห่าง S1: ${((price-s1)/s1*100).toFixed(2)}%`;
 
   if(ind){
@@ -5452,11 +5418,12 @@ function checkEarningsAlert(){
 
   portfolio.forEach(pos=>{
     const s = stocksMap.get(pos.t);
-    if(!s||!s.earn) return;
-    const daysLeft = _getEarningsDaysLeft(s.earn);
+    const earnDate = s?.earnLive||s?.earn;
+    if(!s||!earnDate) return;
+    const daysLeft = _getEarningsDaysLeft(earnDate);
     if(daysLeft===null) return;
 
-    const earnKey = `earn_${pos.t}_${s.earn}`;
+    const earnKey = `earn_${pos.t}_${earnDate}`;
     if(_earnAlerted.has(earnKey)) return;
 
     let msg = '';
@@ -6986,6 +6953,9 @@ if(document.readyState!=='complete'){
 }
 // เริ่ม preload candles หลัง live เริ่มแล้ว 4 วินาที (ไม่แย่ง bandwidth)
 setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
+
+// ── initLiveData: ดึง fundamentals + sector ทุกตัว หลังเปิดแอป 6 วินาที ──
+setTimeout(()=>{ initLiveData().then(()=>{ if(typeof renderStocks==='function') renderStocks(); }).catch(e=>console.warn('initLiveData err',e)); }, 6000);
 
 // [NEW] โหลด metrics (Market Cap, P/E) จาก Worker ทุกตัว background
 setTimeout(async()=>{
@@ -10449,7 +10419,7 @@ ${buyCandidates||'ไม่มีหุ้นผ่านเกณฑ์'}
   // ── Sector Performance ──
   const sectorPerf = {};
   stocks.forEach(s=>{
-    const sec = Object.entries(sectorMap).find(([,v])=>v.includes(s.t))?.[0]||'อื่นๆ';
+    const sec = getSector(s);
     if(!sectorPerf[sec]) sectorPerf[sec]={sum:0,count:0};
     sectorPerf[sec].sum+=s.c; sectorPerf[sec].count++;
   });
@@ -10947,7 +10917,7 @@ async function analyzePortfolioAI(){
       const val=cur*p.shares;
       const pct=totalVal>0?(val/totalVal*100).toFixed(1):0;
       const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
-      const sector=Object.entries(sectorMap).find(([,v])=>v.includes(p.t))?.[0]||'อื่นๆ';
+      const sector=getSector(p);
       const limit=_posLimits[p.t]||_recommendedLimit(p.t);
       const overLimit=parseFloat(pct)>limit?` ⚠️ เกิน limit ${limit}%`:'';
       return `${p.t}(${sector}): ${p.shares}หุ้น เข้า$${p.avgPrice} ปัจจุบัน$${cur} P&L:${pnl}% สัดส่วน:${pct}%${overLimit}`;
@@ -10956,7 +10926,7 @@ async function analyzePortfolioAI(){
     // Sector breakdown
     const sectorBreakdown={};
     port.forEach(p=>{
-      const sector=Object.entries(sectorMap).find(([,v])=>v.includes(p.t))?.[0]||'อื่นๆ';
+      const sector=getSector(p);
       const val=(stocksMap.get(p.t)?.p||0)*p.shares;
       sectorBreakdown[sector]=(sectorBreakdown[sector]||0)+val;
     });
@@ -11211,8 +11181,8 @@ async function _aiRecommendLimit(ticker){
   toast('🤖 AI กำลังวิเคราะห์...');
   const sys = 'คุณคือที่ปรึกษาการลงทุนที่แนะนำสัดส่วนพอร์ตเหมาะสม ตอบภาษาไทยเข้าใจง่าย';
   const prompt = `หุ้น: ${ticker} (${s.n})
-Beta: ${s.beta||'N/A'} | Short Float: ${s.short||'N/A'} | Sector: ${Object.entries(sectorMap).find(([,v])=>v.includes(ticker))?.[0]||'อื่นๆ'}
-Revenue Growth: ${s.rev||'N/A'} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcap||'N/A'}
+Beta: ${s.beta||'N/A'} | Short Float: ${s.short||'N/A'} | Sector: ${getSector(s)}
+Revenue Growth: ${s.revLive||s.rev||'N/A'} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcapLive||s.mktcap||'N/A'}
 
 แนะนำว่าควรถือหุ้นนี้ไม่เกินกี่เปอร์เซ็นต์ของพอร์ต พร้อมบอกเหตุผลสั้นๆ 2-3 ประโยค และบอกตัวเลข % ชัดเจน`;
   const reply = await callAI_Quick(sys, prompt, 200);
@@ -11706,7 +11676,7 @@ function renderPortfolio(){
   // ── 2. Sector Allocation ──
   const sectorAlloc={};
   sortedPortfolio.forEach(pos=>{
-    const sector = Object.entries(sectorMap).find(([,v])=>v.includes(pos.t))?.[0]||'อื่นๆ';
+    const sector = getSector(pos);
     const val = (stocksMap.get(pos.t)?.p||pos.avgPrice) * pos.shares;
     sectorAlloc[sector] = (sectorAlloc[sector]||0) + val;
   });
@@ -12003,7 +11973,8 @@ async function runEarningsPreview(ticker){
 
   const eData=(window.earningsData||[]).find(e=>e.t===ticker);
   const fe=fundExtra[ticker]||{};
-  const daysLeft=_getEarningsDaysLeft(s.earn);
+  const earnDate = s.earnLive||s.earn;
+  const daysLeft=_getEarningsDaysLeft(earnDate);
   const rsi=rsiData[ticker]||50;
   const fs=calcFundScore(s);
 
@@ -12014,7 +11985,7 @@ async function runEarningsPreview(ticker){
     : 'ไม่มีข้อมูล';
 
   // ดึง consensus จาก earningsData ที่ตรงกัน
-  const upcoming=(window.earningsData||[]).find(e=>e.t===ticker&&_getEarningsDaysLeft(s.earn)!==null&&(_getEarningsDaysLeft(s.earn)||99)<=14);
+  const upcoming=(window.earningsData||[]).find(e=>e.t===ticker&&_getEarningsDaysLeft(earnDate)!==null&&(_getEarningsDaysLeft(earnDate)||99)<=14);
   const consensusEPS=upcoming?.eps||'N/A';
   const consensusRev=upcoming?.rev||'N/A';
 
@@ -12025,10 +11996,10 @@ async function runEarningsPreview(ticker){
   })();
 
   const prompt=`หุ้น: ${ticker} (${s.n})
-📅 Earnings Date: ${s.earn} (อีก ${daysLeft} วัน)
+📅 Earnings Date: ${earnDate||'N/A'} (อีก ${daysLeft} วัน)
 💰 Consensus EPS Estimate: ${consensusEPS}
 📊 Consensus Revenue Estimate: ${consensusRev}
-📈 Revenue Growth: ${s.rev} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcap}
+📈 Revenue Growth: ${s.revLive||s.rev||'N/A'} | P/E: ${s.pe||'ยังขาดทุน'} | Market Cap: ${s.mktcapLive||s.mktcap||'N/A'}
 📉 RSI: ${rsi} | Beta: ${s.beta||'N/A'} | Short Float: ${s.short||'N/A'}
 🔄 Earnings ล่าสุด 4 ไตรมาส: ${histStr}
 💵 Free Cash Flow: ${fe.fcf||'N/A'} | D/E: ${fe.de!=null?fe.de:'N/A'}
@@ -12142,9 +12113,9 @@ async function runMorningBrief(){
   const wlTickers=watchlist;
   const earnSoon=[...new Set([...portTickers,...wlTickers])]
     .map(t=>stocksMap.get(t))
-    .filter(s=>s&&s.earn)
-    .filter(s=>{const d=_getEarningsDaysLeft(s.earn);return d!==null&&d>=0&&d<=3;})
-    .map(s=>`${s.t}(อีก ${_getEarningsDaysLeft(s.earn)}d)`);
+    .filter(s=>s&&(s.earnLive||s.earn))
+    .filter(s=>{const d=_getEarningsDaysLeft(s.earnLive||s.earn);return d!==null&&d>=0&&d<=3;})
+    .map(s=>`${s.t}(อีก ${_getEarningsDaysLeft(s.earnLive||s.earn)}d)`);
 
   const todayStr=new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const fng=window._fngForAI;
@@ -12882,7 +12853,7 @@ function _getAIPickStocks(tab){
     .map(s => {
       const score = calcFundScore(s);
       const upside = s.target && s.p > 0 ? Math.round((s.target - s.p)/s.p*100) : 0;
-      const rev = parseFloat(s.rev)||0;
+      const rev = parseFloat(s.revLive||s.rev)||0;
       return {...s, _score:score, _upside:upside, _rev:rev};
     })
     .filter(s => {
@@ -12990,7 +12961,7 @@ function renderAIPickCards(){
           <div style="font-size:9px;color:var(--text3);margin-top:1px">P/E</div>
         </div>
         <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
-          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">${s.mktcap||'--'}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">${s.mktcapLive||s.mktcap||'--'}</div>
           <div style="font-size:9px;color:var(--text3);margin-top:1px">Mkt Cap</div>
         </div>
       </div>
@@ -13588,56 +13559,13 @@ function updatePortCharts(){
 // ══════════════════════════════════════════
 
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
-const ELITE_PEOPLE = [
-  // การเมืองสหรัฐ
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',     emoji:'🇺🇸', logo:'https://logo.clearbit.com/whitehouse.gov',         tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c' },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',              emoji:'🏛️', logo:'https://logo.clearbit.com/federalreserve.gov',     tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6' },
-  // CEO Tech
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',             emoji:'🟢', logo:'https://logo.clearbit.com/nvidia.com',             tickers:['NVDA'],               x:135, y:170, color:'#76b900' },
-  { id:'cook',    name:'Tim Cook',          role:'CEO Apple',              emoji:'🍎', logo:'https://logo.clearbit.com/apple.com',              tickers:['AAPL'],               x:125, y:175, color:'#555' },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/SpaceX/xAI',   emoji:'🚀', logo:'https://logo.clearbit.com/tesla.com',              tickers:['TSLA'],               x:142, y:178, color:'#e31937' },
-  { id:'nadella', name:'Satya Nadella',     role:'CEO Microsoft',          emoji:'🪟', logo:'https://logo.clearbit.com/microsoft.com',          tickers:['MSFT'],               x:152, y:172, color:'#00a4ef' },
-  { id:'bezos',   name:'Jeff Bezos',        role:'CEO Amazon',             emoji:'📦', logo:'https://logo.clearbit.com/amazon.com',             tickers:['AMZN'],               x:130, y:165, color:'#ff9900' },
-  { id:'zuck',    name:'Mark Zuckerberg',   role:'CEO Meta',               emoji:'👤', logo:'https://logo.clearbit.com/meta.com',               tickers:['META'],               x:160, y:168, color:'#1877f2' },
-  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google',             emoji:'🔍', logo:'https://logo.clearbit.com/google.com',             tickers:['GOOGL'],              x:138, y:158, color:'#4285f4' },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',             emoji:'🤖', logo:'https://logo.clearbit.com/openai.com',             tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f' },
-  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'https://logo.clearbit.com/jpmorganchase.com',      tickers:['JPM'],                x:163, y:155, color:'#005eb8' },
-  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire',          emoji:'💰', logo:'https://logo.clearbit.com/berkshirehathaway.com',  tickers:['BRK.B'],              x:145, y:162, color:'#c9a84c' },
-  // ผู้นำโลก
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',        emoji:'🇨🇳', logo:'https://logo.clearbit.com/gov.cn',                 tickers:['FXI','BABA'],         x:755, y:130, color:'#e74c3c' },
-  { id:'putin',   name:'Vladimir Putin',    role:'ประธานาธิบดีรัสเซีย',   emoji:'🇷🇺', logo:'https://logo.clearbit.com/kremlin.ru',             tickers:['USO','GLD'],          x:560, y:72,  color:'#c0392b' },
-  { id:'lagarde', name:'Christine Lagarde', role:'ECB President',          emoji:'🇪🇺', logo:'https://logo.clearbit.com/ecb.europa.eu',          tickers:['FEZ','EWG'],          x:478, y:100, color:'#2980b9' },
-  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน',    emoji:'🛢️', logo:'https://logo.clearbit.com/opec.org',               tickers:['USO','XLE'],          x:570, y:168, color:'#f39c12' },
-  { id:'modi',    name:'Narendra Modi',     role:'นายกฯ อินเดีย',          emoji:'🇮🇳', logo:'https://logo.clearbit.com/india.gov.in',           tickers:['INDA','EPI'],         x:648, y:185, color:'#e67e22' },
-  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google/Alphabet',    emoji:'🔍', logo:'https://logo.clearbit.com/google.com',             tickers:['GOOGL','GOOG'],       x:200, y:120, color:'#4285f4' },
-  { id:'bezos',   name:'Jeff Bezos',        role:'Founder Amazon',         emoji:'📦', logo:'https://logo.clearbit.com/amazon.com',             tickers:['AMZN'],               x:220, y:140, color:'#ff9900' },
-  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'https://logo.clearbit.com/jpmorganchase.com',      tickers:['JPM'],                x:240, y:160, color:'#003087' },
-  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire Hathaway', emoji:'💰', logo:'https://logo.clearbit.com/berkshirehathaway.com',  tickers:['BRK.B','BRK.A'],      x:260, y:180, color:'#6b4c11' },
-  { id:'yellen',  name:'Janet Yellen',      role:'US Treasury Secretary',  emoji:'🏛️', logo:'https://logo.clearbit.com/treasury.gov',           tickers:['TLT','DXY'],          x:280, y:200, color:'#1a5276' },
-  { id:'iger',    name:'Bob Iger',          role:'CEO Disney',             emoji:'🏰', logo:'https://logo.clearbit.com/disney.com',             tickers:['DIS'],                x:300, y:220, color:'#1565c0' },
-  { id:'khamenei', name:'Ali Khamenei',      role:'ผู้นำสูงสุดอิหร่าน',      emoji:'🇮🇷', logo:'https://logo.clearbit.com/president.ir',           tickers:['USO','XLE','GLD'],     x:580, y:200, color:'#1a7a4a' },
-];
+// ELITE_PEOPLE: ข้อมูลผู้นำ — ไม่ hardcode เพื่อป้องกัน AI วิเคราะห์ผิด
+// ชื่อ/บทบาทจะถูก extract จาก news headlines แบบ real-time
+const ELITE_PEOPLE = [];
 
-const ELITE_EVENTS = [
-  // ── มิถุนายน 2026 ──
-  { title:'US Jobs Report (NFP) May',       emoji:'💼', logo:'https://logo.clearbit.com/bls.gov',           date:'2026-06-06', time:'07:30', tags:['SP500','Nasdaq','Jobs'],    markets:['SP500','USD','Bonds'],   detail:'ตัวเลขการจ้างงานนอกภาคเกษตร ชี้ความแข็งแกร่งของเศรษฐกิจ กระทบทิศทาง Fed โดยตรง'},
-  { title:'US CPI Inflation May',           emoji:'📊', logo:'https://logo.clearbit.com/bls.gov',           date:'2026-06-11', time:'07:30', tags:['SP500','Fed','Inflation'],  markets:['SP500','Gold','Bonds'],  detail:'ดัชนีราคาผู้บริโภค ตัวเลขหลักที่ Fed ใช้ตัดสินใจดอกเบี้ย กระทบหุ้น Growth/Tech แรงมาก'},
-  { title:'Fed FOMC Meeting (Jun)',         emoji:'🏛️', logo:'https://logo.clearbit.com/federalreserve.gov', date:'2026-06-18', time:'13:00', tags:['Fed','SP500','Nasdaq'],    markets:['SP500','Nasdaq','Gold'], detail:'Fed ประกาศนโยบายดอกเบี้ย ตลาดจับตาสัญญาณลด rate และ dot plot ใหม่'},
-  { title:'US Retail Sales May',           emoji:'🛒', logo:'https://logo.clearbit.com/census.gov',         date:'2026-06-17', time:'07:30', tags:['SP500','Consumer'],        markets:['SP500','USD'],           detail:'ยอดค้าปลีกสหรัฐ สะท้อนกำลังซื้อผู้บริโภค กระทบหุ้นกลุ่ม Consumer Discretionary'},
-  { title:'US GDP Q1 2026 (Final)',        emoji:'📈', logo:'https://logo.clearbit.com/bea.gov',            date:'2026-06-26', time:'07:30', tags:['SP500','Economy'],         markets:['SP500','USD','Bonds'],   detail:'ตัวเลข GDP ไตรมาส 1 รอบสุดท้าย บอกภาพรวมเศรษฐกิจสหรัฐ'},
-  // ── กรกฎาคม 2026 ──
-  { title:'US Jobs Report (NFP) Jun',      emoji:'💼', logo:'https://logo.clearbit.com/bls.gov',           date:'2026-07-02', time:'07:30', tags:['SP500','Nasdaq','Jobs'],    markets:['SP500','USD','Bonds'],   detail:'ตัวเลขการจ้างงานเดือนมิถุนายน ตลาดจับตาใกล้ชิดหลัง FOMC'},
-  { title:'US CPI Inflation Jun',          emoji:'📊', logo:'https://logo.clearbit.com/bls.gov',           date:'2026-07-15', time:'07:30', tags:['SP500','Fed','Inflation'],  markets:['SP500','Gold','Bonds'],  detail:'เงินเฟ้อเดือนมิถุนายน ชี้ทิศทาง Fed ในการประชุม FOMC กรกฎาคม'},
-  { title:'Fed FOMC Meeting (Jul)',        emoji:'🏛️', logo:'https://logo.clearbit.com/federalreserve.gov', date:'2026-07-30', time:'13:00', tags:['Fed','SP500','Nasdaq'],    markets:['SP500','Nasdaq','Gold'], detail:'การประชุม Fed เดือนกรกฎาคม ตลาดคาดหวังสัญญาณลดดอกเบี้ย'},
-  // ── Big Tech Earnings Q2 2026 ──
-  { title:'NVDA Earnings Q2 2026',         emoji:'🤖', logo:'https://logo.clearbit.com/nvidia.com',         date:'2026-08-27', time:'16:00', tags:['NVDA','AI','Nasdaq'],        markets:['NVDA','Nasdaq','SOX'],    detail:'รายงานผลประกอบการ NVIDIA กระทบหุ้น AI และ Semiconductor ทั้งกลุ่ม'},
-  { title:'AAPL Earnings Q3 FY2026',       emoji:'🍎', logo:'https://logo.clearbit.com/apple.com',          date:'2026-07-31', time:'16:00', tags:['AAPL','Tech','Nasdaq'],      markets:['AAPL','Nasdaq','SP500'], detail:'รายงานผลประกอบการ Apple กระทบ S&P500 และ Nasdaq โดยตรง เป็นหุ้น weight สูงสุด'},
-  { title:'MSFT Earnings Q4 FY2026',       emoji:'🪟', logo:'https://logo.clearbit.com/microsoft.com',      date:'2026-07-29', time:'16:00', tags:['MSFT','Cloud','Nasdaq'],     markets:['MSFT','Nasdaq','Cloud'],  detail:'รายงานผลประกอบการ Microsoft โฟกัส Azure และ AI revenue growth'},
-  { title:'GOOGL Earnings Q2 2026',        emoji:'🔍', logo:'https://logo.clearbit.com/google.com',         date:'2026-07-29', time:'16:00', tags:['GOOGL','AI','Nasdaq'],       markets:['GOOGL','Nasdaq','Ads'],   detail:'รายงานผลประกอบการ Alphabet โฟกัส Search revenue และ Google Cloud'},
-  { title:'META Earnings Q2 2026',         emoji:'📱', logo:'https://logo.clearbit.com/meta.com',           date:'2026-07-30', time:'16:00', tags:['META','AI','Nasdaq'],        markets:['META','Nasdaq','Ads'],    detail:'รายงานผลประกอบการ Meta โฟกัส Ad revenue และ AI investment'},
-  { title:'AMZN Earnings Q2 2026',         emoji:'📦', logo:'https://logo.clearbit.com/amazon.com',         date:'2026-08-01', time:'16:00', tags:['AMZN','Cloud','Nasdaq'],     markets:['AMZN','Nasdaq','AWS'],    detail:'รายงานผลประกอบการ Amazon โฟกัส AWS growth และ e-commerce margin'},
-  { title:'TSLA Earnings Q2 2026',         emoji:'⚡', logo:'https://logo.clearbit.com/tesla.com',          date:'2026-07-23', time:'16:00', tags:['TSLA','EV','Nasdaq'],        markets:['TSLA','EV','Nasdaq'],     detail:'รายงานผลประกอบการ Tesla โฟกัส delivery numbers และ margin'},
-];
+// ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
+// Events จะถูก populate โดย fetchEliteEvents() ที่ดึงจาก economic calendar API
+const ELITE_EVENTS = [];
 
 // ════════════════════════════════════════════════════════════
 // ENGINE 1: VERIFICATION ENGINE
@@ -15251,32 +15179,25 @@ function _mapFinnhubEvent(ev){
 }
 
 async function fetchEliteEconomicCalendar(){
-  // Check cache
   try{
     const cached = JSON.parse(localStorage.getItem(ELITE_EVENTS_CACHE_KEY)||'null');
     if(cached && Date.now()-cached.ts < ELITE_EVENTS_CACHE_TTL) return cached.events;
   }catch{}
 
-  const key = localStorage.getItem('finnhubKey')||FINNHUB_KEY||'';
-  if(!key) return [];
-
-  // Fetch next 3 months
   const from = new Date().toISOString().slice(0,10);
   const to = new Date(Date.now()+90*24*60*60*1000).toISOString().slice(0,10);
 
   try{
     const r = await _fetchWithTimeout(
-      `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`,
+      `${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`,
       {}, 8000
     );
     if(!r.ok) return [];
     const d = await r.json();
-    const events = (d.economicCalendar||[])
+    const events = (d.economicCalendar||d.events||[])
       .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
       .map(_mapFinnhubEvent)
       .filter(Boolean);
-
-    // Cache
     try{ localStorage.setItem(ELITE_EVENTS_CACHE_KEY, JSON.stringify({events, ts:Date.now()})); }catch{}
     return events;
   }catch(e){
@@ -15287,22 +15208,12 @@ async function fetchEliteEconomicCalendar(){
 
 async function initEliteCalendar(){
   const apiEvents = await fetchEliteEconomicCalendar();
-  if(!apiEvents.length) return;
-
-  // Merge: keep hardcoded, add new API events that don't overlap
-  const existingTitles = new Set(ELITE_EVENTS.map(e=>e.date+'|'+e.title.slice(0,10).toLowerCase()));
-  const newEvents = apiEvents.filter(ev=>{
-    const key = ev.date+'|'+(ev.title||'').slice(0,10).toLowerCase();
-    return !existingTitles.has(key);
-  });
-
-  // Add new events and sort by date
-  ELITE_EVENTS.push(...newEvents);
+  // ใช้เฉพาะ API data — ไม่ merge กับ hardcoded
+  ELITE_EVENTS.length = 0;
+  ELITE_EVENTS.push(...apiEvents);
   ELITE_EVENTS.sort((a,b)=>new Date(a.date)-new Date(b.date));
-
-  // Re-render
   renderEliteEvents();
-  console.log(`[elite] added ${newEvents.length} events from Finnhub`);
+  console.log(`[elite] loaded ${apiEvents.length} events from API`);
 }
 
 
