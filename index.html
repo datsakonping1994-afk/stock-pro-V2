@@ -5313,7 +5313,10 @@ async function _fetchEarningsTranscript(ticker, btn){
   body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">⏳ กำลังค้นหา Earnings Call Transcript...</div>';
 
   try{
-    // ดึง transcript จาก Motley Fool ผ่าน AI (ไม่ต้องการ Premium)
+    const mfUrl = `https://www.fool.com/earnings/call-transcripts/?search=${ticker}`;
+    const saUrl = `https://seekingalpha.com/symbol/${ticker}/earnings/transcripts`;
+
+    // ให้ AI สรุปก่อน
     const sys = `คุณคือนักวิเคราะห์การลงทุนที่สรุป Earnings Call ให้นักลงทุนรายย่อยเข้าใจง่าย ตอบภาษาไทยเท่านั้น ห้าม markdown ห้าม ** หรือ #`;
     const prompt = `สรุป Earnings Call ล่าสุดของ ${ticker} จากความรู้ที่มี โดยครอบคลุม 5 หัวข้อ:
 1) ผลประกอบการ: Revenue, EPS, Gross Margin ที่ประกาศล่าสุด
@@ -5322,15 +5325,12 @@ async function _fetchEarningsTranscript(ticker, btn){
 4) ความเสี่ยง: ปัญหาหรือความกังวลที่พูดถึง
 5) สรุปสำหรับนักลงทุน: sentiment โดยรวมของ management
 
-ถ้าไม่มีข้อมูลล่าสุด ให้บอกว่าไม่มีข้อมูล`;
+ถ้าไม่มีข้อมูลเพียงพอ ให้ตอบว่า "ไม่มีข้อมูล Earnings Call ล่าสุดของหุ้นนี้ กรุณาอ่านจากลิงก์ด้านล่าง"`;
 
     btn.textContent = '🤖 AI กำลังสรุป...';
-    let summary = await callAI_Analyze(sys, prompt, 1200);
-    if(!summary) summary = 'ไม่สามารถดึงข้อมูลได้';
-
-    // ลิงก์ Motley Fool + Seeking Alpha ให้ไปอ่านต่อ
-    const mfUrl = `https://www.fool.com/earnings/call-transcripts/?search=${ticker}`;
-    const saUrl = `https://seekingalpha.com/symbol/${ticker}/earnings/transcripts`;
+    let summary = null;
+    try{ summary = await callAI_Analyze(sys, prompt, 1200); }catch{}
+    if(!summary) summary = 'ไม่มีข้อมูล Earnings Call ล่าสุดของหุ้นนี้ในระบบ กรุณาอ่านจากลิงก์ด้านล่าง';
 
     body.innerHTML = `
       <div style="margin-bottom:10px;padding:8px 10px;background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.2);border-radius:8px;font-size:10px">
@@ -5346,7 +5346,14 @@ async function _fetchEarningsTranscript(ticker, btn){
 
     btn.textContent = '🔄 สรุปใหม่';
   }catch(e){
-    body.innerHTML = `<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">❌ ไม่สามารถดึงข้อมูลได้</div>`;
+    const mfUrl = `https://www.fool.com/earnings/call-transcripts/?search=${ticker}`;
+    const saUrl = `https://seekingalpha.com/symbol/${ticker}/earnings/transcripts`;
+    body.innerHTML = `
+      <div style="font-size:12px;color:var(--text3);text-align:center;padding:12px 0">ไม่สามารถสรุปอัตโนมัติได้ กรุณาอ่านจากแหล่งข้อมูลด้านล่าง</div>
+      <div style="margin-top:10px">
+        <a href="${mfUrl}" target="_blank" style="display:block;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:8px;padding:8px 12px;font-size:11px;color:#ff6b35;text-decoration:none;margin-bottom:6px">🎯 Motley Fool Transcripts →</a>
+        <a href="${saUrl}" target="_blank" style="display:block;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--green);text-decoration:none">📊 Seeking Alpha Transcripts →</a>
+      </div>`;
     btn.textContent = '📋 ดึง Earnings Call Transcript';
   }
   btn.disabled = false;
