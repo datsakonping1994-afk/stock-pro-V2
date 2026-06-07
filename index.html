@@ -13559,9 +13559,24 @@ function updatePortCharts(){
 // ══════════════════════════════════════════
 
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
-// ELITE_PEOPLE: ข้อมูลผู้นำ — ไม่ hardcode เพื่อป้องกัน AI วิเคราะห์ผิด
-// ชื่อ/บทบาทจะถูก extract จาก news headlines แบบ real-time
-const ELITE_PEOPLE = [];
+// ELITE_PEOPLE: รายชื่อบุคคลผู้มีอิทธิพลต่อตลาด (static config — ไม่ใช่ financial data)
+// ชื่อ/ตำแหน่งเหล่านี้ไม่เปลี่ยนบ่อย และไม่กระทบการวิเคราะห์ราคาหุ้น
+const ELITE_PEOPLE = [
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',     emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c' },
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',              emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6' },
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',             emoji:'🟢', logo:'', tickers:['NVDA'],               x:135, y:170, color:'#76b900' },
+  { id:'cook',    name:'Tim Cook',          role:'CEO Apple',              emoji:'🍎', logo:'', tickers:['AAPL'],               x:125, y:175, color:'#555'    },
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',         emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937' },
+  { id:'nadella', name:'Satya Nadella',     role:'CEO Microsoft',          emoji:'🪟', logo:'', tickers:['MSFT'],               x:152, y:172, color:'#00a4ef' },
+  { id:'zuck',    name:'Mark Zuckerberg',   role:'CEO Meta',               emoji:'👤', logo:'', tickers:['META'],               x:160, y:168, color:'#1877f2' },
+  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google',             emoji:'🔍', logo:'', tickers:['GOOGL'],              x:138, y:158, color:'#4285f4' },
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',             emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f' },
+  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'', tickers:['JPM'],                x:163, y:155, color:'#005eb8' },
+  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire',          emoji:'💰', logo:'', tickers:['BRK.B'],              x:145, y:162, color:'#c9a84c' },
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',        emoji:'🇨🇳', logo:'', tickers:['FXI'],                x:755, y:130, color:'#e74c3c' },
+  { id:'lagarde', name:'Christine Lagarde', role:'ECB President',          emoji:'🇪🇺', logo:'', tickers:['FEZ','EWG'],          x:478, y:100, color:'#2980b9' },
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน',    emoji:'🛢️', logo:'', tickers:['USO','XLE'],          x:570, y:168, color:'#f39c12' },
+];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
 // Events จะถูก populate โดย fetchEliteEvents() ที่ดึงจาก economic calendar API
