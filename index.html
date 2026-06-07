@@ -15140,7 +15140,7 @@ async function analyzePortfolioImpact(personId, btn){
 //  ELITE: Auto-fetch Economic Calendar from Finnhub
 //  อัปเดตอัตโนมัติ + merge กับ hardcode events
 // ══════════════════════════════════════════════
-const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v8';
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v9';
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
 // Event map — รองรับ ForexFactory title format
@@ -15217,144 +15217,162 @@ async function fetchEliteEconomicCalendar(){
 
   const from = new Date().toISOString().slice(0,10);
   const to   = new Date(Date.now()+90*24*60*60*1000).toISOString().slice(0,10);
-  let events = [];
+
+  // ── รวม events จากทุก source แล้วค่อย dedup ──
+  // ไม่หยุดที่ source แรกที่ได้ผล เพราะ Finnhub free tier คืนข้อมูลแค่ช่วงสั้น
+  const allRawEvents = [];
 
   // ── Source 1: PRICES_WORKER (Finnhub) ──
-  if(!events.length){
-    try{
-      const r = await _fetchWithTimeout(`${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`,{},10000);
-      if(r.ok){
-        const d = await r.json();
-        const raw = d.economicCalendar||d.events||[];
-        console.log('[cal] Worker raw:',raw.length);
-        events = raw.filter(_isHighImpact).map(_mapFinnhubEvent).filter(Boolean);
-        console.log('[cal] Worker filtered:',events.length);
-      }
-    }catch(e){ console.warn('[cal] Worker failed:',e.message); }
-  }
+  try{
+    const r = await _fetchWithTimeout(`${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`,{},10000);
+    if(r.ok){
+      const d = await r.json();
+      const raw = d.economicCalendar||d.events||[];
+      console.log('[cal] Worker raw:',raw.length);
+      raw.filter(_isHighImpact).map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
+      console.log('[cal] Worker added:',allRawEvents.length);
+    }
+  }catch(e){ console.warn('[cal] Worker failed:',e.message); }
 
   // ── Source 2: TradingEconomics guest API ──
-  if(!events.length){
-    try{
-      const r = await _fetchWithTimeout(`https://api.tradingeconomics.com/calendar/country/united states?c=guest:guest&f=json`,{},8000);
-      if(r.ok){
-        const data = await r.json();
-        if(Array.isArray(data)){
-          const raw = data.filter(ev=>{
-            const imp = ev.Importance||ev.importance||0;
-            return imp>=3;
-          }).map(ev=>({
-            event: ev.Event||ev.Category||'',
-            date:  (ev.Date||ev.date||'').slice(0,10),
-            time:  ev.Hour||ev.time||'',
-            impact:'high', country:'US',
-            forecast: ev.TEForecast||ev.Forecast||'',
-            previous: ev.Previous||''
-          })).filter(ev=>ev.event && ev.date && ev.date>=from);
-          console.log('[cal] TradingEconomics raw:',raw.length);
-          const mapped = raw.map(_mapFinnhubEvent).filter(Boolean);
-          if(mapped.length) events = mapped;
-          console.log('[cal] TradingEconomics filtered:',events.length);
-        }
+  try{
+    const r = await _fetchWithTimeout(`https://api.tradingeconomics.com/calendar/country/united states?c=guest:guest&f=json`,{},8000);
+    if(r.ok){
+      const data = await r.json();
+      if(Array.isArray(data)){
+        const raw = data.filter(ev=>{
+          const imp = ev.Importance||ev.importance||0;
+          return imp>=3;
+        }).map(ev=>({
+          event: ev.Event||ev.Category||'',
+          date:  (ev.Date||ev.date||'').slice(0,10),
+          time:  ev.Hour||ev.time||'',
+          impact:'high', country:'US',
+          forecast: ev.TEForecast||ev.Forecast||'',
+          previous: ev.Previous||''
+        })).filter(ev=>ev.event && ev.date && ev.date>=from);
+        raw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
+        console.log('[cal] TradingEconomics added, total:',allRawEvents.length);
       }
-    }catch(e){ console.warn('[cal] TradingEconomics failed:',e.message); }
-  }
+    }
+  }catch(e){ console.warn('[cal] TradingEconomics failed:',e.message); }
 
   // ── Source 3: ForexFactory ผ่าน allorigins CORS proxy ──
-  if(!events.length){
-    try{
-      const allRaw = [];
-      for(const suffix of ['thisweek','nextweek','nextmonth']){
-        try{
-          const ffUrl = `https://nfs.faireconomy.media/ff_calendar_${suffix}.json`;
-          const r = await _fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(ffUrl)}`,{},10000);
-          if(!r.ok) continue;
-          const wrapper = await r.json();
-          const data = JSON.parse(wrapper.contents||'[]');
-          if(Array.isArray(data)){
-            data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
-              const dt = new Date(ev.date);
-              allRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
-            });
-          }
-        }catch{}
-      }
-      if(allRaw.length){
-        events = allRaw.map(_mapFinnhubEvent).filter(Boolean);
-        console.log('[cal] ForexFactory(allorigins) filtered:',events.length);
-      }
-    }catch(e){ console.warn('[cal] allorigins failed:',e.message); }
-  }
+  try{
+    const ffRaw = [];
+    for(const suffix of ['thisweek','nextweek','nextmonth']){
+      try{
+        const ffUrl = `https://nfs.faireconomy.media/ff_calendar_${suffix}.json`;
+        const r = await _fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(ffUrl)}`,{},10000);
+        if(!r.ok) continue;
+        const wrapper = await r.json();
+        const data = JSON.parse(wrapper.contents||'[]');
+        if(Array.isArray(data)){
+          data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
+            const dt = new Date(ev.date);
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+          });
+        }
+      }catch{}
+    }
+    ffRaw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
+    console.log('[cal] allorigins added, total:',allRawEvents.length);
+  }catch(e){ console.warn('[cal] allorigins failed:',e.message); }
 
   // ── Source 4: ForexFactory โดยตรง ──
-  if(!events.length){
-    try{
-      const allRaw = [];
-      for(const suffix of ['thisweek','nextweek']){
-        try{
-          const r = await _fetchWithTimeout(`https://nfs.faireconomy.media/ff_calendar_${suffix}.json`,{},8000);
-          if(!r.ok) continue;
-          const data = await r.json();
-          if(Array.isArray(data)){
-            data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
-              const dt = new Date(ev.date);
-              allRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
-            });
-          }
-        }catch{}
-      }
-      if(allRaw.length){
-        events = allRaw.map(_mapFinnhubEvent).filter(Boolean);
-        console.log('[cal] ForexFactory direct:',events.length);
-      }
-    }catch(e){ console.warn('[cal] ForexFactory direct failed:',e.message); }
-  }
+  try{
+    const ffRaw = [];
+    for(const suffix of ['thisweek','nextweek','nextmonth']){
+      try{
+        const r = await _fetchWithTimeout(`https://nfs.faireconomy.media/ff_calendar_${suffix}.json`,{},8000);
+        if(!r.ok) continue;
+        const data = await r.json();
+        if(Array.isArray(data)){
+          data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
+            const dt = new Date(ev.date);
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+          });
+        }
+      }catch{}
+    }
+    ffRaw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
+    console.log('[cal] ForexFactory direct added, total:',allRawEvents.length);
+  }catch(e){ console.warn('[cal] ForexFactory direct failed:',e.message); }
 
   // ── Source 5: corsproxy.io ──
-  if(!events.length){
-    try{
-      const allRaw = [];
-      for(const suffix of ['thisweek','nextweek']){
-        try{
-          const ffUrl = `https://nfs.faireconomy.media/ff_calendar_${suffix}.json`;
-          const r = await _fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(ffUrl)}`,{},10000);
-          if(!r.ok) continue;
-          const data = await r.json();
-          if(Array.isArray(data)){
-            data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
-              const dt = new Date(ev.date);
-              allRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
-            });
-          }
-        }catch{}
-      }
-      if(allRaw.length){
-        events = allRaw.map(_mapFinnhubEvent).filter(Boolean);
-        console.log('[cal] corsproxy:',events.length);
-      }
-    }catch(e){ console.warn('[cal] corsproxy failed:',e.message); }
-  }
+  try{
+    const ffRaw = [];
+    for(const suffix of ['thisweek','nextweek','nextmonth']){
+      try{
+        const ffUrl = `https://nfs.faireconomy.media/ff_calendar_${suffix}.json`;
+        const r = await _fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(ffUrl)}`,{},10000);
+        if(!r.ok) continue;
+        const data = await r.json();
+        if(Array.isArray(data)){
+          data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
+            const dt = new Date(ev.date);
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+          });
+        }
+      }catch{}
+    }
+    ffRaw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
+    console.log('[cal] corsproxy added, total:',allRawEvents.length);
+  }catch(e){ console.warn('[cal] corsproxy failed:',e.message); }
 
-  // ── Source 6: Hardcoded upcoming events (final fallback) ──
-  if(!events.length){
-    console.warn('[cal] All sources failed — using hardcoded fallback');
-    const now = new Date();
-    function nextNthWeekday(wd, nth, yr, mo){
-      const d = new Date(yr, mo-1, 1); let count=0;
-      while(count<nth){ if(d.getDay()===wd) count++; if(count<nth) d.setDate(d.getDate()+1); }
+  // ── dedup by title+date ──
+  const seen = new Set();
+  let events = allRawEvents.filter(ev=>{
+    const key = ev.title+'|'+ev.date;
+    if(seen.has(key)) return false;
+    seen.add(key); return true;
+  }).filter(ev=>ev.date>=from).sort((a,b)=>a.date.localeCompare(b.date));
+
+  console.log('[cal] final merged events:',events.length);
+
+  // ── Source 6: Hardcoded fallback — ใช้เสริมเสมอ ไม่ใช่แค่เมื่อ API fail ──
+  // สร้าง hardcoded events สำหรับ 2 เดือนข้างหน้า แล้วเติมเฉพาะ title ที่ยังขาด
+  {
+    const now2 = new Date();
+    function _addDays(ds, n){ return new Date(new Date(ds).getTime()+n*86400000).toISOString().slice(0,10); }
+    function _nextFriday(fromDate){
+      const d = new Date(fromDate); d.setDate(d.getDate()+1);
+      while(d.getDay()!==5) d.setDate(d.getDate()+1);
       return d.toISOString().slice(0,10);
     }
-    function addDays(ds, n){ return new Date(new Date(ds).getTime()+n*86400000).toISOString().slice(0,10); }
-    const mo = now.getMonth()+1, yr = now.getFullYear();
-    const nextMo = mo===12?1:mo+1, nextYr = mo===12?yr+1:yr;
-    const nfp = nextNthWeekday(5,1,nextYr,nextMo);
-    events = [
-      { title:'US Jobs Report (NFP)',  emoji:'💼', tags:['SP500','Nasdaq','Jobs'],    detail:'ตัวเลขการจ้างงาน — กระทบ Fed rate decision โดยตรง',     date:nfp,             time:'08:30', forecast:'', previous:'', markets:['SP500','Jobs'],     logo:'', _fromAPI:false, _fallback:true },
-      { title:'US CPI Inflation',       emoji:'🔥', tags:['Fed','SP500','Inflation'],  detail:'เงินเฟ้อ — ตัวเลขที่ตลาดกลัวที่สุด',                   date:addDays(nfp,9),  time:'08:30', forecast:'', previous:'', markets:['Fed','SP500'],      logo:'', _fromAPI:false, _fallback:true },
-      { title:'Fed FOMC Decision',      emoji:'🏛️', tags:['Fed','SP500','Nasdaq'],    detail:'Fed ประกาศดอกเบี้ย — กระทบทุกหุ้นในตลาด',              date:addDays(nfp,14), time:'14:00', forecast:'', previous:'', markets:['Fed','Nasdaq'],     logo:'', _fromAPI:false, _fallback:true },
-      { title:'US PCE Inflation',       emoji:'💹', tags:['Fed','SP500','Inflation'],  detail:'PCE — เงินเฟ้อที่ Fed ดูมากที่สุด',                     date:addDays(nfp,20), time:'08:30', forecast:'', previous:'', markets:['Fed','SP500'],      logo:'', _fromAPI:false, _fallback:true },
-      { title:'US GDP',                 emoji:'📈', tags:['SP500','Economy'],          detail:'GDP — ถ้าต่ำกว่าคาดอาจเป็น recession fear',            date:addDays(nfp,25), time:'08:30', forecast:'', previous:'', markets:['SP500','Economy'],  logo:'', _fromAPI:false, _fallback:true },
-    ].filter(ev=>ev.date>=from).sort((a,b)=>a.date.localeCompare(b.date));
+    // NFP = first Friday of each month
+    function _firstFridayOfMonth(yr, mo){
+      const d = new Date(yr, mo-1, 1);
+      while(d.getDay()!==5) d.setDate(d.getDate()+1);
+      return d.toISOString().slice(0,10);
+    }
+    const existingTitles = new Set(events.map(e=>e.title));
+    const candidates = [];
+    for(let offset=0; offset<=2; offset++){
+      const d = new Date(now2);
+      d.setMonth(d.getMonth()+offset);
+      const mo2 = d.getMonth()+1, yr2 = d.getFullYear();
+      const nfp2 = _firstFridayOfMonth(yr2, mo2);
+      candidates.push(
+        { title:'US Jobs Report (NFP)',   emoji:'💼', tags:['SP500','Nasdaq','Jobs'],    detail:'ตัวเลขการจ้างงาน — กระทบ Fed rate decision โดยตรง ถ้าแข็งแกร่ง = Fed ไม่รีบลด', date:nfp2,             time:'08:30', _fallback:true },
+        { title:'US CPI Inflation',        emoji:'🔥', tags:['Fed','SP500','Inflation'],  detail:'เงินเฟ้อ — ตัวเลขที่ตลาดกลัวที่สุด ถ้าสูงกว่าคาด Growth/Tech ร่วงแรง',        date:_addDays(nfp2,9), time:'08:30', _fallback:true },
+        { title:'US PPI',                  emoji:'🏭', tags:['SP500','Inflation'],        detail:'ราคาผู้ผลิต — บอกเงินเฟ้อล่วงหน้า กระทบ margin บริษัท',                       date:_addDays(nfp2,10),time:'08:30', _fallback:true },
+        { title:'Fed FOMC Decision',       emoji:'🏛️',tags:['Fed','SP500','Nasdaq'],     detail:'Fed ประกาศดอกเบี้ย — กระทบทุกหุ้นในตลาด ต้องจับตา dot plot',                  date:_addDays(nfp2,14),time:'14:00', _fallback:true },
+        { title:'US Retail Sales',         emoji:'🛒', tags:['SP500','Consumer','Economy'],detail:'ยอดค้าปลีก — วัดการใช้จ่ายผู้บริโภค กระทบ Consumer sector',                  date:_addDays(nfp2,16),time:'08:30', _fallback:true },
+        { title:'US PCE Inflation',        emoji:'💹', tags:['Fed','SP500','Inflation'],  detail:'PCE — เงินเฟ้อที่ Fed ดูมากที่สุด กระทบ rate decision โดยตรง',                date:_addDays(nfp2,20),time:'08:30', _fallback:true },
+        { title:'US GDP',                  emoji:'📈', tags:['SP500','Economy'],          detail:'GDP — ถ้าต่ำกว่าคาดอาจเป็น recession fear กระทบทุกหุ้น',                      date:_addDays(nfp2,25),time:'08:30', _fallback:true },
+        { title:'Consumer Confidence',     emoji:'😊', tags:['SP500','Consumer'],         detail:'ความเชื่อมั่นผู้บริโภค — สัญญาณการใช้จ่ายล่วงหน้า',                           date:_addDays(nfp2,22),time:'10:00', _fallback:true },
+      );
+    }
+    // เติมเฉพาะ event ที่ยังไม่มีใน events จาก API
+    candidates.forEach(c=>{
+      if(c.date >= from && !existingTitles.has(c.title)){
+        existingTitles.add(c.title); // ใส่แค่ครั้งแรกที่เจอ title นั้น
+        events.push({ ...c, forecast:'', previous:'', logo:'', markets:c.tags, _fromAPI:false });
+      }
+    });
+    events.sort((a,b)=>a.date.localeCompare(b.date));
+    console.log('[cal] after fallback supplement:',events.length);
   }
 
   if(events.length){
@@ -15369,7 +15387,7 @@ async function initEliteCalendar(){
   if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูล Economic Calendar...</div>';
 
   // ล้าง cache เก่าทุก version
-  ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+  ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6','_elite_econ_cache_v7','_elite_econ_cache_v8'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 
   const apiEvents = await fetchEliteEconomicCalendar();
 
