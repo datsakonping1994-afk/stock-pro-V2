@@ -1503,10 +1503,9 @@ canvas.bigchart{width:100%;height:100%}
 
   </div>
 
-  <!-- EVENTS TAB -->
-  <div id="elite-tab-events" style="display:none;padding:12px 12px 0">
-    <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;color:var(--text3);margin-bottom:10px;opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
-    <div id="eliteEventsGrid" style="display:flex;flex-direction:column;gap:10px;padding-bottom:100px"></div>
+  <div style="padding:10px 14px 6px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
+  <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
+    <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
   </div>
 
   <div style="height:30px"></div>
@@ -14025,35 +14024,24 @@ function switchEliteTab(tab){
 }
 
 function initElitePage(){
-  renderEliteEvents();
+  // โหลด calendar ทันที
+  if(!ELITE_EVENTS.length){
+    initEliteCalendar().catch(e=>console.warn('calendar err',e));
+  } else {
+    renderEliteEvents();
+  }
   updateEliteNotifUI();
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
   }
-  // โหลด cache ก่อน ถ้ายังไม่หมดอายุ และมีข้อมูล
+  // โหลด scan results
   const cached = loadEliteCache();
   if(cached && cached.results.length > 0){
     _eliteScanResults = cached.results;
     renderEliteScanResults(cached.results, cached.age);
-    // ถ้า cache ไม่มี pros/cons หรือ headline ยังเป็น English → enrich แบบ background
-    const missingAnalysis = cached.results.some(function(r){
-      return !r.news.pros||!r.news.pros.length||!r.news.why||!r.news.read_game
-        || _isEnglish(r.news.headline); // ยังไม่ได้แปล
-    });
-    if(missingAnalysis){
-      setTimeout(async function(){
-        const enriched = await _eliteEnrichResults(cached.results, null, true);
-        if(enriched && enriched.length){
-          _eliteScanResults = enriched;
-          saveEliteCache(enriched);
-          renderEliteScanResults(enriched, 0);
-        }
-      }, 500);
-    }
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   } else {
-    // ไม่มีข้อมูลเลย → auto scan เลย ไม่ต้องรอกด SCAN NOW
     setTimeout(()=>runEliteScan(true), 300);
   }
 }
