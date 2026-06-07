@@ -1796,36 +1796,16 @@ const fundExtra={}; // populated by initLiveData via /metrics endpoint
 // ── Helper: normalize Revenue Growth จาก API ──
 // Finnhub/Worker อาจส่งในรูป decimal (0.15=15%), % (15.0), หรือค่าแปลกๆ
 // return string "xx.x%" หรือ null ถ้าไม่น่าเชื่อถือ
+// ── _normalizeRevGrowth ──
+// Worker ส่ง revGrowth เป็น % number แล้ว เช่น 70.7, 10.96, -5.2
+// (Worker คำนวณจาก Yahoo financialData.revenueGrowth.raw × 100)
+// แค่ validate range และ format เป็น string
 function _normalizeRevGrowth(raw){
   if(raw==null||isNaN(+raw)) return null;
   const v = +raw;
-  // Finnhub ส่ง revenueGrowthTTMYoy ในรูป decimal เสมอ เช่น:
-  //   0.386 = 38.6%,  0.326 = 32.6%,  0.457 = 45.7%
-  //   10.96 = 1096% (ผิดปกติ แต่เป็น decimal จริง — หุ้นรายได้เคยเกือบศูนย์)
-  //   725.76 = nonsense → ทิ้ง
-  // Worker /metrics batch อาจส่งเป็น % แล้ว เช่น 38.6 = 38.6%
-  // วิธีแยก: ถ้า |v| < 20 → น่าจะเป็น decimal → คูณ 100
-  //          ถ้า |v| >= 20 และ <= 500 → น่าจะเป็น % แล้ว → ใช้ตรงๆ
-  //          ถ้า > 500 → nonsense → ทิ้ง
-  // ข้อยกเว้น: หุ้น turnaround ที่รายได้พุ่งมากจริงๆ เช่น 5x = 500%
-  //   → decimal จะเป็น 5.0 → คูณ 100 = 500% ซึ่งถูกต้อง
-  //   → แต่ถ้า decimal = 10.96 → 1096% ดูผิดปกติมาก cap ที่ 500%
-
-  if(v>=-20&&v<=20){
-    // decimal format → คูณ 100 แล้ว cap ±500%
-    const pct = v*100;
-    if(pct > 500) return '500.0%+';
-    if(pct < -100) return null; // ลบมากเกิน nonsense
-    return pct.toFixed(1)+'%';
-  }
-  if(v>=-100&&v<=500) return v.toFixed(1)+'%'; // % format ใช้ตรงๆ
-  if(v>500&&v<=2000){
-    // อาจเป็น basis points → หาร 100
-    const bp = v/100;
-    if(bp<=500) return bp.toFixed(1)+'%';
-  }
-  // เกิน 2000 = nonsense → ทิ้ง
-  return null;
+  // valid range: -100% ถึง 5000%
+  if(v < -100 || v > 5000) return null;
+  return v.toFixed(1) + '%';
 }
 
 
@@ -3667,11 +3647,18 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — normalize ผ่าน helper (รองรับ decimal/pct/basis-points format)
-        if(m['revenueGrowthTTMYoy']!=null){
-          const rg=_normalizeRevGrowth(m['revenueGrowthTTMYoy']);
-          if(rg!=null){ s.revLive=rg; metricOk=true; }
-        }
+        // Revenue Growth — ดึงจาก Yahoo แทน Finnhub (Finnhub format ไม่ consistent)
+        // Yahoo financialData.revenueGrowth.raw เป็น decimal เสมอ เช่น 0.1096 = 10.96%
+        try{
+          const yhTicker=ticker.replace('.', '-');
+          const yhRes=await safeFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=financialData`,{},1);
+          const yhData=await yhRes.json();
+          const rg=yhData?.quoteSummary?.result?.[0]?.financialData?.revenueGrowth?.raw;
+          if(rg!=null && rg>=-1.0 && rg<=50.0){
+            s.revLive=+(rg*100).toFixed(1)+'%';
+            metricOk=true;
+          }
+        }catch{}
         if(m['marketCapitalization']!=null){
           const mcM=m['marketCapitalization']; // Finnhub หน่วย = millions USD
           if(mcM>=1){
@@ -9822,13 +9809,16 @@ async function _showEarningsHistory(ticker, btn){
             <b style="color:${rc};font-size:14px">${rg>=0?'+':''}${rg}%</b>
           </div>`;
         }
-      } else if(metrics?.revGrowth!=null && Math.abs(metrics.revGrowth) < 20){
-        const rg = (+metrics.revGrowth*100).toFixed(1);
-        const rc = rg>=0?'var(--green)':'var(--red)';
-        revGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
-          <span style="color:var(--text3)">Rev Growth YoY</span><br>
-          <b style="color:${rc};font-size:14px">${rg>=0?'+':''}${rg}%</b>
-        </div>`;
+      } else if(metrics?.revGrowth!=null){
+        const rg = _normalizeRevGrowth(metrics.revGrowth);
+        if(rg!=null){
+          const rgNum = parseFloat(rg);
+          const rc = rgNum>=0?'var(--green)':'var(--red)';
+          revGrowthHtml = `<div style="background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:8px;padding:5px 10px;font-size:11px">
+            <span style="color:var(--text3)">Rev Growth YoY</span><br>
+            <b style="color:${rc};font-size:14px">${rgNum>=0?'+':''}${rg}</b>
+          </div>`;
+        }
       }
 
       // ── Summary cards ──
