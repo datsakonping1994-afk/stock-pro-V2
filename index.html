@@ -15311,16 +15311,34 @@ function renderEliteEvents(){
         🔍 ดูสรุปผลการรายงาน
       </button>
       ` : `
-      <button onclick="forecastEvent(${idx}, this)" style="width:100%;margin-top:10px;background:linear-gradient(135deg,rgba(201,168,76,0.1),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px">
+      <button id="forecastBtn-${idx}" onclick="forecastEvent(${idx}, this)" style="width:100%;margin-top:10px;background:linear-gradient(135deg,rgba(201,168,76,0.1),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px">
         🔮 AI คาดการณ์แนวโน้ม
       </button>
       `}
       <div style="margin-top:8px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:7px;font-size:9px;color:var(--text3)">⚠️ ใช้ประกอบการตัดสินใจเท่านั้น ไม่ใช่คำแนะนำการลงทุน</div>
     </div>`;
   }).join('');
-}
 
-async function summarizeEvent(idx, btn){
+  // Auto-show cached forecast สำหรับ upcoming events ใน 14 วัน
+  setTimeout(()=>{
+    ELITE_EVENTS.forEach((ev, idx)=>{
+      const datePart = (ev.date||'').slice(0,10);
+      const evDate = new Date(datePart+'T00:00:00');
+      if(isNaN(evDate.getTime())) return;
+      const diffDays = Math.ceil((evDate - new Date()) / 86400000);
+      if(diffDays >= 0 && diffDays <= 14){
+        const cacheKey = '_ev_forecast_' + idx;
+        try{
+          const c = JSON.parse(localStorage.getItem(cacheKey)||'null');
+          if(c && (Date.now()-c.ts < 30*60*1000)){
+            const btn = document.getElementById('forecastBtn-'+idx);
+            if(btn) forecastEvent(idx, btn);
+          }
+        }catch{}
+      }
+    });
+  }, 400);
+}(idx, btn){
   const ev = ELITE_EVENTS[idx];
   const evId = 'ev-summary-'+idx;
   const box = document.getElementById(evId);
