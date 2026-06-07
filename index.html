@@ -15338,7 +15338,9 @@ function renderEliteEvents(){
       }
     });
   }, 400);
-}(idx, btn){
+}
+
+async function summarizeEvent(idx, btn){
   const ev = ELITE_EVENTS[idx];
   const evId = 'ev-summary-'+idx;
   const box = document.getElementById(evId);
