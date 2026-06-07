@@ -15146,7 +15146,7 @@ async function analyzePortfolioImpact(personId, btn){
 //  ELITE: Auto-fetch Economic Calendar from Finnhub
 //  อัปเดตอัตโนมัติ + merge กับ hardcode events
 // ══════════════════════════════════════════════
-const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v2';
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v3';
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
 // เฉพาะ event ที่กระทบตลาดหุ้นหนักจริงๆ
@@ -15200,21 +15200,25 @@ async function fetchEliteEconomicCalendar(){
     }
   }catch(e){ console.warn('[elite calendar] Worker failed, trying Finnhub direct', e.message); }
 
-  // Fallback: Finnhub โดยตรง
+  // Fallback: Finnhub โดยตรงใช้ key จาก Settings
   if(!events.length){
-    const key = localStorage.getItem('finnhubKey')||FINNHUB_KEY||'';
+    const key = localStorage.getItem('finnhubKey') || '';
+    console.log('[elite calendar] Trying Finnhub direct, key:', key ? 'found' : 'missing');
     if(key){
       try{
         const r2 = await _fetchWithTimeout(
-          `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`, {}, 8000
+          `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`, {}, 10000
         );
+        console.log('[elite calendar] Finnhub status:', r2.status);
         if(r2.ok){
           const d2 = await r2.json();
+          console.log('[elite calendar] Finnhub raw count:', (d2.economicCalendar||[]).length);
           events = (d2.economicCalendar||[])
             .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'))
             .map(_mapFinnhubEvent).filter(Boolean);
+          console.log('[elite calendar] Filtered events:', events.length);
         }
-      }catch(e2){ console.warn('[elite calendar] Finnhub direct also failed', e2.message); }
+      }catch(e2){ console.warn('[elite calendar] Finnhub direct failed:', e2.message); }
     }
   }
 
