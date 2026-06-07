@@ -14016,24 +14016,19 @@ function switchEliteTab(tab){
   // โหลด calendar ทันทีเมื่อเปิด events tab
   if(tab==='events'){
     const grid = document.getElementById('eliteEventsGrid');
-    if(grid && !ELITE_EVENTS.length){
-      grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ Finnhub...</div></div>';
-      initEliteCalendar().catch(e=>{
-        if(grid) grid.innerHTML=`<div style="text-align:center;padding:30px;color:var(--red);font-size:12px">❌ Error: ${e.message}<br><span style="color:var(--text3);font-size:10px">กรุณาใส่ Finnhub Key ใน Settings</span></div>`;
-      });
-    } else {
+    if(ELITE_EVENTS.length){
       renderEliteEvents();
+    } else {
+      if(grid) grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ Finnhub...</div></div>';
+      initEliteCalendar().catch(e=>{
+        if(grid) grid.innerHTML=`<div style="text-align:center;padding:30px;color:var(--red);font-size:12px">❌ ดึงข้อมูลไม่ได้<br><span style="color:var(--text3);font-size:10px">กรุณาใส่ Finnhub Key ใน Settings</span></div>`;
+      });
     }
   }
 }
 
 function initElitePage(){
-  // โหลด calendar ทันที
-  if(!ELITE_EVENTS.length){
-    initEliteCalendar().catch(e=>console.warn('calendar err',e));
-  } else {
-    renderEliteEvents();
-  }
+  // calendar จะโหลดเมื่อเปิด events tab — ไม่โหลดล่วงหน้าเพื่อป้องกัน race condition
   updateEliteNotifUI();
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
