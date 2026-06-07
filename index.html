@@ -12173,7 +12173,24 @@ ${earnSoon.length?earnSoon.join(', '):'ไม่มี'}
   const sys='คุณคือที่ปรึกษาการลงทุนส่วนตัว สรุป Morning Brief แบบกระชับตรงประเด็น ภาษาไทยธรรมดา';
   const reply=await callAI_Brief(sys,prompt,400);
 
-  const tgMsg=`☀️ Morning Brief — ${todayStr}\n\n📊 SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%\n${fng?`😱 Fear & Greed: ${fng.value}/100 (${fng.text})\n`:''}\n${reply||'ไม่สามารถสรุปได้'}\n\n${earnSoon.length?'📅 Earnings วันนี้/พรุ่งนี้: '+earnSoon.join(', '):''}`;
+  // ── สรุปพอร์ตสำหรับ TG ──
+  let portTGLines = '';
+  if(portfolio.length>0){
+    const portLines = portfolio.map(pos=>{
+      const s = stocksMap.get(pos.t);
+      if(!s||!s.p) return null;
+      const pnlPct = pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
+      const dayChange = typeof s.c==='number'?s.c:parseFloat(s.c)||0;
+      const pnlEmoji = pnlPct>=5?'🚀':pnlPct>=0?'✅':pnlPct>=-5?'⚠️':'🔴';
+      const dayEmoji = dayChange>=0?'📈':'📉';
+      return `${pnlEmoji} ${pos.t}: วันนี้ ${dayEmoji}${dayChange>=0?'+':''}${dayChange.toFixed(1)}% | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%`;
+    }).filter(Boolean);
+    if(portLines.length) portTGLines = '\n\n💼 พอร์ตของคุณ\n' + portLines.join('\n');
+  }
+  const vixLine = vixVal>0?`📉 VIX: ${vixVal} ${vixStatus}\n`:'';
+  const sectorLine = bestSector&&worstSector?`🏆 ${bestSector.sec}(${bestSector.avg>=0?'+':''}${bestSector.avg}%) | 📉 ${worstSector.sec}(${worstSector.avg>=0?'+':''}${worstSector.avg}%)\n`:'';
+
+  const tgMsg=`☀️ Morning Brief — ${todayStr}\n\n📊 SPY ${marketCtx.SPY.change>=0?'+':''}${marketCtx.SPY.change}% | QQQ ${marketCtx.QQQ.change>=0?'+':''}${marketCtx.QQQ.change}%\n${vixLine}${fng?`😱 Fear & Greed: ${fng.value}/100 (${fng.text})\n`:''}${sectorLine}\n${reply||'ไม่สามารถสรุปได้'}${portTGLines}\n\n${earnSoon.length?'📅 Earnings: '+earnSoon.join(', ')+'\n':''}${upcomingEvents.length?'⚡ Events: '+upcomingEvents.join(', '):''}`.trim();
 
   sendTG(tgMsg);
   // FIX: แสดง toast ตามสถานะ Telegram จริง ไม่ใช่แสดงเสมอแม้ไม่มี token
