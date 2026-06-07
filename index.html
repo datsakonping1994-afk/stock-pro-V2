@@ -3647,20 +3647,10 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — ดึงจาก Yahoo แทน Finnhub (Finnhub format ไม่ consistent)
-        // Yahoo financialData.revenueGrowth.raw เป็น decimal เสมอ เช่น 0.1096 = 10.96%
-        try{
-          const yhTicker=ticker.replace('.', '-');
-          const yhRes=await safeFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=financialData`,{},1);
-          const yhData=await yhRes.json();
-          const rg=yhData?.quoteSummary?.result?.[0]?.financialData?.revenueGrowth?.raw;
-          if(rg!=null && rg>=-1.0 && rg<=50.0){
-            s.revLive=+(rg*100).toFixed(1)+'%';
-            metricOk=true;
-          }
-        }catch{}
+        // Revenue Growth — Worker ส่งมาผ่าน /metrics แล้ว (Yahoo decimal × 100)
+        // ไม่ดึงซ้ำที่นี่ เพราะ Worker batch โหลดให้แล้วตอน init
         if(m['marketCapitalization']!=null){
-          const mcM=m['marketCapitalization']; // Finnhub หน่วย = millions USD
+          const mcM=m['marketCapitalization'];
           if(mcM>=1){
             s.mktcapLive=mcM>=1000000?`$${(mcM/1000000).toFixed(1)}T`:mcM>=1000?`$${(mcM/1000).toFixed(1)}B`:`$${mcM.toFixed(0)}M`;
             metricOk=true;
