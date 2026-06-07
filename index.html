@@ -14025,6 +14025,7 @@ function switchEliteTab(tab){
     if(ELITE_EVENTS.length){
       renderEliteEvents();
     } else {
+      // แสดง loading ก่อน แล้วค่อย init (tab เปิดแล้วตอนนี้)
       if(grid) grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ...</div></div>';
       initEliteCalendar().catch(()=>{});
     }
@@ -15364,10 +15365,8 @@ async function fetchEliteEconomicCalendar(){
 
 async function initEliteCalendar(){
   const grid = document.getElementById('eliteEventsGrid');
-  // แสดง loading เฉพาะตอนที่ tab events เปิดอยู่เท่านั้น
-  const tabVisible = document.getElementById('elite-tab-events');
-  const isVisible = tabVisible && tabVisible.style.display !== 'none';
-  if(isVisible && grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูล Economic Calendar...</div>';
+  // แสดง loading เสมอ (ไม่ต้องรอ tab visible)
+  if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูล Economic Calendar...</div>';
 
   // ล้าง cache เก่าทุก version
   ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
@@ -15375,8 +15374,7 @@ async function initEliteCalendar(){
   const apiEvents = await fetchEliteEconomicCalendar();
 
   if(!apiEvents.length){
-    // ถ้า tab เปิดอยู่ถึงแสดง error
-    if(isVisible && grid) grid.innerHTML=`<div style="text-align:center;padding:30px">
+    if(grid) grid.innerHTML=`<div style="text-align:center;padding:30px">
       <div style="font-size:28px;margin-bottom:10px">📅</div>
       <div style="color:var(--text3);font-size:12px;margin-bottom:14px">ดึงข้อมูลจาก API ไม่ได้ในขณะนี้</div>
       <button onclick="initEliteCalendar()" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:8px 20px;font-size:11px;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 ลองใหม่</button>
@@ -15394,7 +15392,7 @@ async function initEliteCalendar(){
   ELITE_EVENTS.length = 0;
   ELITE_EVENTS.push(...unique);
   ELITE_EVENTS.sort((a,b)=>new Date(a.date)-new Date(b.date));
-  // อัปเดต header
+  // อัปเดต header เสมอ
   const headerEl = document.getElementById('eliteEventsHeader');
   if(headerEl){
     const hasFallback = unique.some(e=>e._fallback);
@@ -15402,10 +15400,8 @@ async function initEliteCalendar(){
       ? `<span style="color:var(--gold)">ประมาณการ</span> <button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`
       : `<span style="color:var(--green)">● Live</span> · ${unique.length} รายการ <button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`;
   }
-  // render เฉพาะตอน tab เปิดอยู่
-  if(document.getElementById('elite-tab-events')?.style.display !== 'none'){
-    renderEliteEvents();
-  }
+  // render เสมอ (ไม่ต้องรอ tab visible)
+  renderEliteEvents();
   console.log(`[elite] loaded ${unique.length} events`);
 }
 
