@@ -13562,23 +13562,15 @@ function updatePortCharts(){
 // ══════════════════════════════════════════
 
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
-// ELITE_PEOPLE: รายชื่อบุคคลผู้มีอิทธิพลต่อตลาด (static config — ไม่ใช่ financial data)
-// ชื่อ/ตำแหน่งเหล่านี้ไม่เปลี่ยนบ่อย และไม่กระทบการวิเคราะห์ราคาหุ้น
+// ELITE_PEOPLE: เฉพาะบุคคลที่มีผลกระทบต่อตลาดหุ้นโดยตรง
 const ELITE_PEOPLE = [
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',     emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c' },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',              emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6' },
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',             emoji:'🟢', logo:'', tickers:['NVDA'],               x:135, y:170, color:'#76b900' },
-  { id:'cook',    name:'Tim Cook',          role:'CEO Apple',              emoji:'🍎', logo:'', tickers:['AAPL'],               x:125, y:175, color:'#555'    },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',         emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937' },
-  { id:'nadella', name:'Satya Nadella',     role:'CEO Microsoft',          emoji:'🪟', logo:'', tickers:['MSFT'],               x:152, y:172, color:'#00a4ef' },
-  { id:'zuck',    name:'Mark Zuckerberg',   role:'CEO Meta',               emoji:'👤', logo:'', tickers:['META'],               x:160, y:168, color:'#1877f2' },
-  { id:'pichai',  name:'Sundar Pichai',     role:'CEO Google',             emoji:'🔍', logo:'', tickers:['GOOGL'],              x:138, y:158, color:'#4285f4' },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',             emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f' },
-  { id:'dimon',   name:'Jamie Dimon',       role:'CEO JPMorgan',           emoji:'🏦', logo:'', tickers:['JPM'],                x:163, y:155, color:'#005eb8' },
-  { id:'buffett', name:'Warren Buffett',    role:'CEO Berkshire',          emoji:'💰', logo:'', tickers:['BRK.B'],              x:145, y:162, color:'#c9a84c' },
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',        emoji:'🇨🇳', logo:'', tickers:['FXI'],                x:755, y:130, color:'#e74c3c' },
-  { id:'lagarde', name:'Christine Lagarde', role:'ECB President',          emoji:'🇪🇺', logo:'', tickers:['FEZ','EWG'],          x:478, y:100, color:'#2980b9' },
-  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน',    emoji:'🛢️', logo:'', tickers:['USO','XLE'],          x:570, y:168, color:'#f39c12' },
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c' },
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6' },
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900' },
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f' },
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',      emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937' },
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c' },
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12' },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14018,6 +14010,18 @@ function switchEliteTab(tab){
   });
   document.getElementById('elite-tab-map').style.display = tab==='map' ? 'block' : 'none';
   document.getElementById('elite-tab-events').style.display = tab==='events' ? 'block' : 'none';
+  // โหลด calendar ทันทีเมื่อเปิด events tab
+  if(tab==='events'){
+    const grid = document.getElementById('eliteEventsGrid');
+    if(grid && !ELITE_EVENTS.length){
+      grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังโหลดกำหนดการ...</div></div>';
+      initEliteCalendar().catch(e=>{
+        if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⚠️ โหลดไม่ได้ กรุณาใส่ Finnhub Key ใน Settings</div>';
+      });
+    } else {
+      renderEliteEvents();
+    }
+  }
 }
 
 function initElitePage(){
@@ -15145,21 +15149,14 @@ async function analyzePortfolioImpact(personId, btn){
 const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache';
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
-// Map Finnhub event names → Thai + emoji
+// เฉพาะ event ที่กระทบตลาดหุ้นหนักจริงๆ
 const FINNHUB_EVENT_MAP = {
-  'nonfarm':         { title:'US Jobs Report (NFP)', emoji:'💼', tags:['SP500','Nasdaq','Jobs'], detail:'ตัวเลขการจ้างงานนอกภาคเกษตร ชี้ความแข็งแกร่งของเศรษฐกิจ กระทบทิศทาง Fed โดยตรง' },
-  'cpi':             { title:'US CPI Inflation',     emoji:'📊', tags:['SP500','Fed','Inflation'], detail:'ดัชนีราคาผู้บริโภค ตัวเลขหลักที่ Fed ใช้ตัดสินใจดอกเบี้ย กระทบหุ้น Growth/Tech แรงมาก' },
-  'fomc':            { title:'Fed FOMC Meeting',     emoji:'🏛️', tags:['Fed','SP500','Nasdaq'], detail:'Fed ประกาศนโยบายดอกเบี้ย ตลาดจับตาสัญญาณลด rate และ dot plot ใหม่' },
-  'gdp':             { title:'US GDP',               emoji:'📈', tags:['SP500','Economy'], detail:'ตัวเลข GDP สะท้อนภาพรวมเศรษฐกิจสหรัฐ' },
-  'retail sales':    { title:'US Retail Sales',      emoji:'🛒', tags:['SP500','Consumer'], detail:'ยอดค้าปลีกสหรัฐ สะท้อนกำลังซื้อผู้บริโภค' },
-  'pce':             { title:'US PCE Inflation',     emoji:'💹', tags:['Fed','SP500','Inflation'], detail:'PCE Price Index — ตัวเลขเงินเฟ้อที่ Fed ให้ความสำคัญมากที่สุด' },
-  'ppi':             { title:'US PPI',               emoji:'🏭', tags:['SP500','Inflation'], detail:'ดัชนีราคาผู้ผลิต บอกแนวโน้มเงินเฟ้อล่วงหน้า' },
-  'unemployment':    { title:'US Jobless Claims',    emoji:'👷', tags:['SP500','Jobs'], detail:'จำนวนผู้ขอรับสวัสดิการว่างงาน บอกสุขภาพตลาดแรงงาน' },
-  'ism':             { title:'US ISM PMI',           emoji:'🏗️', tags:['SP500','Economy'], detail:'ดัชนีผู้จัดการฝ่ายจัดซื้อ บอกภาวะภาคการผลิต/บริการ' },
-  'housing':         { title:'US Housing Data',      emoji:'🏠', tags:['SP500','Consumer'], detail:'ข้อมูลภาคอสังหาริมทรัพย์ สะท้อนสภาวะเศรษฐกิจ' },
-  'trade balance':   { title:'US Trade Balance',     emoji:'⚖️', tags:['SP500','USD'], detail:'ดุลการค้าสหรัฐ กระทบค่าเงินดอลลาร์' },
-  'michigan':        { title:'Michigan Consumer Sentiment', emoji:'😊', tags:['SP500','Consumer'], detail:'ดัชนีความเชื่อมั่นผู้บริโภค มหาวิทยาลัยมิชิแกน' },
-  'durable goods':   { title:'US Durable Goods',     emoji:'🔧', tags:['SP500','Economy'], detail:'คำสั่งซื้อสินค้าคงทน บ่งชี้การลงทุนภาคธุรกิจ' },
+  'nonfarm':  { title:'US Jobs Report (NFP)', emoji:'💼', tags:['SP500','Nasdaq','Jobs'],   detail:'ตัวเลขการจ้างงาน — กระทบ Fed rate decision โดยตรง ถ้าแข็งแกร่ง = Fed ไม่รีบลด' },
+  'cpi':      { title:'US CPI Inflation',     emoji:'🔥', tags:['Fed','SP500','Inflation'], detail:'เงินเฟ้อ — ตัวเลขที่ตลาดกลัวที่สุด ถ้าสูงกว่าคาด Growth/Tech ร่วงแรง' },
+  'fomc':     { title:'Fed FOMC Decision',    emoji:'🏛️', tags:['Fed','SP500','Nasdaq'],    detail:'Fed ประกาศดอกเบี้ย — กระทบทุกหุ้นในตลาด ต้องจับตา dot plot' },
+  'pce':      { title:'US PCE Inflation',     emoji:'💹', tags:['Fed','SP500','Inflation'], detail:'PCE — เงินเฟ้อที่ Fed ดูมากที่สุด กระทบ rate decision โดยตรง' },
+  'gdp':      { title:'US GDP',               emoji:'📈', tags:['SP500','Economy'],         detail:'GDP — ถ้าต่ำกว่าคาดอาจเป็น recession fear กระทบทุกหุ้น' },
+  'ppi':      { title:'US PPI',               emoji:'🏭', tags:['SP500','Inflation'],       detail:'ราคาผู้ผลิต — บอกเงินเฟ้อล่วงหน้า กระทบ margin บริษัท' },
 };
 
 function _mapFinnhubEvent(ev){
@@ -15168,31 +15165,16 @@ function _mapFinnhubEvent(ev){
     if(name.includes(key)){
       return {
         ...mapped,
-        title: mapped.title + (ev.event?.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i)?(' '+ev.event.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i)[0]):''),
         date: ev.date,
         time: ev.time||'',
         logo: '',
         markets: mapped.tags,
         _fromAPI: true,
-        _impact: ev.impact||'medium',
+        _impact: ev.impact||'high',
       };
     }
   }
-  // Unknown event — include only HIGH impact
-  if(ev.impact==='high'||ev.impact==='HIGH'){
-    return {
-      title: ev.event,
-      emoji: '📌',
-      tags: ['SP500'],
-      detail: ev.event,
-      date: ev.date,
-      time: ev.time||'',
-      logo: '',
-      markets: ['SP500'],
-      _fromAPI: true,
-      _impact: ev.impact,
-    };
-  }
+  // ไม่รู้จัก → ข้ามทิ้ง
   return null;
 }
 
@@ -15213,7 +15195,7 @@ async function fetchEliteEconomicCalendar(){
     if(r.ok){
       const d = await r.json();
       events = (d.economicCalendar||d.events||[])
-        .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
+        .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'))
         .map(_mapFinnhubEvent).filter(Boolean);
     }
   }catch(e){ console.warn('[elite calendar] Worker failed, trying Finnhub direct', e.message); }
@@ -15229,7 +15211,7 @@ async function fetchEliteEconomicCalendar(){
         if(r2.ok){
           const d2 = await r2.json();
           events = (d2.economicCalendar||[])
-            .filter(ev=>ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='medium')
+            .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'))
             .map(_mapFinnhubEvent).filter(Boolean);
         }
       }catch(e2){ console.warn('[elite calendar] Finnhub direct also failed', e2.message); }
@@ -15256,6 +15238,10 @@ async function initEliteCalendar(){
 function renderEliteEvents(){
   const grid = document.getElementById('eliteEventsGrid');
   if(!grid) return;
+  if(!ELITE_EVENTS.length){
+    grid.innerHTML='<div style="text-align:center;padding:30px 0;color:var(--text3);font-size:12px">⏳ กำลังโหลดกำหนดการ...</div>';
+    return;
+  }
   const now = new Date();
   const tagColors = {
     'SP500':    'rgba(0,230,118,0.12)|rgba(0,230,118,0.3)|var(--green)',
