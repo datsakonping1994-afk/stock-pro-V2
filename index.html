@@ -4009,11 +4009,11 @@ async function drawerTab(tab, btn){
     const r1 = getR1(s.t,s.p);
     const eData = (window.earningsData||[]).find(function(e){ return e.t===s.t; });
     // แสดง Actual ก่อน ถ้าไม่มีถึงแสดง Estimate
-    // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → epsLive จาก Finnhub metric → estimate fallback
+    // EPS ล่าสุด: ใช้ epsActual จาก earnings calendar → estimate fallback → N/A
+    // FIX: ไม่ fallback ไป epsLive (TTM) เพราะซ้ำกับบรรทัด EPS (TTM) ด้านบน
     const epsVal = eData?.epsActual
-      || (s.epsLive ? '$'+s.epsLive+' (TTM)' : null)
       || (eData?.eps ? eData.eps+' (คาด)' : 'N/A');
-    // Revenue ล่าสุด: ใช้ revActual จาก earnings calendar → คำนวณจาก histEarnings ถ้ามี
+    // Revenue ล่าสุด: ใช้ revActual จาก earnings calendar → histEarnings (Yahoo quarterly)
     const _histRev = histEarnings[s.t];
     const _latestRev = _histRev?.length ? _histRev[_histRev.length-1]?.rev : null;
     const revVal = eData?.revActual
@@ -4032,7 +4032,10 @@ async function drawerTab(tab, btn){
       const pctFromHi = (((s.p-hi)/hi)*100).toFixed(1);
       const pctFromLo = (((s.p-lo)/lo)*100).toFixed(1);
       pctHiRow = '<div class="ind-row"><span class="ind-name">ห่างจาก 52W High</span><span class="ind-val bear">'+pctFromHi+'%</span></div>';
-      pctLoRow = '<div class="ind-row"><span class="ind-name">ห่างจาก 52W Low</span><span class="ind-val bull">+'+pctFromLo+'%</span></div>';
+      // FIX: ไม่ hardcode '+' เพราะถ้าราคา < 52W Low จะแสดง +-5.2% ซึ่งผิด
+      const pctLoSign = +pctFromLo >= 0 ? '+' : '';
+      const pctLoCls = +pctFromLo >= 0 ? 'bull' : 'bear';
+      pctLoRow = '<div class="ind-row"><span class="ind-name">ห่างจาก 52W Low</span><span class="ind-val '+pctLoCls+'">'+pctLoSign+pctFromLo+'%</span></div>';
     }
     const chgCls = s.c>=0?'bull':'bear';
     const chgTxt = (s.c>=0?'+':'')+s.c+'%';
@@ -4046,7 +4049,9 @@ async function drawerTab(tab, btn){
       ? `P/E Ratio <span style="font-size:9px;color:var(--text3)">(Non-GAAP: ${peNonG})</span>`
       : 'P/E Ratio';
     const peCls  = peDisplay?'neut':'bear';
-    const epsCls = (epsVal!=='N/A'&&!String(epsVal).startsWith('-'))?'bull':'bear';
+    // FIX: ตรวจจับค่าลบที่มี $ นำหน้า เช่น '$-2.76' → parseFloat จะได้ NaN แต่ includes('-') จะได้ถูก
+    const _epsNum = parseFloat(String(epsVal).replace('$',''));
+    const epsCls = (epsVal==='N/A' || isNaN(_epsNum) || _epsNum<0) ? 'bear' : 'bull';
     const revCls = parseFloat(s.revLive||s.rev||0)>0?'bull':'bear';
     const profitRow = peDisplay
       ? '<div class="ind-row"><span class="ind-name">กำไร/ขาดทุน</span><span class="ind-val bull">✅ มีกำไร</span></div>'
@@ -9473,7 +9478,8 @@ async function fetchAndRenderEarnings(){
               const epsBeat=epsAct>=epsEst;
               const revBeat=revAct!=null&&revEst!=null?revAct>=revEst:null;
               const epsPct=epsEst!==0?((epsAct-epsEst)/Math.abs(epsEst)*100):0;
-              const pctStr=epsPct!==0?` ${epsPct>0?'+':''}${epsPct.toFixed(0)}%`:'';
+              // FIX: toFixed(1) แทน toFixed(0) กันแสดง -0%
+              const pctStr=Math.abs(epsPct)>=0.05?` ${epsPct>0?'+':''}${epsPct.toFixed(1)}%`:'';
               const estStr=epsEst!=null?` (Est. $${epsEst.toFixed(2)})`:'';
               if(epsBeat && revBeat!==false){
                 res=`✅ Beat${pctStr}${estStr}`;
@@ -9591,20 +9597,23 @@ async function autoCheckEarningsResults() {
   if (!pending.length) return;
   console.log('[Earnings] auto-check:', pending.map(e => e.t).join(', '));
 
+  // FIX: ดึงพร้อมกันทั้งหมด (parallel) แทน sequential await ที่ช้า
+  const results = await Promise.allSettled(pending.map(e => fetchActualEarnings(e.t)));
+
   let updated = false;
-  for (const e of pending) {
-    const actual = await fetchActualEarnings(e.t);
+  results.forEach((result, i) => {
+    const e = pending[i];
+    const actual = result.status === 'fulfilled' ? result.value : null;
     if (!actual) {
-      // ดึงไม่ได้ แสดง — แทน
       if (!e.res || e.res === '') { e.res = '—'; e.st = 'done'; updated = true; }
-      continue;
+      return;
     }
     const epsAct = actual.epsActual;
     const epsEst = actual.epsEstimate;
     if (epsAct != null && epsEst != null) {
       const epsBeat = epsAct >= epsEst;
       const epsPct = epsEst !== 0 ? ((epsAct - epsEst) / Math.abs(epsEst) * 100).toFixed(1) : 0;
-      const pctStr = epsPct != 0 ? ` ${epsPct > 0 ? '+' : ''}${epsPct}%` : '';
+      const pctStr = Math.abs(epsPct) >= 0.05 ? ` ${epsPct > 0 ? '+' : ''}${epsPct}%` : '';
       e.res = epsBeat ? `✅ Beat${pctStr} (Est. $${epsEst.toFixed(2)})` : `❌ Miss${pctStr} (Est. $${epsEst.toFixed(2)})`;
     } else if (epsAct != null) {
       e.res = `— EPS $${epsAct.toFixed(2)}`;
@@ -9615,7 +9624,7 @@ async function autoCheckEarningsResults() {
     e.st = 'done';
     updated = true;
     console.log(`[Earnings] ${e.t}: ${e.res}`);
-  }
+  });
   if (updated) {
     try { localStorage.setItem('_sp_earnings_cache', JSON.stringify({data: window.earningsData, ts: Date.now()})); } catch {}
     renderEarningsData(window.earningsData, true);
