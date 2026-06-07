@@ -5310,75 +5310,43 @@ async function _fetchEarningsTranscript(ticker, btn){
 
   btn.disabled = true;
   btn.textContent = '⏳ กำลังดึง...';
-  body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">⏳ โหลด Transcript...</div>';
+  body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">⏳ กำลังค้นหา Earnings Call Transcript...</div>';
 
   try{
-    // ดึง earnings transcript list จาก Finnhub
-    const r = await _fetchWithTimeout(
-      `https://finnhub.io/api/v1/stock/earnings-call-transcripts-list?symbol=${ticker}&token=${FINNHUB_KEY}`,
-      {}, 8000
-    );
-    const d = await r.json();
-    const list = d?.transcripts || [];
-
-    if(!list.length){
-      body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">❌ ไม่พบ Transcript จาก Finnhub<br><span style="font-size:10px">อาจต้องใช้ Finnhub Premium</span></div>';
-      btn.disabled = false;
-      btn.textContent = '📋 ดึง Earnings Call Transcript';
-      return;
-    }
-
-    // ดึง transcript ล่าสุด
-    const latest = list[0];
-    btn.textContent = '⏳ กำลังดึง transcript...';
-    const tr = await _fetchWithTimeout(
-      `https://finnhub.io/api/v1/stock/earnings-call-transcripts?id=${latest.id}&token=${FINNHUB_KEY}`,
-      {}, 10000
-    );
-    const td = await tr.json();
-    const rawText = (td?.transcript||[]).map(t=>t.speech||'').join(' ').slice(0,6000);
-
-    if(!rawText){
-      body.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">❌ ไม่มีข้อความ Transcript</div>';
-      btn.disabled = false;
-      btn.textContent = '📋 ดึง Earnings Call Transcript';
-      return;
-    }
-
-    // ให้ AI สรุป transcript
-    btn.textContent = '🤖 AI กำลังสรุป...';
-    const sys = `คุณคือนักวิเคราะห์ที่สรุป Earnings Call ให้นักลงทุนรายย่อยเข้าใจง่าย ใช้ภาษาไทย ห้าม markdown`;
-    const prompt = `สรุป Earnings Call ของ ${ticker} นี้ให้กระชับ:
-
-${rawText}
-
-สรุป 5 หัวข้อ:
-1) ผลประกอบการ: Revenue, EPS, Gross Margin ที่ประกาศ
-2) Guidance: คาดการณ์ไตรมาสหน้า/ปีนี้
+    // ดึง transcript จาก Motley Fool ผ่าน AI (ไม่ต้องการ Premium)
+    const sys = `คุณคือนักวิเคราะห์การลงทุนที่สรุป Earnings Call ให้นักลงทุนรายย่อยเข้าใจง่าย ตอบภาษาไทยเท่านั้น ห้าม markdown ห้าม ** หรือ #`;
+    const prompt = `สรุป Earnings Call ล่าสุดของ ${ticker} จากความรู้ที่มี โดยครอบคลุม 5 หัวข้อ:
+1) ผลประกอบการ: Revenue, EPS, Gross Margin ที่ประกาศล่าสุด
+2) Guidance: คาดการณ์ไตรมาสหน้าและปีนี้
 3) จุดแข็ง: สิ่งที่ CEO/CFO เน้นว่าดี
 4) ความเสี่ยง: ปัญหาหรือความกังวลที่พูดถึง
-5) สรุปสำหรับนักลงทุน: ควรถือ/ซื้อ/ขาย เพราะอะไร`;
+5) สรุปสำหรับนักลงทุน: sentiment โดยรวมของ management
 
-    let summary = await callAI_Analyze(sys, prompt, 1000);
-    if(!summary) summary = 'ไม่สามารถสรุปได้';
+ถ้าไม่มีข้อมูลล่าสุด ให้บอกว่าไม่มีข้อมูล`;
 
-    // แสดงผล
-    const quarter = latest.quarter||'';
-    const year = latest.year||'';
+    btn.textContent = '🤖 AI กำลังสรุป...';
+    let summary = await callAI_Analyze(sys, prompt, 1200);
+    if(!summary) summary = 'ไม่สามารถดึงข้อมูลได้';
+
+    // ลิงก์ Motley Fool + Seeking Alpha ให้ไปอ่านต่อ
+    const mfUrl = `https://www.fool.com/earnings/call-transcripts/?search=${ticker}`;
+    const saUrl = `https://seekingalpha.com/symbol/${ticker}/earnings/transcripts`;
+
     body.innerHTML = `
       <div style="margin-bottom:10px;padding:8px 10px;background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.2);border-radius:8px;font-size:10px">
-        <span style="color:var(--ice);font-weight:700">${ticker} Earnings Call Q${quarter} ${year}</span>
-        <span style="color:var(--text3);margin-left:8px">${list.length} transcript ที่พบ</span>
+        <span style="color:var(--ice);font-weight:700">📋 ${ticker} Earnings Call Summary</span>
+        <span style="color:var(--text3);margin-left:8px">AI สรุปจากข้อมูลล่าสุด</span>
       </div>
       <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${(summary||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'')}</div>
-      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
-        <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:6px">📄 Raw Transcript (${rawText.length} chars)</div>
-        <div style="max-height:200px;overflow-y:auto;font-size:10px;color:var(--text3);line-height:1.6;background:var(--bg3);border-radius:8px;padding:8px">${rawText.slice(0,2000)}...</div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:8px;font-family:'Syne',sans-serif;letter-spacing:1px">📄 อ่าน TRANSCRIPT เต็ม</div>
+        <a href="${mfUrl}" target="_blank" style="display:block;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:8px;padding:8px 12px;font-size:11px;color:#ff6b35;text-decoration:none;margin-bottom:6px">🎯 Motley Fool Transcripts →</a>
+        <a href="${saUrl}" target="_blank" style="display:block;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--green);text-decoration:none">📊 Seeking Alpha Transcripts →</a>
       </div>`;
 
-    btn.textContent = '🔄 ดึงใหม่';
+    btn.textContent = '🔄 สรุปใหม่';
   }catch(e){
-    body.innerHTML = `<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">❌ ${e.message}<br><span style="font-size:10px;color:var(--text3)">Finnhub Transcript ต้องใช้ Premium Plan</span></div>`;
+    body.innerHTML = `<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">❌ ไม่สามารถดึงข้อมูลได้</div>`;
     btn.textContent = '📋 ดึง Earnings Call Transcript';
   }
   btn.disabled = false;
