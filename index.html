@@ -4472,18 +4472,18 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
 // 🔬 Analyze — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
 async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   const _s=window._aiStatusHook||(()=>{});
-  // 1. MY_WORKER (Worker ส่วนตัว — ลำดับแรกเสมอ)
-  _s('🤖 MY Worker กำลังวิเคราะห์...');
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
+  // 1. Groq (groqKey จาก Settings — ฟรี เร็ว ไม่หมดเงิน)
+  _s('⚡ Groq กำลังวิเคราะห์...');
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
   // 2. Claude Direct (anthropicKey จาก Settings)
   _s('🤖 Claude กำลังวิเคราะห์...');
   const r1 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 3. Groq (groqKey จาก Settings)
-  _s('⚡ Groq กำลังวิเคราะห์...');
-  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
+  // 3. MY_WORKER (Worker ส่วนตัว)
+  _s('🤖 MY Worker กำลังวิเคราะห์...');
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
   // 4. Gemini Pro (geminiKey จาก Settings)
   _s('✨ Gemini Pro กำลังวิเคราะห์...');
   const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
@@ -4503,18 +4503,14 @@ async function callAI_Analyze(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
-// 💬 Chat — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
+// 💬 Chat — Groq ก่อนเสมอ (ฟรี เร็ว)
 async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
   const _setStatus=(label)=>{
     const el=document.getElementById('aiStatusLbl')||document.getElementById('aiLoading');
     if(el) el.textContent=label;
   };
   const _trim=(s,n)=>s.slice(0,n);
-  // 1. Claude Direct (anthropicKey จาก Settings)
-  _setStatus('🤖 Claude กำลังวิเคราะห์...');
-  const r0=await _callClaudeDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
-  if(r0) return r0;
-  // 2. Groq (groqKey จาก Settings)
+  // 1. Groq (groqKey จาก Settings — ฟรี เร็ว)
   try{
     const groqKey=localStorage.getItem('groqKey')||'';
     if(groqKey){
@@ -4531,6 +4527,10 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
       if(r.ok){const d=await r.json();const txt=d?.choices?.[0]?.message?.content;if(txt)return txt;}
     }
   }catch(e){console.warn('Groq:',e.message);}
+  // 2. Claude Direct (anthropicKey จาก Settings)
+  _setStatus('🤖 Claude กำลังวิเคราะห์...');
+  const r0=await _callClaudeDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
+  if(r0) return r0;
   // 3. Gemini Flash (geminiKey จาก Settings)
   _setStatus('⚡ Gemini Flash กำลังวิเคราะห์...');
   const r2=await _callGeminiDirect(systemPrompt,_trim(userPrompt,10000),maxTokens);
@@ -4550,14 +4550,14 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
   return null;
 }
 
-// ⚡ Quick — key จากแอปก่อนเสมอ: Claude → Groq → Gemini → OpenRouter → Claude Worker → Pollinations
+// ⚡ Quick — Groq ก่อนเสมอ (ฟรี เร็ว)
 async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
-  // 1. Claude Direct (anthropicKey จาก Settings)
-  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
-  // 2. Groq (groqKey จาก Settings)
+  // 1. Groq (groqKey จาก Settings — ฟรี เร็ว)
   const r1 = await _callGroq(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
+  // 2. Claude Direct (anthropicKey จาก Settings)
+  const r0 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
   // 3. Gemini Flash (geminiKey จาก Settings)
   const r2 = await _callGeminiDirect(systemPrompt, userPrompt, maxTokens);
   if(r2) return r2;
@@ -4573,17 +4573,17 @@ async function callAI_Quick(systemPrompt, userPrompt, maxTokens=400){
   return null;
 }
 
-// ☀️ Brief — key จากแอปก่อนเสมอ: Claude → Groq → Gemini Pro → OpenRouter → Claude Worker → Pollinations
+// ☀️ Brief — Groq ก่อนเสมอ
 async function callAI_Brief(systemPrompt, userPrompt, maxTokens=400){
-  // 1. MY_WORKER (Worker ส่วนตัว)
-  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
-  if(r0) return r0;
+  // 1. Groq (groqKey จาก Settings — ฟรี เร็ว)
+  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
+  if(r2) return r2;
   // 2. Claude Direct
   const r1 = await _callClaudeDirect(systemPrompt, userPrompt, maxTokens);
   if(r1) return r1;
-  // 3. Groq
-  const r2 = await _callGroq(systemPrompt, userPrompt, maxTokens);
-  if(r2) return r2;
+  // 3. MY_WORKER
+  const r0 = await _callClaude(systemPrompt, userPrompt, maxTokens);
+  if(r0) return r0;
   // 4. Gemini Pro
   const r3 = await _callGemini15Pro(systemPrompt, userPrompt, maxTokens);
   if(r3) return r3;
@@ -14222,25 +14222,37 @@ async function _eliteDirectFallback(overlay){
     return item.person.name+'('+item.id+'): '+item.headline+' — '+item.summary;
   }).join('\n');
 
+  const eliteSys = 'You are a senior financial analyst. Analyze news for Thai investors. CRITICAL: ALL text fields MUST be in Thai language — translate from English if needed. STRICT RULES: (1) headline field MUST be Thai translation of the original — do NOT leave it in English. (2) stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) — NEVER ETFs (SPY QQQ TLT GLD) — NEVER fake tickers. (3) sentiment must be exactly one of: bullish bearish neutral. (4) impact must be integer 1-10. (5) watch: use exact keywords FOMC CPI NFP GDP or ticker+Earnings. (6) read_game: specific second-order effect of this exact news only. Respond ONLY with valid JSON array. No markdown.';
+  const eliteUser = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย — ถ้า headline เป็น English ต้องแปลเป็นไทยก่อน ตอบ JSON array ภาษาไทยทั้งหมด:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อภาษาไทย (แปลจาก English)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"bearish","markets":["USD","Oil"],"pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เพราะอะไร","watch":"FOMC, CPI (ชื่อ event จริงเท่านั้น)","read_game":"second-order effect เฉพาะข่าวนี้","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]';
+
   try{
-    const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':_ank,
-        'anthropic-version':'2023-06-01',
-      },
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:4000,
-        system:'You are a senior financial analyst. Analyze news for Thai investors. CRITICAL: ALL text fields MUST be in Thai language — translate from English if needed. STRICT RULES: (1) headline field MUST be Thai translation of the original — do NOT leave it in English. (2) stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) — NEVER ETFs (SPY QQQ TLT GLD) — NEVER fake tickers. (3) sentiment must be exactly one of: bullish bearish neutral. (4) impact must be integer 1-10. (5) watch: use exact keywords FOMC CPI NFP GDP or ticker+Earnings. (6) read_game: specific second-order effect of this exact news only. Respond ONLY with valid JSON array. No markdown.',
-        messages:[{role:'user',content:'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย — ถ้า headline เป็น English ต้องแปลเป็นไทยก่อน ตอบ JSON array ภาษาไทยทั้งหมด:\n'+newsSummary+'\n\nJSON format:\n[{"id":"trump","headline":"หัวข้อภาษาไทย (แปลจาก English)","summary":"สรุป 2 ประโยคภาษาไทย","impact":8,"sentiment":"bearish","markets":["USD","Oil"],"pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เพราะอะไร","watch":"FOMC, CPI (ชื่อ event จริงเท่านั้น)","read_game":"second-order effect เฉพาะข่าวนี้","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]'}]
-      })
-    });
-    if(!resp.ok) return _mapNewsToResults(allNews);
-    const data = await resp.json();
-    const text = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    // ลอง Groq ก่อน (ฟรี ไม่หมดเงิน)
+    const groqKey = localStorage.getItem('groqKey')||'';
+    let rawText = null;
+    if(groqKey){
+      try{
+        const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+          body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
+        }, 15000);
+        if(gr.ok){ const gd=await gr.json(); rawText=gd?.choices?.[0]?.message?.content||null; }
+      }catch(e){ console.warn('[Elite Groq]',e.message); }
+    }
+    // Fallback: Anthropic (ถ้า Groq ไม่ได้)
+    if(!rawText && _ank){
+      const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:eliteSys,messages:[{role:'user',content:eliteUser}]})
+      }, 20000);
+      if(resp.ok){
+        const data = await resp.json();
+        rawText = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+      }
+    }
+    if(!rawText) return _mapNewsToResults(allNews);
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if(!jsonMatch) return _mapNewsToResults(allNews);
     let items = [];
     try{ items = JSON.parse(jsonMatch[0]); }catch(e){ return _mapNewsToResults(allNews); }
