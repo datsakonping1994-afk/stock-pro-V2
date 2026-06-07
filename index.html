@@ -1921,7 +1921,7 @@ async function loadHistEarnings(ticker){
     const yhTicker = ticker.replace('.', '-');
     const [earnRes, yahooRes] = await Promise.allSettled([
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
-      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,earningsHistory`,
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,earningsHistory,financialData`,
         {signal:AbortSignal.timeout(5000)}).then(r=>r.json()),
     ]);
     const d = (earnRes.status==='fulfilled') ? earnRes.value : null;
@@ -1929,6 +1929,11 @@ async function loadHistEarnings(ticker){
     const yahooData = (yahooRes.status==='fulfilled') ? yahooRes.value?.quoteSummary?.result?.[0] : null;
     const revQtrs = yahooData?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
     const yahooEpsHistory = yahooData?.earningsHistory?.history||[];
+    // financialData.totalRevenue = TTM revenue fallback
+    const ttmRevRaw = yahooData?.financialData?.totalRevenue?.raw||null;
+    const ttmRevB = ttmRevRaw!=null
+      ? (ttmRevRaw>=1e9 ? +(ttmRevRaw/1e9).toFixed(2) : +(ttmRevRaw/1e6).toFixed(0)/1000)
+      : null;
 
     if(raw.length>0){
       // Finnhub format: [{period, actual, estimate}] เรียงใหม่สุดก่อน → reverse เป็นเก่า→ใหม่
@@ -1937,9 +1942,11 @@ async function loadHistEarnings(ticker){
         // revQtrs[0] = quarter ล่าสุด, rawReversed[last] = quarter ล่าสุด → map กลับ
         const revIdx = rawReversed.length - 1 - i;
         const revRaw = revQtrs[revIdx]?.totalRevenue?.raw||null;
-        const revB = revRaw!=null
+        let revB = revRaw!=null
           ? (revRaw>=1e9 ? +(revRaw/1e9).toFixed(2) : +(revRaw/1e6).toFixed(0)/1000)
           : null;
+        // fallback: ใช้ TTM revenue สำหรับ quarter ล่าสุดถ้าไม่มี quarterly
+        if(revB===null && i===rawReversed.length-1 && ttmRevB!=null) revB = ttmRevB;
         return {
           q: e.period||'',
           eps: e.actual!=null ? +e.actual : null,
