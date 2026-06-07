@@ -4719,6 +4719,19 @@ async function sendAI(ticker){
 function _loadTradeLog(){try{return JSON.parse(localStorage.getItem('_tl_v2')||'[]');}catch{return[];}}
 function _saveTradeLog(log){try{localStorage.setItem('_tl_v2',JSON.stringify(log.slice(-100)));}catch{}}
 
+// ── ล้าง signal จาก Worker ที่ค้างใน localStorage (run ครั้งเดียว) ──
+(function _cleanWorkerSignals(){
+  try{
+    if(localStorage.getItem('_tl_cleaned_v1')) return; // ทำแล้ว skip
+    const log = JSON.parse(localStorage.getItem('_tl_v2')||'[]');
+    // signal จากแอปจะมี s2 field, signal จาก Worker จะไม่มี
+    const appOnly = log.filter(t => t.s2 != null);
+    localStorage.setItem('_tl_v2', JSON.stringify(appOnly));
+    localStorage.setItem('_tl_cleaned_v1', '1');
+    console.log('[cleanup] removed Worker signals:', log.length - appOnly.length);
+  }catch{}
+})();
+
 // ── ล้าง signal ซ้ำ — เก็บแค่ตัวล่าสุด 1 ตัวต่อ ticker ──
 function dedupeTradeLog(){
   const log = _loadTradeLog();
@@ -4866,28 +4879,9 @@ function _renderAlertsList(merged){
 
 
 async function _syncSignalLogFromKV(){
-  try{
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),5000);
-    const r=await fetch(PRICES_WORKER+'/signals/log',{signal:ctrl.signal});
-    if(!r.ok) return;
-    const remote=await r.json();
-    if(!Array.isArray(remote)||!remote.length) return;
-    const local=_loadTradeLog();
-    const localKeys=new Set(local.map(t=>t.ticker+':'+(t.time||'').slice(0,16)));
-    const toAdd=remote.filter(r=>!localKeys.has((r.ticker||r.t)+':'+(r.time||'').slice(0,16)));
-    if(toAdd.length){
-      const normalized=toAdd.map(r=>({
-        ticker:r.ticker||r.t, price:r.price, score:r.score,
-        s1:r.s1, r1:r.r1, time:r.time, result:r.result||null, pct:r.pct||null
-      }));
-      _saveTradeLog([...local,...normalized]);
-      console.log('[syncKV] added',toAdd.length,'signals from KV');
-      // re-render if on signals page
-      const panel=document.getElementById('panelTradeLog');
-      if(panel&&panel.style.display!=='none') renderAlerts();
-    }
-  }catch(e){ console.warn('[syncKV]',e.message); }
+  // FIX: ไม่ sync สัญญาณจาก Worker เข้า Trade Log แล้ว
+  // เพราะ Worker ไม่มี exitPrice จริง ทำให้ P&L คำนวณผิด
+  return;
 }
 
 
@@ -4908,33 +4902,9 @@ function renderAlerts(){
   updateTradeResults();
   const localLog = _loadTradeLog().reverse();
 
-  // แสดง local ก่อนทันที
+  // แสดงเฉพาะ local Trade Log (จากแอปเท่านั้น)
+  // FIX: ไม่ merge จาก Worker เพราะไม่มี exitPrice จริง → P&L ผิด
   _renderAlertsList(localLog);
-
-  // โหลด remote แบบ background — re-render เมื่อมีข้อมูลใหม่
-  fetchRemoteHistory().then(function(remoteLog){
-    if(!remoteLog||!remoteLog.length) return;
-    var normalized = remoteLog.map(function(r){ return {
-      ticker: r.ticker||r.t,
-      price: r.price,
-      score: r.score,
-      s1: r.s1,
-      r1: r.r1,
-      time: r.time,
-      result: r.result||null,
-      pct: r.pct||null
-    }; });
-    var localKeys = new Set(localLog.map(function(t){ return t.ticker+':'+(t.time||'').slice(0,16); }));
-    var newRemote = normalized.filter(function(t){ return !localKeys.has(t.ticker+':'+(t.time||'').slice(0,16)); });
-    if(!newRemote.length) return;
-    // บันทึก remote ลง localStorage ด้วย
-    var currentLog = _loadTradeLog();
-    var currentKeys = new Set(currentLog.map(function(t){ return t.ticker+':'+(t.time||'').slice(0,16); }));
-    var toSave = newRemote.filter(function(t){ return !currentKeys.has(t.ticker+':'+(t.time||'').slice(0,16)); });
-    if(toSave.length) _saveTradeLog(currentLog.concat(toSave));
-    var merged = localLog.concat(newRemote).sort(function(a,b){ return new Date(b.time)-new Date(a.time); });
-    _renderAlertsList(merged);
-  }).catch(function(){});
 }
 
 function _showSignalDetail(idx){
