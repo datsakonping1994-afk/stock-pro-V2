@@ -15176,37 +15176,55 @@ async function fetchEliteEconomicCalendar(){
 
   let events = [];
 
-  // ลอง Worker ก่อน
+  // Source 1: Worker (ForexFactory + Finnhub)
   try{
     const r = await _fetchWithTimeout(`${PRICES_WORKER}/calendar/economic?from=${from}&to=${to}`, {}, 8000);
     if(r.ok){
       const d = await r.json();
-      const raw = d.economicCalendar||d.events||[];
-      events = raw
+      events = (d.economicCalendar||d.events||[])
         .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'||ev.impact==='High'))
         .map(_mapFinnhubEvent).filter(Boolean);
     }
-  }catch(e){ console.warn('[elite calendar] Worker failed, trying Finnhub direct', e.message); }
+  }catch(e){ console.warn('[elite calendar] Worker failed', e.message); }
 
-  // Fallback: Finnhub โดยตรงใช้ key จาก Settings
+  // Source 2: ForexFactory JSON โดยตรง (ไม่ต้อง key)
+  if(!events.length){
+    const ffUrls = [
+      'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
+      'https://nfs.faireconomy.media/ff_calendar_nextweek.json',
+    ];
+    for(const ffUrl of ffUrls){
+      try{
+        const r = await _fetchWithTimeout(ffUrl, {}, 8000);
+        if(r.ok){
+          const data = await r.json();
+          if(Array.isArray(data)){
+            const mapped = data
+              .filter(ev => ev.impact === 'High' && ev.country === 'USD')
+              .map(ev => _mapFinnhubEvent({ event: ev.title||ev.name||'', date: ev.date ? new Date(ev.date).toISOString().slice(0,10) : '', time: ev.date ? new Date(ev.date).toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}) : '', impact:'high' }))
+              .filter(Boolean);
+            events = events.concat(mapped);
+          }
+        }
+      }catch(e2){ console.warn('[elite calendar] FF direct failed', e2.message); }
+    }
+  }
+
+  // Source 3: Finnhub โดยตรง (ใช้ key จาก Settings)
   if(!events.length){
     const key = localStorage.getItem('finnhubKey') || '';
-    console.log('[elite calendar] Trying Finnhub direct, key:', key ? 'found' : 'missing');
     if(key){
       try{
         const r2 = await _fetchWithTimeout(
           `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`, {}, 10000
         );
-        console.log('[elite calendar] Finnhub status:', r2.status);
         if(r2.ok){
           const d2 = await r2.json();
-          console.log('[elite calendar] Finnhub raw count:', (d2.economicCalendar||[]).length);
           events = (d2.economicCalendar||[])
             .filter(ev=>(ev.impact==='high'||ev.impact==='HIGH'))
             .map(_mapFinnhubEvent).filter(Boolean);
-          console.log('[elite calendar] Filtered events:', events.length);
         }
-      }catch(e2){ console.warn('[elite calendar] Finnhub direct failed:', e2.message); }
+      }catch(e3){ console.warn('[elite calendar] Finnhub direct failed', e3.message); }
     }
   }
 
