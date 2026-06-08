@@ -158,6 +158,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .elite-pros-cons-item{font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:6px}
 .pin-pulse{animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes pin-appear{from{opacity:0;transform:scale(0) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes elite-pulse{0%{transform:scale(1);opacity:0.8}70%{transform:scale(3);opacity:0}100%{transform:scale(3);opacity:0}}
 
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
@@ -1441,51 +1442,15 @@ canvas.bigchart{width:100%;height:100%}
   <!-- MAP TAB -->
   <div id="elite-tab-map" style="display:block">
 
-    <!-- World Map -->
-    <div style="position:relative;margin:10px 10px 0;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);background:#060b14">
-      <svg id="eliteMap" viewBox="0 0 1000 500" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">
-        <rect width="1000" height="500" fill="#060b14"/>
-        <!-- subtle grid -->
-        <g stroke="rgba(100,210,255,0.035)" stroke-width="0.5">
-          <line x1="0" y1="125" x2="1000" y2="125"/><line x1="0" y1="250" x2="1000" y2="250"/>
-          <line x1="0" y1="375" x2="1000" y2="375"/>
-          <line x1="250" y1="0" x2="250" y2="500"/><line x1="500" y1="0" x2="500" y2="500"/>
-          <line x1="750" y1="0" x2="750" y2="500"/>
-        </g>
-        <!-- North America -->
-        <path d="M75 70 L130 55 L195 50 L235 65 L248 95 L255 135 L238 175 L218 215 L195 252 L165 280 L135 298 L98 278 L78 240 L68 195 L60 155 L68 112Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Greenland -->
-        <path d="M275 25 L335 15 L365 35 L355 72 L325 92 L290 82 L272 55Z" fill="#0e1825" stroke="rgba(255,255,255,0.05)" stroke-width="0.6"/>
-        <!-- South America -->
-        <path d="M170 298 L215 283 L250 298 L260 348 L255 408 L230 465 L196 492 L172 472 L152 425 L148 375 L152 328Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Europe -->
-        <path d="M425 55 L475 45 L515 50 L535 75 L525 105 L505 125 L475 135 L448 125 L428 105 L418 82Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Africa -->
-        <path d="M435 152 L485 138 L535 148 L555 192 L550 252 L535 312 L505 360 L470 380 L440 365 L415 312 L410 252 L420 192Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Russia/N.Asia -->
-        <path d="M525 45 L645 30 L775 35 L848 50 L875 75 L865 115 L825 138 L765 148 L695 142 L635 152 L595 142 L555 122 L535 92Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Middle East -->
-        <path d="M540 138 L585 132 L615 152 L610 188 L580 198 L550 188 L535 168Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- South Asia -->
-        <path d="M615 148 L675 142 L715 152 L725 192 L705 232 L675 248 L645 238 L622 208 L612 178Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- SE Asia -->
-        <path d="M715 162 L775 152 L815 168 L825 202 L795 222 L755 218 L718 198Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- China -->
-        <path d="M685 92 L765 88 L815 108 L825 148 L795 162 L745 158 L695 148 L675 122Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Japan -->
-        <path d="M838 92 L858 88 L872 105 L862 125 L842 118Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.6"/>
-        <!-- Australia -->
-        <path d="M755 288 L835 272 L885 292 L895 348 L865 388 L815 402 L770 382 L745 342 L743 308Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
-        <!-- Dynamic pins rendered here -->
-        <g id="elitePinsPlaceholder"></g>
-      </svg>
-      <!-- Pins layer — always on top of overlay -->
-      <svg id="elitePinsSvg" viewBox="0 0 1000 500" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3" xmlns="http://www.w3.org/2000/svg">
-        <g id="elitePins" style="pointer-events:all"></g>
-      </svg>
-      <div style="position:absolute;bottom:6px;left:8px;font-size:8px;color:rgba(255,255,255,0.15);font-family:'IBM Plex Mono',monospace;z-index:4">ELITE INTELLIGENCE MAP</div>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <!-- World Map (Leaflet) -->
+    <div style="position:relative;margin:10px 10px 0;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.07)">
+      <div id="eliteLeafletMap" style="width:100%;height:240px;background:#060b14;border-radius:16px"></div>
+      <div style="position:absolute;bottom:6px;left:8px;font-size:8px;color:rgba(255,255,255,0.25);font-family:'IBM Plex Mono',monospace;z-index:1000;pointer-events:none">ELITE INTELLIGENCE MAP</div>
       <!-- Scan overlay -->
-      <div id="eliteScanOverlay" style="position:absolute;inset:0;background:rgba(6,8,20,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:16px;z-index:2">
+      <div id="eliteScanOverlay" style="position:absolute;inset:0;background:rgba(6,8,20,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:16px;z-index:1000">
         <div style="font-size:22px">👁</div>
         <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
         <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
@@ -13636,47 +13601,47 @@ function updatePortCharts(){
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
 // ELITE_PEOPLE: เฉพาะบุคคลที่มีผลกระทบต่อตลาดหุ้นโดยตรง
 const ELITE_PEOPLE = [
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f7/Donald_Trump_official_portrait%2C_2025_%28headshot%29.jpg', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f7/Donald_Trump_official_portrait%2C_2025_%28headshot%29.jpg', tickers:['SPY','GLD','USO'],    x:148, y:155, lat:38.9, lng:-77.0, color:'#e74c3c',
     keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
     ticker:'', backupIds:['powell'] },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'https://upload.wikimedia.org/wikipedia/commons/8/8b/Jerome_Powell_%28cropped%29.jpg', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'https://upload.wikimedia.org/wikipedia/commons/8/8b/Jerome_Powell_%28cropped%29.jpg', tickers:['SPY','TLT','UUP'],    x:158, y:162, lat:38.9, lng:-77.05, color:'#9b59b6',
     keywords:['powell','fed','federal reserve','interest rate','fomc','rate cut','rate hike','inflation'],
     ticker:'', backupIds:['trump'] },
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'https://upload.wikimedia.org/wikipedia/commons/0/0d/Jensen_Huang_at_CES_2018_%28cropped%29.jpg', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900',
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'https://upload.wikimedia.org/wikipedia/commons/0/0d/Jensen_Huang_at_CES_2018_%28cropped%29.jpg', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, lat:37.4, lng:-122.0, color:'#76b900',
     keywords:['jensen huang','jensen','nvidia','nvda','blackwell','gpu','h100','h200','ai chip','data center chip'],
     ticker:'NVDA', backupIds:['nadella','cook'] },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'https://upload.wikimedia.org/wikipedia/commons/5/5f/Sam_Altman_CropEdit.jpg', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f',
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'https://upload.wikimedia.org/wikipedia/commons/5/5f/Sam_Altman_CropEdit.jpg', tickers:['MSFT','NVDA'],        x:128, y:160, lat:37.78, lng:-122.4, color:'#10a37f',
     keywords:['sam altman','altman','openai','chatgpt','gpt','o3','o4','sora','openai model'],
     ticker:'MSFT', backupIds:['pichai','nadella'] },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://upload.wikimedia.org/wikipedia/commons/d/d8/Elon_Musk_Royal_Society_%28cropped%29.jpg', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://upload.wikimedia.org/wikipedia/commons/d/d8/Elon_Musk_Royal_Society_%28cropped%29.jpg', tickers:['TSLA'],               x:142, y:178, lat:30.2, lng:-97.7, color:'#e31937',
     keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','twitter','x.com','grok'],
     ticker:'TSLA', backupIds:['jensen','cook'] },
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7e/Xi_Jinping_in_2024.jpg', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7e/Xi_Jinping_in_2024.jpg', tickers:['SPY','TSM','NVDA'],   x:755, y:130, lat:39.9, lng:116.4, color:'#e74c3c',
     keywords:['xi jinping','xi','china','beijing','pboc','yuan','rmb','tariff china','us china'],
     ticker:'', backupIds:['opec'] },
-  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12',
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, lat:24.7, lng:46.7, color:'#f39c12',
     keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
     ticker:'XOM', backupIds:['trump'] },
   // ── CEO สำรอง (ใช้เมื่อคนหลักไม่มีข่าว) ──
-  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'https://upload.wikimedia.org/wikipedia/commons/7/72/Satya_Nadella_-_August_2023_%28cropped%29.jpg', tickers:['MSFT','AMZN'],        x:132, y:158, color:'#00a4ef',
+  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'https://upload.wikimedia.org/wikipedia/commons/7/72/Satya_Nadella_-_August_2023_%28cropped%29.jpg', tickers:['MSFT','AMZN'],        x:132, y:158, lat:47.6, lng:-122.1, color:'#00a4ef',
     keywords:['satya nadella','nadella','microsoft','msft','azure','copilot','teams','bing'],
     ticker:'MSFT', backupIds:['altman'] },
-  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'https://upload.wikimedia.org/wikipedia/commons/6/66/Tim_Cook_2022_%28cropped%29.jpg', tickers:['AAPL'],               x:130, y:175, color:'#aaaaaa',
+  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'https://upload.wikimedia.org/wikipedia/commons/6/66/Tim_Cook_2022_%28cropped%29.jpg', tickers:['AAPL'],               x:130, y:175, lat:37.33, lng:-122.03, color:'#aaaaaa',
     keywords:['tim cook','cook','apple','aapl','iphone','mac','ios','app store','vision pro'],
     ticker:'AAPL', backupIds:['jensen'] },
-  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'https://upload.wikimedia.org/wikipedia/commons/b/b3/Sundar_Pichai_%28cropped%29.jpg', tickers:['GOOGL','META'],       x:126, y:163, color:'#4285f4',
+  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'https://upload.wikimedia.org/wikipedia/commons/b/b3/Sundar_Pichai_%28cropped%29.jpg', tickers:['GOOGL','META'],       x:126, y:163, lat:37.42, lng:-122.08, color:'#4285f4',
     keywords:['sundar pichai','pichai','google','alphabet','googl','gemini','waymo','android','youtube'],
     ticker:'GOOGL', backupIds:['altman'] },
-  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7c/Mark_Zuckerberg_F8_2019_%28cropped%29.jpg', tickers:['META'],               x:140, y:165, color:'#1877f2',
+  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7c/Mark_Zuckerberg_F8_2019_%28cropped%29.jpg', tickers:['META'],               x:140, y:165, lat:37.48, lng:-122.15, color:'#1877f2',
     keywords:['mark zuckerberg','zuckerberg','zuck','meta','facebook','instagram','whatsapp','threads','llama','ray-ban'],
     ticker:'META', backupIds:['pichai'] },
-  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f8/Jamie_Dimon_by_David_Shankbone_%28cropped%29.jpg', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
+  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f8/Jamie_Dimon_by_David_Shankbone_%28cropped%29.jpg', tickers:['JPM','BAC','GS'],     x:155, y:158, lat:40.7, lng:-74.0, color:'#005eb8',
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     ticker:'JPM', backupIds:['powell'] },
-  { id:'khamenei', name:'Mojtaba Khamenei', role:'ผู้นำสูงสุดอิหร่าน',  emoji:'🇮🇷', logo:'https://upload.wikimedia.org/wikipedia/commons/c/c9/Mojtaba_Khamenei.jpg', tickers:['USO','XOM','GLD'],    x:580, y:155, color:'#2ecc71',
+  { id:'khamenei', name:'Mojtaba Khamenei', role:'ผู้นำสูงสุดอิหร่าน',  emoji:'🇮🇷', logo:'https://upload.wikimedia.org/wikipedia/commons/c/c9/Mojtaba_Khamenei.jpg', tickers:['USO','XOM','GLD'],    x:580, y:155, lat:35.7, lng:51.4, color:'#2ecc71',
     keywords:['khamenei','mojtaba khamenei','iran','tehran','irgc','nuclear iran','iran sanctions','supreme leader iran','iran war','iran israel','iran us'],
     ticker:'USO', backupIds:['opec','trump'] },
-  { id:'netanyahu', name:'Benjamin Netanyahu', role:'นายกรัฐมนตรีอิสราเอล', emoji:'🇮🇱', logo:'https://upload.wikimedia.org/wikipedia/commons/b/bb/Benjamin_Netanyahu_2023.jpg', tickers:['GLD','USO','LMT'],   x:555, y:148, color:'#3498db',
+  { id:'netanyahu', name:'Benjamin Netanyahu', role:'นายกรัฐมนตรีอิสราเอล', emoji:'🇮🇱', logo:'https://upload.wikimedia.org/wikipedia/commons/b/bb/Benjamin_Netanyahu_2023.jpg', tickers:['GLD','USO','LMT'],   x:555, y:148, lat:31.8, lng:35.2, color:'#3498db',
     keywords:['netanyahu','benjamin netanyahu','israel','idf','gaza','hamas','hezbollah','iran israel','israel strike','israel iran','middle east war'],
     ticker:'', backupIds:['khamenei','trump'] },
 ];
@@ -14968,50 +14933,8 @@ function renderEliteScanResults(results, ageMs=0){
     count.parentElement.innerHTML = `<div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span>${results.length}</span> รายการ<span style="opacity:0.6;font-weight:400">${ageText}</span></div>`;
   }
 
-  // Render pins on map — กดแล้วเปิด Modal ข่าวทันที
-  if(pins){
-    // สร้าง defs สำหรับ clipPath รูปโปรไฟล์
-    const defs = results.map((r,i) => {
-      const {person:p} = r;
-      return p.logo
-        ? `<clipPath id="pinClip_${p.id}"><circle cx="${p.x}" cy="${p.y-4}" r="8"/></clipPath>`
-        : '';
-    }).join('');
-
-    // ใส่ defs ลงใน SVG ถ้ายังไม่มี
-    const svgEl = document.getElementById('elitePinsSvg');
-    let defsEl = svgEl ? svgEl.querySelector('defs') : null;
-    if(!defsEl && svgEl){ defsEl = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.insertBefore(defsEl, svgEl.firstChild); }
-    if(defsEl) defsEl.innerHTML = defs;
-
-    pins.innerHTML = results.map((r,i) => {
-      const {person:p, news:n} = r;
-      const impactColor = n.impact>=9 ? '#e74c3c' : n.impact>=7 ? '#f39c12' : '#3498db';
-      const imgLayer = p.logo
-        ? `<image href="${p.logo}" x="${p.x-8}" y="${p.y-12}" width="16" height="16" clip-path="url(#pinClip_${p.id})" preserveAspectRatio="xMidYMid slice" style="pointer-events:none"/>`
-        : `<text x="${p.x}" y="${p.y}" text-anchor="middle" font-size="9" fill="white" style="pointer-events:none">${p.emoji}</text>`;
-      return `
-      <g style="cursor:pointer;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*100}ms both" onclick="openEliteModalById('${p.id}')">
-        <!-- เงาใต้หมุด -->
-        <ellipse cx="${p.x}" cy="${p.y+14}" rx="5" ry="2" fill="rgba(0,0,0,0.5)"/>
-        <!-- ตัวหมุด -->
-        <path d="M${p.x} ${p.y+14} Q${p.x-9} ${p.y+3} ${p.x-9} ${p.y-4} A9 9 0 1 1 ${p.x+9} ${p.y-4} Q${p.x+9} ${p.y+3} ${p.x} ${p.y+14}Z"
-          fill="${impactColor}" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
-        <!-- วงในขาวรองรับรูป -->
-        <circle cx="${p.x}" cy="${p.y-4}" r="8.5" fill="white" opacity="0.92"/>
-        <!-- รูปโปรไฟล์หรือ emoji -->
-        ${imgLayer}
-        <!-- impact score badge มุมขวาบน -->
-        <circle cx="${p.x+7}" cy="${p.y-12}" r="5.5" fill="${impactColor}" stroke="rgba(0,0,0,0.6)" stroke-width="1"/>
-        <text x="${p.x+7}" y="${p.y-9.5}" text-anchor="middle" font-size="5.5" fill="white" font-weight="800" font-family="Manrope,sans-serif" style="pointer-events:none">${n.impact}</text>
-        <!-- pulse ring -->
-        <circle cx="${p.x}" cy="${p.y-4}" r="9" fill="none" stroke="${impactColor}" stroke-width="1" opacity="0.6">
-          <animate attributeName="r" from="9" to="18" dur="2s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite"/>
-        </circle>
-      </g>`;
-    }).join('');
-  }
+  // Render pins on map — ใช้ Leaflet แทน SVG
+  renderEliteMapPins(results);
 
   // Render news feed cards
   if(feed) feed.style.display = 'block';
@@ -16369,6 +16292,114 @@ window.addEventListener('load', ()=>{
     }
   }, 2000);
 });
+
+// ════════════════════════════════════════════════════════════
+// LEAFLET ELITE MAP
+// ════════════════════════════════════════════════════════════
+var _eliteMap = null;
+var _eliteMarkers = [];
+
+function initEliteMap(){
+  if(_eliteMap) return; // already initialized
+  if(typeof L === 'undefined') return; // leaflet not loaded yet
+
+  _eliteMap = L.map('eliteLeafletMap', {
+    center: [25, 15],
+    zoom: 2,
+    zoomControl: false,
+    attributionControl: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    dragging: true,
+    minZoom: 2,
+    maxZoom: 5,
+  });
+
+  // Dark tile — CartoDB Dark Matter (ไม่ต้อง API key)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(_eliteMap);
+
+  // ซ่อน leaflet attribution
+  _eliteMap.attributionControl && _eliteMap.attributionControl.remove();
+}
+
+function _eliteImpactColor(impact){
+  return impact >= 9 ? '#e74c3c' : impact >= 7 ? '#f39c12' : '#3498db';
+}
+
+function renderEliteMapPins(results){
+  if(typeof L === 'undefined') return;
+  if(!_eliteMap) initEliteMap();
+  if(!_eliteMap) return;
+
+  // ลบ markers เก่า
+  _eliteMarkers.forEach(m => m.remove());
+  _eliteMarkers = [];
+
+  results.forEach((r, i) => {
+    const {person: p, news: n} = r;
+    if(p.lat == null || p.lng == null) return;
+
+    const col = _eliteImpactColor(n.impact);
+    const photoHtml = p.logo
+      ? `<img src="${p.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:16px;border-radius:50%">${p.emoji}</div>`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:16px">${p.emoji}</div>`;
+
+    const iconHtml = `
+      <div style="position:relative;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*80}ms both">
+        <!-- pin shape -->
+        <div style="width:44px;height:54px;position:relative;cursor:pointer">
+          <!-- shadow -->
+          <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:14px;height:5px;background:rgba(0,0,0,0.4);border-radius:50%;filter:blur(2px)"></div>
+          <!-- pin body -->
+          <div style="width:44px;height:44px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${col};box-shadow:0 4px 16px ${col}66;border:2px solid rgba(255,255,255,0.25);position:absolute;top:0;left:0"></div>
+          <!-- photo circle -->
+          <div style="position:absolute;top:4px;left:4px;width:36px;height:36px;border-radius:50%;overflow:hidden;background:#1a2035;border:2px solid white">
+            ${photoHtml}
+          </div>
+          <!-- impact badge -->
+          <div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:${col};border:1.5px solid rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:white;font-family:Manrope,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${n.impact}</div>
+        </div>
+        <!-- pulse ring -->
+        <div style="position:absolute;top:14px;left:14px;width:16px;height:16px;border-radius:50%;border:2px solid ${col};animation:elite-pulse 2s ${i*0.3}s infinite;pointer-events:none"></div>
+      </div>`;
+
+    const icon = L.divIcon({
+      html: iconHtml,
+      className: '',
+      iconSize: [44, 58],
+      iconAnchor: [22, 54],
+      popupAnchor: [0, -54],
+    });
+
+    const marker = L.marker([p.lat, p.lng], {icon})
+      .addTo(_eliteMap)
+      .on('click', () => openEliteModalById(p.id));
+
+    _eliteMarkers.push(marker);
+  });
+
+  // Fit bounds ให้เห็นทุก pin
+  if(_eliteMarkers.length > 0){
+    const group = L.featureGroup(_eliteMarkers);
+    _eliteMap.fitBounds(group.getBounds().pad(0.3), {animate: true, duration: 0.8});
+  }
+}
+
+// โหลด Leaflet JS แบบ dynamic (ถ้ายังไม่โหลด)
+(function loadLeaflet(){
+  if(typeof L !== 'undefined'){ initEliteMap(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  s.onload = () => {
+    initEliteMap();
+    // ถ้ามีผลลัพธ์อยู่แล้ว render เลย
+    if(_eliteScanResults && _eliteScanResults.length) renderEliteMapPins(_eliteScanResults);
+  };
+  document.head.appendChild(s);
+})();
 
 </script>
 </body>
