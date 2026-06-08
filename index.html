@@ -13821,67 +13821,89 @@ const BENEFICIARY_MAP={
     negative_sentiment:[]
   }
 };
-function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline){
+function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
-  const key=isPositive?'positive_sentiment':'negative_sentiment';
   const beneficiaries=[];const seen=new Set();
+
+  // ใช้ข้อมูล stocks_to_monitor จาก AI ก่อน (ถ้ามี reason จาก AI ให้ใช้เลย)
+  const aiMonitor = (aiItem?.stocks_to_monitor||[]).filter(s=>s&&s.t);
+  for(const s of aiMonitor){
+    const clean=String(s.t).toUpperCase().trim();
+    if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
+    beneficiaries.push({t:clean, reason:s.reason||`กระทบโดยตรงจากข่าวนี้`, source:'ai'});
+    seen.add(clean);
+    if(beneficiaries.length>=4) break;
+  }
+
+  // เพิ่มจาก stocks_buy ของ AI
   for(const ticker of (aiStocksBuy||[])){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
     if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    let reason=null;
-    for(const evType of eventTypes){
-      const map=BENEFICIARY_MAP[evType];
-      if(!map) continue;
-      const found=[...(map.positive_sentiment||[]),...(map.negative_sentiment||[])].find(x=>x.t===clean);
-      if(found){reason=found.reason;break;}
-    }
-    if(!reason) reason=`กระทบโดยตรงจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
+    const reason=`กระทบโดยตรงจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
     beneficiaries.push({t:clean,reason,source:'ai'});
     seen.add(clean);
+    if(beneficiaries.length>=4) break;
   }
-  for(const evType of eventTypes){
-    const map=BENEFICIARY_MAP[evType];
-    if(!map||!map[key]) continue;
-    for(const entry of map[key]){
-      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-      beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb'});
-      seen.add(entry.t);
+
+  // Fallback: ใช้ template เฉพาะถ้า AI ไม่มีข้อมูล
+  if(beneficiaries.length<2){
+    const key=isPositive?'positive_sentiment':'negative_sentiment';
+    for(const evType of eventTypes){
+      const map=BENEFICIARY_MAP[evType];
+      if(!map||!map[key]) continue;
+      for(const entry of map[key]){
+        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+        beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb'});
+        seen.add(entry.t);
+        if(beneficiaries.length>=4) break;
+      }
       if(beneficiaries.length>=4) break;
     }
-    if(beneficiaries.length>=4) break;
   }
   return beneficiaries.slice(0,4);
 }
-function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline){
+
+function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
-  const key=isPositive?'negative_sentiment':'positive_sentiment';
   const losers=[];const seen=new Set();
+
+  // ใช้ข้อมูล stocks_at_risk จาก AI ก่อน (ถ้ามี reason ให้ใช้เลย)
+  const aiRisk = (aiItem?.stocks_at_risk||[]).filter(s=>s&&s.t);
+  for(const s of aiRisk){
+    const clean=String(s.t).toUpperCase().trim();
+    if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
+    losers.push({t:clean, reason:s.reason||`อาจได้รับผลกระทบจากข่าวนี้`, source:'ai'});
+    seen.add(clean);
+    if(losers.length>=3) break;
+  }
+
+  // เพิ่มจาก stocks_watch ของ AI — แต่ตรวจสอบว่า reason ไม่ขัดกับ sentiment ก่อน
   for(const ticker of (aiStocksWatch||[])){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
     if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    let reason=null;
-    for(const evType of eventTypes){
-      const map=BENEFICIARY_MAP[evType];
-      if(!map) continue;
-      const found=[...(map.positive_sentiment||[]),...(map.negative_sentiment||[])].find(x=>x.t===clean);
-      if(found){reason=found.reason;break;}
-    }
-    if(!reason) reason=`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
+    // ถ้า ticker อยู่ใน beneficiaries map ของ sentiment นี้ → ย้ายไป beneficiaries แทน
+    const reason=`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
     losers.push({t:clean,reason,source:'ai'});
     seen.add(clean);
+    if(losers.length>=3) break;
   }
-  for(const evType of eventTypes){
-    const map=BENEFICIARY_MAP[evType];
-    if(!map||!map[key]) continue;
-    for(const entry of map[key]){
-      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-      losers.push({t:entry.t,reason:entry.reason,source:'kb'});
-      seen.add(entry.t);
+
+  // Fallback: template เฉพาะถ้า AI ไม่มีข้อมูล
+  if(losers.length<1){
+    const key=isPositive?'negative_sentiment':'positive_sentiment';
+    for(const evType of eventTypes){
+      const map=BENEFICIARY_MAP[evType];
+      if(!map||!map[key]) continue;
+      for(const entry of map[key]){
+        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+        losers.push({t:entry.t,reason:entry.reason,source:'kb'});
+        seen.add(entry.t);
+        if(losers.length>=3) break;
+      }
       if(losers.length>=3) break;
     }
-    if(losers.length>=3) break;
   }
   return losers.slice(0,3);
 }
@@ -13962,11 +13984,17 @@ function buildNewsAnalysis(item,sourceUrl){
     return rule?rule.sectors:[];
   }))].slice(0,4);
   const etfImpact=_buildEtfImpact(eventTypes,clean.sentiment);
-  const beneficiaries=_buildBeneficiaries(eventTypes,clean.sentiment,clean.stocks_buy,clean.headline);
-  const losers=_buildLosers(eventTypes,clean.sentiment,clean.stocks_watch,clean.headline);
+  const beneficiaries=_buildBeneficiaries(eventTypes,clean.sentiment,clean.stocks_buy,clean.headline,clean);
+  const losers=_buildLosers(eventTypes,clean.sentiment,clean.stocks_watch,clean.headline,clean);
   const aiTake=clean.ai_take||_buildAiTake(eventTypes,clean.sentiment,clean.impact,clean.headline);
+  // FIX: boost impact สำหรับ tech_ai + partnership ที่มี major company
+  let adjustedImpact = clean.impact;
+  const hasMajorTech = (clean.stocks_buy||[]).concat(clean.stocks_watch||[])
+    .some(t=>['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'].includes(t));
+  if(hasMajorTech && eventTypes.includes('tech_ai') && adjustedImpact < 7) adjustedImpact = 7;
+  if(hasMajorTech && eventTypes.includes('partnership') && adjustedImpact < 6) adjustedImpact = 6;
   // impact_level — derive from numeric impact score
-  const impactLevel=clean.impact>=8?'high':clean.impact>=5?'medium':'low';
+  const impactLevel=adjustedImpact>=8?'high':adjustedImpact>=5?'medium':'low';
   // watchlist_hits — beneficiary/loser tickers that are in user's watchlist/portfolio
   const _wl=typeof watchlist!=='undefined'?watchlist:new Set();
   const _port=typeof portfolio!=='undefined'?portfolio:{};
