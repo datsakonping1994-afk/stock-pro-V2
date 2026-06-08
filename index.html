@@ -158,15 +158,10 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .elite-pros-cons-item{font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:6px}
 .pin-pulse{animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes pin-appear{from{opacity:0;transform:scale(0) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes elite-pulse{0%{transform:scale(1);opacity:0.5}70%{transform:scale(1.4);opacity:0}100%{transform:scale(1.4);opacity:0}}
 
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
-#page-elite.active{position:fixed;inset:0;z-index:50;overflow:hidden;padding-bottom:0!important;background:var(--bg0)}
-#page-elite #elite-tab-map{position:fixed;inset:0;width:100vw;height:100dvh}
-#page-elite #elite-tab-events{position:fixed;inset:0;z-index:1003;pointer-events:none}
-#eliteLeafletMap{width:100%!important;height:100dvh!important}
 @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -1420,90 +1415,104 @@ canvas.bigchart{width:100%;height:100%}
 <!-- ══════════════════════════════════════════ -->
 <!-- ELITE INTELLIGENCE PAGE — Dynamic News Map -->
 <!-- ══════════════════════════════════════════ -->
-<div class="page" id="page-elite" style="min-height:100%;background:var(--bg0);position:relative">
+<div class="page" id="page-elite" style="min-height:100%;background:var(--bg0)">
+
+  <!-- Header -->
+  <div style="padding:14px 14px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 14px rgba(255,107,53,0.4)">👁</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;letter-spacing:1px;color:var(--text)">ELITE</div>
+        <div style="font-size:9px;color:var(--text3);letter-spacing:1px">จับตากลุ่มคนที่ขยับโลก</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <div id="eliteLiveIndicator" style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:3px 10px;cursor:pointer" onclick="toggleEliteNotification()">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--text3)" id="eliteLiveDot"></div>
+        <span style="font-size:9px;color:var(--text3);font-family:'Syne',sans-serif;letter-spacing:1px" id="eliteLiveText">SCAN</span>
+      </div>
+      <div style="display:flex;gap:5px">
+        <div id="eliteSubTab-map" class="elite-subtab active" onclick="switchEliteTab('map')">🗺️</div>
+        <div id="eliteSubTab-events" class="elite-subtab" onclick="switchEliteTab('events')">📅</div>
+      </div>
+    </div>
+  </div>
 
   <!-- MAP TAB -->
-  <div id="elite-tab-map" style="display:block;position:relative">
+  <div id="elite-tab-map" style="display:block">
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-    <!-- World Map fullscreen -->
-    <div id="eliteLeafletMap" style="width:100vw;height:100dvh;background:#060b14;position:fixed;inset:0;z-index:0"></div>
-
-    <!-- Floating header over map -->
-    <div id="eliteFloatHeader" style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:calc(env(safe-area-inset-top) + 10px) 14px 14px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.92) 0%,rgba(6,8,16,0.5) 70%,transparent 100%);pointer-events:none">
-      <div style="display:flex;align-items:center;gap:8px;pointer-events:auto">
-        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(255,107,53,0.5)">👁</div>
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:1px;color:#fff">Elite</div>
-          <div style="font-size:9px;color:rgba(255,255,255,0.55);letter-spacing:1px">จับตากลุ่มคนที่ขยับโลก</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;pointer-events:auto">
-        <div id="eliteLiveIndicator" style="display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.45);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:4px 11px;cursor:pointer" onclick="toggleEliteNotification()">
-          <div style="width:5px;height:5px;border-radius:50%;background:var(--text3)" id="eliteLiveDot"></div>
-          <span style="font-size:9px;color:rgba(255,255,255,0.7);font-family:'Syne',sans-serif;letter-spacing:1px" id="eliteLiveText">SCAN</span>
-        </div>
-        <div style="display:flex;gap:5px">
-          <div id="eliteSubTab-map" class="elite-subtab active" onclick="switchEliteTab('map')" style="background:rgba(0,0,0,0.45);backdrop-filter:blur(10px)">🗺️</div>
-          <div id="eliteSubTab-events" class="elite-subtab" onclick="switchEliteTab('events')" style="background:rgba(0,0,0,0.45);backdrop-filter:blur(10px)">📅</div>
-        </div>
+    <!-- World Map -->
+    <div style="position:relative;margin:10px 10px 0;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);background:#060b14">
+      <svg id="eliteMap" viewBox="0 0 1000 500" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">
+        <rect width="1000" height="500" fill="#060b14"/>
+        <!-- subtle grid -->
+        <g stroke="rgba(100,210,255,0.035)" stroke-width="0.5">
+          <line x1="0" y1="125" x2="1000" y2="125"/><line x1="0" y1="250" x2="1000" y2="250"/>
+          <line x1="0" y1="375" x2="1000" y2="375"/>
+          <line x1="250" y1="0" x2="250" y2="500"/><line x1="500" y1="0" x2="500" y2="500"/>
+          <line x1="750" y1="0" x2="750" y2="500"/>
+        </g>
+        <!-- North America -->
+        <path d="M75 70 L130 55 L195 50 L235 65 L248 95 L255 135 L238 175 L218 215 L195 252 L165 280 L135 298 L98 278 L78 240 L68 195 L60 155 L68 112Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Greenland -->
+        <path d="M275 25 L335 15 L365 35 L355 72 L325 92 L290 82 L272 55Z" fill="#0e1825" stroke="rgba(255,255,255,0.05)" stroke-width="0.6"/>
+        <!-- South America -->
+        <path d="M170 298 L215 283 L250 298 L260 348 L255 408 L230 465 L196 492 L172 472 L152 425 L148 375 L152 328Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Europe -->
+        <path d="M425 55 L475 45 L515 50 L535 75 L525 105 L505 125 L475 135 L448 125 L428 105 L418 82Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Africa -->
+        <path d="M435 152 L485 138 L535 148 L555 192 L550 252 L535 312 L505 360 L470 380 L440 365 L415 312 L410 252 L420 192Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Russia/N.Asia -->
+        <path d="M525 45 L645 30 L775 35 L848 50 L875 75 L865 115 L825 138 L765 148 L695 142 L635 152 L595 142 L555 122 L535 92Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Middle East -->
+        <path d="M540 138 L585 132 L615 152 L610 188 L580 198 L550 188 L535 168Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- South Asia -->
+        <path d="M615 148 L675 142 L715 152 L725 192 L705 232 L675 248 L645 238 L622 208 L612 178Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- SE Asia -->
+        <path d="M715 162 L775 152 L815 168 L825 202 L795 222 L755 218 L718 198Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- China -->
+        <path d="M685 92 L765 88 L815 108 L825 148 L795 162 L745 158 L695 148 L675 122Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Japan -->
+        <path d="M838 92 L858 88 L872 105 L862 125 L842 118Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.6"/>
+        <!-- Australia -->
+        <path d="M755 288 L835 272 L885 292 L895 348 L865 388 L815 402 L770 382 L745 342 L743 308Z" fill="#131d2e" stroke="rgba(255,255,255,0.07)" stroke-width="0.8"/>
+        <!-- Dynamic pins rendered here -->
+        <g id="elitePinsPlaceholder"></g>
+      </svg>
+      <!-- Pins layer — always on top of overlay -->
+      <svg id="elitePinsSvg" viewBox="0 0 1000 500" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3" xmlns="http://www.w3.org/2000/svg">
+        <g id="elitePins" style="pointer-events:all"></g>
+      </svg>
+      <div style="position:absolute;bottom:6px;left:8px;font-size:8px;color:rgba(255,255,255,0.15);font-family:'IBM Plex Mono',monospace;z-index:4">ELITE INTELLIGENCE MAP</div>
+      <!-- Scan overlay -->
+      <div id="eliteScanOverlay" style="position:absolute;inset:0;background:rgba(6,8,20,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:16px;z-index:2">
+        <div style="font-size:22px">👁</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
+        <button onclick="runEliteScan()" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>
       </div>
     </div>
 
-    <!-- label bottom-left -->
-    <div id="eliteMapLabel" style="position:fixed;bottom:90px;left:10px;font-size:8px;color:rgba(255,255,255,0.2);font-family:'IBM Plex Mono',monospace;z-index:1001;pointer-events:none;letter-spacing:1px">ELITE INTELLIGENCE MAP</div>
-
-    <!-- RESCAN button floating bottom-right -->
-    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none;flex-direction:column;gap:8px;align-items:flex-end">
-      <!-- reset view button -->
-      <button onclick="if(_eliteMap){_eliteMap.setView([20,10],2);}" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:6px 12px;font-size:11px;color:rgba(255,255,255,0.7);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🌍 รีเซ็ต</button>
-      <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.18);backdrop-filter:blur(12px);border:1px solid rgba(255,107,53,0.45);border-radius:20px;padding:6px 14px;font-size:10px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;box-shadow:0 2px 12px rgba(255,107,53,0.2)">🔄 RESCAN</button>
-    </div>
-
-    <!-- Scan overlay -->
-    <div id="eliteScanOverlay" style="position:fixed;inset:0;background:rgba(6,8,20,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:1002">
-      <div style="font-size:22px">👁</div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
-      <button onclick="runEliteScan()" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>
-    </div>
-
-    <!-- News Feed floating bottom sheet — hidden, news shown in pin modal instead -->
-    <div id="eliteNewsFeed" style="display:none!important;position:absolute;bottom:80px;left:0;right:0;max-height:45dvh;overflow-y:auto;z-index:1001;padding:0 10px 10px">
-      <div style="background:rgba(8,11,18,0.92);backdrop-filter:blur(20px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:10px 12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span id="eliteNewsCount">0</span> รายการ</div>
-          <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:3px 10px;font-size:9px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 RESCAN</button>
-        </div>
-        <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:8px"></div>
+    <!-- News Feed (populated after scan) -->
+    <div id="eliteNewsFeed" style="padding:10px 10px 0;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span id="eliteNewsCount">0</span> รายการ</div>
+        <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:3px 10px;font-size:9px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄 RESCAN</button>
       </div>
+      <div id="eliteNewsCards" style="display:flex;flex-direction:column;gap:8px;padding-bottom:20px"></div>
     </div>
 
   </div>
 
-  <div id="elite-tab-events" style="display:none;position:fixed;inset:0;z-index:1003;pointer-events:none">
-    <!-- backdrop tap to close -->
-    <div onclick="switchEliteTab('map')" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);pointer-events:auto"></div>
-    <!-- bottom sheet -->
-    <div style="position:absolute;bottom:0;left:0;right:0;max-height:80dvh;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#0e1520,#080c14);border-top:1px solid rgba(255,255,255,0.1);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column">
-      <!-- handle + header -->
-      <div style="padding:10px 16px 8px;flex-shrink:0">
-        <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.2);margin:0 auto 12px"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--text2)">📅 กำหนดการที่กำลังจะมาถึง</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div id="eliteEventsHeader" style="font-size:10px;color:var(--text3)"></div>
-            <button onclick="switchEliteTab('map')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:50%;width:26px;height:26px;color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-          </div>
-        </div>
-      </div>
-      <!-- scrollable content -->
-      <div id="eliteEventsGrid" style="overflow-y:auto;padding:0 14px 30px;display:flex;flex-direction:column;gap:10px">
-        <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
-      </div>
+  <div id="elite-tab-events" style="display:none">
+    <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
+      <div id="eliteEventsHeader" style="font-size:10px;color:var(--text3)"></div>
     </div>
+    <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
+      <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
+    </div>
+    <div style="height:30px"></div>
   </div>
 
 </div>
@@ -2286,18 +2295,6 @@ function navTo(page, el){
   ['earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   const drawer=document.getElementById('drawer');
   if(drawer&&drawer.classList.contains('open')) drawer.classList.remove('open');
-
-  // ซ่อน/แสดง elite fixed UI elements
-  const eliteFixedEls = ['eliteLeafletMap','eliteScanOverlay','eliteRescanFloat','eliteFloatHeader','eliteMapLabel'];
-  eliteFixedEls.forEach(id=>{
-    const el2=document.getElementById(id);
-    if(el2) el2.style.visibility = (page==='elite') ? 'visible' : 'hidden';
-  });
-  // ซ่อน topbar และ bottomnav เมื่ออยู่หน้า elite (map เต็มจอ)
-  const topbar = document.getElementById('topbar');
-  const bottomnav = document.getElementById('bottomnav');
-  if(topbar) topbar.style.display = (page==='elite') ? 'none' : '';
-  if(bottomnav) bottomnav.style.display = (page==='elite') ? 'none' : '';
 
   // สลับหน้าทันที ก่อนทำงานหนัก
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -13639,49 +13636,43 @@ function updatePortCharts(){
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
 // ELITE_PEOPLE: เฉพาะบุคคลที่มีผลกระทบต่อตลาดหุ้นโดยตรง
 const ELITE_PEOPLE = [
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f7/Donald_Trump_official_portrait%2C_2025_%28headshot%29.jpg', tickers:['SPY','GLD','USO'],    x:148, y:155, lat:38.9, lng:-77.0, color:'#e74c3c',
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
     keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
     ticker:'', backupIds:['powell'] },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'https://upload.wikimedia.org/wikipedia/commons/8/8b/Jerome_Powell_%28cropped%29.jpg', tickers:['SPY','TLT','UUP'],    x:158, y:162, lat:38.9, lng:-77.05, color:'#9b59b6',
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
     keywords:['powell','fed','federal reserve','interest rate','fomc','rate cut','rate hike','inflation'],
     ticker:'', backupIds:['trump'] },
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'https://upload.wikimedia.org/wikipedia/commons/0/0d/Jensen_Huang_at_CES_2018_%28cropped%29.jpg', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, lat:37.4, lng:-122.0, color:'#76b900',
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900',
     keywords:['jensen huang','jensen','nvidia','nvda','blackwell','gpu','h100','h200','ai chip','data center chip'],
     ticker:'NVDA', backupIds:['nadella','cook'] },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'https://upload.wikimedia.org/wikipedia/commons/5/5f/Sam_Altman_CropEdit.jpg', tickers:['MSFT','NVDA'],        x:128, y:160, lat:37.78, lng:-122.4, color:'#10a37f',
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f',
     keywords:['sam altman','altman','openai','chatgpt','gpt','o3','o4','sora','openai model'],
     ticker:'MSFT', backupIds:['pichai','nadella'] },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://upload.wikimedia.org/wikipedia/commons/d/d8/Elon_Musk_Royal_Society_%28cropped%29.jpg', tickers:['TSLA'],               x:142, y:178, lat:30.2, lng:-97.7, color:'#e31937',
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
     keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','twitter','x.com','grok'],
     ticker:'TSLA', backupIds:['jensen','cook'] },
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7e/Xi_Jinping_in_2024.jpg', tickers:['SPY','TSM','NVDA'],   x:755, y:130, lat:39.9, lng:116.4, color:'#e74c3c',
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
     keywords:['xi jinping','xi','china','beijing','pboc','yuan','rmb','tariff china','us china'],
     ticker:'', backupIds:['opec'] },
-  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, lat:24.7, lng:46.7, color:'#f39c12',
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12',
     keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
     ticker:'XOM', backupIds:['trump'] },
   // ── CEO สำรอง (ใช้เมื่อคนหลักไม่มีข่าว) ──
-  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'https://upload.wikimedia.org/wikipedia/commons/7/72/Satya_Nadella_-_August_2023_%28cropped%29.jpg', tickers:['MSFT','AMZN'],        x:132, y:158, lat:47.6, lng:-122.1, color:'#00a4ef',
+  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'', tickers:['MSFT','AMZN'],        x:132, y:158, color:'#00a4ef',
     keywords:['satya nadella','nadella','microsoft','msft','azure','copilot','teams','bing'],
     ticker:'MSFT', backupIds:['altman'] },
-  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'https://upload.wikimedia.org/wikipedia/commons/6/66/Tim_Cook_2022_%28cropped%29.jpg', tickers:['AAPL'],               x:130, y:175, lat:37.33, lng:-122.03, color:'#aaaaaa',
+  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'', tickers:['AAPL'],               x:130, y:175, color:'#aaaaaa',
     keywords:['tim cook','cook','apple','aapl','iphone','mac','ios','app store','vision pro'],
     ticker:'AAPL', backupIds:['jensen'] },
-  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'https://upload.wikimedia.org/wikipedia/commons/b/b3/Sundar_Pichai_%28cropped%29.jpg', tickers:['GOOGL','META'],       x:126, y:163, lat:37.42, lng:-122.08, color:'#4285f4',
+  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'', tickers:['GOOGL','META'],       x:126, y:163, color:'#4285f4',
     keywords:['sundar pichai','pichai','google','alphabet','googl','gemini','waymo','android','youtube'],
     ticker:'GOOGL', backupIds:['altman'] },
-  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://upload.wikimedia.org/wikipedia/commons/7/7c/Mark_Zuckerberg_F8_2019_%28cropped%29.jpg', tickers:['META'],               x:140, y:165, lat:37.48, lng:-122.15, color:'#1877f2',
+  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'', tickers:['META'],               x:140, y:165, color:'#1877f2',
     keywords:['mark zuckerberg','zuckerberg','zuck','meta','facebook','instagram','whatsapp','threads','llama','ray-ban'],
     ticker:'META', backupIds:['pichai'] },
-  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://upload.wikimedia.org/wikipedia/commons/f/f8/Jamie_Dimon_by_David_Shankbone_%28cropped%29.jpg', tickers:['JPM','BAC','GS'],     x:155, y:158, lat:40.7, lng:-74.0, color:'#005eb8',
+  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     ticker:'JPM', backupIds:['powell'] },
-  { id:'khamenei', name:'Mojtaba Khamenei', role:'ผู้นำสูงสุดอิหร่าน',  emoji:'🇮🇷', logo:'https://upload.wikimedia.org/wikipedia/commons/c/c9/Mojtaba_Khamenei.jpg', tickers:['USO','XOM','GLD'],    x:580, y:155, lat:35.7, lng:51.4, color:'#2ecc71',
-    keywords:['khamenei','mojtaba khamenei','iran','tehran','irgc','nuclear iran','iran sanctions','supreme leader iran','iran war','iran israel','iran us'],
-    ticker:'USO', backupIds:['opec','trump'] },
-  { id:'netanyahu', name:'Benjamin Netanyahu', role:'นายกรัฐมนตรีอิสราเอล', emoji:'🇮🇱', logo:'https://upload.wikimedia.org/wikipedia/commons/b/bb/Benjamin_Netanyahu_2023.jpg', tickers:['GLD','USO','LMT'],   x:555, y:148, lat:31.8, lng:35.2, color:'#3498db',
-    keywords:['netanyahu','benjamin netanyahu','israel','idf','gaza','hamas','hezbollah','iran israel','israel strike','israel iran','middle east war'],
-    ticker:'', backupIds:['khamenei','trump'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14162,17 +14153,22 @@ function switchEliteTab(tab){
   document.querySelectorAll('.elite-subtab').forEach(el=>{
     el.classList.toggle('active', el.id === 'eliteSubTab-'+tab);
   });
-  // map always stays visible underneath
-  const evEl = document.getElementById('elite-tab-events');
-  if(evEl) evEl.style.display = tab==='events' ? 'block' : 'none';
+  const mapEl = document.getElementById('elite-tab-map');
+  const evEl  = document.getElementById('elite-tab-events');
+  if(mapEl) mapEl.style.display = tab==='map' ? 'block' : 'none';
+  if(evEl)  evEl.style.display  = tab==='events' ? 'block' : 'none';
   if(tab==='events'){
     const grid = document.getElementById('eliteEventsGrid');
     if(ELITE_EVENTS.length){
       renderEliteEvents();
     } else {
+      // แสดง loading ก่อน แล้วค่อย init (tab เปิดแล้วตอนนี้)
       if(grid) grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ...</div></div>';
       initEliteCalendar().catch(()=>{});
     }
+    // force scroll top ให้เห็น content
+    const content = document.getElementById('content');
+    if(content) setTimeout(()=>{ content.scrollTop=0; }, 60);
   }
 }
 
@@ -14181,21 +14177,6 @@ function initElitePage(){
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
   }
-  // stop touch events bubbling out of map (prevents swipe-away)
-  const mapEl = document.getElementById('eliteLeafletMap');
-  if(mapEl && !mapEl._touchBlocked){
-    mapEl._touchBlocked = true;
-    mapEl.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
-    mapEl.addEventListener('touchmove',  e=>e.stopPropagation(), {passive:true});
-    mapEl.addEventListener('touchend',   e=>e.stopPropagation(), {passive:true});
-  }
-  // force map to fill container after page becomes visible
-  setTimeout(()=>{
-    if(_eliteMap) _eliteMap.invalidateSize();
-  }, 100);
-  setTimeout(()=>{
-    if(_eliteMap) _eliteMap.invalidateSize();
-  }, 400);
   // โหลด scan results
   const cached = loadEliteCache();
   if(cached && cached.results.length > 0){
@@ -14204,17 +14185,7 @@ function initElitePage(){
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   } else {
-    // ไม่ force refresh ตอนเปิดหน้า ให้กด SCAN NOW เอง
-    // แสดง overlay รอ user กด
-    const ov = document.getElementById('eliteScanOverlay');
-    if(ov){
-      ov.style.display = 'flex';
-      ov.innerHTML = `
-        <div style="font-size:22px">👁</div>
-        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
-        <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
-        <button onclick="runEliteScan(true)" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>`;
-    }
+    setTimeout(()=>runEliteScan(true), 300);
   }
 }
 
@@ -14991,13 +14962,27 @@ function renderEliteScanResults(results, ageMs=0){
     count.parentElement.innerHTML = `<div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ข่าวที่กระทบตลาด · <span>${results.length}</span> รายการ<span style="opacity:0.6;font-weight:400">${ageText}</span></div>`;
   }
 
-  // Render pins on map — ใช้ Leaflet แทน SVG
-  renderEliteMapPins(results);
+  // Render pins on map
+  if(pins){
+    pins.innerHTML = results.map((r,i) => {
+      const {person:p, news:n} = r;
+      const impactColor = n.impact>=9 ? '#e74c3c' : n.impact>=7 ? '#f39c12' : '#3498db';
+      return `
+      <g style="cursor:pointer;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*100}ms both" onclick="scrollToEliteCard('${p.id}')">
+        <ellipse cx="${p.x}" cy="${p.y+14}" rx="4" ry="1.5" fill="rgba(0,0,0,0.4)"/>
+        <path d="M${p.x} ${p.y+13} Q${p.x-7} ${p.y+4} ${p.x-7} ${p.y-3} A7 7 0 1 1 ${p.x+7} ${p.y-3} Q${p.x+7} ${p.y+4} ${p.x} ${p.y+13}Z"
+          fill="${impactColor}" stroke="rgba(255,255,255,0.25)" stroke-width="0.7"/>
+        <text x="${p.x}" y="${p.y+1}" text-anchor="middle" font-size="7" fill="white" font-weight="800" font-family="Manrope,sans-serif">${n.impact}</text>
+        <circle cx="${p.x}" cy="${p.y-3}" r="9" fill="none" stroke="${impactColor}" stroke-width="0.8" opacity="0.5">
+          <animate attributeName="r" from="7" to="14" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite"/>
+        </circle>
+      </g>`;
+    }).join('');
+  }
 
-  // Show RESCAN float button, keep news feed hidden (news shown in pin modal)
-  const rescanFloat = document.getElementById('eliteRescanFloat');
-  if(rescanFloat) rescanFloat.style.display = 'flex';
-  if(feed) feed.style.display = 'none';
+  // Render news feed cards
+  if(feed) feed.style.display = 'block';
   if(count) count.textContent = results.length;
 
   if(cards){
@@ -15372,15 +15357,6 @@ function scrollToEliteCard(id){
     el.style.border = '1px solid rgba(255,107,53,0.5)';
     setTimeout(()=>{ el.style.border = '1px solid rgba(255,255,255,0.07)'; }, 2000);
   }
-}
-
-// เปิด Modal ข่าวจาก person id — ใช้เมื่อกดหมุดบนแผนที่
-function openEliteModalById(personId){
-  const results = _eliteScanResults;
-  if(!results || !results.length) return;
-  const idx = results.findIndex(r => r.person.id === personId);
-  if(idx === -1) return;
-  openEliteModal(idx);
 }
 
 async function analyzePortfolioImpact(personId, btn){
@@ -16352,137 +16328,6 @@ window.addEventListener('load', ()=>{
     }
   }, 2000);
 });
-
-// ════════════════════════════════════════════════════════════
-// LEAFLET ELITE MAP
-// ════════════════════════════════════════════════════════════
-var _eliteMap = null;
-var _eliteMarkers = [];
-
-function initEliteMap(){
-  if(_eliteMap) return; // already initialized
-  if(typeof L === 'undefined') return; // leaflet not loaded yet
-
-  _eliteMap = L.map('eliteLeafletMap', {
-    center: [20, 10],
-    zoom: 2,
-    zoomControl: false,
-    attributionControl: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    dragging: true,
-    minZoom: 2,
-    maxZoom: 5,
-    maxBounds: [[-75, -220], [85, 220]],
-    maxBoundsViscosity: 1.0,
-  });
-
-  // Dark tile — CartoDB Dark Matter (ไม่ต้อง API key)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
-    maxZoom: 19,
-  }).addTo(_eliteMap);
-
-  // ซ่อน leaflet attribution
-  _eliteMap.attributionControl && _eliteMap.attributionControl.remove();
-}
-
-function _eliteImpactColor(impact){
-  return '#ff6b35';
-}
-
-function renderEliteMapPins(results){
-  if(typeof L === 'undefined') return;
-  if(!_eliteMap) initEliteMap();
-  if(!_eliteMap) return;
-
-  // ลบ markers เก่า
-  _eliteMarkers.forEach(m => m.remove());
-  _eliteMarkers = [];
-
-  results.forEach((r, i) => {
-    const {person: p, news: n} = r;
-    if(p.lat == null || p.lng == null) return;
-
-    const col = '#ff6b35';
-    const colDark = '#c94e1f';
-    const photoHtml = p.logo
-      ? `<img src="${p.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:18px;border-radius:50%">${p.emoji}</div>`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px">${p.emoji}</div>`;
-
-    const iconHtml = `
-      <div style="position:relative;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*80}ms both;width:72px;height:90px">
-        <!-- pulse ring -->
-        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:68px;height:68px;border-radius:50%;border:2px solid ${col};opacity:0.35;animation:elite-pulse 2.2s ${i*0.35}s infinite;pointer-events:none"></div>
-        <!-- pin teardrop body (SVG-style using border-radius) -->
-        <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);width:58px;height:72px;cursor:pointer">
-          <!-- drop shadow -->
-          <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:22px;height:8px;background:rgba(0,0,0,0.5);border-radius:50%;filter:blur(4px)"></div>
-          <!-- teardrop shape: top circle + pointed bottom via clip-path -->
-          <div style="
-            position:absolute;top:0;left:50%;transform:translateX(-50%);
-            width:58px;height:72px;
-            background:linear-gradient(160deg,${col},${colDark});
-            border-radius:50% 50% 48% 48% / 42% 42% 58% 58%;
-            clip-path:polygon(50% 100%, 0% 20%, 6% 6%, 18% 0%, 82% 0%, 94% 6%, 100% 20%);
-            box-shadow:0 6px 22px ${col}55,0 2px 10px rgba(0,0,0,0.55)">
-          </div>
-          <!-- teardrop outer via SVG inline -->
-          <svg style="position:absolute;top:0;left:50%;transform:translateX(-50%)" width="58" height="72" viewBox="0 0 58 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M29 70 C29 70 4 46 4 26 A25 25 0 0 1 54 26 C54 46 29 70 29 70Z" fill="url(#pg${i})" filter="url(#ds${i})"/>
-            <defs>
-              <linearGradient id="pg${i}" x1="10" y1="4" x2="48" y2="68" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="${col}"/>
-                <stop offset="100%" stop-color="${colDark}"/>
-              </linearGradient>
-              <filter id="ds${i}" x="-20%" y="-10%" width="140%" height="130%">
-                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="${col}" flood-opacity="0.4"/>
-              </filter>
-            </defs>
-          </svg>
-          <!-- photo circle clipped inside pin -->
-          <div style="position:absolute;top:3px;left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;overflow:hidden;background:#111;border:2.5px solid rgba(255,255,255,0.92);box-shadow:0 2px 8px rgba(0,0,0,0.5)">
-            ${photoHtml}
-          </div>
-          <!-- impact badge top-right -->
-          <div style="position:absolute;top:-8px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:#1a1a2e;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${col};font-family:Manrope,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.7);padding:0 6px;z-index:2">${n.impact}</div>
-        </div>
-      </div>`;
-
-    const icon = L.divIcon({
-      html: iconHtml,
-      className: '',
-      iconSize: [72, 90],
-      iconAnchor: [36, 90],
-      popupAnchor: [0, -90],
-    });
-
-    const marker = L.marker([p.lat, p.lng], {icon})
-      .addTo(_eliteMap)
-      .on('click', () => openEliteModalById(p.id));
-
-    _eliteMarkers.push(marker);
-  });
-
-  // Fit bounds ให้เห็นทุก pin
-  if(_eliteMarkers.length > 0){
-    const group = L.featureGroup(_eliteMarkers);
-    _eliteMap.fitBounds(group.getBounds().pad(0.3), {animate: true, duration: 0.8});
-  }
-}
-
-// โหลด Leaflet JS แบบ dynamic (ถ้ายังไม่โหลด)
-(function loadLeaflet(){
-  if(typeof L !== 'undefined'){ initEliteMap(); return; }
-  const s = document.createElement('script');
-  s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-  s.onload = () => {
-    initEliteMap();
-    // ถ้ามีผลลัพธ์อยู่แล้ว render เลย
-    if(_eliteScanResults && _eliteScanResults.length) renderEliteMapPins(_eliteScanResults);
-  };
-  document.head.appendChild(s);
-})();
 
 </script>
 </body>
