@@ -1432,7 +1432,7 @@ canvas.bigchart{width:100%;height:100%}
     <div id="eliteLeafletMap" style="width:100vw;height:100dvh;background:#060b14;position:fixed;inset:0;z-index:0"></div>
 
     <!-- Floating header over map -->
-    <div id="eliteFloatHeader" style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.85) 0%,transparent 100%);pointer-events:none">
+    <div id="eliteFloatHeader" style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:calc(env(safe-area-inset-top) + 10px) 14px 14px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.92) 0%,rgba(6,8,16,0.5) 70%,transparent 100%);pointer-events:none">
       <div style="display:flex;align-items:center;gap:8px;pointer-events:auto">
         <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(255,107,53,0.5)">👁</div>
         <div>
@@ -1456,7 +1456,7 @@ canvas.bigchart{width:100%;height:100%}
     <div id="eliteMapLabel" style="position:fixed;bottom:90px;left:10px;font-size:8px;color:rgba(255,255,255,0.2);font-family:'IBM Plex Mono',monospace;z-index:1001;pointer-events:none;letter-spacing:1px">ELITE INTELLIGENCE MAP</div>
 
     <!-- RESCAN button floating bottom-right -->
-    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none;flex-direction:column;gap:8px;align-items:flex-end">
       <!-- reset view button -->
       <button onclick="if(_eliteMap){_eliteMap.setView([20,10],2);}" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:6px 12px;font-size:11px;color:rgba(255,255,255,0.7);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🌍 รีเซ็ต</button>
       <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.18);backdrop-filter:blur(12px);border:1px solid rgba(255,107,53,0.45);border-radius:20px;padding:6px 14px;font-size:10px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;box-shadow:0 2px 12px rgba(255,107,53,0.2)">🔄 RESCAN</button>
@@ -14204,7 +14204,17 @@ function initElitePage(){
   } else if(_eliteScanResults.length > 0){
     renderEliteScanResults(_eliteScanResults);
   } else {
-    setTimeout(()=>runEliteScan(true), 300);
+    // ไม่ force refresh ตอนเปิดหน้า ให้กด SCAN NOW เอง
+    // แสดง overlay รอ user กด
+    const ov = document.getElementById('eliteScanOverlay');
+    if(ov){
+      ov.style.display = 'flex';
+      ov.innerHTML = `
+        <div style="font-size:22px">👁</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
+        <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
+        <button onclick="runEliteScan(true)" style="margin-top:4px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔍 SCAN NOW</button>`;
+    }
   }
 }
 
@@ -14986,7 +14996,7 @@ function renderEliteScanResults(results, ageMs=0){
 
   // Show RESCAN float button, keep news feed hidden (news shown in pin modal)
   const rescanFloat = document.getElementById('eliteRescanFloat');
-  if(rescanFloat) rescanFloat.style.display = 'block';
+  if(rescanFloat) rescanFloat.style.display = 'flex';
   if(feed) feed.style.display = 'none';
   if(count) count.textContent = results.length;
 
