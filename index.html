@@ -158,13 +158,13 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .elite-pros-cons-item{font-size:11px;color:var(--text2);line-height:1.5;display:flex;gap:6px}
 .pin-pulse{animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes pin-appear{from{opacity:0;transform:scale(0) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes elite-pulse{0%{transform:scale(1);opacity:0.8}70%{transform:scale(3);opacity:0}100%{transform:scale(3);opacity:0}}
+@keyframes elite-pulse{0%{transform:scale(1);opacity:0.6}70%{transform:scale(1.8);opacity:0}100%{transform:scale(1.8);opacity:0}}
 
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
-#page-elite.active{position:fixed;inset:0;z-index:50;overflow:hidden;padding-bottom:0!important}
-#page-elite #elite-tab-map{position:absolute;inset:0}
+#page-elite.active{position:fixed;inset:0;z-index:50;overflow:hidden;padding-bottom:0!important;background:var(--bg0)}
+#page-elite #elite-tab-map{position:absolute;inset:0;width:100%;height:100%}
 #page-elite #elite-tab-events{position:absolute;inset:0;overflow-y:auto;padding-bottom:80px;background:var(--bg0)}
 @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -1428,7 +1428,7 @@ canvas.bigchart{width:100%;height:100%}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <!-- World Map fullscreen -->
-    <div id="eliteLeafletMap" style="width:100%;height:100dvh;background:#060b14;position:relative"></div>
+    <div id="eliteLeafletMap" style="width:100%;height:100%;background:#060b14;position:absolute;inset:0"></div>
 
     <!-- Floating header over map -->
     <div style="position:absolute;top:0;left:0;right:0;z-index:1001;padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.85) 0%,transparent 100%);pointer-events:none">
@@ -14159,6 +14159,13 @@ function initElitePage(){
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
   }
+  // force map to fill container after page becomes visible
+  setTimeout(()=>{
+    if(_eliteMap) _eliteMap.invalidateSize();
+  }, 100);
+  setTimeout(()=>{
+    if(_eliteMap) _eliteMap.invalidateSize();
+  }, 400);
   // โหลด scan results
   const cached = loadEliteCache();
   if(cached && cached.results.length > 0){
@@ -16365,8 +16372,7 @@ function renderEliteMapPins(results){
       <div style="position:relative;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*80}ms both;width:60px;height:76px">
         <!-- double pulse rings behind pin -->
         <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;border:2px solid ${col};opacity:0.45;animation:elite-pulse 2s ${i*0.35}s infinite;pointer-events:none"></div>
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;border:1.5px solid ${col};opacity:0.2;animation:elite-pulse 2s ${i*0.35+0.5}s infinite;pointer-events:none"></div>
-        <!-- pin teardrop body -->
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;border:1.5px solid ${col};opacity:0.2;animation:elite-pulse 2s ${i*0.35+0.5}s infinite;pointer-events:none"></div>        <!-- pin teardrop body -->
         <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:52px;height:64px;cursor:pointer">
           <!-- shadow -->
           <div style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:18px;height:6px;background:rgba(0,0,0,0.55);border-radius:50%;filter:blur(3px)"></div>
