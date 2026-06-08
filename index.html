@@ -14680,9 +14680,46 @@ async function runEliteScan(forceRefresh=false){
           const cachedData = await cachedResp.json();
           if(cachedData.ok && cachedData.items && cachedData.items.length > 0 && cachedData.age < 7200){
             if(overlay) overlay.style.display='none';
+
+            // ── FIX: validate ข่าวก่อน map — ห้ามแสดงข่าวที่ไม่เกี่ยวกับคนนั้น ──
+            function _newsMatchesPerson(item, person){
+              const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
+              const text = ((item.headline||'') + ' ' + (item.summary||item.what_happened||'')).toLowerCase();
+              return kws.some(kw => text.includes(kw));
+            }
+
             const mapped = cachedData.items.map(item=>{
               const person = ELITE_PEOPLE.find(p=>p.id===item.id);
               if(!person) return null;
+
+              // ── Validate: ถ้าข่าวไม่ตรงกับ keywords ของ person → ข้าม ──
+              if(!_newsMatchesPerson(item, person)){
+                console.warn('[ELITE Cache] reject "'+item.id+'" — ข่าวไม่ตรง:', (item.headline||'').slice(0,60));
+                // ลอง backup CEO แทน
+                const backupIds = person.backupIds || [];
+                for(const bId of backupIds){
+                  const backup = ELITE_PEOPLE.find(p=>p.id===bId);
+                  if(!backup) continue;
+                  if(_newsMatchesPerson(item, backup)){
+                    console.log('[ELITE Cache] reassign "'+item.id+'" → "'+bId+'"');
+                    const rawItem = {
+                      headline: item.headline||'', summary: item.what_happened||item.summary||'',
+                      ai_take: item.ai_take||'', sentiment: item.sentiment||'neutral',
+                      impact: item.impact||5, markets: item.markets||[],
+                      pros: item.pros||[], cons: item.cons||[],
+                      why: item.why_important||item.why||'', watch: item.action||item.watch||'',
+                      read_game: item.market_impact||item.read_game||'',
+                      stocks_buy: (item.stocks_benefit||[]).map(s=>s.t||s),
+                      stocks_watch: (item.stocks_hurt||[]).map(s=>s.t||s),
+                      timeline: item.timeline||null, _sourcesCount: 2
+                    };
+                    return { person: backup, news: buildNewsAnalysis(rawItem, item.source_url||'') };
+                  }
+                }
+                // ไม่มี backup ที่ตรง → ไม่แสดง card นี้
+                return null;
+              }
+
               const rawItem = {
                 headline:  item.headline||'',
                 summary:   item.what_happened||item.summary||'',
@@ -14702,13 +14739,14 @@ async function runEliteScan(forceRefresh=false){
               };
               return { person, news: buildNewsAnalysis(rawItem, item.source_url||'') };
             }).filter(Boolean);
+
             if(mapped.length > 0){
               _eliteScanResults = mapped;
               saveEliteCache(mapped);
               renderEliteScanResults(mapped, cachedData.age * 1000);
               if(dot){ dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite'; }
               if(liveText) liveText.textContent = 'LIVE';
-              console.log('[ELITE] loaded from /results cache, age:', cachedData.age+'s');
+              console.log('[ELITE] loaded from /results cache, age:', cachedData.age+'s, valid:', mapped.length);
               return;
             }
           }
@@ -14745,6 +14783,41 @@ async function runEliteScan(forceRefresh=false){
           const person = ELITE_PEOPLE.find(p=>p.id===item.id);
           if(!person) return null;
           const n = item.news || item;
+
+          // ── FIX: validate keyword match ก่อน assign ──
+          const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
+          const headlineText = ((n.headline||n.title||'') + ' ' + (n.summary||n.body||'')).toLowerCase();
+          const isMatch = kws.some(kw => headlineText.includes(kw));
+          if(!isMatch){
+            console.warn('[ELITE /trigger] reject "'+item.id+'" — headline ไม่ตรง:', (n.headline||'').slice(0,60));
+            // ลอง reassign ให้ backup CEO ที่ keywords ตรง
+            const backupIds = person.backupIds || [];
+            for(const bId of backupIds){
+              const backup = ELITE_PEOPLE.find(p=>p.id===bId);
+              if(!backup) continue;
+              const bkws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
+              if(bkws.some(kw => headlineText.includes(kw))){
+                console.log('[ELITE /trigger] reassign "'+item.id+'" → "'+bId+'"');
+                item = Object.assign({}, item, {id: bId});
+                const reassignedItem = {
+                  headline: n.headline||n.title||'', summary: n.summary||n.body||n.description||'',
+                  impact: n.impact||n.score||5, sentiment: n.sentiment||'neutral',
+                  markets: n.markets||n.tickers||backup.tickers||[],
+                  pros: Array.isArray(n.pros)?n.pros:(n.pros?[n.pros]:[]),
+                  cons: Array.isArray(n.cons)?n.cons:(n.cons?[n.cons]:[]),
+                  why: n.why||n.reason||'', watch: n.watch||n.watchlist||'',
+                  read_game: n.read_game||n.readGame||n.analysis||'',
+                  stocks_buy: (n.stocks_buy||n.buy||[]).concat((n.stocks_to_monitor||[]).map(s=>typeof s==='string'?s:(s.t||''))).filter(Boolean),
+                  stocks_watch: (n.stocks_watch||n.avoid||[]).concat((n.stocks_at_risk||[]).map(s=>typeof s==='string'?s:(s.t||''))).filter(Boolean),
+                  stocks_to_monitor: n.stocks_to_monitor||[], stocks_at_risk: n.stocks_at_risk||[],
+                  ai_take: n.ai_take||'', timeline: n.timeline||null, _sourcesCount: 2
+                };
+                return { person: backup, news: buildNewsAnalysis(reassignedItem, n.source_url||'') };
+              }
+            }
+            return null; // ไม่มี backup → ไม่แสดง
+          }
+
           const rawItem = {
             headline:  n.headline || n.title || '',
             summary:   n.summary  || n.body  || n.description || '',
@@ -14756,7 +14829,6 @@ async function runEliteScan(forceRefresh=false){
             why:       n.why      || n.reason || '',
             watch:     n.watch    || n.watchlist || '',
             read_game: n.read_game|| n.readGame  || n.analysis || '',
-            // FIX: map stocks_to_monitor/stocks_at_risk จาก Worker Elite format ด้วย
             stocks_buy:   (n.stocks_buy||n.buy||[]).concat(
               (n.stocks_to_monitor||[]).map(function(s){return typeof s==='string'?s:(s.t||'');})
             ).filter(Boolean),
