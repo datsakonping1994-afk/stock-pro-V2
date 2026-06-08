@@ -1251,12 +1251,31 @@ canvas.bigchart{width:100%;height:100%}
       <!-- Summary Card -->
       <div id="portSummaryCard" style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:14px;position:relative;overflow:hidden">
         <div style="position:absolute;inset:0;background:radial-gradient(circle at 80% 50%,var(--glow-gold),transparent 60%);pointer-events:none"></div>
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">💼 PORTFOLIO SUMMARY</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)">💼 PORTFOLIO SUMMARY</div>
+          <button onclick="toggleTHBView()" id="thbToggleBtn" style="display:flex;align-items:center;gap:4px;background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--ice);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.5px">🇹🇭 ฿</button>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div id="portTotalVal" style="font-size:22px;font-weight:800;font-family:'Manrope',sans-serif;color:var(--text)">$0.00</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">มูลค่าปัจจุบัน</div></div>
-          <div><div id="portTotalPnl" style="font-size:22px;font-weight:800;font-family:'Manrope',sans-serif;color:var(--text2)">$0.00</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">P&L รวม</div></div>
-          <div><div id="portTotalCost" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">$0.00</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">ต้นทุนรวม</div></div>
-          <div><div id="portTotalPct" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">0.00%</div><div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">% กำไร/ขาดทุน</div></div>
+          <div>
+            <div id="portTotalVal" style="font-size:22px;font-weight:800;font-family:'Manrope',sans-serif;color:var(--text)">$0.00</div>
+            <div id="thbTotalVal" style="display:none;font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;color:var(--ice);margin-top:1px"></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">มูลค่าปัจจุบัน</div>
+          </div>
+          <div>
+            <div id="portTotalPnl" style="font-size:22px;font-weight:800;font-family:'Manrope',sans-serif;color:var(--text2)">$0.00</div>
+            <div id="thbTotalPnl" style="display:none;font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;margin-top:1px"></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">P&L รวม</div>
+          </div>
+          <div>
+            <div id="portTotalCost" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">$0.00</div>
+            <div id="thbTotalCost" style="display:none;font-size:11px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--ice);margin-top:1px"></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">ต้นทุนรวม</div>
+          </div>
+          <div>
+            <div id="portTotalPct" style="font-size:14px;font-weight:600;font-family:'Manrope',sans-serif;color:var(--text2)">0.00%</div>
+            <div id="thbRate" style="display:none;font-size:9px;color:var(--text3);margin-top:1px;font-family:'Inter',sans-serif"></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">% กำไร/ขาดทุน</div>
+          </div>
         </div>
 
         <!-- Cash Section -->
@@ -16333,6 +16352,82 @@ setInterval(function(){
   var app = document.getElementById('app');
   if(app && app.offsetHeight < 10) _forceRepaint();
 }, 3000);
+
+// ── THB Conversion ──
+let _thbRate = null;
+let _thbVisible = false;
+let _thbRateTime = 0;
+
+async function fetchTHBRate() {
+  // ใช้ cache 10 นาที
+  if(_thbRate && Date.now() - _thbRateTime < 10 * 60 * 1000) return _thbRate;
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=THB');
+    const data = await res.json();
+    if(data && data.rates && data.rates.THB) {
+      _thbRate = data.rates.THB;
+      _thbRateTime = Date.now();
+      return _thbRate;
+    }
+  } catch(e) {}
+  // fallback: ใช้ราคาโดยประมาณ
+  _thbRate = 33.5;
+  _thbRateTime = Date.now();
+  return _thbRate;
+}
+
+async function toggleTHBView() {
+  const btn = document.getElementById('thbToggleBtn');
+  _thbVisible = !_thbVisible;
+
+  const thbIds = ['thbTotalVal','thbTotalPnl','thbTotalCost','thbRate'];
+
+  if (!_thbVisible) {
+    thbIds.forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+    btn.textContent = '🇹🇭 ฿';
+    btn.style.color = 'var(--ice)';
+    btn.style.background = 'rgba(100,210,255,0.1)';
+    btn.style.borderColor = 'rgba(100,210,255,0.25)';
+    return;
+  }
+
+  btn.textContent = '⏳';
+  const rate = await fetchTHBRate();
+
+  const parseUSD = id => {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    return parseFloat(el.textContent.replace(/[$,+\s]/g, '')) || 0;
+  };
+
+  const totalVal  = parseUSD('portTotalVal');
+  const totalPnl  = parseUSD('portTotalPnl');
+  const totalCost = parseUSD('portTotalCost');
+
+  const fmt = n => '฿' + (n * rate).toLocaleString('th-TH', {minimumFractionDigits:0, maximumFractionDigits:0});
+
+  const valEl = document.getElementById('thbTotalVal');
+  if(valEl){ valEl.textContent = fmt(totalVal); valEl.style.display='block'; }
+
+  const pnlEl = document.getElementById('thbTotalPnl');
+  if(pnlEl){
+    const pnlTHB = totalPnl * rate;
+    pnlEl.textContent = (pnlTHB >= 0 ? '+' : '') + fmt(Math.abs(totalPnl));
+    pnlEl.style.color = pnlTHB >= 0 ? 'var(--green)' : 'var(--red)';
+    pnlEl.style.display = 'block';
+  }
+
+  const costEl = document.getElementById('thbTotalCost');
+  if(costEl){ costEl.textContent = fmt(totalCost); costEl.style.display='block'; }
+
+  const rateEl = document.getElementById('thbRate');
+  if(rateEl){ rateEl.textContent = `1 USD = ฿${rate.toFixed(2)}`; rateEl.style.display='block'; }
+
+  btn.textContent = '🇹🇭 ฿';
+  btn.style.color = 'var(--green)';
+  btn.style.background = 'rgba(0,230,118,0.1)';
+  btn.style.borderColor = 'rgba(0,230,118,0.3)';
+}
 
 // init เมื่อโหลดแอป
 window.addEventListener('load', ()=>{
