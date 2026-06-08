@@ -165,7 +165,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .page.active{display:block}
 #page-elite.active{position:fixed;inset:0;z-index:50;overflow:hidden;padding-bottom:0!important;background:var(--bg0)}
 #page-elite #elite-tab-map{position:fixed;inset:0;width:100vw;height:100dvh}
-#page-elite #elite-tab-events{position:fixed;inset:0;overflow-y:auto;padding-bottom:80px;background:var(--bg0)}
+#page-elite #elite-tab-events{position:fixed;inset:0;z-index:1003;pointer-events:none}
 #eliteLeafletMap{width:100%!important;height:100dvh!important}
 @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -1481,15 +1481,27 @@ canvas.bigchart{width:100%;height:100%}
 
   </div>
 
-  <div id="elite-tab-events" style="display:none">
-    <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
-      <div id="eliteEventsHeader" style="font-size:10px;color:var(--text3)"></div>
+  <div id="elite-tab-events" style="display:none;position:fixed;inset:0;z-index:1003;pointer-events:none">
+    <!-- backdrop tap to close -->
+    <div onclick="switchEliteTab('map')" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);pointer-events:auto"></div>
+    <!-- bottom sheet -->
+    <div style="position:absolute;bottom:0;left:0;right:0;max-height:80dvh;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#0e1520,#080c14);border-top:1px solid rgba(255,255,255,0.1);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column">
+      <!-- handle + header -->
+      <div style="padding:10px 16px 8px;flex-shrink:0">
+        <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.2);margin:0 auto 12px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--text2)">📅 กำหนดการที่กำลังจะมาถึง</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="eliteEventsHeader" style="font-size:10px;color:var(--text3)"></div>
+            <button onclick="switchEliteTab('map')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:50%;width:26px;height:26px;color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+          </div>
+        </div>
+      </div>
+      <!-- scrollable content -->
+      <div id="eliteEventsGrid" style="overflow-y:auto;padding:0 14px 30px;display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
+      </div>
     </div>
-    <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
-      <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">⏳ กำลังโหลด...</div>
-    </div>
-    <div style="height:30px"></div>
   </div>
 
 </div>
@@ -14148,22 +14160,17 @@ function switchEliteTab(tab){
   document.querySelectorAll('.elite-subtab').forEach(el=>{
     el.classList.toggle('active', el.id === 'eliteSubTab-'+tab);
   });
-  const mapEl = document.getElementById('elite-tab-map');
-  const evEl  = document.getElementById('elite-tab-events');
-  if(mapEl) mapEl.style.display = tab==='map' ? 'block' : 'none';
-  if(evEl)  evEl.style.display  = tab==='events' ? 'block' : 'none';
+  // map always stays visible underneath
+  const evEl = document.getElementById('elite-tab-events');
+  if(evEl) evEl.style.display = tab==='events' ? 'block' : 'none';
   if(tab==='events'){
     const grid = document.getElementById('eliteEventsGrid');
     if(ELITE_EVENTS.length){
       renderEliteEvents();
     } else {
-      // แสดง loading ก่อน แล้วค่อย init (tab เปิดแล้วตอนนี้)
       if(grid) grid.innerHTML='<div style="text-align:center;padding:40px 0"><div style="font-size:24px;margin-bottom:8px">📅</div><div style="color:var(--text3);font-size:12px">กำลังเชื่อมต่อ...</div></div>';
       initEliteCalendar().catch(()=>{});
     }
-    // force scroll top ให้เห็น content
-    const content = document.getElementById('content');
-    if(content) setTimeout(()=>{ content.scrollTop=0; }, 60);
   }
 }
 
@@ -14171,6 +14178,14 @@ function initElitePage(){
   updateEliteNotifUI();
   if(Notification.permission==='granted' && _lsGet('elite_scan')==='1'){
     startEliteBackgroundScan();
+  }
+  // stop touch events bubbling out of map (prevents swipe-away)
+  const mapEl = document.getElementById('eliteLeafletMap');
+  if(mapEl && !mapEl._touchBlocked){
+    mapEl._touchBlocked = true;
+    mapEl.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
+    mapEl.addEventListener('touchmove',  e=>e.stopPropagation(), {passive:true});
+    mapEl.addEventListener('touchend',   e=>e.stopPropagation(), {passive:true});
   }
   // force map to fill container after page becomes visible
   setTimeout(()=>{
