@@ -162,6 +162,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 /* ── PAGES ── */
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .stock-card{animation:cardIn 0.28s cubic-bezier(0.22,1,0.36,1) both}
@@ -1127,7 +1128,7 @@ canvas.bigchart{width:100%;height:100%}
 
         <div class="settings-row">
           <div class="settings-label">ล้าง Trade Log</div>
-          <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){localStorage.removeItem('_tl_v2');loadAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
+          <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){try{localStorage.removeItem('_tl_v2');}catch{}loadAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
         </div>
         <div class="settings-row">
           <div>
@@ -10496,13 +10497,14 @@ ${buyCandidates||'ไม่มีหุ้นผ่านเกณฑ์'}
     .map(({sec,avg})=>`${sec}:${avg>=0?'+':''}${avg}%`)
     .join(' | ');
 
-  // ── Portfolio context ──
+  // ── Portfolio context (ส่งแค่ ticker + ทิศทาง ไม่ส่งราคาหรือต้นทุนจริง) ──
   let portContext = '';
   if(portfolio.length>0){
     const portSummary = portfolio.map(p=>{
       const cur = stocksMap.get(p.t)?.p||0;
-      const pnl = cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
-      return `${p.t}:${pnl>=0?'+':''}${pnl}%`;
+      const pnl = cur>0?((cur-p.avgPrice)/p.avgPrice*100):0;
+      const dir = pnl>2?'▲':pnl<-2?'▼':'→';
+      return `${p.t}${dir}${Math.abs(pnl).toFixed(0)}%`;
     }).join(', ');
     portContext = `
 💼 พอร์ตของคุณ: ${portSummary}`;
@@ -10840,9 +10842,9 @@ async function _fetchEconNews(query){
 // ── _fetchEconNewsAI: AI-generated news when endpoint is down ──
 async function _fetchEconNewsAI(){
   const sys='Return ONLY a JSON array. No explanation, no markdown, no extra text. Start with [';
-  const prompt=`Generate 7 financial news items for today covering Fed/rates, inflation, earnings, trade, AI/tech.
-Format: [{"title":"...","source":"Reuters","titleTH":"ประโยคภาษาไทย...","summaryTH":"สรุป 1 ประโยค..."},...]
-Sources: Reuters/Bloomberg/CNBC/MarketWatch/AP only. titleTH=Thai title. summaryTH=Thai 1-sentence summary.`;
+  const today=new Date().toISOString().slice(0,10);
+  const prompt=`Generate 7 plausible financial news TOPICS (not real events) for ${today} covering Fed/rates, inflation, earnings, trade, AI/tech. These are illustrative topics only — label them clearly as AI-generated placeholders.
+Format: [{"title":"...","source":"AI-Generated","titleTH":"ประโยคภาษาไทย (สมมติ)...","summaryTH":"⚠️ ข่าวสมมติ — ไม่ใช่ข่าวจริง กรุณาตรวจสอบแหล่งข่าวจริงก่อนตัดสินใจ"},...]`;
 
   // ลองทุก AI ตามลำดับ
   const callers=[
@@ -10860,11 +10862,11 @@ Sources: Reuters/Bloomberg/CNBC/MarketWatch/AP only. titleTH=Thai title. summary
       const now=new Date().toISOString();
       return parsed.map(it=>({
         title:it.title||'',
-        source:it.source||'Reuters',
+        source:'AI-Generated',
         pubDate:now,
         link:'#',
-        titleTH:it.titleTH||it.title||'',
-        summaryTH:it.summaryTH||'',
+        titleTH:(it.titleTH||it.title||'')+'  ⚠️ สมมติ',
+        summaryTH:it.summaryTH||'⚠️ ข่าวสมมติ — ไม่ใช่ข่าวจริง กรุณาตรวจสอบแหล่งข่าวจริงก่อนตัดสินใจ',
       }));
     }catch(e){console.warn('_fetchEconNewsAI attempt failed:',e.message);}
   }
@@ -11628,12 +11630,12 @@ function renderPortfolio(){
           </div>
           <div style="display:flex;gap:8px">
             <button data-sell-ticker="${safeTicker}" class="port-sell-btn" style="flex:1;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.3px">💰 ขายหุ้น</button>
-            <button onclick="if(confirm('ลบ ${safeTicker} ออกจากพอร์ต?')) removePortPosition('${safeTicker}')" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:12px;padding:10px 14px;font-size:16px;cursor:pointer">🗑️</button>
+            <button data-remove-ticker="${safeTicker}" class="port-remove-btn" style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:12px;padding:10px 14px;font-size:16px;cursor:pointer">🗑️</button>
           </div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:10px">
             <span style="font-size:11px;color:var(--text3);flex:1">⚖️ ขีดจำกัดสัดส่วน: <span id="limitDisplay-${safeTicker}" style="color:var(--gold);font-weight:700">${_posLimits[pos.t]||_recommendedLimit(pos.t)}%</span></span>
-            <button onclick="_showLimitEditor('${safeTicker}')" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--gold);cursor:pointer">ตั้งค่า</button>
-            <button onclick="_aiRecommendLimit('${safeTicker}')" style="background:rgba(100,200,255,0.08);border:1px solid rgba(100,200,255,0.25);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--ice);cursor:pointer">🤖 AI แนะนำ</button>
+            <button data-limit-ticker="${safeTicker}" class="port-limit-btn" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--gold);cursor:pointer">ตั้งค่า</button>
+            <button data-ailimit-ticker="${safeTicker}" class="port-ailimit-btn" style="background:rgba(100,200,255,0.08);border:1px solid rgba(100,200,255,0.25);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--ice);cursor:pointer">🤖 AI แนะนำ</button>
           </div>
         </div>
       </div>
@@ -11679,6 +11681,12 @@ function renderPortfolio(){
   list.onclick=(e)=>{
     const sellBtn=e.target.closest('.port-sell-btn');
     if(sellBtn&&sellBtn.dataset.sellTicker){ e.stopPropagation(); sellShares(sellBtn.dataset.sellTicker); return; }
+    const removeBtn=e.target.closest('.port-remove-btn');
+    if(removeBtn&&removeBtn.dataset.removeTicker){ e.stopPropagation(); const t=removeBtn.dataset.removeTicker; if(confirm('ลบ '+t+' ออกจากพอร์ต?')) removePortPosition(t); return; }
+    const limitBtn=e.target.closest('.port-limit-btn');
+    if(limitBtn&&limitBtn.dataset.limitTicker){ e.stopPropagation(); _showLimitEditor(limitBtn.dataset.limitTicker); return; }
+    const ailimitBtn=e.target.closest('.port-ailimit-btn');
+    if(ailimitBtn&&ailimitBtn.dataset.ailimitTicker){ e.stopPropagation(); _aiRecommendLimit(ailimitBtn.dataset.ailimitTicker); return; }
     if(e.target.closest('[class*="port-detail-"]')) return;
     const row=e.target.closest('.port-row');
     if(row){
@@ -16046,7 +16054,7 @@ async function toggleEliteNotification(){
     startEliteBackgroundScan();
     if(dot){ dot.style.background='var(--green)'; dot.style.animation='pulse-dot 2s infinite'; }
     if(txt){ txt.style.color='var(--green)'; txt.textContent='LIVE'; }
-    toast('🔔 เปิดแจ้งเตือน Elite แล้ว — scan ทุก 30 นาที');
+    toast('🔔 เปิดแจ้งเตือน Elite แล้ว — scan ทุก 6 ชั่วโมง');
     // test notification
     setTimeout(()=>showLocalNotification('👁 ELITE พร้อมแล้ว','จะแจ้งเตือนเมื่อมีข่าว Impact ≥ 7/10',{tag:'elite-test'}), 1000);
   }
