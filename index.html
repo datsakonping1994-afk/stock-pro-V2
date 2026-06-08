@@ -13890,13 +13890,28 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline){
 // ENGINE 6: AI HALLUCINATION PROTECTION
 // ════════════════════════════════════════════════════════════
 function _sanitizeAiOutput(item){
+  // ลบตัวอักษร CJK (จีน/ญี่ปุ่น/เกาหลี) ออกจาก text fields
+  const _stripCJK = (s) => typeof s === 'string'
+    ? s.replace(/[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F]/g, '').replace(/\s+/g,' ').trim()
+    : s;
   const cleanList=(arr)=>(arr||[])
     .map(x=>(typeof x==='string'?x:(x&&x.t?x.t:'')).toUpperCase().trim())
     .filter(t=>t&&STOCK_UNIVERSE.has(t)&&!ETF_UNIVERSE.has(t));
   const impact=Math.min(10,Math.max(1,parseInt(item.impact)||5));
   const VALID_SENTIMENTS=new Set(['bullish','bearish','positive','negative','neutral']);
   const sentiment=VALID_SENTIMENTS.has(item.sentiment)?item.sentiment:'neutral';
-  return {...item,impact,sentiment,stocks_buy:cleanList(item.stocks_buy),stocks_watch:cleanList(item.stocks_watch)};
+  return {
+    ...item,
+    impact, sentiment,
+    headline: _stripCJK(item.headline),
+    summary: _stripCJK(item.summary),
+    ai_take: _stripCJK(item.ai_take),
+    why: _stripCJK(item.why),
+    read_game: _stripCJK(item.read_game),
+    watch: _stripCJK(item.watch),
+    stocks_buy: cleanList(item.stocks_buy),
+    stocks_watch: cleanList(item.stocks_watch)
+  };
 }
 
 // ════════════════════════════════════════════════════════════
