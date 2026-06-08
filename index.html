@@ -164,8 +164,9 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .page{display:none;animation:slideIn 0.25s cubic-bezier(0.4,0,0.2,1)}
 .page.active{display:block}
 #page-elite.active{position:fixed;inset:0;z-index:50;overflow:hidden;padding-bottom:0!important;background:var(--bg0)}
-#page-elite #elite-tab-map{position:absolute;inset:0;width:100%;height:100%}
-#page-elite #elite-tab-events{position:absolute;inset:0;overflow-y:auto;padding-bottom:80px;background:var(--bg0)}
+#page-elite #elite-tab-map{position:fixed;inset:0;width:100vw;height:100dvh}
+#page-elite #elite-tab-events{position:fixed;inset:0;overflow-y:auto;padding-bottom:80px;background:var(--bg0)}
+#eliteLeafletMap{width:100%!important;height:100dvh!important}
 @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -1428,10 +1429,10 @@ canvas.bigchart{width:100%;height:100%}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <!-- World Map fullscreen -->
-    <div id="eliteLeafletMap" style="width:100%;height:100%;background:#060b14;position:absolute;inset:0"></div>
+    <div id="eliteLeafletMap" style="width:100vw;height:100dvh;background:#060b14;position:fixed;inset:0;z-index:0"></div>
 
     <!-- Floating header over map -->
-    <div style="position:absolute;top:0;left:0;right:0;z-index:1001;padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.85) 0%,transparent 100%);pointer-events:none">
+    <div style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,8,16,0.85) 0%,transparent 100%);pointer-events:none">
       <div style="display:flex;align-items:center;gap:8px;pointer-events:auto">
         <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#ff6b35,#f7931e);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(255,107,53,0.5)">👁</div>
         <div>
@@ -1452,15 +1453,15 @@ canvas.bigchart{width:100%;height:100%}
     </div>
 
     <!-- label bottom-left -->
-    <div style="position:absolute;bottom:90px;left:10px;font-size:8px;color:rgba(255,255,255,0.2);font-family:'IBM Plex Mono',monospace;z-index:1001;pointer-events:none;letter-spacing:1px">ELITE INTELLIGENCE MAP</div>
+    <div style="position:fixed;bottom:90px;left:10px;font-size:8px;color:rgba(255,255,255,0.2);font-family:'IBM Plex Mono',monospace;z-index:1001;pointer-events:none;letter-spacing:1px">ELITE INTELLIGENCE MAP</div>
 
     <!-- RESCAN button floating bottom-right -->
-    <div id="eliteRescanFloat" style="position:absolute;bottom:90px;right:10px;z-index:1001;display:none">
+    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none">
       <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.18);backdrop-filter:blur(12px);border:1px solid rgba(255,107,53,0.45);border-radius:20px;padding:6px 14px;font-size:10px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;box-shadow:0 2px 12px rgba(255,107,53,0.2)">🔄 RESCAN</button>
     </div>
 
     <!-- Scan overlay -->
-    <div id="eliteScanOverlay" style="position:absolute;inset:0;background:rgba(6,8,20,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:1002">
+    <div id="eliteScanOverlay" style="position:fixed;inset:0;background:rgba(6,8,20,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:1002">
       <div style="font-size:22px">👁</div>
       <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ELITE INTELLIGENCE</div>
       <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">AI จะ scan ข่าวล่าสุดของผู้นำโลกและ CEO<br>แล้วแสดง pin เฉพาะคนที่มีข่าวกระทบตลาด</div>
@@ -2271,6 +2272,13 @@ function navTo(page, el){
   ['earningsModal','aiSummaryModal'].forEach(id=>closeModal(id));
   const drawer=document.getElementById('drawer');
   if(drawer&&drawer.classList.contains('open')) drawer.classList.remove('open');
+
+  // ซ่อน/แสดง elite fixed UI elements
+  const eliteFixedEls = ['eliteLeafletMap','eliteScanOverlay','eliteRescanFloat'];
+  eliteFixedEls.forEach(id=>{
+    const el2=document.getElementById(id);
+    if(el2) el2.style.visibility = (page==='elite') ? 'visible' : 'hidden';
+  });
 
   // สลับหน้าทันที ก่อนทำงานหนัก
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
