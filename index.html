@@ -1456,7 +1456,9 @@ canvas.bigchart{width:100%;height:100%}
     <div id="eliteMapLabel" style="position:fixed;bottom:90px;left:10px;font-size:8px;color:rgba(255,255,255,0.2);font-family:'IBM Plex Mono',monospace;z-index:1001;pointer-events:none;letter-spacing:1px">ELITE INTELLIGENCE MAP</div>
 
     <!-- RESCAN button floating bottom-right -->
-    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none">
+    <div id="eliteRescanFloat" style="position:fixed;bottom:90px;right:10px;z-index:1001;display:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+      <!-- reset view button -->
+      <button onclick="if(_eliteMap){_eliteMap.setView([20,10],2);}" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:6px 12px;font-size:11px;color:rgba(255,255,255,0.7);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🌍 รีเซ็ต</button>
       <button onclick="runEliteScan(true)" id="eliteRescanBtn" style="background:rgba(255,107,53,0.18);backdrop-filter:blur(12px);border:1px solid rgba(255,107,53,0.45);border-radius:20px;padding:6px 14px;font-size:10px;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;box-shadow:0 2px 12px rgba(255,107,53,0.2)">🔄 RESCAN</button>
     </div>
 
@@ -16352,7 +16354,7 @@ function initEliteMap(){
   if(typeof L === 'undefined') return; // leaflet not loaded yet
 
   _eliteMap = L.map('eliteLeafletMap', {
-    center: [25, 15],
+    center: [20, 10],
     zoom: 2,
     zoomControl: false,
     attributionControl: false,
@@ -16361,6 +16363,8 @@ function initEliteMap(){
     dragging: true,
     minZoom: 2,
     maxZoom: 5,
+    maxBounds: [[-75, -220], [85, 220]],
+    maxBoundsViscosity: 1.0,
   });
 
   // Dark tile — CartoDB Dark Matter (ไม่ต้อง API key)
@@ -16397,32 +16401,50 @@ function renderEliteMapPins(results){
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px">${p.emoji}</div>`;
 
     const iconHtml = `
-      <div style="position:relative;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*80}ms both;width:60px;height:76px">
-        <!-- double pulse rings behind pin -->
-        <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;border:2px solid ${col};opacity:0.45;animation:elite-pulse 2s ${i*0.35}s infinite;pointer-events:none"></div>
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;border:1.5px solid ${col};opacity:0.2;animation:elite-pulse 2s ${i*0.35+0.5}s infinite;pointer-events:none"></div>        <!-- pin teardrop body -->
-        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:52px;height:64px;cursor:pointer">
-          <!-- shadow -->
-          <div style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:18px;height:6px;background:rgba(0,0,0,0.55);border-radius:50%;filter:blur(3px)"></div>
-          <!-- pin outer ring (border) -->
-          <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:linear-gradient(145deg,${col},${colDark});box-shadow:0 6px 20px ${col}66,0 2px 8px rgba(0,0,0,0.5)"></div>
-          <!-- triangle tail -->
-          <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:16px solid ${colDark}"></div>
+      <div style="position:relative;animation:pin-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) ${i*80}ms both;width:72px;height:90px">
+        <!-- pulse ring -->
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:68px;height:68px;border-radius:50%;border:2px solid ${col};opacity:0.35;animation:elite-pulse 2.2s ${i*0.35}s infinite;pointer-events:none"></div>
+        <!-- pin teardrop body (SVG-style using border-radius) -->
+        <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);width:58px;height:72px;cursor:pointer">
+          <!-- drop shadow -->
+          <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:22px;height:8px;background:rgba(0,0,0,0.5);border-radius:50%;filter:blur(4px)"></div>
+          <!-- teardrop shape: top circle + pointed bottom via clip-path -->
+          <div style="
+            position:absolute;top:0;left:50%;transform:translateX(-50%);
+            width:58px;height:72px;
+            background:linear-gradient(160deg,${col},${colDark});
+            border-radius:50% 50% 48% 48% / 42% 42% 58% 58%;
+            clip-path:polygon(50% 100%, 0% 20%, 6% 6%, 18% 0%, 82% 0%, 94% 6%, 100% 20%);
+            box-shadow:0 6px 22px ${col}55,0 2px 10px rgba(0,0,0,0.55)">
+          </div>
+          <!-- teardrop outer via SVG inline -->
+          <svg style="position:absolute;top:0;left:50%;transform:translateX(-50%)" width="58" height="72" viewBox="0 0 58 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M29 70 C29 70 4 46 4 26 A25 25 0 0 1 54 26 C54 46 29 70 29 70Z" fill="url(#pg${i})" filter="url(#ds${i})"/>
+            <defs>
+              <linearGradient id="pg${i}" x1="10" y1="4" x2="48" y2="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="${col}"/>
+                <stop offset="100%" stop-color="${colDark}"/>
+              </linearGradient>
+              <filter id="ds${i}" x="-20%" y="-10%" width="140%" height="130%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="${col}" flood-opacity="0.4"/>
+              </filter>
+            </defs>
+          </svg>
           <!-- photo circle clipped inside pin -->
-          <div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);width:44px;height:44px;border-radius:50%;overflow:hidden;background:#111;border:2.5px solid rgba(255,255,255,0.9)">
+          <div style="position:absolute;top:3px;left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;overflow:hidden;background:#111;border:2.5px solid rgba(255,255,255,0.92);box-shadow:0 2px 8px rgba(0,0,0,0.5)">
             ${photoHtml}
           </div>
-          <!-- impact badge top-center -->
-          <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);min-width:22px;height:22px;border-radius:11px;background:#1a1a2e;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${col};font-family:Manrope,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.6);padding:0 6px">${n.impact}</div>
+          <!-- impact badge top-right -->
+          <div style="position:absolute;top:-8px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:#1a1a2e;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${col};font-family:Manrope,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.7);padding:0 6px;z-index:2">${n.impact}</div>
         </div>
       </div>`;
 
     const icon = L.divIcon({
       html: iconHtml,
       className: '',
-      iconSize: [54, 78],
-      iconAnchor: [27, 78],
-      popupAnchor: [0, -78],
+      iconSize: [72, 90],
+      iconAnchor: [36, 90],
+      popupAnchor: [0, -90],
     });
 
     const marker = L.marker([p.lat, p.lng], {icon})
