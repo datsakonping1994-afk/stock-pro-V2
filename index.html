@@ -13636,13 +13636,43 @@ function updatePortCharts(){
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
 // ELITE_PEOPLE: เฉพาะบุคคลที่มีผลกระทบต่อตลาดหุ้นโดยตรง
 const ELITE_PEOPLE = [
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c' },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6' },
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900' },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f' },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',      emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937' },
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c' },
-  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12' },
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
+    keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
+    ticker:'', backupIds:['powell'] },
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
+    keywords:['powell','fed','federal reserve','interest rate','fomc','rate cut','rate hike','inflation'],
+    ticker:'', backupIds:['trump'] },
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900',
+    keywords:['jensen huang','jensen','nvidia','nvda','blackwell','gpu','h100','h200','ai chip','data center chip'],
+    ticker:'NVDA', backupIds:['nadella','cook'] },
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f',
+    keywords:['sam altman','altman','openai','chatgpt','gpt','o3','o4','sora','openai model'],
+    ticker:'MSFT', backupIds:['pichai','nadella'] },
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
+    keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','twitter','x.com','grok'],
+    ticker:'TSLA', backupIds:['jensen','cook'] },
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
+    keywords:['xi jinping','xi','china','beijing','pboc','yuan','rmb','tariff china','us china'],
+    ticker:'', backupIds:['opec'] },
+  { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12',
+    keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
+    ticker:'XOM', backupIds:['trump'] },
+  // ── CEO สำรอง (ใช้เมื่อคนหลักไม่มีข่าว) ──
+  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'', tickers:['MSFT','AMZN'],        x:132, y:158, color:'#00a4ef',
+    keywords:['satya nadella','nadella','microsoft','msft','azure','copilot','teams','bing'],
+    ticker:'MSFT', backupIds:['altman'] },
+  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'', tickers:['AAPL'],               x:130, y:175, color:'#aaaaaa',
+    keywords:['tim cook','cook','apple','aapl','iphone','mac','ios','app store','vision pro'],
+    ticker:'AAPL', backupIds:['jensen'] },
+  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'', tickers:['GOOGL','META'],       x:126, y:163, color:'#4285f4',
+    keywords:['sundar pichai','pichai','google','alphabet','googl','gemini','waymo','android','youtube'],
+    ticker:'GOOGL', backupIds:['altman'] },
+  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'', tickers:['META'],               x:140, y:165, color:'#1877f2',
+    keywords:['mark zuckerberg','zuckerberg','zuck','meta','facebook','instagram','whatsapp','threads','llama','ray-ban'],
+    ticker:'META', backupIds:['pichai'] },
+  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
+    keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
+    ticker:'JPM', backupIds:['powell'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14195,12 +14225,17 @@ async function _eliteDirectFallback(overlay){
         const cutoff = Date.now() - 48 * 3600 * 1000; // เฉพาะ 48 ชั่วโมง
         const recentNews = (d || []).filter(a => (a.datetime * 1000) >= cutoff);
 
-        // จับคู่ข่าวกับแต่ละ person
-        topPeople.slice(0, 6).forEach(function(person){
-          const keywords = person.name.toLowerCase().split(' ').filter(w => w.length > 2);
+        // จับคู่ข่าวกับแต่ละ person — ใช้ keywords เฉพาะของแต่ละคน (ไม่ใช่แค่ชื่อ)
+        const PRIMARY_PEOPLE = topPeople.slice(0, 7); // trump/powell/jensen/altman/musk/xi/opec
+        const foundIds = new Set();
+
+        PRIMARY_PEOPLE.forEach(function(person){
+          // ใช้ keywords จาก field keywords ถ้ามี ไม่งั้น fallback ชื่อ
+          const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
           const matched = recentNews.filter(a => {
-            const text = (a.headline + ' ' + (a.summary || '')).toLowerCase();
-            return keywords.some(kw => text.includes(kw));
+            const text = ((a.headline||'') + ' ' + (a.summary||'')).toLowerCase();
+            // ต้องมี keyword อย่างน้อย 1 ตัวที่เฉพาะเจาะจงพอ (ไม่ใช่ชื่อสกุลทั่วไป)
+            return kws.some(kw => text.includes(kw));
           });
           if(matched.length > 0){
             const top = matched[0];
@@ -14210,6 +14245,39 @@ async function _eliteDirectFallback(overlay){
               summary: (top.summary || '').slice(0, 400),
               url: top.url || ''
             });
+            foundIds.add(person.id);
+          }
+        });
+
+        // ── Backup: ถ้า person หลักไม่มีข่าว ลอง backup CEO แทน ──
+        PRIMARY_PEOPLE.forEach(function(person){
+          if(foundIds.has(person.id)) return; // มีแล้ว ข้ามไป
+          const backupIds = person.backupIds || [];
+          for(const bId of backupIds){
+            if(foundIds.has(bId)) continue; // backup ถูกใช้แล้ว
+            const backup = ELITE_PEOPLE.find(p=>p.id===bId);
+            if(!backup) continue;
+            const kws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
+            const matched = recentNews.filter(a => {
+              const text = ((a.headline||'') + ' ' + (a.summary||'')).toLowerCase();
+              return kws.some(kw => text.includes(kw));
+            });
+            if(matched.length > 0){
+              const top = matched[0];
+              allNews.push({
+                id: backup.id, person: backup,
+                headline: top.headline || '',
+                summary: (top.summary || '').slice(0, 400),
+                url: top.url || ''
+              });
+              foundIds.add(bId);
+              console.log('[Elite] '+person.name+' ไม่มีข่าว → ใช้ '+backup.name+' แทน');
+              break;
+            }
+          }
+          // ถ้าหา backup ไม่ได้เลย → ไม่แสดง card คนนี้ (ไม่ push garbage)
+          if(!foundIds.has(person.id)){
+            console.log('[Elite] ไม่มีข่าวของ '+person.name+' และหา backup ไม่ได้ — ข้ามไป');
           }
         });
         if(allNews.length) console.log('[Finnhub] got', allNews.length, 'articles');
@@ -14223,11 +14291,11 @@ async function _eliteDirectFallback(overlay){
     const PERSON_TICKERS = {
       jensen:'NVDA', cook:'AAPL', musk:'TSLA', nadella:'MSFT',
       zuck:'META', altman:'MSFT', pichai:'GOOGL', bezos:'AMZN',
-      dimon:'JPM', powell:'', trump:'', xi:'', buffett:'BRK.B'
+      dimon:'JPM', powell:'', trump:'', xi:'', buffett:'BRK.B', opec:'XOM'
     };
     const fk = FINNHUB_KEY || '';
     const foundIds = new Set(allNews.map(n => n.id));
-    const missing = topPeople.slice(0, 6).filter(p => !foundIds.has(p.id) && PERSON_TICKERS[p.id]);
+    const missing = topPeople.slice(0, 7).filter(p => !foundIds.has(p.id) && PERSON_TICKERS[p.id]);
     if(fk && missing.length){
       const to = new Date().toISOString().slice(0, 10);
       const from = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
@@ -14242,13 +14310,46 @@ async function _eliteDirectFallback(overlay){
           if(!r.ok) return;
           const d = await r.json();
           if(d && d.length > 0){
-            const top = d[0];
-            allNews.push({
-              id: person.id, person: person,
-              headline: top.headline || '',
-              summary: (top.summary || '').slice(0, 400),
-              url: top.url || ''
+            // ── FIX: ต้อง verify ว่าข่าวเกี่ยวกับคนนั้นจริงๆ ด้วย keywords ──
+            const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
+            const verified = d.find(a => {
+              const text = ((a.headline||'')+ ' ' +(a.summary||'')).toLowerCase();
+              return kws.some(kw => text.includes(kw));
             });
+            if(verified){
+              allNews.push({
+                id: person.id, person: person,
+                headline: verified.headline || '',
+                summary: (verified.summary || '').slice(0, 400),
+                url: verified.url || ''
+              });
+            } else {
+              // ข่าวบริษัทนั้นไม่ได้กล่าวถึง CEO เลย → ลอง backup CEO
+              const backupIds = person.backupIds || [];
+              for(const bId of backupIds){
+                if(foundIds.has(bId) || allNews.find(n=>n.id===bId)) continue;
+                const backup = ELITE_PEOPLE.find(p=>p.id===bId);
+                if(!backup || !PERSON_TICKERS[backup.id]) continue;
+                const bkws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
+                const bVerified = d.find(a => {
+                  const text = ((a.headline||'')+ ' ' +(a.summary||'')).toLowerCase();
+                  return bkws.some(kw => text.includes(kw));
+                });
+                if(bVerified){
+                  allNews.push({
+                    id: backup.id, person: backup,
+                    headline: bVerified.headline || '',
+                    summary: (bVerified.summary || '').slice(0, 400),
+                    url: bVerified.url || ''
+                  });
+                  console.log('[Elite fallback] '+person.name+' verify ไม่ผ่าน → ใช้ '+backup.name);
+                  break;
+                }
+              }
+              if(!allNews.find(n=>n.id===person.id)){
+                console.log('[Elite] '+person.name+' ไม่มีข่าวที่ verify ได้ — ข้ามไป (ดีกว่าแสดงข่าวผิด)');
+              }
+            }
           }
         }catch{}
       }));
