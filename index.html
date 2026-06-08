@@ -14647,8 +14647,16 @@ async function runEliteScan(forceRefresh=false){
             why:       n.why      || n.reason || '',
             watch:     n.watch    || n.watchlist || '',
             read_game: n.read_game|| n.readGame  || n.analysis || '',
-            stocks_buy:   n.stocks_buy   || n.buy   || [],
-            stocks_watch: n.stocks_watch || n.avoid || [],
+            // FIX: map stocks_to_monitor/stocks_at_risk จาก Worker Elite format ด้วย
+            stocks_buy:   (n.stocks_buy||n.buy||[]).concat(
+              (n.stocks_to_monitor||[]).map(function(s){return typeof s==='string'?s:(s.t||'');})
+            ).filter(Boolean),
+            stocks_watch: (n.stocks_watch||n.avoid||[]).concat(
+              (n.stocks_at_risk||[]).map(function(s){return typeof s==='string'?s:(s.t||'');})
+            ).filter(Boolean),
+            // เก็บ reason จาก stocks_to_monitor/stocks_at_risk ไว้ใน aiItem ด้วย
+            stocks_to_monitor: n.stocks_to_monitor||[],
+            stocks_at_risk: n.stocks_at_risk||[],
             ai_take:   n.ai_take  || '',
             timeline:  n.timeline || null,
             _sourcesCount: 2
