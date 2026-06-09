@@ -1,5 +1,5 @@
 // ============================================================
-//  STOCK PRO — Worker Elite: ข่าว ELITE figures
+//  STOCK PRO -- Worker Elite: ข่าว ELITE figures
 //  ENV: GROQ_KEY, ANTHROPIC_KEY, NEWS_API_KEY, TG_TOKEN, TG_CHAT_ID, ALERT_KV
 //  Cron: 0 */4 * * * (ทุก 4 ชั่วโมง)
 //  KV Binding: ALERT_KV
@@ -12,7 +12,8 @@ const CORS = {
   'Cache-Control': 'no-store'
 };
 
-const ELITE_PEOPLE = [
+// ── ELITE_PEOPLE: ข้อมูล default (fallback ถ้า Wikipedia ไม่ตอบ) ──
+const ELITE_PEOPLE_DEFAULT = [
   { id: 'trump',    name: 'Donald Trump',       emoji: '🔴', role: 'US President' },
   { id: 'powell',   name: 'Jerome Powell',       emoji: '🔴', role: 'Fed Chair' },
   { id: 'jensen',   name: 'Jensen Huang',        emoji: '🟢', role: 'NVIDIA CEO' },
@@ -34,6 +35,88 @@ const ELITE_PEOPLE = [
   { id: 'modi',     name: 'Narendra Modi',       emoji: '🟡', role: 'India PM' },
   { id: 'khamenei', name: 'Ali Khamenei',        emoji: '🔴', role: 'Iran Supreme Leader' },
 ];
+
+// ── Wikipedia pages สำหรับแต่ละ id ──
+const WIKI_PAGES = {
+  trump:    'Donald_Trump',
+  powell:   'Jerome_Powell',
+  jensen:   'Jensen_Huang',
+  cook:     'Apple_Inc.',        // ดึง CEO จากหน้า Apple
+  musk:     'Elon_Musk',
+  nadella:  'Satya_Nadella',
+  zuck:     'Mark_Zuckerberg',
+  altman:   'Sam_Altman',
+  pichai:   'Sundar_Pichai',
+  bezos:    'Jeff_Bezos',
+  dimon:    'Jamie_Dimon',
+  buffett:  'Warren_Buffett',
+  iger:     'The_Walt_Disney_Company', // ดึง CEO จากหน้า Disney
+  lagarde:  'Christine_Lagarde',
+  yellen:   'Janet_Yellen',
+  modi:     'Narendra_Modi',
+};
+
+// ── ดึงชื่อจาก Wikipedia API ──
+async function fetchNameFromWiki(wikiPage) {
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiPage)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    // ดึงชื่อจาก title ของหน้า Wikipedia
+    const title = d.title || '';
+    // กรองออกถ้าเป็นชื่อบริษัท (เช่น Apple Inc.) ให้คืน null แทน
+    if (title.includes('Inc.') || title.includes('Company') || title === 'OPEC') return null;
+    return title;
+  } catch (e) {
+    console.warn('[Wiki] fetch error:', wikiPage, e.message);
+    return null;
+  }
+}
+
+// ── อัปเดต ELITE_PEOPLE จาก Wikipedia (cache ใน KV 24 ชม.) ──
+async function getElitePeople(env) {
+  // ลอง load จาก KV cache ก่อน
+  if (env.ALERT_KV) {
+    try {
+      const cached = await env.ALERT_KV.get('elite:people');
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        // cache 24 ชั่วโมง
+        if (Date.now() - ts < 24 * 3600 * 1000) {
+          console.log('[Wiki] using cached elite people');
+          return data;
+        }
+      }
+    } catch (e) { console.warn('[Wiki] KV read error:', e.message); }
+  }
+
+  // ดึงข้อมูลใหม่จาก Wikipedia
+  console.log('[Wiki] refreshing elite people from Wikipedia...');
+  const updated = [...ELITE_PEOPLE_DEFAULT];
+
+  for (const person of updated) {
+    const wikiPage = WIKI_PAGES[person.id];
+    if (!wikiPage) continue;
+    const name = await fetchNameFromWiki(wikiPage);
+    if (name && name !== person.name) {
+      console.log(`[Wiki] updated ${person.id}: ${person.name} → ${name}`);
+      person.name = name;
+    }
+  }
+
+  // บันทึกลง KV cache
+  if (env.ALERT_KV) {
+    try {
+      await env.ALERT_KV.put('elite:people', JSON.stringify({ data: updated, ts: Date.now() }), { expirationTtl: 86400 });
+    } catch (e) { console.warn('[Wiki] KV write error:', e.message); }
+  }
+
+  return updated;
+}
+
+// ── ELITE_PEOPLE: ใช้ default ก่อน จะถูกแทนที่ตอน runtime ──
+let ELITE_PEOPLE = ELITE_PEOPLE_DEFAULT;
 
 const NEWS_QUERIES = {
   trump:    'Donald Trump policy economy markets',
@@ -96,7 +179,7 @@ async function fetchNews(env, query) {
   const articles = [];
   const finnhubKeys = [env.FINNHUB_KEY, env.FINNHUB_KEY_2, env.FINNHUB_KEY_3].filter(Boolean);
 
-  // Source 0: GNews — primary, ข่าวล่าสุด 24 ชม. จริง
+  // Source 0: GNews -- primary, ข่าวล่าสุด 24 ชม. จริง
   if (env.NEWS_API_KEY && articles.length === 0) {
     try {
       const from24h = new Date(Date.now() - 86400000).toISOString();
@@ -126,7 +209,7 @@ async function fetchNews(env, query) {
     } catch (e) { console.warn('GNews primary error:', e.message); }
   }
 
-  // Source 1: Finnhub General News — fallback ถ้า GNews ไม่มีข่าว
+  // Source 1: Finnhub General News -- fallback ถ้า GNews ไม่มีข่าว
   if (finnhubKeys.length > 0) {
     for (const key of finnhubKeys) {
       try {
@@ -163,7 +246,7 @@ async function fetchNews(env, query) {
     }
   }
 
-  // Source 2: Finnhub Company News — สำหรับ CEO/บริษัทที่มี ticker
+  // Source 2: Finnhub Company News -- สำหรับ CEO/บริษัทที่มี ticker
   const PERSON_TICKERS = {
     jensen: 'NVDA', cook: 'AAPL', musk: 'TSLA',
     nadella: 'MSFT', zuck: 'META', altman: 'MSFT',
@@ -196,7 +279,7 @@ async function fetchNews(env, query) {
     }
   }
 
-  // Source 3: GNews fallback — ถ้า Finnhub ไม่มีข่าวเลย
+  // Source 3: GNews fallback -- ถ้า Finnhub ไม่มีข่าวเลย
   if (articles.length === 0 && env.NEWS_API_KEY) {
     try {
       const url = 'https://gnews.io/api/v4/search?q=' +
@@ -372,7 +455,7 @@ async function callClaude(env, system, user) {
 async function callAI(env, system, user, userFallback) {
   try { return await callGroq(env, system, user); }
   catch (e) {
-    console.warn('Groq failed:', e.message, '— trying Claude');
+    console.warn('Groq failed:', e.message, '-- trying Claude');
     return await callClaude(env, system, userFallback || user);
   }
 }
@@ -388,6 +471,9 @@ async function runEliteScan(env) {
   _mon.lastRun = new Date().toISOString();
   _mon.scans++;
 
+  // ── อัปเดต ELITE_PEOPLE จาก Wikipedia อัตโนมัติ ──
+  ELITE_PEOPLE = await getElitePeople(env);
+
   if (env.ALERT_KV) {
     const running = await env.ALERT_KV.get('elite:running');
     if (running) { console.warn('already running'); return { skipped: true }; }
@@ -400,7 +486,7 @@ async function runEliteScan(env) {
       timeZone: 'Asia/Bangkok'
     });
 
-    // ดึงข่าว — Finnhub เป็นหลัก
+    // ดึงข่าว -- Finnhub เป็นหลัก
     let newsContext = '';
     let allArticles = [];
     const ids = Object.keys(NEWS_QUERIES);
@@ -420,7 +506,7 @@ async function runEliteScan(env) {
         console.log('[stale] ข้ามข่าวเก่า:', (a.publishedAt||'').slice(0,10), a.title?.slice(0,50));
         return false;
       }
-      // ถ้าไม่มีวันที่เลย — ข้ามด้วย (ป้องกันข่าวเก่าที่ไม่มี publishedAt)
+      // ถ้าไม่มีวันที่เลย -- ข้ามด้วย (ป้องกันข่าวเก่าที่ไม่มี publishedAt)
       if (!a.publishedAt && pubTs === 0) {
         console.log('[no-date] ข้ามข่าวไม่มีวันที่:', a.title?.slice(0,50));
         return false;
@@ -447,7 +533,7 @@ async function runEliteScan(env) {
 2. source_url ต้องเป็น URL จริง ถ้าไม่มีให้ใส่ ""
 3. ถ้าไม่มีข่าวจริง impact>=5 ให้ return []
 
-🔗 กฎ Chain Reasoning (บังคับ — แก้ปัญหา logic ผิด):
+🔗 กฎ Chain Reasoning (บังคับ -- แก้ปัญหา logic ผิด):
 ก่อนระบุ stocks_to_monitor และ stocks_at_risk ต้องคิด chain นี้ก่อนเสมอ:
   ข่าว → อุตสาหกรรมที่ได้รับผล → บริษัทในอุตสาหกรรมนั้น → หุ้น → บวก/ลบ
 
@@ -465,7 +551,7 @@ async function runEliteScan(env) {
 
 🎯 กฎ ai_take:
 - ต้องเป็น second-order effect ที่ไม่อยู่ใน headline
-- ต้องสอดคล้องกับ sentiment ข่าว — ห้าม contradict
+- ต้องสอดคล้องกับ sentiment ข่าว -- ห้าม contradict
 - ตัวอย่าง: "LNG demand ฟื้น" → ai_take = "XOM/CVX มีโอกาสปรับ guidance Q3 ขึ้น" ไม่ใช่ "ต้นทุนพลังงานกดดัน"
 
 📊 กฎ confidence_score (ต้องมี confidence_breakdown):
@@ -562,7 +648,7 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       } catch (e) { console.warn('[KV] elite:results write failed:', e.message); }
     }
 
-    // [FIX] Filter เฉพาะข่าวไม่เกิน 24 ชม. — ตรวจ source_url และ timestamp
+    // [FIX] Filter เฉพาะข่าวไม่เกิน 24 ชม. -- ตรวจ source_url และ timestamp
     const now24h = Date.now() - 24 * 3600 * 1000;
     newItems = newItems.filter(item => {
       // ถ้ามี published_at ใน item ให้เช็ค
@@ -576,12 +662,12 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       return true;
     });
 
-    // [FIX] Filter เฉพาะ impact >= 5 (Medium+) — Low ไม่ส่ง Telegram และไม่แสดงในแอป
+    // [FIX] Filter เฉพาะ impact >= 5 (Medium+) -- Low ไม่ส่ง Telegram และไม่แสดงในแอป
     newItems = newItems.filter(item => (item.impact || 0) >= 5);
     if (!newItems.length) { LOG.info('no high-impact items'); return { ok: true, count: 0 }; }
 
     // ส่ง Telegram
-    let msg = `🌐 <b>ELITE SCAN</b> — ${today}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+    let msg = `🌐 <b>ELITE SCAN</b> -- ${today}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
     for (const item of newItems) {
       const person = ELITE_PEOPLE.find(p => p.id === (item.id||'').toLowerCase());
       const emoji = person?.emoji || (item.impact>=8?'🔴':item.impact>=6?'🟡':'🟢');
