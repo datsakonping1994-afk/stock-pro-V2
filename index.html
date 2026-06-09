@@ -1743,7 +1743,7 @@ async function initLiveData(){
           if(!s||!met) continue;
           if(met.pe!=null){ const pe=+met.pe; if(pe>=-500&&pe<=5000) s.pe=+pe.toFixed(1); }
           if(met.eps!=null){ const eps=+met.eps; if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2); }
-          if(met.revGrowth!=null){ const rg=_normalizeRevGrowth(met.revGrowth); if(rg!=null) s.revLive=rg; }
+          if(met.revGrowth!=null){ const rg=_normalizeRevGrowth(met.revGrowth); if(rg!=null){ s.revLive=rg; s._revFromWorker=true; } }
           if(met.mktcap!=null){ const mc=+met.mktcap; if(mc>=1) s.mktcapLive=mc>=1000000?`$${(mc/1000000).toFixed(1)}T`:mc>=1000?`$${(mc/1000).toFixed(1)}B`:`$${mc.toFixed(0)}M`; }
           if(met.beta!=null){ const b=+met.beta; if(b>=-5&&b<=10) s.beta=+b.toFixed(2); }
           if(met.div!=null){ const dv=+met.div; if(dv>=0&&dv<=30) s.divLive=dv.toFixed(2)+'%'; }
@@ -1783,7 +1783,7 @@ async function initLiveData(){
             if(prof.webUrl) s.webUrlLive=prof.webUrl;
           }
           // ── Revenue YoY จาก Yahoo quarterly (แม่นยำกว่า revenueGrowth.raw) ──
-          if(!s.revLive || s.revLive.includes('*')){
+          {
             try{
               const yhT = ticker.replace('.','-');
               const yhR = await fetch(
@@ -1799,6 +1799,8 @@ async function initLiveData(){
                   const negBase = r4 < 0;
                   s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
                   s._revNegBase = negBase;
+                  s._revFromWorker = false; // ยืนยันว่าคำนวณจาก quarterly จริงแล้ว
+                  if(typeof renderStocks==='function') renderStocks();
                 }
               }
             }catch(e){ /* keep existing revLive */ }
@@ -7083,7 +7085,10 @@ setTimeout(async()=>{
           }
           if(m.pe!=null) s.peLive=+m.pe.toFixed(1);
           if(m.beta!=null) s.betaLive=+m.beta.toFixed(2);
-          if(m.revGrowth!=null){ const rg=_normalizeRevGrowth(m.revGrowth); if(rg!=null) s.revLive=rg; }
+          // ไม่ overwrite revLive ถ้าคำนวณจาก quarterly YoY แล้ว (ไม่มี * = ค่าที่เชื่อได้)
+          if(m.revGrowth!=null && (!s.revLive || s._revNegBase)){
+            const rg=_normalizeRevGrowth(m.revGrowth); if(rg!=null) s.revLive=rg;
+          }
         }
         // re-render cards ให้เห็นข้อมูลใหม่
         if(typeof renderStocks==='function') renderStocks();
