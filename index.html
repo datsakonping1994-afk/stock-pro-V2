@@ -16083,23 +16083,62 @@ async function forecastEvent(idx, btn){
   "watch": "สิ่งที่ต้องจับตาก่อน event นี้"
 }`;
 
-      const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:1500,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages:[{role:'user',content:prompt}]
-        })
-      });
-      const data = await resp.json();
-      text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+      // ── Try Claude ──
+      if(_ank){
+        try{
+          const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+            body:JSON.stringify({
+              model:'claude-sonnet-4-20250514',
+              max_tokens:1500,
+              tools:[{type:'web_search_20250305',name:'web_search'}],
+              messages:[{role:'user',content:prompt}]
+            })
+          }, 20000);
+          const data = await resp.json();
+          if(resp.ok) text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+        }catch(e){ console.warn('[forecastEvent:claude]',e.message); }
+      }
+      // ── Groq fallback ──
+      if(!text){
+        const groqKey=localStorage.getItem('groqKey')||localStorage.getItem('groqKey2')||'';
+        if(groqKey){
+          try{
+            const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+            }, 15000);
+            const gd = await gr.json();
+            if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
+          }catch(e){ console.warn('[forecastEvent:groq]',e.message); }
+        }
+      }
+      // ── Gemini fallback ──
+      if(!text){
+        const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
+        if(gemKey){
+          try{
+            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+            }, 12000);
+            const gmd = await gem.json();
+            if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.[0]?.text||'';
+          }catch(e){ console.warn('[forecastEvent:gemini]',e.message); }
+        }
+      }
       if(text) try{ localStorage.setItem(cacheKey, JSON.stringify({text, ts:Date.now()})); }catch{}
     }
 
     if(!text){
-      box.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px">ไม่พบข้อมูลคาดการณ์</div>`;
+      const hasAnyKey = !!(localStorage.getItem('anthropicKey')||localStorage.getItem('groqKey')||localStorage.getItem('geminiKey'));
+      box.innerHTML = `<div style="font-size:11px;padding:10px;background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.2);border-radius:10px">
+        ${hasAnyKey
+          ? '<span style="color:var(--red)">⚠️ โหลดไม่สำเร็จ — เชื่อมต่อ API ไม่ได้ กรุณาลองใหม่อีกครั้ง</span>'
+          : '<span style="color:var(--gold)">🔑 กรุณาใส่ API Key ใน <b>Settings</b> ก่อน (Anthropic / Groq / Gemini)</span>'}
+      </div>`;
     } else {
       // Parse JSON
       let info = null;
