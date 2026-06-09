@@ -1308,8 +1308,9 @@ canvas.bigchart{width:100%;height:100%}
 
         <!-- AI วิเคราะห์ -->
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🤖 AI วิเคราะห์พอร์ต</button>
+          <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px">🤖 AI จัดการพอร์ต <span style="font-size:9px;background:rgba(201,168,76,0.2);border-radius:6px;padding:2px 6px">Fund Manager Mode</span></button>
           <div id="portAIResult" style="display:none;margin-top:10px;padding:12px;background:var(--bg3);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6;font-family:'Inter',sans-serif"></div>
+          <div id="portAIActions" style="display:none;margin-top:10px"></div>
         </div>
       </div>
 
@@ -11019,11 +11020,63 @@ function deletePortCash(){
   toast('🗑️ ลบเงินสดแล้ว');
 }
 
+// ── Fund Manager Config (Aggressive) ──
+const FM_CONFIG = {
+  riskProfile: 'aggressive',
+  maxPerStock: 20,      // % สูงสุดต่อตัว
+  maxPerSector: 35,     // % สูงสุดต่อ sector
+  minCash: 5,           // % เงินสดขั้นต่ำ
+  stopLossPct: 12,      // % stop loss default
+  takeProfitPct: 25,    // % take profit default
+  maxDrawdown: 35,      // % ขาดทุนสูงสุดที่รับได้
+};
+
+// ── Execute AI action (เรียกหลังกดยืนยัน) ──
+function _fmExecuteAction(action){
+  try{
+    if(action.type === 'sell_partial'){
+      const pos = portfolio.find(p=>p.t===action.ticker);
+      if(!pos) return;
+      const sellShares = parseFloat(action.shares);
+      const cur = stocksMap.get(action.ticker)?.p || pos.avgPrice;
+      pos.shares = Math.max(0, pos.shares - sellShares);
+      _portCash += sellShares * cur;
+      if(pos.shares <= 0.001) portfolio.splice(portfolio.indexOf(pos),1);
+      saveCash(_portCash); savePortfolio(); renderPortfolio();
+      toast(`✅ ขาย ${action.ticker} ${sellShares} หุ้น แล้ว`);
+    } else if(action.type === 'sell_all'){
+      const pos = portfolio.find(p=>p.t===action.ticker);
+      if(!pos) return;
+      const cur = stocksMap.get(action.ticker)?.p || pos.avgPrice;
+      _portCash += pos.shares * cur;
+      portfolio.splice(portfolio.indexOf(pos),1);
+      saveCash(_portCash); savePortfolio(); renderPortfolio();
+      toast(`✅ ขาย ${action.ticker} ทั้งหมดแล้ว`);
+    } else if(action.type === 'set_stoploss'){
+      const pos = portfolio.find(p=>p.t===action.ticker);
+      if(pos){ pos.stopLoss = action.price; savePortfolio(); }
+      toast(`✅ ตั้ง Stop Loss ${action.ticker} ที่ $${action.price}`);
+    } else if(action.type === 'set_target'){
+      const pos = portfolio.find(p=>p.t===action.ticker);
+      if(pos){ pos.target = action.price; savePortfolio(); }
+      toast(`✅ ตั้ง Target ${action.ticker} ที่ $${action.price}`);
+    }
+    // Re-render action panel
+    document.getElementById('portAIActions')?.querySelectorAll(`[data-ticker="${action.ticker}"][data-atype="${action.type}"]`)
+      .forEach(btn => { btn.textContent='✅ ทำแล้ว'; btn.disabled=true; btn.style.opacity='0.5'; });
+  }catch(e){ toast('❌ '+e.message); }
+}
+
 async function analyzePortfolioAI(){
   const resultEl=document.getElementById('portAIResult');
+  const actionsEl=document.getElementById('portAIActions');
   if(!resultEl) return;
   resultEl.style.display='block';
-  resultEl.innerHTML='⏳ AI กำลังวิเคราะห์พอร์ต...';
+  if(actionsEl) actionsEl.style.display='none';
+  resultEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--gold)">
+    <div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div>
+    <span style="font-size:12px">AI Fund Manager กำลังวิเคราะห์พอร์ต...</span>
+  </div>`;
 
   try{
     const port=portfolio;
@@ -11062,29 +11115,116 @@ async function analyzePortfolioAI(){
     const fng=window._fngForAI;
     const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`; 
 
-    const sys=`คุณคือที่ปรึกษาการลงทุนที่วิเคราะห์พอร์ตอย่างละเอียด ใช้ภาษาไทยเข้าใจง่าย ห้ามใช้ ** # หรือ Markdown`;
-    const prompt=`พอร์ตปัจจุบัน:
-${holdings}
+    // ── ดึงข้อมูลตลาดแต่ละหุ้นก่อนส่ง AI ──
+    const holdingsEnriched = await Promise.all(port.map(async p => {
+      const s = stocksMap.get(p.t);
+      const cur = s?.p || 0;
+      const val = cur * p.shares;
+      const pct = totalVal > 0 ? (val / totalVal * 100).toFixed(1) : 0;
+      const pnl = cur > 0 ? ((cur - p.avgPrice) / p.avgPrice * 100).toFixed(1) : 0;
+      const sector = getSector(p);
+      const rsi = s?.rsi ? `RSI ${s.rsi.toFixed(0)}` : '';
+      const score = s?.score ? `Score ${s.score}/100` : '';
+      const target = s?.target ? `Target $${s.target}` : '';
+      const pnlNum = parseFloat(pnl);
+      const stopLoss = cur > 0 ? (cur * 0.92).toFixed(2) : ''; // -8% default
+      const takeProfit = cur > 0 ? (cur * 1.15).toFixed(2) : ''; // +15% default
+      return `${p.t}(${sector}): ${p.shares}หุ้น | เข้า$${p.avgPrice} | ปัจจุบัน$${cur.toFixed(2)} | P&L:${pnl}% | สัดส่วน:${pct}% | ${rsi} ${score} ${target} | Stop:$${stopLoss} | TP:$${takeProfit}`;
+    }));
+
+    const sys = `คุณคือ AI Fund Manager ส่วนตัว ดูแลพอร์ต Aggressive
+Risk Profile: Aggressive (รับขาดทุนได้สูงสุด ${FM_CONFIG.maxDrawdown}%)
+กฎการจัดสรร:
+- หุ้น 1 ตัว ไม่เกิน ${FM_CONFIG.maxPerStock}% ของพอร์ต
+- Sector เดียว ไม่เกิน ${FM_CONFIG.maxPerSector}%
+- เงินสดขั้นต่ำ ${FM_CONFIG.minCash}%
+- Stop Loss default -${FM_CONFIG.stopLossPct}% จากราคาปัจจุบัน
+- Take Profit default +${FM_CONFIG.takeProfitPct}%
+
+ตอบ 2 ส่วน:
+ส่วนที่ 1: วิเคราะห์เป็นข้อความภาษาไทย (ห้ามใช้ ** # Markdown)
+ส่วนที่ 2: JSON actions array เท่านั้น ในรูปแบบ:
+ACTIONS_JSON:
+[{"type":"sell_partial","ticker":"XXX","shares":N,"reason":"เหตุผล","priority":"high/medium"},{"type":"set_stoploss","ticker":"XXX","price":XX.XX,"reason":"เหตุผล","priority":"high"},{"type":"set_target","ticker":"XXX","price":XX.XX,"reason":"เหตุผล","priority":"medium"}]
+type ที่ใช้ได้: sell_partial, sell_all, set_stoploss, set_target`;
+
+    const prompt = `พอร์ตปัจจุบัน (มูลค่า $${totalVal.toFixed(0)}):
+${holdingsEnriched.join('\n')}
 
 Sector: ${sectorText}
-เงินสด: $${_portCash} (${cashPct}% ของพอร์ตรวม)
-ภาพรวมตลาด: ${mkt}
+เงินสด: $${_portCash} (${cashPct}%)
+ตลาด: ${mkt}
 
-วิเคราะห์ละเอียดดังนี้:
-1) ภาพรวมพอร์ต: สุขภาพโดยรวม กำไร/ขาดทุนรวม ความเสี่ยง
-2) วิเคราะห์ทีละหุ้น: สถานะ น่าเป็นห่วงไหม ควรถือต่อหรือขาย
-3) หุ้นที่กำไรมาก: ควร Take Profit บางส่วนไหม เท่าไหร่
-4) หุ้นที่ขาดทุน: ควรตั้ง Stop Loss ที่ราคาเท่าไหร่
-5) Rebalance: พอร์ตกระจุกตัว sector ไหนเกินไปไหม ควรลดอะไร เพิ่มอะไร เงินสดเหมาะสมไหม
-6) คำแนะนำสำคัญ: 2-3 ข้อที่ต้องทำวันนี้หรือสัปดาห์นี้`;
+วิเคราะห์และแนะนำ:
+🎯 ภาพรวม — สุขภาพพอร์ต ความเสี่ยง Beta โดยประมาณ
+📋 ทีละตัว — ทุกตัว: ถือ/ลด/ขาย + เหตุผล + Stop Loss + Target
+⚖️ สัดส่วน — ตัวไหนเกิน ${FM_CONFIG.maxPerStock}%? Sector ไหนหนักเกิน ${FM_CONFIG.maxPerSector}%?
+🔄 Rebalance — ปรับยังไง ขายอะไร เท่าไหร่
+⚡ Action Plan — 3 ข้อเร่งด่วน
 
-    let reply = await callAI_Analyze(sys,prompt,900);
+แล้วสร้าง ACTIONS_JSON สำหรับ action ที่แนะนำให้ทำจริง`;
+
+    let reply = await callAI_Analyze(sys, prompt, 2000);
     if(!reply){ resultEl.innerHTML='❌ ไม่สามารถวิเคราะห์ได้'; return; }
-    reply = (reply||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s/g,'').trim();
-    resultEl.style.whiteSpace='pre-line';
-    resultEl.style.lineHeight='1.8';
-    resultEl.style.fontSize='13px';
-    resultEl.textContent=reply||'ไม่สามารถวิเคราะห์ได้';
+
+    // แยก analysis text และ actions JSON
+    let analysisText = reply;
+    let actions = [];
+    const jsonMatch = reply.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])/);
+    if(jsonMatch){
+      try{ actions = JSON.parse(jsonMatch[1]); }catch{}
+      analysisText = reply.replace(/ACTIONS_JSON:[\s\S]*/,'').trim();
+    }
+    analysisText = analysisText.replace(/\*\*/g,'').replace(/\*/g,'').replace(/^#+\s/gm,'').trim();
+
+    // Render analysis
+    const sections = analysisText.split('\n\n').filter(Boolean);
+    resultEl.innerHTML = sections.map(sec => {
+      const lines = sec.trim().split('\n');
+      const header = lines[0];
+      const body = lines.slice(1).join('\n');
+      const isHeader = /^[🎯📋⚖️🔄⚡]/.test(header);
+      if(isHeader){
+        return `<div style="margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">${header}</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${body}</div>
+        </div>`;
+      }
+      return `<div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line;margin-bottom:8px">${sec}</div>`;
+    }).join('');
+
+    // Render Action Cards
+    if(actions.length && actionsEl){
+      actionsEl.style.display='block';
+      const priorityColor = p => p==='high'?'#ff4d6a':p==='medium'?'#c9a84c':'#64d2ff';
+      const priorityLabel = p => p==='high'?'🔴 เร่งด่วน':p==='medium'?'🟡 ภายในสัปดาห์':'🔵 ติดตาม';
+      const actionLabel = t => ({
+        sell_partial:'🔽 ขายบางส่วน', sell_all:'❌ ขายทั้งหมด',
+        set_stoploss:'🛡 ตั้ง Stop Loss', set_target:'🎯 ตั้ง Target'
+      }[t]||t);
+      actionsEl.innerHTML = `
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⚡ Action Plan — กดยืนยันเพื่อดำเนินการ</div>
+        ${actions.map((a,i)=>`
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.2);border-radius:10px;padding:10px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;font-weight:700;color:white">${actionLabel(a.type)} ${a.ticker}</span>
+                ${a.shares?`<span style="font-size:10px;color:var(--text3)">${a.shares} หุ้น</span>`:''}
+                ${a.price?`<span style="font-size:10px;color:var(--text3)">$${a.price}</span>`:''}
+              </div>
+              <span style="font-size:9px;color:${priorityColor(a.priority)}">${priorityLabel(a.priority)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">${a.reason||''}</div>
+            <button
+              onclick="_fmExecuteAction(${JSON.stringify(a).replace(/"/g,'&quot;')})"
+              data-ticker="${a.ticker}" data-atype="${a.type}"
+              style="width:100%;background:rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.12);border:1px solid rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.3);border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:${priorityColor(a.priority)};cursor:pointer">
+              ✅ ยืนยัน — ${actionLabel(a.type)} ${a.ticker}
+            </button>
+          </div>
+        `).join('')}
+      `;
+    }
   }catch(e){
     resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
   }
@@ -15264,7 +15404,7 @@ function renderEliteScanResults(results, ageMs=0){
               const vIco = vs==='verified'?'✓':vs==='unverified'?'?':'~';
               const cs = n.confidence_score||0;
               return `<span style="background:${vCol}18;border:1px solid ${vCol}40;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:700;color:${vCol}">${vIco} ${vs==='verified'?'ยืนยัน':vs==='unverified'?'ยังไม่ยืนยัน':'กึ่งยืนยัน'}</span>
-              <span style="font-size:9px;color:var(--text3)">ความมั่นใจ ${cs}%</span>`;
+              <span style="font-size:9px;color:var(--text3)" title="${n.confidence_breakdown ? 'ข่าวชัดเจน:'+((n.confidence_breakdown.news_clarity)||0)+'% · คุณภาพ source:'+((n.confidence_breakdown.source_quality)||0)+'% · โอกาสกระทบตลาด:'+((n.confidence_breakdown.market_impact_prob)||0)+'%' : ''}">🎯 ความมั่นใจ ${cs}%${n.confidence_breakdown?` ⓘ`:''}</span>`;
             })()}
           </div>
           <div style="display:flex;gap:6px;align-items:center" id="feedback-${p.id}">
@@ -15380,6 +15520,13 @@ function _renderEliteModal(idx){
             return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
           }).join('')}
         </div>
+      </div>` : ''}
+
+      <!-- Chain Reasoning -->
+      ${n.chain_reasoning ? `
+      <div style="background:rgba(100,210,255,0.05);border:1px solid rgba(100,210,255,0.15);border-radius:12px;padding:10px 14px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#64d2ff;margin-bottom:5px;letter-spacing:0.5px">🔗 Logic Chain</div>
+        <div style="font-size:11px;color:#a8b8d0;line-height:1.6">${n.chain_reasoning}</div>
       </div>` : ''}
 
       <!-- Pros -->
