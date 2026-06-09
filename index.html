@@ -15135,7 +15135,7 @@ function renderEliteScanResults(results, ageMs=0){
         <!-- Header -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid rgba(255,255,255,0.15);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.4);flex-shrink:0">
-            ${p.logo ? `<img src="${p.logo.replace('&width=200','&width=200')}" style="width:56px;height:56px;object-fit:cover;object-position:center top;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;font-size:26px">${p.emoji}</span>` : `<span style="font-size:26px">${p.emoji}</span>`}
+            ${p.logo ? `<img src="${p.logo.replace('&width=200','&width=200')}" style="width:56px;height:56px;object-fit:cover;object-position:center 15%;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;font-size:26px">${p.emoji}</span>` : `<span style="font-size:26px">${p.emoji}</span>`}
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${p.name}</div>
