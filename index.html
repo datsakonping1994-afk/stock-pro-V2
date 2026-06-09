@@ -14322,7 +14322,43 @@ async function _eliteDirectFallback(overlay){
 
   let allNews = [];
 
-  // ── Finnhub General News — real-time ไม่มี quota ปัญหา ──
+  // ── GNews API — ข่าวล่าสุด 24 ชม. (primary source) ──
+  try{
+    const gk = gnewsKey2 || '';
+    if(gk){
+      const queries = ['stock market','Federal Reserve','Nvidia','Apple','tech stocks'];
+      const gnewsResults = await Promise.allSettled(queries.slice(0,3).map(q =>
+        fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(q)}&lang=en&country=us&max=5&from=${new Date(Date.now()-86400000).toISOString()}&token=${gk}`,
+          {signal:AbortSignal.timeout(6000)}).then(r=>r.json())
+      ));
+      const gnewsArticles = gnewsResults.flatMap(r =>
+        r.status==='fulfilled' ? (r.value?.articles||[]).map(a=>({
+          headline: a.title||'',
+          summary: (a.description||'').slice(0,400),
+          url: a.url||'',
+          datetime: Math.floor(new Date(a.publishedAt||Date.now()).getTime()/1000),
+          source: a.source?.name||''
+        })) : []
+      );
+      if(gnewsArticles.length) console.log('[GNews] got',gnewsArticles.length,'articles');
+      const cutoff = Date.now() - 24 * 3600 * 1000;
+      const recentNews = gnewsArticles.filter(a => (a.datetime * 1000) >= cutoff);
+      const PRIMARY_PEOPLE = topPeople.slice(0, 8);
+      const foundIds = new Set();
+      PRIMARY_PEOPLE.forEach(function(person){
+        const matched = recentNews.filter(a => _eliteNewsMatchesPerson(a.headline, a.summary, person));
+        if(matched.length > 0){
+          const top = matched[0];
+          allNews.push({id:person.id,person,headline:top.headline,summary:top.summary,url:top.url});
+          foundIds.add(person.id);
+        }
+      });
+      if(allNews.length) console.log('[GNews] matched',allNews.length,'people');
+    }
+  }catch(e){ console.warn('[GNews news error]',e.message); }
+
+  // ── Finnhub General News — fallback ถ้า GNews ไม่ได้ข่าว ──
+  if(allNews.length < 3){
   try{
     const fk = FINNHUB_KEY || '';
     if(fk){
@@ -14331,7 +14367,7 @@ async function _eliteDirectFallback(overlay){
       });
       if(r.ok){
         const d = await r.json();
-        const cutoff = Date.now() - 48 * 3600 * 1000; // เฉพาะ 48 ชั่วโมง
+        const cutoff = Date.now() - 24 * 3600 * 1000; // ลดจาก 48 เหลือ 24 ชม.
         const recentNews = (d || []).filter(a => (a.datetime * 1000) >= cutoff);
 
         // จับคู่ข่าวกับแต่ละ person — ใช้ keywords เฉพาะของแต่ละคน (ไม่ใช่แค่ชื่อ)
@@ -14388,10 +14424,11 @@ async function _eliteDirectFallback(overlay){
           }
         });
         if(allNews.length) console.log('[Finnhub] got', allNews.length, 'articles');
-        else console.warn('[Finnhub] no matching articles in 48h');
+        else console.warn('[Finnhub] no matching articles in 24h');
       }
     }
   }catch(e){ console.warn('[Finnhub news error]', e.message); }
+  } // end if(allNews.length < 3)
 
   // Fallback: Finnhub Company News สำหรับตัวที่ยังไม่มีข่าว
   if(allNews.length < 3){
@@ -14495,7 +14532,7 @@ async function _eliteDirectFallback(overlay){
     if(!rawText && _ank){
       const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:eliteSys,messages:[{role:'user',content:eliteUser}]})
       }, 20000);
       if(resp.ok){
@@ -14595,7 +14632,7 @@ async function _eliteClaudeSearch(overlay, _ank){
       ];
       const resp2 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:sysPrompt,tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
       });
       if(!resp2.ok) return [];
@@ -14670,7 +14707,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
     try{
       const r = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:3000,system:sys,messages:[{role:'user',content:msg}]}),
         signal:AbortSignal.timeout(25000)
       });
