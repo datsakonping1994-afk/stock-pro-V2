@@ -1823,8 +1823,10 @@ const fundExtra={}; // populated by initLiveData via /metrics endpoint
 function _normalizeRevGrowth(raw){
   if(raw==null||isNaN(+raw)) return null;
   const v = +raw;
-  // valid range: -100% ถึง 5000%
+  // invalid range
   if(v < -100 || v > 5000) return null;
+  // > 200% มักมาจาก negative base — แสดงพร้อม * เพื่อบอกว่าผิดปกติ
+  if(v > 200) return v.toFixed(1) + '%*';
   return v.toFixed(1) + '%';
 }
 
@@ -2878,8 +2880,16 @@ function makeCard(s){
         })()}
       </div>
       <div class="card-stat">
-        <div class="card-stat-val" style="color:${parseFloat(s.revLive||s.rev||0)>0?'var(--green2)':'var(--red)'}">${s.revLive||s.rev||'N/A'}</div>
-        <div class="card-stat-lbl">Rev Growth</div>
+        ${(()=>{
+          const _rv=s.revLive||s.rev||null;
+          const _rvNum=parseFloat(_rv||0);
+          const _negBase=s._revNegBase||(_rv&&_rvNum>200);
+          const _disp=_rv?(_negBase?_rvNum.toFixed(1)+'%*':_rv):'N/A';
+          const _col=!_rv?'var(--text3)':_negBase?'var(--gold)':_rvNum>0?'var(--green2)':'var(--red)';
+          const _lbl=_negBase?'Rev Growth *':'Rev Growth';
+          const _tip=_negBase?' title="*คำนวณจาก negative base"':' ';
+          return '<div class="card-stat-val" style="color:'+_col+'"'+ _tip+'>'+_disp+'</div><div class="card-stat-lbl" style="color:'+(_negBase?'var(--gold)':'var(--text3)')+'">'+_lbl+'</div>';
+        })()}
       </div>
       <div class="card-stat">
         <div class="card-stat-val">${(s.peLive||s.pe)?`P/E ${s.peLive||s.pe}`:'N/A'}</div>
@@ -3667,8 +3677,26 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — Worker ส่งมาผ่าน /metrics แล้ว (Yahoo decimal × 100)
-        // ไม่ดึงซ้ำที่นี่ เพราะ Worker batch โหลดให้แล้วตอน init
+        // Revenue Growth — คำนวณจาก Finnhub quarterly financials จริง (YoY Q vs Q)
+        try{
+          const finRes = await safeFetch(
+            `https://finnhub.io/api/v1/financials?symbol=${ticker}&statement=ic&freq=quarterly&token=${FINNHUB_KEY}`,{},1
+          );
+          const finData = await finRes.json();
+          const reports = finData?.financials||[];
+          // Q ล่าสุด (idx 0) vs Q เดียวกันปีก่อน (idx 4)
+          const q0rev = reports[0]?.revenue;
+          const q4rev = reports[4]?.revenue;
+          if(q0rev!=null && q4rev!=null && q4rev!==0 && isFinite(q0rev) && isFinite(q4rev)){
+            // (Q0-Q4)/|Q4|*100 รองรับ base ลบ
+            const yoy = (q0rev - q4rev) / Math.abs(q4rev) * 100;
+            if(isFinite(yoy) && yoy>=-100 && yoy<=5000){
+              const negBase = q4rev < 0;
+              s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
+              s._revNegBase = negBase;
+            }
+          }
+        }catch(e){ /* fallback to worker value */ }
         if(m['marketCapitalization']!=null){
           const mcM=m['marketCapitalization'];
           if(mcM>=1){
