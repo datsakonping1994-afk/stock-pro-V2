@@ -1782,6 +1782,27 @@ async function initLiveData(){
             if(prof.logo) s.logoLive=prof.logo;
             if(prof.webUrl) s.webUrlLive=prof.webUrl;
           }
+          // ── Revenue YoY จาก Yahoo quarterly (แม่นยำกว่า revenueGrowth.raw) ──
+          if(!s.revLive || s.revLive.includes('*')){
+            try{
+              const yhT = ticker.replace('.','-');
+              const yhR = await fetch(
+                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhT}?modules=incomeStatementHistoryQuarterly`,
+                {signal:AbortSignal.timeout(5000)}
+              ).then(r=>r.json());
+              const qtrs = yhR?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
+              const r0 = qtrs[0]?.totalRevenue?.raw;
+              const r4 = qtrs[4]?.totalRevenue?.raw;
+              if(r0!=null && r4!=null && r4!==0 && isFinite(r0) && isFinite(r4)){
+                const yoy = (r0 - r4) / Math.abs(r4) * 100;
+                if(isFinite(yoy) && yoy >= -100 && yoy <= 5000){
+                  const negBase = r4 < 0;
+                  s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
+                  s._revNegBase = negBase;
+                }
+              }
+            }catch(e){ /* keep existing revLive */ }
+          }
         }
       }catch{}
       await new Promise(r=>setTimeout(r,150));
@@ -3677,26 +3698,7 @@ async function fetchAnalystData(ticker){
           const eps=+m['epsBasicExclExtraItemsTTM'];
           if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2);
         }
-        // Revenue Growth — คำนวณจาก Finnhub quarterly financials จริง (YoY Q vs Q)
-        try{
-          const finRes = await safeFetch(
-            `https://finnhub.io/api/v1/financials?symbol=${ticker}&statement=ic&freq=quarterly&token=${FINNHUB_KEY}`,{},1
-          );
-          const finData = await finRes.json();
-          const reports = finData?.financials||[];
-          // Q ล่าสุด (idx 0) vs Q เดียวกันปีก่อน (idx 4)
-          const q0rev = reports[0]?.revenue;
-          const q4rev = reports[4]?.revenue;
-          if(q0rev!=null && q4rev!=null && q4rev!==0 && isFinite(q0rev) && isFinite(q4rev)){
-            // (Q0-Q4)/|Q4|*100 รองรับ base ลบ
-            const yoy = (q0rev - q4rev) / Math.abs(q4rev) * 100;
-            if(isFinite(yoy) && yoy>=-100 && yoy<=5000){
-              const negBase = q4rev < 0;
-              s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
-              s._revNegBase = negBase;
-            }
-          }
-        }catch(e){ /* fallback to worker value */ }
+        // Revenue Growth — คำนวณ YoY จาก Yahoo quarterly ใน initLiveData loop แล้ว
         if(m['marketCapitalization']!=null){
           const mcM=m['marketCapitalization'];
           if(mcM>=1){
