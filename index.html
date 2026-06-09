@@ -15522,25 +15522,82 @@ function _renderEliteModal(idx){
         </div>
       </div>` : ''}
 
-      <!-- Chain Reasoning -->
-      ${n.chain_reasoning ? `
-      <div style="background:rgba(100,210,255,0.05);border:1px solid rgba(100,210,255,0.15);border-radius:12px;padding:10px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#64d2ff;margin-bottom:5px;letter-spacing:0.5px">🔗 Logic Chain</div>
-        <div style="font-size:11px;color:#a8b8d0;line-height:1.6">${n.chain_reasoning}</div>
-      </div>` : ''}
+      <!-- ══ IMPACT SUMMARY (สิ่งที่ผู้ใช้เห็นทันที) ══ -->
+      ${(()=>{
+        const sent = n.sentiment||'neutral';
+        const conf = n.confidence_score||n.confidence||0;
+        const bullPct = sent==='bullish'?conf:sent==='bearish'?(100-conf):50;
+        const bearPct = 100-bullPct;
+        const sentColor = sent==='bullish'?'#00e676':sent==='bearish'?'#ff4d6a':'#c9a84c';
+        const sentLabel = sent==='bullish'?'Bullish':sent==='bearish'?'Bearish':'Neutral';
+        const monitors = (n.stocks_to_monitor||[]).slice(0,3);
+        const risks = (n.stocks_at_risk||[]).slice(0,2);
+        return `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;margin-bottom:10px">
+          <!-- Sentiment bar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <span style="font-size:18px;font-weight:800;color:${sentColor};font-family:'Syne',sans-serif">${sentLabel}</span>
+              <span style="font-size:13px;color:${sentColor};margin-left:4px">${bullPct}%</span>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:9px;color:var(--text3)">Confidence</div>
+              <div style="font-size:14px;font-weight:700;color:white">${conf}%</div>
+            </div>
+          </div>
+          <!-- Bar -->
+          <div style="height:6px;background:rgba(255,77,106,0.3);border-radius:3px;margin-bottom:12px;overflow:hidden">
+            <div style="height:100%;width:${bullPct}%;background:${sentColor};border-radius:3px;transition:width 0.5s"></div>
+          </div>
+          <!-- Top Beneficiaries -->
+          ${monitors.length ? `
+          <div style="margin-bottom:8px">
+            <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px">TOP BENEFICIARIES</div>
+            ${monitors.map((s,i)=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span style="font-size:10px;color:#6b7fa0;width:14px">${i+1}.</span>
+              <span style="background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#00e676">${s.t}</span>
+              <span style="font-size:11px;color:var(--text3);flex:1">${s.reason||''}</span>
+            </div>`).join('')}
+          </div>` : ''}
+          <!-- At Risk -->
+          ${risks.length ? `
+          <div>
+            <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:1px;margin-bottom:6px">AT RISK</div>
+            ${risks.map(s=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span style="color:#ff4d6a;font-size:10px">⚠️</span>
+              <span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.25);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#ff4d6a">${s.t}</span>
+              <span style="font-size:11px;color:var(--text3);flex:1">${s.reason||''}</span>
+            </div>`).join('')}
+          </div>` : ''}
+        </div>`;
+      })()}
 
-      <!-- Pros -->
-      ${(n.pros||[]).length ? `
-      <div style="background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#00e676;margin-bottom:8px;letter-spacing:0.5px">✅ ได้ประโยชน์</div>
-        ${(n.pros||[]).map(pro=>`<div style="font-size:12px;color:#a8b8d0;line-height:1.6;display:flex;gap:7px;margin-bottom:3px"><span style="color:#00e676;flex-shrink:0">•</span><span>${pro}</span></div>`).join('')}
-      </div>` : ''}
-
-      <!-- Cons -->
-      ${(n.cons||[]).length ? `
-      <div style="background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#ff4d6a;margin-bottom:8px;letter-spacing:0.5px">❌ เสียประโยชน์</div>
-        ${(n.cons||[]).map(c=>`<div style="font-size:12px;color:#a8b8d0;line-height:1.6;display:flex;gap:7px;margin-bottom:3px"><span style="color:#ff4d6a;flex-shrink:0">•</span><span>${c}</span></div>`).join('')}
+      <!-- ══ AI REASONING (toggle) ══ -->
+      ${(n.chain_reasoning||(n.pros||[]).length||(n.cons||[]).length) ? `
+      <div style="margin-bottom:8px">
+        <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('span').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'"
+          style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'Syne',sans-serif">
+          <span>▶</span> AI Reasoning — ดูวิธีคิด
+        </button>
+        <div style="display:none;margin-top:6px">
+          ${n.chain_reasoning ? `
+          <div style="background:rgba(100,210,255,0.05);border:1px solid rgba(100,210,255,0.12);border-radius:10px;padding:10px 14px;margin-bottom:6px">
+            <div style="font-size:9px;font-weight:700;color:#64d2ff;letter-spacing:1px;margin-bottom:5px">🔗 LOGIC CHAIN</div>
+            <div style="font-size:11px;color:#a8b8d0;line-height:1.8">${n.chain_reasoning.split('→').map((s,i,a)=>i<a.length-1?s.trim()+' <span style="color:#64d2ff">→</span>':s.trim()).join(' ')}</div>
+          </div>` : ''}
+          ${(n.pros||[]).length ? `
+          <div style="background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.15);border-radius:10px;padding:10px 14px;margin-bottom:6px">
+            <div style="font-size:9px;font-weight:700;color:#00e676;letter-spacing:1px;margin-bottom:5px">✅ UPSIDE</div>
+            ${(n.pros||[]).map(p=>`<div style="font-size:11px;color:#a8b8d0;line-height:1.6;display:flex;gap:6px;margin-bottom:2px"><span style="color:#00e676">•</span><span>${p}</span></div>`).join('')}
+          </div>` : ''}
+          ${(n.cons||[]).length ? `
+          <div style="background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.15);border-radius:10px;padding:10px 14px">
+            <div style="font-size:9px;font-weight:700;color:#ff4d6a;letter-spacing:1px;margin-bottom:5px">⚠️ DOWNSIDE</div>
+            ${(n.cons||[]).map(c=>`<div style="font-size:11px;color:#a8b8d0;line-height:1.6;display:flex;gap:6px;margin-bottom:2px"><span style="color:#ff4d6a">•</span><span>${c}</span></div>`).join('')}
+          </div>` : ''}
+        </div>
       </div>` : ''}
 
       <!-- Why -->
