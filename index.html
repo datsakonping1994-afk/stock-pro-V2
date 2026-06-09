@@ -14121,6 +14121,21 @@ let _eliteTab = 'map';
 let _eliteScanResults = [];
 let _eliteScanning = false;
 
+// ── Helper: ตรวจว่าข่าวนี้เกี่ยวกับ person จริงๆ ──
+// keyword สั้น < 4 ตัว (เช่น 'xi') ใช้ whole-word match เพื่อป้องกัน false positive
+// เช่น 'cook' ใน "how to cook" จะไม่ match Tim Cook
+function _eliteNewsMatchesPerson(headline, summary, person){
+  const kws = person.keywords || person.name.toLowerCase().split(' ').filter(function(w){return w.length>3;});
+  const text = ((headline||'') + ' ' + (summary||'')).toLowerCase();
+  return kws.some(function(kw){
+    if(kw.length < 4){
+      var re = new RegExp('(?:^|[^a-z])' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?:[^a-z]|$)');
+      return re.test(text);
+    }
+    return text.includes(kw);
+  });
+}
+
 const ELITE_CACHE_KEY = '_elite_cache';
 const ELITE_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 ชั่วโมง — auto-rescan
 const ELITE_CACHE_VERSION = 4; // bump เมื่อ news schema เปลี่ยน — auto-bust old cache
@@ -14266,11 +14281,9 @@ async function _eliteDirectFallback(overlay){
 
         PRIMARY_PEOPLE.forEach(function(person){
           // ใช้ keywords จาก field keywords ถ้ามี ไม่งั้น fallback ชื่อ
-          const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
           const matched = recentNews.filter(a => {
-            const text = ((a.headline||'') + ' ' + (a.summary||'')).toLowerCase();
-            // ต้องมี keyword อย่างน้อย 1 ตัวที่เฉพาะเจาะจงพอ (ไม่ใช่ชื่อสกุลทั่วไป)
-            return kws.some(kw => text.includes(kw));
+            // ใช้ _eliteNewsMatchesPerson เพื่อป้องกัน false positive (เช่น 'cook','xi')
+            return _eliteNewsMatchesPerson(a.headline, a.summary, person);
           });
           if(matched.length > 0){
             const top = matched[0];
@@ -14292,10 +14305,8 @@ async function _eliteDirectFallback(overlay){
             if(foundIds.has(bId)) continue; // backup ถูกใช้แล้ว
             const backup = ELITE_PEOPLE.find(p=>p.id===bId);
             if(!backup) continue;
-            const kws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
             const matched = recentNews.filter(a => {
-              const text = ((a.headline||'') + ' ' + (a.summary||'')).toLowerCase();
-              return kws.some(kw => text.includes(kw));
+              return _eliteNewsMatchesPerson(a.headline, a.summary, backup);
             });
             if(matched.length > 0){
               const top = matched[0];
@@ -14346,11 +14357,7 @@ async function _eliteDirectFallback(overlay){
           const d = await r.json();
           if(d && d.length > 0){
             // ── FIX: ต้อง verify ว่าข่าวเกี่ยวกับคนนั้นจริงๆ ด้วย keywords ──
-            const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
-            const verified = d.find(a => {
-              const text = ((a.headline||'')+ ' ' +(a.summary||'')).toLowerCase();
-              return kws.some(kw => text.includes(kw));
-            });
+            const verified = d.find(a => _eliteNewsMatchesPerson(a.headline, a.summary, person));
             if(verified){
               allNews.push({
                 id: person.id, person: person,
@@ -14365,11 +14372,7 @@ async function _eliteDirectFallback(overlay){
                 if(foundIds.has(bId) || allNews.find(n=>n.id===bId)) continue;
                 const backup = ELITE_PEOPLE.find(p=>p.id===bId);
                 if(!backup || !PERSON_TICKERS[backup.id]) continue;
-                const bkws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
-                const bVerified = d.find(a => {
-                  const text = ((a.headline||'')+ ' ' +(a.summary||'')).toLowerCase();
-                  return bkws.some(kw => text.includes(kw));
-                });
+                const bVerified = d.find(a => _eliteNewsMatchesPerson(a.headline, a.summary, backup));
                 if(bVerified){
                   allNews.push({
                     id: backup.id, person: backup,
@@ -14718,26 +14721,21 @@ async function runEliteScan(forceRefresh=false){
           if(cachedData.ok && cachedData.items && cachedData.items.length > 0 && cachedData.age < _workerCacheMaxAge){
             if(overlay) overlay.style.display='none';
 
-            // ── FIX: validate ข่าวก่อน map — ห้ามแสดงข่าวที่ไม่เกี่ยวกับคนนั้น ──
-            function _newsMatchesPerson(item, person){
-              const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
-              const text = ((item.headline||'') + ' ' + (item.summary||item.what_happened||'')).toLowerCase();
-              return kws.some(kw => text.includes(kw));
-            }
+            // ── FIX: validate ข่าวก่อน map — ใช้ global _eliteNewsMatchesPerson (whole-word safe) ──
 
             const mapped = cachedData.items.map(item=>{
               const person = ELITE_PEOPLE.find(p=>p.id===item.id);
               if(!person) return null;
 
               // ── Validate: ถ้าข่าวไม่ตรงกับ keywords ของ person → ข้าม ──
-              if(!_newsMatchesPerson(item, person)){
+              if(!_eliteNewsMatchesPerson(item.headline||'', item.summary||item.what_happened||'', person)){
                 console.warn('[ELITE Cache] reject "'+item.id+'" — ข่าวไม่ตรง:', (item.headline||'').slice(0,60));
                 // ลอง backup CEO แทน
                 const backupIds = person.backupIds || [];
                 for(const bId of backupIds){
                   const backup = ELITE_PEOPLE.find(p=>p.id===bId);
                   if(!backup) continue;
-                  if(_newsMatchesPerson(item, backup)){
+                  if(_eliteNewsMatchesPerson(item.headline||'', item.summary||item.what_happened||'', backup)){
                     console.log('[ELITE Cache] reassign "'+item.id+'" → "'+bId+'"');
                     const rawItem = {
                       headline: item.headline||'', summary: item.what_happened||item.summary||'',
@@ -14823,10 +14821,9 @@ async function runEliteScan(forceRefresh=false){
           if(!person) return null;
           const n = item.news || item;
 
-          // ── FIX: validate keyword match ก่อน assign ──
-          const kws = person.keywords || person.name.toLowerCase().split(' ').filter(w=>w.length>3);
+          // ── FIX: validate keyword match ก่อน assign (ใช้ whole-word safe helper) ──
           const headlineText = ((n.headline||n.title||'') + ' ' + (n.summary||n.body||'')).toLowerCase();
-          const isMatch = kws.some(kw => headlineText.includes(kw));
+          const isMatch = _eliteNewsMatchesPerson(n.headline||n.title||'', n.summary||n.body||'', person);
           if(!isMatch){
             console.warn('[ELITE /trigger] reject "'+item.id+'" — headline ไม่ตรง:', (n.headline||'').slice(0,60));
             // ลอง reassign ให้ backup CEO ที่ keywords ตรง
@@ -14834,8 +14831,7 @@ async function runEliteScan(forceRefresh=false){
             for(const bId of backupIds){
               const backup = ELITE_PEOPLE.find(p=>p.id===bId);
               if(!backup) continue;
-              const bkws = backup.keywords || backup.name.toLowerCase().split(' ').filter(w=>w.length>3);
-              if(bkws.some(kw => headlineText.includes(kw))){
+              if(_eliteNewsMatchesPerson(n.headline||n.title||'', n.summary||n.body||'', backup)){
                 console.log('[ELITE /trigger] reassign "'+item.id+'" → "'+bId+'"');
                 item = Object.assign({}, item, {id: bId});
                 const reassignedItem = {
