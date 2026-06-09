@@ -123,7 +123,7 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .elite-leader-card{background:linear-gradient(145deg,rgba(22,30,45,0.95),rgba(14,20,32,0.98));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
 .elite-leader-card:active{transform:scale(0.97)}
 .elite-leader-card.selected{border-color:rgba(255,107,53,0.4);box-shadow:0 0 16px rgba(255,107,53,0.12)}
-.elite-leader-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2a3550,#1a2535);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:2px solid rgba(255,255,255,0.1);overflow:hidden}
+.elite-leader-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#2a3550,#1a2535);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid rgba(255,255,255,0.15);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.4)}
 .elite-leader-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
 .elite-leader-role{font-size:10px;color:var(--text3);line-height:1.3}
 .elite-leader-loc{font-size:9px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:3px}
@@ -13690,27 +13690,27 @@ function updatePortCharts(){
 // รายชื่อผู้นำทั้งหมด พร้อมพิกัดบนแผนที่ (x,y จาก viewBox 0 0 1000 500)
 // ELITE_PEOPLE: เฉพาะบุคคลที่มีผลกระทบต่อตลาดหุ้นโดยตรง
 const ELITE_PEOPLE = [
-  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Donald_Trump.jpg&width=80', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
+  { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Donald_Trump.jpg&width=200', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
     keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
     excludeKeywords:[],
     ticker:'', backupIds:['powell'] },
-  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jerome_Powell.jpg&width=80', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
+  { id:'powell',  name:'Jerome Powell',     role:'Fed Chair',           emoji:'🏛️', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jerome_Powell.jpg&width=200', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
     keywords:['powell','federal reserve','fomc','rate cut','rate hike','fed funds','fed chair','fed meeting','fed decision'],
     excludeKeywords:['india','rbi','inr','rupee','china','pboc','ecb','boj','bank of japan','bank of england','boe','reserve bank','rba','bank of canada'],
     ticker:'', backupIds:['trump'] },
-  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jensen_Huang.jpg&width=80', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900',
+  { id:'jensen',  name:'Jensen Huang',      role:'CEO NVIDIA',          emoji:'🟢', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jensen_Huang.jpg&width=200', tickers:['NVDA','AMD','AVGO'],   x:135, y:170, color:'#76b900',
     keywords:['jensen huang','jensen','nvidia','nvda','blackwell','gpu','h100','h200','ai chip','data center chip'],
     excludeKeywords:[],
     ticker:'NVDA', backupIds:['nadella','cook'] },
-  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Sam_Altman.jpg&width=80', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f',
+  { id:'altman',  name:'Sam Altman',        role:'CEO OpenAI',          emoji:'🤖', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Sam_Altman.jpg&width=200', tickers:['MSFT','NVDA'],        x:128, y:160, color:'#10a37f',
     keywords:['sam altman','altman','openai','chatgpt','gpt','o3','o4','sora','openai model'],
     excludeKeywords:[],
     ticker:'MSFT', backupIds:['pichai','nadella'] },
-  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Elon_Musk.jpg&width=80', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
+  { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Elon_Musk.jpg&width=200', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
     keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','twitter','x.com','grok'],
     excludeKeywords:[],
     ticker:'TSLA', backupIds:['jensen','cook'] },
-  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Xi_Jinping.jpg&width=80', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
+  { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Xi_Jinping.jpg&width=200', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
     keywords:['xi jinping','xi jinping','china','beijing','pboc','yuan','renminbi','rmb','tariff china','us china','chinese government','ccp'],
     excludeKeywords:['india','japan','korea','europe','fed','powell','fomc'],
     ticker:'', backupIds:['opec'] },
@@ -13718,29 +13718,29 @@ const ELITE_PEOPLE = [
     keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
     excludeKeywords:[],
     ticker:'XOM', backupIds:['trump'] },
-  { id:'khamenei', name:'Ali Khamenei',     role:'ผู้นำสูงสุดอิหร่าน', emoji:'🇮🇷', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Ali_Khamenei.jpg&width=80', tickers:['XOM','USO','GLD','LMT','RTX'], x:580, y:155, color:'#2ecc71',
+  { id:'khamenei', name:'Ali Khamenei',     role:'ผู้นำสูงสุดอิหร่าน', emoji:'🇮🇷', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Ali_Khamenei.jpg&width=200', tickers:['XOM','USO','GLD','LMT','RTX'], x:580, y:155, color:'#2ecc71',
     keywords:['khamenei','iran','iranian','tehran','irgc','nuclear deal','strait of hormuz','hormuz','persian gulf','hezbollah','hamas','iaea iran','iran sanctions','iran oil','iran nuclear','iran war','iran attack','iran missile'],
     excludeKeywords:[],
     requireNews: true,
     ticker:'XOM', backupIds:['opec'] },
   // ── CEO สำรอง (ใช้เมื่อคนหลักไม่มีข่าว) ──
-  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Satya_Nadella.jpg&width=80', tickers:['MSFT','AMZN'],        x:132, y:158, color:'#00a4ef',
+  { id:'nadella',  name:'Satya Nadella',    role:'CEO Microsoft',       emoji:'🪟', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Satya_Nadella.jpg&width=200', tickers:['MSFT','AMZN'],        x:132, y:158, color:'#00a4ef',
     keywords:['satya nadella','nadella','microsoft','msft','azure','copilot','teams','bing'],
     excludeKeywords:[],
     ticker:'MSFT', backupIds:['altman'] },
-  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Tim_Cook.jpg&width=80', tickers:['AAPL'],               x:130, y:175, color:'#aaaaaa',
+  { id:'cook',     name:'Tim Cook',         role:'CEO Apple',           emoji:'🍎', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Tim_Cook.jpg&width=200', tickers:['AAPL'],               x:130, y:175, color:'#aaaaaa',
     keywords:['tim cook','apple','aapl','iphone','mac','ios','app store','vision pro'],
     excludeKeywords:[],
     ticker:'AAPL', backupIds:['jensen'] },
-  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Sundar_Pichai.jpg&width=80', tickers:['GOOGL','META'],       x:126, y:163, color:'#4285f4',
+  { id:'pichai',   name:'Sundar Pichai',    role:'CEO Google/Alphabet', emoji:'🔍', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Sundar_Pichai.jpg&width=200', tickers:['GOOGL','META'],       x:126, y:163, color:'#4285f4',
     keywords:['sundar pichai','pichai','google','alphabet','googl','gemini','waymo','android','youtube'],
     excludeKeywords:[],
     ticker:'GOOGL', backupIds:['altman'] },
-  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Mark_Zuckerberg.jpg&width=80', tickers:['META'],               x:140, y:165, color:'#1877f2',
+  { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Mark_Zuckerberg.jpg&width=200', tickers:['META'],               x:140, y:165, color:'#1877f2',
     keywords:['mark zuckerberg','zuckerberg','zuck','meta','facebook','instagram','whatsapp','threads','llama','ray-ban'],
     excludeKeywords:[],
     ticker:'META', backupIds:['pichai'] },
-  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jamie_Dimon.jpg&width=80', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
+  { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://en.wikipedia.org/w/index.php?title=Special:Redirect/file/Jamie_Dimon.jpg&width=200', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     excludeKeywords:[],
     ticker:'JPM', backupIds:['powell'] },
@@ -15134,8 +15134,8 @@ function renderEliteScanResults(results, ageMs=0){
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${impactColor},transparent)"></div>
         <!-- Header -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.12);overflow:hidden">
-            ${p.logo ? `<img src="${p.logo}" style="width:38px;height:38px;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;font-size:16px">${p.emoji}</span>` : `<span style="font-size:16px">${p.emoji}</span>`}
+          <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid rgba(255,255,255,0.15);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.4);flex-shrink:0">
+            ${p.logo ? `<img src="${p.logo.replace('&width=200','&width=200')}" style="width:56px;height:56px;object-fit:cover;object-position:center top;border-radius:50%" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;font-size:26px">${p.emoji}</span>` : `<span style="font-size:26px">${p.emoji}</span>`}
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">${p.name}</div>
