@@ -16,7 +16,7 @@ const ELITE_PEOPLE = [
   { id: 'trump',    name: 'Donald Trump',       emoji: '🔴', role: 'US President' },
   { id: 'powell',   name: 'Jerome Powell',       emoji: '🔴', role: 'Fed Chair' },
   { id: 'jensen',   name: 'Jensen Huang',        emoji: '🟢', role: 'NVIDIA CEO' },
-  { id: 'cook',     name: 'Tim Cook',            emoji: '🟢', role: 'Apple CEO' },
+  { id: 'cook',     name: 'John Ternus',          emoji: '🟢', role: 'Apple CEO' },
   { id: 'musk',     name: 'Elon Musk',           emoji: '🟡', role: 'Tesla/SpaceX CEO' },
   { id: 'nadella',  name: 'Satya Nadella',       emoji: '🟢', role: 'Microsoft CEO' },
   { id: 'zuck',     name: 'Mark Zuckerberg',     emoji: '🟢', role: 'Meta CEO' },
