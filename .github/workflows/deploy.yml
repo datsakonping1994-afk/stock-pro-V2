@@ -17,7 +17,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config workers/wrangler-prices.toml
+          workingDirectory: workers
+          command: deploy --config wrangler-prices.toml
 
       - name: Deploy stock-elite Worker
         uses: cloudflare/wrangler-action@v4
