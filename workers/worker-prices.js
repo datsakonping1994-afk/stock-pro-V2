@@ -1,5 +1,5 @@
 // ============================================================
-//  STOCK PRO — Worker 1: Price Cache
+//  STOCK PRO -- Worker 1: Price Cache
 //  ชื่อ: stock-prices
 //  หน้าที่: ดึงราคาหุ้นทุกตัว + เก็บใน priceCache ทุก 1 นาที
 //  Cron: */1 * * * *
@@ -12,16 +12,18 @@
 // Small cap tickers that need special handling
 const SMALL_CAP_TICKERS = new Set(['OSS','AEHR','SNDK','AVAV','AMBA','ONDS','FPS','STX','NOK','SLNH']);
 
+// [FIX #1] ย้าย SPY/QQQ/SMH/VIX ขึ้นต้น array -- chunk 0 จะดึงเสมอ
 const FALLBACK_TICKERS = [
-  'RKLB','EOSE','SLNH','MU','NVTS','ASTS','INTC','AMD','HIMS','IREN',
-  'ASML','CRWD','AVGO','IONQ','AAPL','NVDA','KTOS','RBRK','AAOI','HOOD',
-  'OKLO','TEM','GOOGL','NVO','AMZN','PLTR','CRDO','ANET','VRT','ARM',
-  'TSM','ISRG','NFLX','META','MSFT','JPM','XOM','SOFI','SPGI','MP',
+  'SPY','QQQ','SMH','VIX',
+  'NVDA','AAPL','MSFT','META','AMZN','GOOGL','TSLA','AMD','AVGO','ARM',
+  'RKLB','EOSE','SLNH','MU','NVTS','ASTS','INTC','HIMS','IREN',
+  'ASML','CRWD','IONQ','KTOS','RBRK','AAOI','HOOD',
+  'OKLO','TEM','NVO','PLTR','CRDO','ANET','VRT',
+  'TSM','ISRG','NFLX','JPM','XOM','SOFI','SPGI','MP',
   'ELF','AMSC','APP','COST','UNH','BRK.B','NOW','LLY','NBIS','AXON',
   'TMDX','CRWV','MELI','QCOM','AMAT','LRCX','CRM','ADBE','SNOW','DDOG',
-  'MDB','NET','TSLA','V','MA','WMT','FPS','NOK','DELL','ONDS',
+  'MDB','NET','V','MA','WMT','FPS','NOK','DELL','ONDS',
   'OSS','AEHR','SNDK','AVAV','STX','VST','AMBA',
-  'SPY','QQQ','SMH'
 ];
 
 
@@ -54,9 +56,15 @@ function validateTicker(t) {
   return clean.length >= 1 ? clean : null;
 }
 function isInternalRequest(req) {
-  const cf = req.headers.get('cf-connecting-ip') || '';
   const auth = req.headers.get('x-worker-secret') || '';
   return auth === 'stockpro_internal_2026';
+}
+
+// [FIX #2] KV binding guard -- ตรวจก่อนใช้ทุกครั้ง
+function assertKV(env) {
+  if (!env.ALERT_KV) {
+    throw new Error('ALERT_KV binding missing -- add KV Namespace Binding in Worker Settings');
+  }
 }
 
 function getFinnhubKeys(env) {
@@ -87,10 +95,8 @@ async function getQuoteFinnhub(ticker, keys) {
 
 // [FIX] Yahoo batch: ดึงหลายตัวในคำขอเดียว ผ่าน proxy chain
 const YAHOO_PROXY_CHAIN = [
-  // proxy ส่วนตัว (เชื่อถือได้ที่สุด)
   sym => `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols='+sym)}`,
   sym => `https://anthropic-proxy.datsakonping1994.workers.dev/yahoo/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v7/finance/quote?symbols='+sym)}`,
-  // direct (บางครั้งผ่าน)
   sym => `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${sym}`,
   sym => `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${sym}`,
 ];
@@ -98,7 +104,6 @@ const YAHOO_PROXY_CHAIN = [
 function parseYahooQuoteResponse(text) {
   try {
     let d = JSON.parse(text);
-    // allorigins wrapper
     if (d?.contents) d = JSON.parse(d.contents);
     const list = d?.quoteResponse?.result || [];
     const out = {};
@@ -123,7 +128,7 @@ async function getQuoteYahooBatch(tickers) {
   for (let i = 0; i < tickers.length; i += BATCH) {
     const chunk = tickers.slice(i, i + BATCH);
     const symbols = chunk.map(t => {
-      if (t === 'VIX') return '%5EVIX';  // ^VIX encoded
+      if (t === 'VIX') return '%5EVIX';
       return t.replace('.', '-');
     }).join(',');
 
@@ -147,7 +152,6 @@ async function getQuoteYahooBatch(tickers) {
     if (!fetched) {
       _mon.yahooMiss += chunk.length;
       LOG.warn('Yahoo batch failed all proxies', { from: i, to: i+BATCH, tickers: chunk });
-      // Retry small caps individually with v8/chart
       const smallCaps = chunk.filter(t => SMALL_CAP_TICKERS.has(t));
       for (const t of smallCaps) {
         try {
@@ -180,13 +184,8 @@ async function getQuoteYahooBatch(tickers) {
   return results;
 }
 
-async function getQuoteFinnhubSingle(ticker, keys) {
-  return await getQuoteFinnhub(ticker, keys);
-}
-
 async function getQuote(ticker, finnhubKeys) {
   return await getQuoteFinnhub(ticker, finnhubKeys);
-  // Yahoo fallback ถูกจัดการแบบ batch ใน refreshPriceCache แทน
 }
 
 async function getCandlesPolygon(ticker, from, to, keys) {
@@ -218,12 +217,12 @@ async function getGoldPrice(env) {
   return null;
 }
 
-// ── [FIX] Chunk-rotation: แบ่ง tickers เป็น chunk เล็กๆ หมุนเวียนทุก cron
-// แทนการดึงทุกตัวพร้อมกัน — ลด CPU จาก ~10ms → ~2-3ms ต่อ invocation
-const CHUNK_SIZE = 20; // ดึงแค่ 20 ตัวต่อครั้ง
+const CHUNK_SIZE = 20;
 const CHUNK_KEY = 'price_chunk_idx';
 
 async function refreshPriceCache(env) {
+  assertKV(env);
+
   let tickers = [...FALLBACK_TICKERS];
   try {
     const raw = await env.ALERT_KV.get('stocks');
@@ -231,7 +230,10 @@ async function refreshPriceCache(env) {
       const saved = JSON.parse(raw);
       if (Array.isArray(saved) && saved.length > 0) {
         const fromApp = saved.map(s => s.t).filter(Boolean);
-        tickers = [...new Set([...fromApp, ...FALLBACK_TICKERS])];
+        // [FIX] ให้ priority tickers อยู่ต้นเสมอ แม้ merge กับ user stocks
+        const PRIORITY = ['SPY','QQQ','SMH','VIX'];
+        const rest = [...new Set([...fromApp, ...FALLBACK_TICKERS])].filter(t => !PRIORITY.includes(t));
+        tickers = [...PRIORITY, ...rest];
       }
     }
   } catch (e) {
@@ -240,11 +242,10 @@ async function refreshPriceCache(env) {
 
   const finnhubKeys = getFinnhubKeys(env);
   if (finnhubKeys.length === 0) {
-    console.error('[refreshPriceCache] FINNHUB_KEY not set — skipping refresh');
+    console.error('[refreshPriceCache] FINNHUB_KEY not set -- skipping refresh');
     return;
   }
 
-  // หมุน chunk index ทุก cron
   let chunkIdx = 0;
   try {
     const raw = await env.ALERT_KV.get(CHUNK_KEY);
@@ -255,12 +256,12 @@ async function refreshPriceCache(env) {
   const nextIdx = (chunkIdx + 1) % totalChunks;
   try { await env.ALERT_KV.put(CHUNK_KEY, String(nextIdx), { expirationTtl: 3600 }); } catch {}
 
-  // ดึงเฉพาะ chunk นี้
   const chunkTickers = tickers.slice(chunkIdx * CHUNK_SIZE, (chunkIdx + 1) * CHUNK_SIZE);
   LOG.info('chunk start', { chunk: chunkIdx+1, total: totalChunks, tickers: chunkTickers.length });
 
-  // Phase 1: Finnhub (parallel ทั้ง chunk)
   const newQuotes = {};
+
+  // Phase 1: Finnhub (parallel ทั้ง chunk)
   await Promise.allSettled(
     chunkTickers.map(async t => {
       const q = await getQuoteFinnhub(t, finnhubKeys);
@@ -283,7 +284,7 @@ async function refreshPriceCache(env) {
     } catch {}
   }
 
-  // VIX fetch แยก — proxy chain (direct Yahoo ถูก block จาก CF IP)
+  // VIX fetch แยก -- proxy chain
   if (chunkIdx === 0) {
     const VIX_URLS = [
       `https://yahoo-proxy.datsakonping1994.workers.dev/?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d')}`,
@@ -319,19 +320,13 @@ async function refreshPriceCache(env) {
 
   if (Object.keys(newQuotes).length === 0) return;
 
-  // Merge กับ cache เดิม — ไม่ทิ้งข้อมูล chunk อื่น
+  // Merge กับ cache เดิม
   let existingQuotes = {};
-  let existingTs = Date.now();
   try {
     const raw = await env.ALERT_KV.get('priceCache');
     if (raw) {
       const prev = JSON.parse(raw);
       existingQuotes = prev.quotes || {};
-      existingTs = prev.ts || Date.now();
-      // ถ้า cache เพิ่งอัปเดตไป < 30 วินาที และเป็น chunk เดิม — skip
-      if ((Date.now() - existingTs) < 30000 && chunkIdx > 0) {
-        // อนุญาตให้เขียน merge ต่อได้ (ไม่ skip)
-      }
     }
   } catch {}
 
@@ -350,7 +345,6 @@ async function refreshPriceCache(env) {
   LOG.info('chunk done', { chunk: chunkIdx+1, total: totalChunks, updated: Object.keys(newQuotes).length, cacheSize: Object.keys(merged).length, mon: monSnapshot() });
 }
 
-// ── [NEW] แปลง days → from/to date string ──
 function daysToFromTo(days) {
   const to = new Date();
   const from = new Date();
@@ -369,6 +363,15 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
+    // [FIX #2] ตรวจ KV binding ก่อนทุก request
+    if (!env.ALERT_KV) {
+      return new Response(JSON.stringify({
+        status: 'error',
+        error: 'ALERT_KV binding missing',
+        fix: 'Go to Cloudflare Dashboard → Workers → stock-prices → Settings → Variables → KV Namespace Bindings → Add binding: Variable=ALERT_KV'
+      }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
     const url = new URL(req.url);
 
     if (url.pathname === '/prices') {
@@ -378,7 +381,7 @@ export default {
           const cache = JSON.parse(raw);
           const age = Math.floor((Date.now() - cache.ts) / 1000);
           if (age > 600) {
-            console.warn('[/prices] stale cache', age, 's — triggering background refresh');
+            console.warn('[/prices] stale cache', age, 's -- triggering background refresh');
             ctx.waitUntil(refreshPriceCache(env).catch(e => console.error('[bg refresh]', e.message)));
           }
           return new Response(
@@ -386,7 +389,7 @@ export default {
             { headers: { ...cors, 'Content-Type': 'application/json' } }
           );
         }
-        console.warn('[/prices] cache empty — triggering refresh');
+        console.warn('[/prices] cache empty -- triggering refresh');
         ctx.waitUntil(refreshPriceCache(env).catch(e => console.error('[bg refresh]', e.message)));
         await new Promise(r => setTimeout(r, 2000));
         const raw2 = await env.ALERT_KV.get('priceCache');
@@ -522,7 +525,6 @@ export default {
           if ((d?.earningsCalendar||[]).length > 0) { items = d.earningsCalendar; break; }
         } catch {}
       }
-      const knownTickers = new Set(items.filter(e => e.date).map(e => e.symbol));
       let allTickers = [];
       try {
         const raw = await env.ALERT_KV.get('stocks');
@@ -619,8 +621,6 @@ export default {
         if (cached) return new Response(cached, { headers: { ...cors, 'Content-Type': 'application/json' } });
       } catch {}
 
-      // ForexFactory free JSON — no key needed
-      const HIGH_IMPACT_USD = ['nonfarm','cpi','fomc','pce','gdp','ppi','unemployment','retail sales','ism','consumer confidence'];
       let allEvents = [];
       for (const suffix of ['thisweek','nextweek']) {
         try {
@@ -710,7 +710,7 @@ export default {
               exchange: d.exchange || null,
               logo: d.logo || null,
               webUrl: d.weburl || null,
-              mktcap: d.marketCapitalization || null, // millions USD
+              mktcap: d.marketCapitalization || null,
               shareOutstanding: d.shareOutstanding || null,
             };
             try { await env.ALERT_KV.put(kvKey, JSON.stringify(result), { expirationTtl: 86400 * 7 }); } catch {}
@@ -732,7 +732,6 @@ export default {
       const finnhubKeys = getFinnhubKeys(env);
       for (const key of finnhubKeys) {
         try {
-          // Price target
           const [tgtRes, earnRes] = await Promise.all([
             fetch(`https://finnhub.io/api/v1/stock/price-target?symbol=${ticker}&token=${key}`, { signal: AbortSignal.timeout(6000) }),
             fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${ticker}&token=${key}`, { signal: AbortSignal.timeout(6000) }),
@@ -795,7 +794,6 @@ export default {
           const data = await r.json();
           const txns = data?.data || [];
           if (txns.length > 0) {
-            // group + sort
             const grouped = {};
             txns.filter(t => t.transactionDate && t.share && t.transactionPrice).forEach(t => {
               const key = `${t.name}_${t.transactionDate}_${t.share > 0 ? 'buy' : 'sell'}`;
@@ -813,7 +811,6 @@ export default {
       return new Response(JSON.stringify({ ok: false, error: 'no data' }), { status: 404, headers: cors });
     }
 
-    // ── /metrics/clear — ล้าง metrics cache ทั้งหมด ──
     if (url.pathname === '/metrics/clear') {
       try {
         const list = await env.ALERT_KV.list({ prefix: 'metrics_' });
@@ -845,9 +842,6 @@ export default {
           const d = await r.json();
           const m = d?.metric || {};
 
-          // ── Revenue Growth: ดึงจาก Yahoo เสมอ (decimal ที่ consistent)
-          // Finnhub revenueGrowthTTMYoy ไม่ consistent — บางตัวส่ง decimal (0.707)
-          // บางตัวส่ง % แล้ว (10.96) ทำให้แสดงผลผิด
           let revGrowth = null;
           try {
             const yhTicker = ticker.replace('.', '-');
@@ -858,9 +852,8 @@ export default {
             if (yr.ok) {
               const yd = await yr.json();
               const rg = yd?.quoteSummary?.result?.[0]?.financialData?.revenueGrowth?.raw;
-              // Yahoo ส่ง decimal เสมอ: 0.1096 = 10.96%, 0.707 = 70.7%
               if (rg != null && rg >= -1.0 && rg <= 50.0) {
-                revGrowth = +(rg * 100).toFixed(1); // แปลงเป็น % แล้วเก็บเป็น number
+                revGrowth = +(rg * 100).toFixed(1);
               }
             }
           } catch {}
@@ -870,7 +863,7 @@ export default {
             mktcap: m['marketCapitalization']||null,
             beta: m['beta']||null,
             eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
-            revGrowth, // % number เช่น 70.7, 10.96 (ไม่ใช่ decimal แล้ว)
+            revGrowth,
             div: m['dividendYieldIndicatedAnnual']||null,
             high52: m['52WeekHigh']||null,
             low52: m['52WeekLow']||null,
@@ -904,7 +897,6 @@ export default {
             const d = await r.json();
             const m = d?.metric || {};
 
-            // ── Revenue Growth — คำนวณ YoY จาก quarterly จริง (แม่นยำกว่า revenueGrowth.raw) ──
             let revGrowth = null;
             try {
               const yhTicker = ticker.replace('.', '-');
@@ -920,9 +912,7 @@ export default {
                 if (r0 != null && r4 != null && r4 !== 0 && isFinite(r0) && isFinite(r4)) {
                   const yoy = (r0 - r4) / Math.abs(r4) * 100;
                   if (isFinite(yoy) && yoy >= -100 && yoy <= 5000) {
-                    const negBase = r4 < 0;
-                    revGrowth = +(yoy.toFixed(1)); // ตัวเลขจริง
-                    if (negBase) revGrowth = null; // base ลบ → ไม่เชื่อถือได้ ส่ง null แทน
+                    revGrowth = r4 < 0 ? null : +(yoy.toFixed(1));
                   }
                 }
               }
@@ -952,40 +942,6 @@ export default {
       return new Response(JSON.stringify({ ok: true, metrics: results }), { headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    // ── /calendar/economic — Economic Calendar (Finnhub) with KV cache ──
-    if (url.pathname === '/calendar/economic') {
-      const from = url.searchParams.get('from') || new Date().toISOString().slice(0, 10);
-      const to   = url.searchParams.get('to')   || new Date(Date.now() + 90*24*60*60*1000).toISOString().slice(0, 10);
-      const kvKey = `econ_cal_${from}_${to}`;
-
-      // ลอง KV cache ก่อน (TTL 6 ชั่วโมง)
-      try {
-        const cached = await env.ALERT_KV.get(kvKey);
-        if (cached) {
-          return new Response(cached, { headers: { ...cors, 'Content-Type': 'application/json' } });
-        }
-      } catch {}
-
-      const finnhubKeys = getFinnhubKeys(env);
-      for (const key of finnhubKeys) {
-        try {
-          const r = await fetch(
-            `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`,
-            { signal: AbortSignal.timeout(10000) }
-          );
-          if (!r.ok) { LOG.warn('calendar/economic finnhub error', { status: r.status }); continue; }
-          const d = await r.json();
-          const events = d?.economicCalendar || [];
-          const body = JSON.stringify({ ok: true, economicCalendar: events, count: events.length });
-          // cache 6 ชั่วโมง
-          try { await env.ALERT_KV.put(kvKey, body, { expirationTtl: 21600 }); } catch {}
-          LOG.info('calendar/economic ok', { count: events.length, from, to });
-          return new Response(body, { headers: { ...cors, 'Content-Type': 'application/json' } });
-        } catch (e) { LOG.warn('calendar/economic fetch failed', { err: e.message }); }
-      }
-      return new Response(JSON.stringify({ ok: false, error: 'all keys failed', economicCalendar: [] }), { status: 502, headers: cors });
-    }
-
     if (url.pathname === '/refresh' && req.method === 'POST') {
       try {
         await refreshPriceCache(env);
@@ -997,7 +953,6 @@ export default {
       }
     }
 
-    // ── /signals/save — รับ signal จากแอปแล้วบันทึกลง KV
     if (url.pathname === '/signals/save' && req.method === 'POST') {
       try {
         const entry = await req.json();
@@ -1016,7 +971,6 @@ export default {
       }
     }
 
-    // ── /signals/log — ส่ง buy signal log ให้แอป (shared KV กับ worker-signals)
     if (url.pathname === '/signals/log') {
       try {
         const raw = await env.ALERT_KV.get('signal_log');
@@ -1029,7 +983,6 @@ export default {
       }
     }
 
-    // ── Health Check (#3) ──
     if (url.pathname === '/health') {
       try {
         const raw = await env.ALERT_KV.get('priceCache');
@@ -1037,11 +990,13 @@ export default {
         const age = cache ? Math.floor((Date.now() - cache.ts) / 1000) : null;
         const count = cache ? Object.keys(cache.quotes).length : 0;
         const vixPrice = cache?.quotes?.VIX?.price || null;
+        const spyPrice = cache?.quotes?.SPY?.price || null;
+        const qqqPrice = cache?.quotes?.QQQ?.price || null;
         const status = !cache ? 'cold' : age > 600 ? 'stale' : 'ok';
         const chunkRaw = await env.ALERT_KV.get('price_chunk_idx').catch(()=>null);
         return new Response(JSON.stringify({
           status,
-          cache: { age, count, vix: vixPrice, stale: age > 300 },
+          cache: { age, count, vix: vixPrice, spy: spyPrice, qqq: qqqPrice, stale: age > 300 },
           chunk: chunkRaw ? parseInt(chunkRaw) : 0,
           mon: monSnapshot(),
           ts: new Date().toISOString(),
@@ -1051,7 +1006,6 @@ export default {
       }
     }
 
-    // ── Monitoring snapshot (#4) — internal only ──
     if (url.pathname === '/mon') {
       if (!isInternalRequest(req)) {
         return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401, headers: cors });
@@ -1061,8 +1015,6 @@ export default {
       });
     }
 
-
-    // ── /person-img?id=trump — Person Photo via Wikipedia API (auto-find correct URL) ──
     if (url.pathname === '/person-img') {
       const personId = url.searchParams.get('id') || '';
       const PERSON_WIKI = {
@@ -1079,7 +1031,6 @@ export default {
         dimon:    'Jamie_Dimon',
         khamenei: 'Mojtaba_Khamenei',
       };
-      // Fallback direct URLs สำหรับคนที่ Wikipedia API อาจไม่ให้รูป
       const PERSON_FALLBACK = {
         xi:       'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Xi_Jinping_2024.jpg/240px-Xi_Jinping_2024.jpg',
         khamenei: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Mojtaba_Khamenei.jpg/240px-Mojtaba_Khamenei.jpg',
@@ -1088,7 +1039,6 @@ export default {
       const wikiName = PERSON_WIKI[personId];
       if (!wikiName) return new Response('unknown person', { status: 404, headers: cors });
 
-      // ลอง KV cache ก่อน
       const cacheKey = `person_img_${personId}`;
       try {
         const cached = await env.ALERT_KV.get(cacheKey, { type: 'arrayBuffer' });
@@ -1100,7 +1050,6 @@ export default {
       } catch {}
 
       try {
-        // Step 1: ดึง thumbnail URL จาก Wikipedia API
         const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${wikiName}&prop=pageimages&format=json&pithumbsize=300&pilicense=any`;
         const apiRes = await fetch(apiUrl, {
           headers: { 'User-Agent': 'StockProApp/2.0 (cloudflare-worker)' },
@@ -1114,13 +1063,11 @@ export default {
           thumbUrl = page?.thumbnail?.source || '';
           if (thumbUrl) break;
         }
-        // ลอง fallback URL ถ้า Wikipedia API ไม่ให้รูป
         if (!thumbUrl) {
           thumbUrl = PERSON_FALLBACK[personId] || '';
           if (!thumbUrl) return new Response('no thumbnail found', { status: 404, headers: cors });
         }
 
-        // Step 2: ดึงรูปจาก URL ที่ได้
         const imgRes = await fetch(thumbUrl, {
           headers: {
             'User-Agent': 'StockProApp/2.0 (cloudflare-worker)',
@@ -1132,7 +1079,6 @@ export default {
         const imgData = await imgRes.arrayBuffer();
         const ct = imgRes.headers.get('Content-Type') || 'image/jpeg';
 
-        // cache ใน KV 7 วัน
         try { await env.ALERT_KV.put(cacheKey, imgData, { expirationTtl: 604800 }); } catch {}
 
         return new Response(imgData, {
@@ -1143,45 +1089,9 @@ export default {
       }
     }
 
-        // ── Health Check (#3) ──
-    if (url.pathname === '/health') {
-      try {
-        const raw = await env.ALERT_KV.get('priceCache');
-        const cache = raw ? JSON.parse(raw) : null;
-        const age = cache ? Math.floor((Date.now() - cache.ts) / 1000) : null;
-        const count = cache ? Object.keys(cache.quotes).length : 0;
-        const vixPrice = cache?.quotes?.VIX?.price || null;
-        const status = !cache ? 'cold' : age > 600 ? 'stale' : 'ok';
-        const chunkRaw = await env.ALERT_KV.get('price_chunk_idx').catch(()=>null);
-        return new Response(JSON.stringify({
-          status,
-          cache: { age, count, vix: vixPrice, stale: age > 300 },
-          chunk: chunkRaw ? parseInt(chunkRaw) : 0,
-          mon: monSnapshot(),
-          ts: new Date().toISOString(),
-        }), { headers: { ...cors, 'Content-Type': 'application/json' } });
-      } catch(e) {
-        return new Response(JSON.stringify({ status: 'error', error: e.message }), { status: 500, headers: cors });
-      }
-    }
-
-    // ── Monitoring snapshot (#4) — internal only ──
-    if (url.pathname === '/mon') {
-      if (!isInternalRequest(req)) {
-        return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401, headers: cors });
-      }
-      return new Response(JSON.stringify({ ok: true, ...monSnapshot(), ts: new Date().toISOString() }), {
-        headers: { ...cors, 'Content-Type': 'application/json' }
-      });
-    }
-
-
-    // ── /img?u=<encoded_url> — Image Proxy (bypass Wikipedia/CDN hotlink block) ──
     if (url.pathname === '/img') {
       const imgUrl = url.searchParams.get('u');
       if (!imgUrl) return new Response('missing u param', { status: 400, headers: cors });
-      // whitelist — เฉพาะ Wikimedia และ Fed
-      // decode จนกว่าจะไม่มี % ซ้อน (รองรับ double/triple encode)
       let decoded = imgUrl;
       for (let i = 0; i < 3; i++) {
         try {
@@ -1209,7 +1119,7 @@ export default {
         return new Response(body, {
           headers: {
             'Content-Type': ct,
-            'Cache-Control': 'public, max-age=604800', // cache 7 วัน
+            'Cache-Control': 'public, max-age=604800',
             'Access-Control-Allow-Origin': '*',
           },
         });
@@ -1218,11 +1128,16 @@ export default {
       }
     }
 
-    return new Response('STOCK PRO — Prices Worker OK', { headers: cors });
+    return new Response('STOCK PRO -- Prices Worker OK', { headers: cors });
   },
 
   async scheduled(event, env, ctx) {
     if (event.cron === '*/1 * * * *') {
+      // [FIX] ตรวจ KV ใน scheduled ด้วย
+      if (!env.ALERT_KV) {
+        console.error('[scheduled] ALERT_KV binding missing -- skipping');
+        return;
+      }
       const et = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
       const day = et.getDay();
       const mins = et.getHours() * 60 + et.getMinutes();
