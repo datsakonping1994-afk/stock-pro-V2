@@ -12,7 +12,6 @@ const CORS = {
   'Cache-Control': 'no-store'
 };
 
-// ── ELITE_PEOPLE: ข้อมูล default (fallback ถ้า Wikipedia ไม่ตอบ) ──
 const ELITE_PEOPLE_DEFAULT = [
   { id: 'trump',    name: 'Donald Trump',       emoji: '🔴', role: 'US President' },
   { id: 'powell',   name: 'Jerome Powell',       emoji: '🔴', role: 'Fed Chair' },
@@ -36,12 +35,11 @@ const ELITE_PEOPLE_DEFAULT = [
   { id: 'khamenei', name: 'Ali Khamenei',        emoji: '🔴', role: 'Iran Supreme Leader' },
 ];
 
-// ── Wikipedia pages สำหรับแต่ละ id ──
 const WIKI_PAGES = {
   trump:    'Donald_Trump',
   powell:   'Jerome_Powell',
   jensen:   'Jensen_Huang',
-  cook:     'Apple_Inc.',        // ดึง CEO จากหน้า Apple
+  cook:     'Apple_Inc.',
   musk:     'Elon_Musk',
   nadella:  'Satya_Nadella',
   zuck:     'Mark_Zuckerberg',
@@ -50,22 +48,19 @@ const WIKI_PAGES = {
   bezos:    'Jeff_Bezos',
   dimon:    'Jamie_Dimon',
   buffett:  'Warren_Buffett',
-  iger:     'The_Walt_Disney_Company', // ดึง CEO จากหน้า Disney
+  iger:     'The_Walt_Disney_Company',
   lagarde:  'Christine_Lagarde',
   yellen:   'Janet_Yellen',
   modi:     'Narendra_Modi',
 };
 
-// ── ดึงชื่อจาก Wikipedia API ──
 async function fetchNameFromWiki(wikiPage) {
   try {
     const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiPage)}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;
     const d = await r.json();
-    // ดึงชื่อจาก title ของหน้า Wikipedia
     const title = d.title || '';
-    // กรองออกถ้าเป็นชื่อบริษัท (เช่น Apple Inc.) ให้คืน null แทน
     if (title.includes('Inc.') || title.includes('Company') || title === 'OPEC') return null;
     return title;
   } catch (e) {
@@ -74,15 +69,12 @@ async function fetchNameFromWiki(wikiPage) {
   }
 }
 
-// ── อัปเดต ELITE_PEOPLE จาก Wikipedia (cache ใน KV 24 ชม.) ──
 async function getElitePeople(env) {
-  // ลอง load จาก KV cache ก่อน
   if (env.ALERT_KV) {
     try {
       const cached = await env.ALERT_KV.get('elite:people');
       if (cached) {
         const { data, ts } = JSON.parse(cached);
-        // cache 24 ชั่วโมง
         if (Date.now() - ts < 24 * 3600 * 1000) {
           console.log('[Wiki] using cached elite people');
           return data;
@@ -91,7 +83,6 @@ async function getElitePeople(env) {
     } catch (e) { console.warn('[Wiki] KV read error:', e.message); }
   }
 
-  // ดึงข้อมูลใหม่จาก Wikipedia
   console.log('[Wiki] refreshing elite people from Wikipedia...');
   const updated = [...ELITE_PEOPLE_DEFAULT];
 
@@ -105,7 +96,6 @@ async function getElitePeople(env) {
     }
   }
 
-  // บันทึกลง KV cache
   if (env.ALERT_KV) {
     try {
       await env.ALERT_KV.put('elite:people', JSON.stringify({ data: updated, ts: Date.now() }), { expirationTtl: 86400 });
@@ -115,7 +105,6 @@ async function getElitePeople(env) {
   return updated;
 }
 
-// ── ELITE_PEOPLE: ใช้ default ก่อน จะถูกแทนที่ตอน runtime ──
 let ELITE_PEOPLE = ELITE_PEOPLE_DEFAULT;
 
 const NEWS_QUERIES = {
@@ -130,7 +119,7 @@ const NEWS_QUERIES = {
 function cleanText(text) {
   if (!text || typeof text !== 'string') return text;
   return text
-    .replace(/[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F]/g, '') // ลบ CJK จีน/ญี่ปุ่น
+    .replace(/[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F]/g, '')
     .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s$%+\-.,!?:;()/&@#'"°฿\u2019\u2018\u201C\u201D]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -173,13 +162,10 @@ async function sendTG(env, text) {
   }
 }
 
-// ── [FIX] fetchNews: ใช้ Finnhub เป็นหลัก (real-time, ไม่หมด quota) ──
-// GNews free tier หมด quota เร็วมาก ทำให้ได้ข่าวเก่าหรือว่าง
 async function fetchNews(env, query) {
   const articles = [];
   const finnhubKeys = [env.FINNHUB_KEY, env.FINNHUB_KEY_2, env.FINNHUB_KEY_3].filter(Boolean);
 
-  // Source 0: GNews -- primary, ข่าวล่าสุด 24 ชม. จริง
   if (env.NEWS_API_KEY && articles.length === 0) {
     try {
       const from24h = new Date(Date.now() - 86400000).toISOString();
@@ -209,7 +195,6 @@ async function fetchNews(env, query) {
     } catch (e) { console.warn('GNews primary error:', e.message); }
   }
 
-  // Source 1: Finnhub General News -- fallback ถ้า GNews ไม่มีข่าว
   if (finnhubKeys.length > 0) {
     for (const key of finnhubKeys) {
       try {
@@ -219,12 +204,10 @@ async function fetchNews(env, query) {
         );
         if (!r.ok) continue;
         const d = await r.json();
-        // กรองข่าวที่เกี่ยวกับ query keywords
         const keywords = query.toLowerCase().split(' ').filter(w => w.length > 3);
         const cutoff24h = Date.now() - 24 * 3600 * 1000;
         const filtered = (d || [])
           .filter(a => {
-            // กรองเฉพาะข่าว 24 ชม. ล่าสุด
             if ((a.datetime || 0) * 1000 < cutoff24h) return false;
             const text = (a.headline + ' ' + (a.summary || '')).toLowerCase();
             return keywords.some(kw => text.includes(kw));
@@ -246,7 +229,6 @@ async function fetchNews(env, query) {
     }
   }
 
-  // Source 2: Finnhub Company News -- สำหรับ CEO/บริษัทที่มี ticker
   const PERSON_TICKERS = {
     jensen: 'NVDA', cook: 'AAPL', musk: 'TSLA',
     nadella: 'MSFT', zuck: 'META', altman: 'MSFT',
@@ -257,7 +239,7 @@ async function fetchNews(env, query) {
 
   if (ticker && articles.length < 3 && finnhubKeys.length > 0) {
     const to = new Date().toISOString().slice(0, 10);
-    const from = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10); // 48h แทน 7 วัน
+    const from = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
     for (const key of finnhubKeys) {
       try {
         const r = await fetch(
@@ -279,7 +261,6 @@ async function fetchNews(env, query) {
     }
   }
 
-  // Source 3: GNews fallback -- ถ้า Finnhub ไม่มีข่าวเลย
   if (articles.length === 0 && env.NEWS_API_KEY) {
     try {
       const url = 'https://gnews.io/api/v4/search?q=' +
@@ -401,6 +382,33 @@ function scoreTradingRelevance(item, catalystScore, sourceQuality) {
   return Math.min(score, 100);
 }
 
+// ── [FIX] loadSeenBatch: โหลด dedup set จาก KV key เดียว ──
+async function loadSeenBatch(env) {
+  if (!env.ALERT_KV) return new Set();
+  try {
+    const raw = await env.ALERT_KV.get('elite:seen:batch');
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch (e) {
+    console.warn('[KV] loadSeenBatch error:', e.message);
+    return new Set();
+  }
+}
+
+// ── [FIX] saveSeenBatch: บันทึก dedup set ลง KV key เดียว (1 write) ──
+async function saveSeenBatch(env, seenSet) {
+  if (!env.ALERT_KV) return;
+  try {
+    // เก็บแค่ 300 รายการล่าสุด ป้องกัน value ใหญ่เกิน
+    const arr = [...seenSet].slice(-300);
+    await env.ALERT_KV.put('elite:seen:batch', JSON.stringify(arr), { expirationTtl: 43200 });
+    console.log('[KV] saveSeenBatch:', arr.length, 'items (1 write)');
+  } catch (e) {
+    console.warn('[KV] saveSeenBatch error:', e.message);
+  }
+}
+
 async function callGroq(env, system, user, retries = 2) {
   if (!env.GROQ_KEY) throw new Error('No GROQ_KEY');
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -467,12 +475,55 @@ const LOG = {
 };
 const _mon = { scans:0, sent:0, deduped:0, lastRun:null };
 
+async function fetchBLSCPI(env) {
+  try {
+    const seriesIds = ['CUUR0000SA0', 'CUUR0000SA0L1E'];
+    const currentYear = new Date().getFullYear();
+    const body = JSON.stringify({
+      seriesid: seriesIds,
+      startyear: String(currentYear - 1),
+      endyear: String(currentYear),
+      registrationkey: env.BLS_API_KEY || ''
+    });
+    const r = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error('BLS API error: ' + r.status);
+    const d = await r.json();
+    if (d.status !== 'REQUEST_SUCCEEDED') throw new Error('BLS status: ' + d.status);
+    const result = {};
+    for (const series of (d.Results?.series || [])) {
+      const latest = series.data?.[0];
+      if (!latest) continue;
+      const prevYear = series.data?.find(x => String(parseInt(latest.year)-1) === x.year && x.period === latest.period);
+      const yoy = prevYear ? (((parseFloat(latest.value) - parseFloat(prevYear.value)) / parseFloat(prevYear.value)) * 100).toFixed(1) : null;
+      if (series.seriesID === 'CUUR0000SA0') {
+        result.headline = { value: parseFloat(latest.value), yoy, period: latest.periodName + ' ' + latest.year };
+      } else if (series.seriesID === 'CUUR0000SA0L1E') {
+        result.core = { value: parseFloat(latest.value), yoy, period: latest.periodName + ' ' + latest.year };
+      }
+    }
+    console.log('[BLS] CPI data:', JSON.stringify(result));
+    return result;
+  } catch (e) {
+    console.warn('[BLS] fetch error:', e.message);
+    return null;
+  }
+}
+
 async function runEliteScan(env) {
   _mon.lastRun = new Date().toISOString();
   _mon.scans++;
 
-  // ── อัปเดต ELITE_PEOPLE จาก Wikipedia อัตโนมัติ ──
   ELITE_PEOPLE = await getElitePeople(env);
+
+  const blsCPI = await fetchBLSCPI(env);
+  const cpiContext = blsCPI
+    ? `\n[BLS OFFICIAL DATA] Headline CPI YoY: ${blsCPI.headline?.yoy ?? 'N/A'}% (${blsCPI.headline?.period ?? ''}), Core CPI YoY: ${blsCPI.core?.yoy ?? 'N/A'}% (${blsCPI.core?.period ?? ''}) -- ใช้ตัวเลขนี้เท่านั้น ห้ามเดาหรือใช้ตัวเลขอื่น`
+    : '';
 
   if (env.ALERT_KV) {
     const running = await env.ALERT_KV.get('elite:running');
@@ -486,7 +537,6 @@ async function runEliteScan(env) {
       timeZone: 'Asia/Bangkok'
     });
 
-    // ดึงข่าว -- Finnhub เป็นหลัก
     let newsContext = '';
     let allArticles = [];
     const ids = Object.keys(NEWS_QUERIES);
@@ -497,16 +547,14 @@ async function runEliteScan(env) {
       await new Promise(r => setTimeout(r, 150));
     }
 
-    // Dedup + filter
     allArticles = deduplicateNews(allArticles);
-    const cutoffScan = Date.now() - 24 * 3600 * 1000; // เฉพาะ 24 ชม. ล่าสุด
+    const cutoffScan = Date.now() - 24 * 3600 * 1000;
     allArticles = allArticles.filter(a => {
       const pubTs = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
       if (pubTs > 0 && pubTs < cutoffScan) {
         console.log('[stale] ข้ามข่าวเก่า:', (a.publishedAt||'').slice(0,10), a.title?.slice(0,50));
         return false;
       }
-      // ถ้าไม่มีวันที่เลย -- ข้ามด้วย (ป้องกันข่าวเก่าที่ไม่มี publishedAt)
       if (!a.publishedAt && pubTs === 0) {
         console.log('[no-date] ข้ามข่าวไม่มีวันที่:', a.title?.slice(0,50));
         return false;
@@ -533,95 +581,67 @@ async function runEliteScan(env) {
 2. source_url ต้องเป็น URL จริง ถ้าไม่มีให้ใส่ ""
 3. ถ้าไม่มีข่าวจริง impact>=5 ให้ return []
 
-🔗 กฎ Chain Reasoning (บังคับ -- แก้ปัญหา logic ผิด):
+🔗 กฎ Chain Reasoning (บังคับ):
 ก่อนระบุ stocks_to_monitor และ stocks_at_risk ต้องคิด chain นี้ก่อนเสมอ:
   ข่าว → อุตสาหกรรมที่ได้รับผล → บริษัทในอุตสาหกรรมนั้น → หุ้น → บวก/ลบ
 
-ตัวอย่าง (LNG Demand ฟื้นตัว):
-  LNG Demand ↑ → Energy Sector ↑ → XOM (ผลิต LNG) ↑, CVX ↑, LNG exporters ↑
-  → stocks_to_monitor: [XOM, CVX, LNG] ทั้งหมดบวก
-  → stocks_at_risk: [ผู้ใช้พลังงาน เช่น สายการบิน ที่ต้นทุนสูงขึ้น]
-
-ตัวอย่าง (Fed ขึ้นดอกเบี้ย):
-  Rate ↑ → Bond yield ↑ → Growth stocks ลง, Bank ↑ (กำไรดอกเบี้ย) → Tech ลง, Finance ขึ้น
-  → stocks_at_risk: [NVDA, META, AMZN] เพราะ valuation กดดัน
-  → stocks_to_monitor: [JPM, BAC] เพราะกำไรดอกเบี้ยสูง
-
-กฎ: ห้าม stocks_to_monitor และ stocks_at_risk ขัดแย้งกับ sentiment ของข่าว
-
 🎯 กฎ ai_take:
 - ต้องเป็น second-order effect ที่ไม่อยู่ใน headline
-- ต้องสอดคล้องกับ sentiment ข่าว -- ห้าม contradict
-- ตัวอย่าง: "LNG demand ฟื้น" → ai_take = "XOM/CVX มีโอกาสปรับ guidance Q3 ขึ้น" ไม่ใช่ "ต้นทุนพลังงานกดดัน"
+- ต้องสอดคล้องกับ sentiment ข่าว
 
-📊 กฎ confidence_score (ต้องมี confidence_breakdown):
-- 40% = ความชัดเจนของข่าว (มีตัวเลข/ชื่อบริษัทชัดเจน = สูง)
-- 30% = คุณภาพ source (Reuters/Bloomberg = สูง, blog = ต่ำ)
-- 30% = โอกาสเกิด market impact จริง (ตลาดตอบสนองได้เลย = สูง)
+📊 กฎ confidence_score:
+- 40% = ความชัดเจนของข่าว
+- 30% = คุณภาพ source
+- 30% = โอกาสเกิด market impact จริง
 
-🚫 Filter ออก:
-- stocks_to_monitor ว่างหรือมีแค่ ETF
-- impact < 5
-- ข่าวซ้ำ
+🚫 Filter ออก: stocks_to_monitor ว่างหรือมีแค่ ETF, impact < 5, ข่าวซ้ำ
 
 id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, musk, nadella, zuck, altman, xi, putin, lagarde, opec, pichai, bezos, dimon, buffett, yellen, iger, modi, khamenei
 
 รูปแบบ JSON:
 {
-  "id":"person_id",
-  "headline":"หัวข้อเฉพาะ ไม่เกิน 15 คำ",
-  "source":"ชื่อสำนักข่าวจริง",
-  "source_url":"https://...",
-  "fact_check":"confirmed/semi-confirmed/rumor",
-  "source_quality":8,
-  "ai_take":"second-order effect สอดคล้อง sentiment ห้าม contradict",
-  "sentiment":"bullish/bearish/neutral",
-  "confidence":85,
+  "id":"person_id","headline":"หัวข้อเฉพาะ ไม่เกิน 15 คำ","source":"ชื่อสำนักข่าวจริง",
+  "source_url":"https://...","fact_check":"confirmed/semi-confirmed/rumor","source_quality":8,
+  "ai_take":"second-order effect","sentiment":"bullish/bearish/neutral","confidence":85,
   "confidence_breakdown":{"news_clarity":40,"source_quality":25,"market_impact_prob":20},
-  "impact_level":"low/medium/high",
-  "what_happened":"2 ประโยค",
-  "why_important":"1 ประโยค",
-  "market_impact":"1 ประโยค",
-  "chain_reasoning":"ข่าว → อุตสาหกรรม → บริษัท → หุ้น (1 บรรทัด)",
+  "impact_level":"low/medium/high","what_happened":"2 ประโยค","why_important":"1 ประโยค",
+  "market_impact":"1 ประโยค","chain_reasoning":"ข่าว → อุตสาหกรรม → บริษัท → หุ้น",
   "sector":"Technology/Finance/Energy/Healthcare/Defense/Macro/AI/Crypto",
   "etf_impact":{"SPY":"positive/negative/neutral","QQQ":"positive/negative/neutral","TLT":"positive/negative/neutral","GLD":"positive/negative/neutral"},
-  "stocks_to_monitor":[{"t":"TICKER","reason":"เหตุผลที่ได้ประโยชน์จาก chain reasoning"}],
-  "stocks_at_risk":[{"t":"TICKER","reason":"เหตุผลที่เสียประโยชน์จาก chain reasoning"}],
-  "action":"หุ้นที่ควรติดตาม: X, Y",
-  "risk_level":"low/medium/high",
+  "stocks_to_monitor":[{"t":"TICKER","reason":"เหตุผล"}],
+  "stocks_at_risk":[{"t":"TICKER","reason":"เหตุผล"}],
+  "action":"หุ้นที่ควรติดตาม: X, Y","risk_level":"low/medium/high",
   "timeline":{"short":"1-5 วัน","medium":"1-3 เดือน","long":"6+ เดือน"},
-  "impact":7,
-  "pros":["ข้อดีที่ตรงกับ sentiment"],
-  "cons":["ความเสี่ยงจริง ไม่ใช่ตรงข้ามกับ pros"],
-  "read_game":"insight เฉพาะเจาะจง",
-  "watch":"event/วันที่จริงที่ต้องติดตาม",
-  "markets":["NYSE"]
+  "impact":7,"pros":["ข้อดี"],"cons":["ความเสี่ยง"],
+  "read_game":"insight เฉพาะเจาะจง","watch":"event/วันที่จริง","markets":["NYSE"]
 }
 เฉพาะ impact>=5 ไม่เกิน 4 รายการ`;
 
     const newsCtxGroq = newsContext.slice(0, 6000);
     const newsCtxClaude = newsContext.slice(0, 4000);
-    const userPrompt = `บริบทข่าว (วิเคราะห์จากข้อมูลนี้เท่านั้น ห้ามสร้างข่าวเอง):\n${newsCtxGroq}\n\nตอบ JSON array ภาษาไทย`;
-    const userPromptClaude = `บริบทข่าว:\n${newsCtxClaude}\n\nตอบ JSON array ภาษาไทย`;
+    const userPrompt = `บริบทข่าว (วิเคราะห์จากข้อมูลนี้เท่านั้น ห้ามสร้างข่าวเอง):\n${newsCtxGroq}${cpiContext}\n\nตอบ JSON array ภาษาไทย`;
+    const userPromptClaude = `บริบทข่าว:\n${newsCtxClaude}${cpiContext}\n\nตอบ JSON array ภาษาไทย`;
 
     const items = await callAI(env, system, userPrompt, userPromptClaude);
     if (!items || items.length === 0) return { ok: true, count: 0 };
 
     const cleanedItems = items.map(cleanItem);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const newItems = [];
 
+    // ── [FIX] โหลด seen batch ครั้งเดียว (1 read) ──
+    const seenSet = await loadSeenBatch(env);
+    let seenDirty = false;
+
+    let newItems = [];
     for (const item of cleanedItems) {
-      if (env.ALERT_KV && item.headline) {
-        const headlineKey = 'elite:seen:' + item.headline.toLowerCase().replace(/\s+/g, '').slice(0, 40);
-        try {
-          const seen = await env.ALERT_KV.get(headlineKey);
-          if (seen) { console.log('dedup skip:', item.headline); continue; }
-          await env.ALERT_KV.put(headlineKey, '1', { expirationTtl: 43200 });
-        } catch (e) {
-          if (e.message?.includes('limit exceeded')) console.warn('[KV limit]', item.headline);
-          else continue;
+      if (item.headline) {
+        const key = item.headline.toLowerCase().replace(/\s+/g, '').slice(0, 40);
+        if (seenSet.has(key)) {
+          console.log('dedup skip:', item.headline);
+          _mon.deduped++;
+          continue;
         }
+        seenSet.add(key);
+        seenDirty = true;
       }
 
       const { type: catalystType, catalystScore } = detectCatalyst((item.headline||'') + ' ' + (item.what_happened||''));
@@ -639,7 +659,18 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       newItems.push(item);
     }
 
-    // ── Step 1: Filter ข่าวเก่า > 24 ชม. ──
+    // ── [FIX] บันทึก seen batch ครั้งเดียว (1 write แทน N writes) ──
+    if (seenDirty) await saveSeenBatch(env, seenSet);
+
+    newItems.sort((a, b) => (b._tradingScore || 0) - (a._tradingScore || 0));
+    if (newItems.length === 0) return { ok: true, count: 0 };
+
+    if (env.ALERT_KV) {
+      try {
+        await env.ALERT_KV.put('elite:results', JSON.stringify({ ts: Date.now(), items: newItems }), { expirationTtl: 14400 });
+      } catch (e) { console.warn('[KV] elite:results write failed:', e.message); }
+    }
+
     const now24h = Date.now() - 24 * 3600 * 1000;
     newItems = newItems.filter(item => {
       if (item.published_at) {
@@ -652,44 +683,9 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       return true;
     });
 
-    // ── Step 2: Filter เฉพาะ impact >= 5 ──
     newItems = newItems.filter(item => (item.impact || 0) >= 5);
     if (!newItems.length) { LOG.info('no high-impact items'); return { ok: true, count: 0 }; }
 
-    // ── Step 3: Dedup by headline (exact match + cosine similarity >= 0.7) ──
-    const seenHeadlines = new Map();
-    for (const item of newItems) {
-      const key = (item.headline || '').toLowerCase().slice(0, 60);
-      let isDup = false;
-      for (const [existingKey, existingItem] of seenHeadlines) {
-        // exact match
-        if (existingKey === key) { isDup = true; }
-        // cosine similarity -- ถ้าคล้ายกัน >= 70% ถือว่าซ้ำ
-        else if (cosineSimilarity(item.headline || '', existingItem.headline || '') >= 0.7) { isDup = true; }
-        if (isDup) {
-          // เก็บตัวที่ tradingScore สูงกว่า
-          if ((item._tradingScore || 0) > (existingItem._tradingScore || 0)) {
-            seenHeadlines.set(existingKey, item);
-          }
-          break;
-        }
-      }
-      if (!isDup) seenHeadlines.set(key, item);
-    }
-    newItems = [...seenHeadlines.values()];
-
-    // ── Step 4: Sort by tradingScore หลัง dedup ──
-    newItems.sort((a, b) => (b._tradingScore || 0) - (a._tradingScore || 0));
-    if (newItems.length === 0) return { ok: true, count: 0 };
-
-    // ── Step 5: Save ลง KV ──
-    if (env.ALERT_KV) {
-      try {
-        await env.ALERT_KV.put('elite:results', JSON.stringify({ ts: Date.now(), items: newItems }), { expirationTtl: 14400 });
-      } catch (e) { console.warn('[KV] elite:results write failed:', e.message); }
-    }
-
-    // ส่ง Telegram
     let msg = `🌐 <b>ELITE SCAN</b> -- ${today}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
     for (const item of newItems) {
       const person = ELITE_PEOPLE.find(p => p.id === (item.id||'').toLowerCase());
@@ -735,12 +731,11 @@ export default {
 
     if (url.pathname === '/clear-dedup') {
       try {
-        const list = await env.ALERT_KV.list({ prefix: 'elite:seen:' });
-        let cleared = 0;
-        for (const key of list.keys) { await env.ALERT_KV.delete(key.name); cleared++; }
+        // ── [FIX] ลบแค่ key เดียวแทนการ list ทั้งหมด ──
+        await env.ALERT_KV.delete('elite:seen:batch');
         await env.ALERT_KV.delete('elite:running');
         ctx.waitUntil(runEliteScan(env).catch(e => console.error('scan error:', e.message)));
-        return new Response(JSON.stringify({ ok: true, cleared, message: 'scan triggered' }), { headers: CORS });
+        return new Response(JSON.stringify({ ok: true, cleared: 1, message: 'dedup cleared, scan triggered' }), { headers: CORS });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: CORS });
       }
