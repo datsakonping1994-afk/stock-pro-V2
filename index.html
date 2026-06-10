@@ -4901,8 +4901,8 @@ function updateTradeResults(){
     } else if(curPrice <= s1 || pct <= -5){
       // ราคาต่ำกว่า Stop Loss = Loss
       t.result = 'loss';
-    } else if(age >= 10){
-      // ถือมา 10 วันแล้วยังไม่ถึงเป้า — ตัดสินจากราคาปัจจุบัน
+    } else if(age >= 3){
+      // ถือมา 3 วันแล้วยังไม่ถึงเป้า — ตัดสินจากราคาปัจจุบัน
       t.result = pct >= 0 ? 'win' : 'loss';
     } else {
       return; // ยังรอผลอยู่
