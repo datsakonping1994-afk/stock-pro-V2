@@ -35,3 +35,11 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers
           command: deploy worker-brief.js --name=stock-brief --compatibility-date=2024-01-01
+
+      - name: Deploy stock-signals Worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers
+          command: deploy --config wrangler-signals.toml
