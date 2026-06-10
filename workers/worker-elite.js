@@ -137,6 +137,9 @@ function cleanItem(item) {
   if (Array.isArray(item.stocks_hurt)) item.stocks_hurt = item.stocks_hurt.map(s=>({...s,reason:cleanText(s.reason)}));
   if (Array.isArray(item.pros)) item.pros = item.pros.map(cleanText);
   if (Array.isArray(item.cons)) item.cons = item.cons.map(cleanText);
+  if (Array.isArray(item.bullish_reasons)) item.bullish_reasons = item.bullish_reasons.map(cleanText);
+  if (Array.isArray(item.bearish_reasons)) item.bearish_reasons = item.bearish_reasons.map(cleanText);
+  if (Array.isArray(item.impact_stocks)) item.impact_stocks = item.impact_stocks.filter(s=>s && s.t);
   if (item.timeline) {
     item.timeline.short = cleanText(item.timeline.short);
     item.timeline.medium = cleanText(item.timeline.medium);
@@ -361,6 +364,8 @@ const GENERIC_PATTERNS = [
   /อาจส่งผลกระทบต่อ.{0,10}ตลาด/,
   /ตลาดหุ้น.{0,10}ผันผวน/,
   /ความไม่แน่นอน.{0,20}ตลาด/,
+  /ราคา.{0,10}อาจ(เพิ่มขึ้น|ลดลง)$/,
+  /^.{0,15}(เพิ่มขึ้น|ลดลง)(เล็กน้อย)?$/,
 ];
 
 function hasIndividualStock(item) {
@@ -585,16 +590,62 @@ async function runEliteScan(env) {
 ก่อนระบุ stocks_to_monitor และ stocks_at_risk ต้องคิด chain นี้ก่อนเสมอ:
   ข่าว → อุตสาหกรรมที่ได้รับผล → บริษัทในอุตสาหกรรมนั้น → หุ้น → บวก/ลบ
 
-🎯 กฎ ai_take:
-- ต้องเป็น second-order effect ที่ไม่อยู่ใน headline
-- ต้องสอดคล้องกับ sentiment ข่าว
+🎯 กฎ ai_take (ต้องเป็น "วิเคราะห์" ไม่ใช่สรุปข่าวซ้ำ):
+- ห้ามเขียนซ้ำเนื้อหาเดียวกับ what_happened/headline ในคำพูดอื่น (ห้าม paraphrase ข่าวเฉยๆ)
+- ต้องเป็น second-order effect ที่ไม่อยู่ใน headline และตอบให้ได้อย่างน้อย 1 ใน 4 มุมนี้:
+  1) ผลกระทบจะกระจายไปยังหุ้น/อุตสาหกรรมกลุ่มไหนต่อ
+  2) เงินทุนน่าจะไหลไปยังสินทรัพย์ประเภทใด (หุ้น/บอนด์/ทอง/น้ำมัน/เงินสด)
+  3) ผลระยะสั้น (1-5 วัน) ต่างจากระยะกลาง (1-3 เดือน) อย่างไร
+  4) ใครได้ประโยชน์ (winner) ใครเสียประโยชน์ (loser) จากเหตุการณ์นี้
+- ต้องสอดคล้องกับ sentiment ข่าว ห้าม contradict
+
+🔮 กฎ read_game (Insight ที่คนมองข้าม -- ต้องเฉพาะเจาะจง ใช้ได้จริง):
+- ห้ามเป็นประโยคทั่วไปลอยๆ เช่น "ราคาน้ำมันอาจเพิ่มขึ้น" หรือ "นักลงทุนควรติดตามอย่างใกล้ชิด"
+- ต้องมีเงื่อนไข/ตัวเลข/threshold ที่จับต้องได้ รูปแบบ "ถ้า [เงื่อนไข/ระดับราคา] → [ผลที่ตามมา]"
+  ตัวอย่างที่ดี: "หากราคาน้ำมันทะลุ $90 หุ้นกลุ่มพลังงานอาจ Outperform ตลาดอย่างชัดเจน"
+  ตัวอย่างที่ดี: "ความขัดแย้งลักษณะนี้มักหนุนหุ้นพลังงานก่อนทองคำในช่วง 1-2 สัปดาห์แรก"
+- ถ้าไม่มีข้อมูลพอจะใส่ threshold ที่สมเหตุสมผล ให้ตั้งค่า read_game เป็น null
+
+📅 กฎ watch (เชื่อม Event ที่เกี่ยวข้องอัตโนมัติ -- บังคับ):
+จับคู่หัวข้อข่าวกับ event/ข้อมูลเศรษฐกิจที่เกี่ยวข้องเสมอ ตามตาราง:
+- ข่าวน้ำมัน/พลังงาน/OPEC → "OPEC+ meeting" หรือ inventory data ที่ใกล้ที่สุด
+- ข่าวแรงงาน/การจ้างงาน/ตลาดแรงงาน → "NFP (Non-Farm Payrolls)"
+- ข่าวเงินเฟ้อ/ราคาผู้บริโภค/ค่าครองชีพ → "CPI release"
+- ข่าวดอกเบี้ย/Fed/นโยบายการเงิน → "FOMC meeting"
+- ข่าวอื่นๆ ที่ไม่เข้าหมวดข้างต้น → ใส่ event/วันที่จริงที่เกี่ยวข้องโดยตรงกับข่าวนั้น
+ห้ามปล่อยว่างหรือใส่ event ที่ไม่เกี่ยวข้องกับเนื้อข่าว
+
+🗣️ กฎการเลือกคำตามระดับ confidence (บังคับ ใช้กับ ai_take, read_game, market_impact ทุกฟิลด์):
+- confidence 80-100% → ใช้น้ำเสียง "มีแนวโน้มสูงที่จะ..." (ฟันธงได้)
+- confidence 60-79% → ใช้น้ำเสียง "คาดว่า..."
+- confidence 40-59% → ใช้น้ำเสียง "อาจ..." (ห้ามฟันธง)
+- confidence ต่ำกว่า 40% → ใช้น้ำเสียง "ยังไม่มีข้อมูลยืนยันเพียงพอ แต่..." และห้ามให้คำแนะนำที่ดูมั่นใจเกินจริง
+ห้ามใช้คำฟันธง ("จะ...แน่นอน") เมื่อ confidence ต่ำกว่า 80%
 
 📊 กฎ confidence_score:
-- 40% = ความชัดเจนของข่าว
-- 30% = คุณภาพ source
+- 40% = ความชัดเจนของข่าว (มีตัวเลข/ชื่อบริษัท/รายละเอียดชัดเจน)
+- 30% = คุณภาพ source (ดูตาราง source_quality)
 - 30% = โอกาสเกิด market impact จริง
 
+📰 กฎ source_quality (ให้คะแนนตาม tier):
+- Reuters, Bloomberg, WSJ, FT = 10
+- CNBC, AP, Barron's, Marketwatch = 8
+- TechCrunch, Yahoo Finance, Business Insider = 6
+- Social media (X/Twitter, blog, forum) = 4
+
+📈📉 กฎ bullish_reasons / bearish_reasons (แทนการใช้แค่ tag สีลอยๆ):
+ต้องระบุเหตุผลสั้นๆ แบบ bullet อย่างน้อยฝั่งละ 1 ข้อ ที่อธิบายว่าทำไมข่าวนี้เป็นปัจจัยบวก (bullish_reasons) และปัจจัยลบ (bearish_reasons) ต่อตลาดหรือหุ้นกลุ่มที่เกี่ยวข้อง โดยต้องสอดคล้องกับ chain_reasoning และ sentiment หลักของข่าว
+
+📊 กฎ impact_stocks (หุ้นที่ได้รับผลกระทบ -- แสดงใต้ ai_take):
+ระบุ array ของ {"t":"TICKER","dir":"up"/"down"} อย่างน้อย 2 ตัว โดยต่อยอดจาก stocks_to_monitor (dir="up" ถ้าได้ประโยชน์) และ stocks_at_risk (dir="down" ถ้าเสียประโยชน์) ตาม chain_reasoning
+
 🚫 Filter ออก: stocks_to_monitor ว่างหรือมีแค่ ETF, impact < 5, ข่าวซ้ำ
+
+🎯 กฎการเลือก id (บังคับ -- แก้ปัญหา id ไม่ตรงกับเนื้อข่าว):
+id ของบุคคลต้องผูกกับข่าวที่เป็น "การกระทำ คำพูด คำสั่ง การประกาศ หรือการตัดสินใจของบุคคลนั้นโดยตรง" เท่านั้น
+ตัวอย่างที่ถูกต้อง: "Trump ประกาศภาษีนำเข้าใหม่", "Powell แถลง Fed คงดอกเบี้ย", "Musk เปิดตัวผลิตภัณฑ์ใหม่"
+ตัวอย่างที่ผิด: ข่าว "ตลาดหุ้นร่วงเพราะความกังวลสงคราม" หรือข่าวมหภาคทั่วไปที่แค่ "พาดพิงถึง" ประเทศ/องค์กรที่บุคคลนั้นเกี่ยวข้อง แต่ไม่มีการกระทำของบุคคลนั้นเอง
+ถ้าข่าวเป็นข่าวมหภาค/ผลกระทบทั่วไปที่ไม่มีการกระทำของบุคคลใน ELITE_PEOPLE โดยตรง -- ห้าม return item นั้น (ข้ามทิ้งไปเลย)
 
 id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, musk, nadella, zuck, altman, xi, putin, lagarde, opec, pichai, bezos, dimon, buffett, yellen, iger, modi, khamenei
 
@@ -602,7 +653,7 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
 {
   "id":"person_id","headline":"หัวข้อเฉพาะ ไม่เกิน 15 คำ","source":"ชื่อสำนักข่าวจริง",
   "source_url":"https://...","fact_check":"confirmed/semi-confirmed/rumor","source_quality":8,
-  "ai_take":"second-order effect","sentiment":"bullish/bearish/neutral","confidence":85,
+  "ai_take":"การวิเคราะห์ second-order effect (ห้ามสรุปข่าวซ้ำ)","sentiment":"bullish/bearish/neutral","confidence":85,
   "confidence_breakdown":{"news_clarity":40,"source_quality":25,"market_impact_prob":20},
   "impact_level":"low/medium/high","what_happened":"2 ประโยค","why_important":"1 ประโยค",
   "market_impact":"1 ประโยค","chain_reasoning":"ข่าว → อุตสาหกรรม → บริษัท → หุ้น",
@@ -610,10 +661,12 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
   "etf_impact":{"SPY":"positive/negative/neutral","QQQ":"positive/negative/neutral","TLT":"positive/negative/neutral","GLD":"positive/negative/neutral"},
   "stocks_to_monitor":[{"t":"TICKER","reason":"เหตุผล"}],
   "stocks_at_risk":[{"t":"TICKER","reason":"เหตุผล"}],
+  "impact_stocks":[{"t":"TICKER","dir":"up/down"}],
+  "bullish_reasons":["เหตุผลเชิงบวก"],"bearish_reasons":["เหตุผลเชิงลบ"],
   "action":"หุ้นที่ควรติดตาม: X, Y","risk_level":"low/medium/high",
   "timeline":{"short":"1-5 วัน","medium":"1-3 เดือน","long":"6+ เดือน"},
   "impact":7,"pros":["ข้อดี"],"cons":["ความเสี่ยง"],
-  "read_game":"insight เฉพาะเจาะจง","watch":"event/วันที่จริง","markets":["NYSE"]
+  "read_game":"insight เฉพาะเจาะจงพร้อม threshold หรือ null","watch":"event ที่เกี่ยวข้องเสมอ","markets":["NYSE"]
 }
 เฉพาะ impact>=5 ไม่เกิน 4 รายการ`;
 
@@ -696,9 +749,16 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       const sentEmoji = item.sentiment==='bullish'?'📈 Bullish':item.sentiment==='bearish'?'📉 Bearish':'➡️ Neutral';
       msg += `${sentEmoji} | Confidence ${item.confidence||70}%\n`;
       if (item.ai_take) msg += `💬 <i>${item.ai_take}</i>\n`;
+      if (item.impact_stocks?.length) {
+        msg += `📊 หุ้นกระทบ: ${item.impact_stocks.map(s=>`$${s.t}${s.dir==='up'?'↑':'↓'}`).join(', ')}\n`;
+      }
       msg += `📌 ${item.what_happened}\n`;
+      if (item.bullish_reasons?.length) msg += `📈 บวก: ${item.bullish_reasons.join(' / ')}\n`;
+      if (item.bearish_reasons?.length) msg += `📉 ลบ: ${item.bearish_reasons.join(' / ')}\n`;
       if (item.stocks_to_monitor?.length) msg += `✅ จับตา: ${item.stocks_to_monitor.map(s=>`$${s.t}`).join(', ')}\n`;
       if (item.stocks_at_risk?.length) msg += `⚠️ ระวัง: ${item.stocks_at_risk.map(s=>`$${s.t}`).join(', ')}\n`;
+      if (item.read_game) msg += `🔮 <i>${item.read_game}</i>\n`;
+      if (item.watch) msg += `👁️ จับตา event: ${item.watch}\n`;
       if (item.timeline?.short) msg += `⚡ ระยะสั้น: ${item.timeline.short}\n`;
       msg += `⚠️ <i>ไม่ใช่คำแนะนำการลงทุน</i>\n\n`;
     }
