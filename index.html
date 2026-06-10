@@ -1589,7 +1589,7 @@ canvas.bigchart{width:100%;height:100%}
     <div class="drawer-tab" onclick="drawerTab('fund',this)">Fundamental</div>
     <div class="drawer-tab" onclick="drawerTab('ai',this)">AI Chat</div>
     <div class="drawer-tab" onclick="drawerTab('news',this)">ข่าว</div>
-    <div class="drawer-tab" onclick="drawerTab('transcript',this)">📋 Transcript</div>
+
   </div>
   <div class="drawer-body" id="drawerBody"></div>
 </div>
@@ -4901,8 +4901,8 @@ function updateTradeResults(){
     } else if(curPrice <= s1 || pct <= -5){
       // ราคาต่ำกว่า Stop Loss = Loss
       t.result = 'loss';
-    } else if(age >= 10){
-      // ถือมา 10 วันแล้วยังไม่ถึงเป้า -- ตัดสินจากราคาปัจจุบัน
+    } else if(age >= 3){
+      // ถือมา 3 วันแล้วยังไม่ถึงเป้า -- ตัดสินจากราคาปัจจุบัน
       t.result = pct >= 0 ? 'win' : 'loss';
     } else {
       return; // ยังรอผลอยู่
@@ -16645,97 +16645,62 @@ function startEliteBackgroundScan(){
 
 // ── FIX: Black screen on iOS Safari after long idle / background ──
 var _repaintTimer = null;
-function _doRepaint(){
-  var body = document.body;
-  var app  = document.getElementById('app');
-  var content = document.getElementById('content');
-  if(!body) return;
-
-  // Step 1: force body opacity repaint
-  body.style.opacity = '0.999';
-  body.offsetHeight;
-  body.style.opacity = '1';
-
-  // Step 2: force scroll container relayout
-  if(content){
-    var s = content.scrollTop;
-    content.style.overflowY = 'hidden';
-    content.offsetHeight;
-    content.style.overflowY = 'auto';
-    content.scrollTop = s;
-  }
-
-  // Step 3: break GPU layer freeze on app element
-  if(app){
-    app.style.transform = 'translateZ(0.001px)';
-    app.offsetHeight;
-    app.style.transform = 'translateZ(0)';
-    app.offsetHeight;
-    app.style.transform = '';
-  }
-
-  // Step 4: force background redraw
-  body.style.background = 'var(--bg0)';
-  body.offsetHeight;
-
-  // Step 5: force will-change repaint on body
-  body.style.willChange = 'transform';
-  body.offsetHeight;
-  body.style.willChange = '';
-}
-
 function _forceRepaint(){
   if(_repaintTimer) clearTimeout(_repaintTimer);
-  // Fire immediately AND at staggered delays to catch slow-waking iOS WebKit
-  _doRepaint();
-  _repaintTimer = setTimeout(_doRepaint, 100);
-  setTimeout(_doRepaint, 300);
-  setTimeout(_doRepaint, 600);
-  setTimeout(_doRepaint, 1200);
+  _repaintTimer = setTimeout(function(){
+    var body = document.body;
+    var app  = document.getElementById('app');
+    var content = document.getElementById('content');
+    if(!body) return;
+
+    // Step 1: force body background repaint
+    body.style.opacity = '0.999';
+    body.offsetHeight;
+    body.style.opacity = '';
+
+    // Step 2: force scroll container relayout
+    if(content){
+      var s = content.scrollTop;
+      content.style.overflowY = 'hidden';
+      content.offsetHeight;
+      content.style.overflowY = 'auto';
+      content.scrollTop = s;
+    }
+
+    // Step 3: toggle app transform to break GPU layer freeze
+    if(app){
+      app.style.transform = 'translateZ(0)';
+      app.offsetHeight;
+      app.style.transform = '';
+    }
+
+    // Step 4: force full repaint via background flicker (invisible)
+    body.style.background = 'var(--bg0)';
+    body.offsetHeight;
+  }, 80);
 }
 
 // ── Wake events ──
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'visible'){
     _forceRepaint();
+    // second pass for slow-waking devices
+    setTimeout(_forceRepaint, 600);
   }
 });
 window.addEventListener('pageshow', function(e){
   _forceRepaint();
-  if(e.persisted){
-    setTimeout(_forceRepaint, 500);
-    setTimeout(_forceRepaint, 1500);
-  }
+  if(e.persisted) setTimeout(_forceRepaint, 400);
 });
 window.addEventListener('focus', function(){
   _forceRepaint();
 });
-// ── iOS notification tap: app resume from suspended ──
-document.addEventListener('resume', function(){
-  _forceRepaint();
-});
-// ── touchstart on first interaction after wake (iOS specific fix) ──
-document.addEventListener('touchstart', function _wakeTouch(){
-  _doRepaint();
-  document.removeEventListener('touchstart', _wakeTouch);
-}, {once: true, passive: true});
-
 // ── Periodic watchdog: ถ้าหน้าจอดำขณะ visible ──
 setInterval(function(){
   if(document.visibilityState !== 'visible') return;
   var app = document.getElementById('app');
-  if(!app) return;
-  // ตรวจสอบทั้ง offsetHeight และ background ดำสนิท
-  if(app.offsetHeight < 10){
-    _forceRepaint();
-    return;
-  }
-  // ตรวจ body background ว่าหายไปหรือเปล่า
-  var bg = window.getComputedStyle(document.body).backgroundColor;
-  if(bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent'){
-    _forceRepaint();
-  }
-}, 2000);
+  if(app && app.offsetHeight < 10) _forceRepaint();
+}, 3000);
 
 // ── THB Conversion ──
 let _thbRate = null;
