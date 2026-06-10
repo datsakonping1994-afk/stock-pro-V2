@@ -467,12 +467,58 @@ const LOG = {
 };
 const _mon = { scans:0, sent:0, deduped:0, lastRun:null };
 
+// ── ดึงข้อมูล CPI จาก BLS API (ของจริง) ──
+async function fetchBLSCPI(env) {
+  try {
+    const seriesIds = ['CUUR0000SA0', 'CUUR0000SA0L1E'];
+    const currentYear = new Date().getFullYear();
+    const body = JSON.stringify({
+      seriesid: seriesIds,
+      startyear: String(currentYear - 1),
+      endyear: String(currentYear),
+      registrationkey: env.BLS_API_KEY || ''
+    });
+    const r = await fetch('https://api.bls.gov/publicAPI/v2/timeseries/data/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error('BLS API error: ' + r.status);
+    const d = await r.json();
+    if (d.status !== 'REQUEST_SUCCEEDED') throw new Error('BLS status: ' + d.status);
+    const result = {};
+    for (const series of (d.Results?.series || [])) {
+      const latest = series.data?.[0];
+      if (!latest) continue;
+      const prevYear = series.data?.find(x => String(parseInt(latest.year)-1) === x.year && x.period === latest.period);
+      const yoy = prevYear ? (((parseFloat(latest.value) - parseFloat(prevYear.value)) / parseFloat(prevYear.value)) * 100).toFixed(1) : null;
+      if (series.seriesID === 'CUUR0000SA0') {
+        result.headline = { value: parseFloat(latest.value), yoy, period: latest.periodName + ' ' + latest.year };
+      } else if (series.seriesID === 'CUUR0000SA0L1E') {
+        result.core = { value: parseFloat(latest.value), yoy, period: latest.periodName + ' ' + latest.year };
+      }
+    }
+    console.log('[BLS] CPI data:', JSON.stringify(result));
+    return result;
+  } catch (e) {
+    console.warn('[BLS] fetch error:', e.message);
+    return null;
+  }
+}
+
 async function runEliteScan(env) {
   _mon.lastRun = new Date().toISOString();
   _mon.scans++;
 
   // ── อัปเดต ELITE_PEOPLE จาก Wikipedia อัตโนมัติ ──
   ELITE_PEOPLE = await getElitePeople(env);
+
+  // ── ดึง CPI จาก BLS (ข้อมูลจริง) ──
+  const blsCPI = await fetchBLSCPI(env);
+  const cpiContext = blsCPI
+    ? `\n[BLS OFFICIAL DATA] Headline CPI YoY: ${blsCPI.headline?.yoy ?? 'N/A'}% (${blsCPI.headline?.period ?? ''}), Core CPI YoY: ${blsCPI.core?.yoy ?? 'N/A'}% (${blsCPI.core?.period ?? ''}) -- ใช้ตัวเลขนี้เท่านั้น ห้ามเดาหรือใช้ตัวเลขอื่น`
+    : '';
 
   if (env.ALERT_KV) {
     const running = await env.ALERT_KV.get('elite:running');
@@ -601,8 +647,8 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
 
     const newsCtxGroq = newsContext.slice(0, 6000);
     const newsCtxClaude = newsContext.slice(0, 4000);
-    const userPrompt = `บริบทข่าว (วิเคราะห์จากข้อมูลนี้เท่านั้น ห้ามสร้างข่าวเอง):\n${newsCtxGroq}\n\nตอบ JSON array ภาษาไทย`;
-    const userPromptClaude = `บริบทข่าว:\n${newsCtxClaude}\n\nตอบ JSON array ภาษาไทย`;
+    const userPrompt = `บริบทข่าว (วิเคราะห์จากข้อมูลนี้เท่านั้น ห้ามสร้างข่าวเอง):\n${newsCtxGroq}${cpiContext}\n\nตอบ JSON array ภาษาไทย`;
+    const userPromptClaude = `บริบทข่าว:\n${newsCtxClaude}${cpiContext}\n\nตอบ JSON array ภาษาไทย`;
 
     const items = await callAI(env, system, userPrompt, userPromptClaude);
     if (!items || items.length === 0) return { ok: true, count: 0 };
