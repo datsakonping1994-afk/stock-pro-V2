@@ -1526,7 +1526,7 @@ canvas.bigchart{width:100%;height:100%}
 
   <div id="elite-tab-events" style="display:none">
     <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">กำหนดการที่กำลังจะมาถึง</div>
+      <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);opacity:0.7">ประกาศแล้ว & กำลังจะมาถึง</div>
       <div id="eliteEventsHeader" style="font-size:10px;color:var(--text3)"></div>
     </div>
     <div id="eliteEventsGrid" style="padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px">
@@ -14054,8 +14054,8 @@ const BENEFICIARY_MAP={
     negative_sentiment:[{t:'AAPL',reason:'Apple ผลิตใน China กระทบจาก tariff โดยตรง'},{t:'NVDA',reason:'ข้อจำกัดส่งออก chip ไป China กระทบ data center revenue'},{t:'TSLA',reason:'Tesla โรงงาน Shanghai กระทบถ้าจีน-สหรัฐตึงเครียด'}]
   },
   'geopolitical':{
-    positive_sentiment:[{t:'LMT',reason:'Lockheed Martin งบกลาโหมเพิ่มในยามวิกฤต'},{t:'RTX',reason:'Raytheon ความต้องการ missile defense system เพิ่ม'},{t:'XOM',reason:'Exxon รายรับเพิ่มจากราคาน้ำมันที่พุ่งขึ้นเมื่อตึงเครียดตะวันออกกลาง'},{t:'CVX',reason:'Chevron กำไร upstream เพิ่มตามราคา crude oil ที่สูงขึ้น'}],
-    negative_sentiment:[{t:'BABA',reason:'Alibaba กระทบจาก geopolitical tension US-China'},{t:'DAL',reason:'Delta Air Lines ต้นทุน jet fuel เพิ่มจากราคาน้ำมันสูง'},{t:'UAL',reason:'United Airlines margin กดดันจาก fuel cost ที่พุ่งขึ้น'}]
+    positive_sentiment:[{t:'LMT',reason:'Lockheed Martin งบกลาโหมเพิ่มในยามวิกฤต'},{t:'RTX',reason:'Raytheon ความต้องการ missile defense system เพิ่ม'}],
+    negative_sentiment:[{t:'XOM',reason:'Exxon supply chain ในพื้นที่ขัดแย้งกระทบการผลิต'},{t:'BABA',reason:'Alibaba กระทบจาก geopolitical tension US-China'}]
   },
   'tech_ai':{
     positive_sentiment:[{t:'NVDA',reason:'GPU demand เพิ่มจาก AI training workload'},{t:'MSFT',reason:'Azure AI revenue growth จาก enterprise adoption'},{t:'AMD',reason:'AMD MI300X เป็น alternative GPU สำหรับ AI'}],
@@ -14651,7 +14651,7 @@ async function _eliteDirectFallback(overlay){
     return item.person.name+'('+item.id+'): '+item.headline+' — '+item.summary;
   }).join('\n');
 
-  const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n1. ALL text fields must be Thai — translate English headlines immediately\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news.\n3. ai_take = one specific second-order insight NOT mentioned in the headline. Example: if news is "Nvidia strong AI demand", ai_take should be "TSMC และ SK Hynix จะได้ order HBM เพิ่ม ไม่ใช่แค่ NVDA"\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10\n7. watch = สำหรับข่าว geopolitical/ตะวันออกกลาง ให้ใส่: Crude Oil, Brent Oil, Middle East Risk, Hormuz Strait — สำหรับข่าวเศรษฐกิจ: FOMC CPI NFP GDP or TICKER+Earnings';
+  const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n1. ALL text fields must be Thai — translate English headlines immediately\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news.\n3. ai_take = one specific second-order insight NOT mentioned in the headline. Example: if news is "Nvidia strong AI demand", ai_take should be "TSMC และ SK Hynix จะได้ order HBM เพิ่ม ไม่ใช่แค่ NVDA"\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings';
   const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","ai_take":"insight ที่ไม่อยู่ใน headline — second-order effect เฉพาะข่าวนี้ สอดคล้องกับ sentiment จริงของข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"เพราะอะไร","watch":"FOMC/CPI/NFP/GDP หรือ TICKER+Earnings","read_game":"second-order effect ที่คนส่วนใหญ่มองข้าม","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   try{
@@ -15526,11 +15526,7 @@ function _renderEliteModal(idx){
       ${(()=>{
         const sent = n.sentiment||'neutral';
         const conf = n.confidence_score||n.confidence||0;
-        // ถ้า confidence ต่ำ (<50) ให้ cap sentiment ไม่ให้สูงเกิน 50+conf/2
-        // เช่น conf=29 → max sentiment = 64% ไม่ใช่ 71%
-        const maxSentiment = conf < 50 ? Math.round(50 + conf/2) : conf;
-        const rawBullPct = sent==='bullish'?conf:sent==='bearish'?(100-conf):50;
-        const bullPct = sent==='neutral'?50:(sent==='bullish'?Math.min(rawBullPct,maxSentiment):Math.max(rawBullPct,100-maxSentiment));
+        const bullPct = sent==='bullish'?conf:sent==='bearish'?(100-conf):50;
         const bearPct = 100-bullPct;
         const sentColor = sent==='bullish'?'#00e676':sent==='bearish'?'#ff4d6a':'#c9a84c';
         const sentLabel = sent==='bullish'?'Bullish':sent==='bearish'?'Bearish':'Neutral';
@@ -15800,7 +15796,7 @@ async function analyzePortfolioImpact(personId, btn){
 //  ELITE: Auto-fetch Economic Calendar from Finnhub
 //  อัปเดตอัตโนมัติ + merge กับ hardcode events
 // ══════════════════════════════════════════════
-const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v9';
+const ELITE_EVENTS_CACHE_KEY = '_elite_econ_cache_v10'; // bump เพื่อล้าง cache เก่าที่ไม่มีข้อมูลย้อนหลัง
 const ELITE_EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ชั่วโมง
 
 // Event map — รองรับ ForexFactory title format
@@ -15875,7 +15871,7 @@ async function fetchEliteEconomicCalendar(){
     if(cached && Date.now()-cached.ts < ELITE_EVENTS_CACHE_TTL) return cached.events;
   }catch{}
 
-  const from = new Date().toISOString().slice(0,10);
+  const from = new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,10); // ย้อนหลัง 7 วัน เพื่อแสดง event ที่ประกาศแล้ว
   const to   = new Date(Date.now()+90*24*60*60*1000).toISOString().slice(0,10);
 
   // ── รวม events จากทุก source แล้วค่อย dedup ──
@@ -15910,7 +15906,7 @@ async function fetchEliteEconomicCalendar(){
           impact:'high', country:'US',
           forecast: ev.TEForecast||ev.Forecast||'',
           previous: ev.Previous||''
-        })).filter(ev=>ev.event && ev.date && ev.date>=from);
+        })).filter(ev=>ev.event && ev.date && ev.date>=from && ev.date<=to);
         raw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
         console.log('[cal] TradingEconomics added, total:',allRawEvents.length);
       }
@@ -15986,7 +15982,7 @@ async function fetchEliteEconomicCalendar(){
     const key = ev.title+'|'+ev.date;
     if(seen.has(key)) return false;
     seen.add(key); return true;
-  }).filter(ev=>ev.date>=from).sort((a,b)=>a.date.localeCompare(b.date));
+  }).filter(ev=>ev.date>=from && ev.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
 
   console.log('[cal] final merged events:',events.length);
 
@@ -16047,7 +16043,7 @@ async function initEliteCalendar(){
   if(grid) grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">⏳ กำลังดึงข้อมูล Economic Calendar...</div>';
 
   // ล้าง cache เก่าทุก version
-  ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6','_elite_econ_cache_v7','_elite_econ_cache_v8'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+  ['_elite_econ_cache_v3','_elite_econ_cache_v4','_elite_econ_cache_v5','_elite_econ_cache_v6','_elite_econ_cache_v7','_elite_econ_cache_v8','_elite_econ_cache_v9'].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
 
   const apiEvents = await fetchEliteEconomicCalendar();
 
@@ -16118,7 +16114,17 @@ function renderEliteEvents(){
     'Cloud':   'rgba(100,210,255,0.1)|rgba(100,210,255,0.25)|var(--ice)',
     'EV':      'rgba(0,230,118,0.1)|rgba(0,230,118,0.25)|var(--green)',
   };
-  grid.innerHTML = ELITE_EVENTS.map((ev,idx) => {
+  // เรียง: past events (ล่าสุดก่อน) แล้วค่อย upcoming
+  const sortedEvents = [...ELITE_EVENTS].sort((a,b)=>{
+    const da = new Date((a.date||'')+'T'+(a.time||'00:00')+':00');
+    const db = new Date((b.date||'')+'T'+(b.time||'00:00')+':00');
+    const aPast = da < now, bPast = db < now;
+    if(aPast && !bPast) return 1;   // past ไปอยู่ท้าย
+    if(!aPast && bPast) return -1;  // upcoming ขึ้นมาก่อน
+    if(!aPast && !bPast) return da - db; // upcoming เรียงเวลา
+    return db - da; // past เรียงล่าสุดก่อน
+  });
+  grid.innerHTML = sortedEvents.map((ev,idx) => {
     // parse date ให้ถูกต้องทุก platform
     const datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
     const timePart = (ev.time||'').slice(0,5)||'00:00';
@@ -16169,7 +16175,7 @@ function renderEliteEvents(){
 
   // Auto-show cached forecast สำหรับ upcoming events ใน 14 วัน
   setTimeout(()=>{
-    ELITE_EVENTS.forEach((ev, idx)=>{
+    sortedEvents.forEach((ev, idx)=>{
       const datePart = (ev.date||'').slice(0,10);
       const evDate = new Date(datePart+'T00:00:00');
       if(isNaN(evDate.getTime())) return;
@@ -16186,10 +16192,12 @@ function renderEliteEvents(){
       }
     });
   }, 400);
+  // เก็บ sortedEvents ไว้ใช้ใน summarizeEvent/forecastEvent
+  window._eliteSortedEvents = sortedEvents;
 }
 
 async function summarizeEvent(idx, btn){
-  const ev = ELITE_EVENTS[idx];
+  const ev = (window._eliteSortedEvents||ELITE_EVENTS)[idx];
   const evId = 'ev-summary-'+idx;
   const box = document.getElementById(evId);
   if(!box) return;
@@ -16302,7 +16310,7 @@ async function summarizeEvent(idx, btn){
 }
 
 async function forecastEvent(idx, btn){
-  const ev = ELITE_EVENTS[idx];
+  const ev = (window._eliteSortedEvents||ELITE_EVENTS)[idx];
   const evId = 'ev-summary-'+idx;
   const box = document.getElementById(evId);
   if(!box) return;
