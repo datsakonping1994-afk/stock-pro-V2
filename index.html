@@ -15838,6 +15838,8 @@ function _mapFinnhubEvent(ev){
         time:    ev.time||'',
         forecast: ev.forecast||'',
         previous: ev.previous||'',
+        actual:   (ev.actual!==undefined && ev.actual!==null) ? ev.actual : '',
+        unit:     ev.unit||'',
         logo:    '',
         markets: mapped.tags,
         _fromAPI: true,
@@ -15856,6 +15858,8 @@ function _mapFinnhubEvent(ev){
       time:     ev.time||'',
       forecast: ev.forecast||'',
       previous: ev.previous||'',
+      actual:   (ev.actual!==undefined && ev.actual!==null) ? ev.actual : '',
+      unit:     ev.unit||'',
       logo:     '',
       markets:  ['SP500','Economy'],
       _fromAPI: true,
@@ -15905,7 +15909,9 @@ async function fetchEliteEconomicCalendar(){
           time:  ev.Hour||ev.time||'',
           impact:'high', country:'US',
           forecast: ev.TEForecast||ev.Forecast||'',
-          previous: ev.Previous||''
+          previous: ev.Previous||'',
+          actual:   (ev.Actual!==undefined && ev.Actual!==null) ? ev.Actual : '',
+          unit:     ev.Unit||''
         })).filter(ev=>ev.event && ev.date && ev.date>=from && ev.date<=to);
         raw.map(_mapFinnhubEvent).filter(Boolean).forEach(e=>allRawEvents.push(e));
         console.log('[cal] TradingEconomics added, total:',allRawEvents.length);
@@ -15926,7 +15932,7 @@ async function fetchEliteEconomicCalendar(){
         if(Array.isArray(data)){
           data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
             const dt = new Date(ev.date);
-            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'', actual:(ev.actual!==undefined&&ev.actual!==null)?ev.actual:'' });
           });
         }
       }catch{}
@@ -15946,7 +15952,7 @@ async function fetchEliteEconomicCalendar(){
         if(Array.isArray(data)){
           data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
             const dt = new Date(ev.date);
-            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'', actual:(ev.actual!==undefined&&ev.actual!==null)?ev.actual:'' });
           });
         }
       }catch{}
@@ -15967,7 +15973,7 @@ async function fetchEliteEconomicCalendar(){
         if(Array.isArray(data)){
           data.filter(ev=>ev.impact==='High' && ev.country==='USD').forEach(ev=>{
             const dt = new Date(ev.date);
-            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'' });
+            ffRaw.push({ event:ev.title, date:dt.toISOString().slice(0,10), time:dt.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}), impact:'high', country:'US', forecast:ev.forecast||'', previous:ev.previous||'', actual:(ev.actual!==undefined&&ev.actual!==null)?ev.actual:'' });
           });
         }
       }catch{}
@@ -15992,14 +15998,14 @@ async function fetchEliteEconomicCalendar(){
     const now2 = new Date();
     function _addDays(ds, n){ return new Date(new Date(ds).getTime()+n*86400000).toISOString().slice(0,10); }
     function _nextFriday(fromDate){
-      const d = new Date(fromDate); d.setDate(d.getDate()+1);
-      while(d.getDay()!==5) d.setDate(d.getDate()+1);
+      const d = new Date(fromDate); d.setUTCDate(d.getUTCDate()+1);
+      while(d.getUTCDay()!==5) d.setUTCDate(d.getUTCDate()+1);
       return d.toISOString().slice(0,10);
     }
     // NFP = first Friday of each month
     function _firstFridayOfMonth(yr, mo){
-      const d = new Date(yr, mo-1, 1);
-      while(d.getDay()!==5) d.setDate(d.getDate()+1);
+      const d = new Date(Date.UTC(yr, mo-1, 1));
+      while(d.getUTCDay()!==5) d.setUTCDate(d.getUTCDate()+1);
       return d.toISOString().slice(0,10);
     }
     const existingTitles = new Set(events.map(e=>e.title));
@@ -16226,17 +16232,43 @@ async function summarizeEvent(idx, btn){
     const cached = (() => { try { const c = JSON.parse(localStorage.getItem(cacheKey)||'null'); return c && (Date.now()-c.ts < 30*60*1000) ? c.text : null; } catch{ return null; } })();
 
     let text = cached;
+    let usedAI = '';
+
+    // ── ตรวจว่ามีตัวเลข "actual" จริงจาก calendar API แล้วหรือยัง ──
+    const hasActual = ev.actual !== undefined && ev.actual !== null && String(ev.actual).trim() !== '';
+    const unitStr = ev.unit ? ev.unit : '';
+    const factsLines = [];
+    if(hasActual) factsLines.push(`ผลจริงที่ประกาศ: ${ev.actual}${unitStr}`);
+    if(ev.forecast) factsLines.push(`ตลาดคาดการณ์ไว้: ${ev.forecast}${unitStr}`);
+    if(ev.previous) factsLines.push(`ครั้งก่อนหน้า: ${ev.previous}${unitStr}`);
+    const facts = factsLines.join('\n');
+
     if(!text){
-      const prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}
+      let prompt;
+      if(hasActual){
+        // ── มีข้อมูลจริงจาก API แล้ว — ให้ AI วิเคราะห์ผลกระทบจากตัวเลขจริงเท่านั้น ห้ามเดา ──
+        prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}
+ข้อมูลจริงจากตลาด (ใช้ตัวเลขนี้เท่านั้น ห้ามเดาหรืออ้างตัวเลขอื่นนอกเหนือจากนี้):
+${facts}
+
+วิเคราะห์เป็นภาษาไทย ให้ครอบคลุม:
+1. ผลที่ออกมาดีกว่าหรือแย่กว่าคาดอย่างไร (เทียบจากตัวเลขข้างต้น)
+2. ตลาดหุ้น/ค่าเงิน/สินค้าโภคภัณฑ์น่าจะตอบสนองอย่างไร
+3. หุ้นหรือสินทรัพย์ไหนได้ประโยชน์ หรือเสียประโยชน์
+4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
+ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
+      } else {
+        // ── ยังไม่มี actual จาก API — ให้ Claude+web search ค้นหาเท่านั้น (ตัวเดียวที่เข้าเว็บได้จริง) ──
+        prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}
 ค้นหาและสรุปผลการรายงาน/ประกาศที่เกิดขึ้นจริง ตอบเป็นภาษาไทย ให้ครอบคลุม:
 1. ผลที่ออกมาคืออะไร (ตัวเลข/มติ/ประกาศ)
 2. ตลาดหุ้น/ค่าเงิน/สินค้าโภคภัณฑ์ตอบสนองอย่างไร
 3. หุ้นหรือสินทรัพย์ไหนได้ประโยชน์ หรือเสียประโยชน์
 4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
-ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
+ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค ถ้าค้นหาไม่พบผลจริง ให้ตอบว่า "ยังไม่พบผลประกาศอย่างเป็นทางการ" เท่านั้น ห้ามเดาตัวเลข`;
+      }
 
-      // Try Claude with web_search first, fallback to Groq/Gemini
-      let usedAI = '';
+      // Claude with web_search — ใช้ได้ทั้งสองกรณี (กรณีมี actual ใช้แค่วิเคราะห์ ไม่ค้นเว็บก็ได้แต่ส่ง tool ไปด้วยไม่เป็นไร)
       if(_ank){
         try{
           const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
@@ -16254,8 +16286,11 @@ async function summarizeEvent(idx, btn){
           usedAI = 'Claude';
         }catch(e){ console.warn('[elite:claude]',e.message); }
       }
-      // Groq fallback
-      if(!text){
+
+      // ── Groq/Gemini fallback: ใช้ได้เฉพาะตอนมีตัวเลขจริง (hasActual) ──
+      // เพราะสองตัวนี้ไม่มี web search ถ้าไม่มีตัวเลขจริงให้แล้ว จะเดาตัวเลขเอง (hallucinate)
+      if(!text && hasActual){
+        // Groq fallback
         const groqKey=localStorage.getItem('groqKey')||localStorage.getItem('groqKey2')||'';
         if(groqKey){
           try{
@@ -16269,32 +16304,43 @@ async function summarizeEvent(idx, btn){
             usedAI = 'Groq';
           }catch(e){ console.warn('[elite:groq]',e.message); }
         }
-      }
-      // Gemini fallback
-      if(!text){
-        const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
-        if(gemKey){
-          try{
-            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
-              method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-            }, 12000);
-            const gmd = await gem.json();
-            if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.[0]?.text||'';
-            usedAI = 'Gemini';
-          }catch(e){ console.warn('[elite:gemini]',e.message); }
+        // Gemini fallback
+        if(!text){
+          const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
+          if(gemKey){
+            try{
+              const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+                method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+              }, 12000);
+              const gmd = await gem.json();
+              if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.[0]?.text||'';
+              usedAI = 'Gemini';
+            }catch(e){ console.warn('[elite:gemini]',e.message); }
+          }
         }
       }
       if(text) try{ localStorage.setItem(cacheKey, JSON.stringify({text, ts:Date.now()})); }catch{}
     }
 
     if(!text){
-      box.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px">ไม่พบข้อมูลสรุป</div>`;
+      if(hasActual){
+        // ไม่มี AI ให้วิเคราะห์ แต่มีตัวเลขจริงจาก API — แสดงตัวเลขดิบไปก่อน
+        box.innerHTML = `
+          <div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.18);border-radius:10px;padding:11px 12px">
+            <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:7px">📋 ผลจริงจากตลาด</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.8">${facts.replace(/\n/g,'<br>')}</div>
+          </div>`;
+      } else {
+        box.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px">⏳ ยังไม่มีข้อมูลผลประกาศจริงในระบบขณะนี้ ลองใหม่อีกครั้งภายหลัง</div>`;
+      }
     } else {
       const html = text.replace(/\n/g,'<br>');
+      const factsHtml = hasActual ? `<div style="font-size:10px;color:var(--text3);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06)">${facts.replace(/\n/g,' · ')}</div>` : '';
       box.innerHTML = `
         <div style="background:rgba(100,210,255,0.06);border:1px solid rgba(100,210,255,0.18);border-radius:10px;padding:11px 12px">
           <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);letter-spacing:1px;margin-bottom:7px">📋 สรุปผลการรายงาน${cached?' · <span style="color:var(--text3);font-weight:400">cache</span>':usedAI?' · <span style="color:var(--text3);font-weight:400">'+usedAI+'</span>':''}</div>
+          ${factsHtml}
           <div style="font-size:11px;color:var(--text2);line-height:1.8">${html}</div>
         </div>`;
     }
