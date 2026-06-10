@@ -14,7 +14,7 @@ const CORS = {
 
 const ELITE_PEOPLE_DEFAULT = [
   { id: 'trump',    name: 'Donald Trump',       emoji: '🔴', role: 'US President' },
-  { id: 'powell',   name: 'Jerome Powell',       emoji: '🔴', role: 'Fed Chair' },
+  { id: 'powell',   name: 'Kevin Warsh',         emoji: '🔴', role: 'Fed Chair' },
   { id: 'jensen',   name: 'Jensen Huang',        emoji: '🟢', role: 'NVIDIA CEO' },
   { id: 'cook',     name: 'John Ternus',          emoji: '🟢', role: 'Apple CEO' },
   { id: 'musk',     name: 'Elon Musk',           emoji: '🟡', role: 'Tesla/SpaceX CEO' },
@@ -37,7 +37,7 @@ const ELITE_PEOPLE_DEFAULT = [
 
 const WIKI_PAGES = {
   trump:    'Donald_Trump',
-  powell:   'Jerome_Powell',
+  powell:   'Kevin_Warsh',
   jensen:   'Jensen_Huang',
   cook:     'Apple_Inc.',
   musk:     'Elon_Musk',
@@ -109,7 +109,7 @@ let ELITE_PEOPLE = ELITE_PEOPLE_DEFAULT;
 
 const NEWS_QUERIES = {
   trump:    'Donald Trump policy economy markets',
-  powell:   'Jerome Powell Federal Reserve interest rates',
+  powell:   'Kevin Warsh Federal Reserve interest rates',
   jensen:   'Jensen Huang NVIDIA AI chips earnings',
   xi:       'Xi Jinping China economy policy',
   musk:     'Elon Musk Tesla SpaceX',
@@ -643,7 +643,7 @@ async function runEliteScan(env) {
 
 🎯 กฎการเลือก id (บังคับ -- แก้ปัญหา id ไม่ตรงกับเนื้อข่าว):
 id ของบุคคลต้องผูกกับข่าวที่เป็น "การกระทำ คำพูด คำสั่ง การประกาศ หรือการตัดสินใจของบุคคลนั้นโดยตรง" เท่านั้น
-ตัวอย่างที่ถูกต้อง: "Trump ประกาศภาษีนำเข้าใหม่", "Powell แถลง Fed คงดอกเบี้ย", "Musk เปิดตัวผลิตภัณฑ์ใหม่"
+ตัวอย่างที่ถูกต้อง: "Trump ประกาศภาษีนำเข้าใหม่", "Warsh แถลง Fed คงดอกเบี้ย", "Musk เปิดตัวผลิตภัณฑ์ใหม่"
 ตัวอย่างที่ผิด: ข่าว "ตลาดหุ้นร่วงเพราะความกังวลสงคราม" หรือข่าวมหภาคทั่วไปที่แค่ "พาดพิงถึง" ประเทศ/องค์กรที่บุคคลนั้นเกี่ยวข้อง แต่ไม่มีการกระทำของบุคคลนั้นเอง
 ถ้าข่าวเป็นข่าวมหภาค/ผลกระทบทั่วไปที่ไม่มีการกระทำของบุคคลใน ELITE_PEOPLE โดยตรง -- ห้าม return item นั้น (ข้ามทิ้งไปเลย)
 
