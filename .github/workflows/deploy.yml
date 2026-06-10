@@ -25,11 +25,13 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy workers/worker-elite.js --name=stock-elite --compatibility-date=2024-01-01
+          workingDirectory: workers
+          command: deploy worker-elite.js --name=stock-elite --compatibility-date=2024-01-01
 
       - name: Deploy stock-brief Worker
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy workers/worker-brief.js --name=stock-brief --compatibility-date=2024-01-01
+          workingDirectory: workers
+          command: deploy worker-brief.js --name=stock-brief --compatibility-date=2024-01-01
