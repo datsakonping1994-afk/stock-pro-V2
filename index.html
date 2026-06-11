@@ -2911,7 +2911,7 @@ function makeCard(s){
         ${(()=>{
           const _rv=s.revLive||s.rev||null;
           const _rvNum=parseFloat(_rv||0);
-          const _negBase=s._revNegBase||(_rv&&_rvNum>200);
+          const _negBase=!!s._revNegBase;
           const _disp=_rv?(_negBase?_rvNum.toFixed(1)+'%*':_rv):'N/A';
           const _col=!_rv?'var(--text3)':_negBase?'var(--gold)':_rvNum>0?'var(--green2)':'var(--red)';
           const _lbl=_negBase?'Rev Growth *':'Rev Growth';
