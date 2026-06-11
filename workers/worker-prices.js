@@ -354,6 +354,33 @@ function daysToFromTo(days) {
   return { from: fmt(from), to: fmt(to) };
 }
 
+// ── Yahoo incomeStatementHistoryQuarterly helper (ใช้ฝั่ง Worker เพื่อหลีกเลี่ยง CORS)
+// คืน { revGrowth, revLatestQ } -- revLatestQ = totalRevenue ของไตรมาสล่าสุด (raw, USD)
+async function getRevenueFromYahoo(ticker) {
+  let revGrowth = null, revLatestQ = null;
+  try {
+    const yhTicker = ticker.replace('.', '-');
+    const yr = await fetch(
+      `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (yr.ok) {
+      const yd = await yr.json();
+      const qtrs = yd?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
+      const r0 = qtrs[0]?.totalRevenue?.raw;
+      const r4 = qtrs[4]?.totalRevenue?.raw;
+      if (r0 != null && isFinite(r0)) revLatestQ = r0;
+      if (r0 != null && r4 != null && r4 !== 0 && isFinite(r0) && isFinite(r4)) {
+        const yoy = (r0 - r4) / Math.abs(r4) * 100;
+        if (isFinite(yoy) && yoy >= -100 && yoy <= 5000) {
+          revGrowth = r4 < 0 ? null : +(yoy.toFixed(1));
+        }
+      }
+    }
+  } catch {}
+  return { revGrowth, revLatestQ };
+}
+
 export default {
   async fetch(req, env, ctx) {
     const cors = {
@@ -843,21 +870,10 @@ export default {
           const d = await r.json();
           const m = d?.metric || {};
 
-          let revGrowth = null;
-          try {
-            const yhTicker = ticker.replace('.', '-');
-            const yr = await fetch(
-              `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=financialData`,
-              { signal: AbortSignal.timeout(4000) }
-            );
-            if (yr.ok) {
-              const yd = await yr.json();
-              const rg = yd?.quoteSummary?.result?.[0]?.financialData?.revenueGrowth?.raw;
-              if (rg != null && rg >= -1.0 && rg <= 50.0) {
-                revGrowth = +(rg * 100).toFixed(1);
-              }
-            }
-          } catch {}
+          // FIX: ดึง revGrowth + revLatestQ (totalRevenue ไตรมาสล่าสุด) จาก
+          // incomeStatementHistoryQuarterly ฝั่ง Worker เลย -- ไม่มีปัญหา CORS
+          // (แก้ปัญหา "Revenue (ล่าสุด)" ขึ้น N/A ที่ฝั่งแอปดึงผ่าน proxy แล้วล้มเหลวบ่อย)
+          const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker);
 
           const result = {
             pe: m['peNormalizedAnnual']||m['peTTM']||null,
@@ -865,6 +881,7 @@ export default {
             beta: m['beta']||null,
             eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
             revGrowth,
+            revLatestQ,
             div: m['dividendYieldIndicatedAnnual']||null,
             high52: m['52WeekHigh']||null,
             low52: m['52WeekLow']||null,
@@ -898,26 +915,10 @@ export default {
             const d = await r.json();
             const m = d?.metric || {};
 
-            let revGrowth = null;
-            try {
-              const yhTicker = ticker.replace('.', '-');
-              const yr = await fetch(
-                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
-                { signal: AbortSignal.timeout(5000) }
-              );
-              if (yr.ok) {
-                const yd = await yr.json();
-                const qtrs = yd?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
-                const r0 = qtrs[0]?.totalRevenue?.raw;
-                const r4 = qtrs[4]?.totalRevenue?.raw;
-                if (r0 != null && r4 != null && r4 !== 0 && isFinite(r0) && isFinite(r4)) {
-                  const yoy = (r0 - r4) / Math.abs(r4) * 100;
-                  if (isFinite(yoy) && yoy >= -100 && yoy <= 5000) {
-                    revGrowth = r4 < 0 ? null : +(yoy.toFixed(1));
-                  }
-                }
-              }
-            } catch {}
+            // FIX: ดึง revGrowth + revLatestQ (totalRevenue ไตรมาสล่าสุด) จาก
+            // incomeStatementHistoryQuarterly ฝั่ง Worker เลย -- ไม่มีปัญหา CORS
+            // (แก้ปัญหา "Revenue (ล่าสุด)" ขึ้น N/A ที่ฝั่งแอปดึงผ่าน proxy แล้วล้มเหลวบ่อย)
+            const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker);
 
             const result = {
               pe: m['peNormalizedAnnual']||m['peTTM']||null,
@@ -925,6 +926,7 @@ export default {
               beta: m['beta']||null,
               eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
               revGrowth,
+              revLatestQ,
               div: m['dividendYieldIndicatedAnnual']||null,
               high52: m['52WeekHigh']||null,
               low52: m['52WeekLow']||null,
