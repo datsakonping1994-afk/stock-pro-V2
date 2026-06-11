@@ -1818,10 +1818,15 @@ async function initLiveData(){
                 const yoy = (r0 - r4) / Math.abs(r4) * 100;
                 if(isFinite(yoy) && yoy >= -100 && yoy <= 5000){
                   const negBase = r4 < 0;
-                  s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
-                  s._revNegBase = negBase;
-                  s._revFromWorker = false; // ยืนยันว่าคำนวณจาก quarterly จริงแล้ว
-                  if(typeof renderStocks==='function') renderStocks();
+                  // ── ใช้ค่านี้เป็น fallback เท่านั้น ──
+                  // financialData.revenueGrowth จาก Worker (s._revFromWorker) อิงฐานเดียวกับ
+                  // ตัวเลขที่บริษัทประกาศจริง (Net Revenue) แม่นยำกว่า incomeStatementHistoryQuarterly.totalRevenue
+                  // ซึ่งสำหรับบริษัทการเงิน (เช่น SOFI) อาจคนละฐานทำให้ % เพี้ยนสูงผิดปกติ
+                  if(!s._revFromWorker){
+                    s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
+                    s._revNegBase = negBase;
+                    if(typeof renderStocks==='function') renderStocks();
+                  }
                 }
               }
             }catch(e){ /* keep existing revLive */ }
@@ -7108,7 +7113,8 @@ setTimeout(async()=>{
           if(m.beta!=null) s.betaLive=+m.beta.toFixed(2);
           // ไม่ overwrite revLive ถ้าคำนวณจาก quarterly YoY แล้ว (ไม่มี * = ค่าที่เชื่อได้)
           if(m.revGrowth!=null && (!s.revLive || s._revNegBase)){
-            const rg=_normalizeRevGrowth(m.revGrowth); if(rg!=null) s.revLive=rg;
+            const rg=_normalizeRevGrowth(m.revGrowth);
+            if(rg!=null){ s.revLive=rg; s._revFromWorker=true; s._revNegBase=false; }
           }
         }
         // re-render cards ให้เห็นข้อมูลใหม่
