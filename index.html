@@ -1613,20 +1613,37 @@ function _fetchWithTimeout(url, options, ms=15000){
 }
 
 // ── _fetchYahooQuoteSummary: v10/quoteSummary ไม่รองรับ CORS จากเบราว์เซอร์โดยตรง
-// → ลอง direct fetch ก่อน (เผื่อบาง endpoint/บาง browser ใช้ได้) แล้ว fallback ไป CORS proxy ──
+// → ลอง direct fetch ก่อน (เผื่อบาง endpoint/บาง browser ใช้ได้) แล้ว fallback ไป CORS proxy หลายตัว
+// FIX: เพิ่ม proxy สำรองหลายตัว (proxy เดียวเดิมล่ม/โดน rate limit บ่อย ทำให้
+// incomeStatementHistoryQuarterly ดึงไม่ได้ → s.revLatestQ เป็น null → "Revenue (ล่าสุด)" ขึ้น N/A) ──
+const _QUOTESUMMARY_PROXIES = [
+  url=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url=>`https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url=>`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url=>`https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+];
 async function _fetchYahooQuoteSummary(yhTicker, modules, ms=6000){
   const target = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=${modules}`;
+  // 1. ลอง direct fetch ก่อน (เผื่อบาง endpoint/บาง browser ใช้ได้)
   try{
     const r = await fetch(target, {signal:AbortSignal.timeout(ms)});
     const j = await r.json();
     if(j?.quoteSummary?.result) return j;
   }catch(e){ /* CORS หรือ network error — ลอง proxy ต่อ */ }
-  try{
-    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
-    const r2 = await fetch(proxied, {signal:AbortSignal.timeout(ms)});
-    const j2 = await r2.json();
-    if(j2?.quoteSummary?.result) return j2;
-  }catch(e){ /* proxy ก็ไม่ได้ — ส่ง null กลับ */ }
+  // 2. ลองผ่าน CORS proxy หลายตัว วนจนกว่าจะได้ข้อมูล
+  for(const mkProxy of _QUOTESUMMARY_PROXIES){
+    try{
+      const r2 = await fetch(mkProxy(target), {signal:AbortSignal.timeout(ms)});
+      if(!r2.ok) continue;
+      let j2 = null;
+      const txt = await r2.text();
+      try{ j2 = JSON.parse(txt); }catch{ continue; }
+      // allorigins /get ห่อ response ไว้ใน {contents:'...'}
+      if(j2?.contents){ try{ j2 = JSON.parse(j2.contents); }catch{ continue; } }
+      if(j2?.quoteSummary?.result) return j2;
+    }catch(e){ /* proxy นี้ไม่ได้ — ลองตัวถัดไป */ }
+  }
   return null;
 }
 
