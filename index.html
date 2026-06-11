@@ -13915,13 +13915,97 @@ function _detectRumor(headline,summary){
   const rumorPatterns=[
     /report(edly|s)?|unconfirmed|alleged|rumor|sources? (say|claim|suggest)/i,
     /could|might|may|possibly|potentially|expected to/i,
-    /anonymous|unnamed source/i
+    /anonymous|unnamed source/i,
+    /รายงานว่า|มีรายงาน|ยังไม่ยืนยัน|มีข่าวลือ|คาดว่า|อาจจะ|มีแนวโน้มว่า|แหล่งข่าวไม่เปิดเผย/
   ];
   const text=((headline||'')+' '+(summary||'')).toLowerCase();
   const matches=rumorPatterns.filter(p=>p.test(text)).length;
   if(matches>=2) return 'rumor';
   if(matches===1) return 'unverified';
   return 'confirmed';
+}
+
+// แปลง URL เป็นชื่อแหล่งข่าวที่อ่านง่าย
+const SOURCE_DISPLAY_NAMES = {
+  'reuters.com':'Reuters','bloomberg.com':'Bloomberg','ft.com':'Financial Times','wsj.com':'WSJ',
+  'apnews.com':'AP News','bbc.com':'BBC','cnbc.com':'CNBC','economist.com':'The Economist',
+  'nytimes.com':'NY Times','washingtonpost.com':'Washington Post','marketwatch.com':'MarketWatch',
+  'thehill.com':'The Hill','axios.com':'Axios','politico.com':'Politico',
+  'businessinsider.com':'Business Insider','yahoo.com':'Yahoo Finance','msn.com':'MSN',
+  'twitter.com':'X (Twitter)','x.com':'X (Twitter)','reddit.com':'Reddit'
+};
+function _getSourceDisplayName(url){
+  if(!url) return null;
+  try{
+    const host=new URL(url).hostname.replace('www.','');
+    for(const [domain,name] of Object.entries(SOURCE_DISPLAY_NAMES)){
+      if(host===domain||host.endsWith('.'+domain)) return name;
+    }
+    return host;
+  }catch{ return null; }
+}
+
+// ════════════════════════════════════════════════════════════
+// CONFIDENCE FACTORS — เหตุผลประกอบ confidence score ให้ผู้ใช้เห็นที่มา
+// ════════════════════════════════════════════════════════════
+function _buildConfidenceFactors(sourceQuality,sourcesCount,rumorStatus,impactScore,sourceUrl){
+  const factors=[];
+  const srcName=_getSourceDisplayName(sourceUrl);
+  // แหล่งข่าว
+  if(sourceQuality>=85){
+    factors.push({ok:true, text:`แหล่งข่าวน่าเชื่อถือสูง${srcName?' ('+srcName+')':''}`});
+  } else if(sourceQuality>=70){
+    factors.push({ok:true, text:`แหล่งข่าวน่าเชื่อถือ${srcName?' ('+srcName+')':''}`});
+  } else {
+    factors.push({ok:false, text:`แหล่งข่าวความน่าเชื่อถือไม่สูง${srcName?' ('+srcName+')':''} หรือไม่ระบุแหล่งชัดเจน`});
+  }
+  // จำนวนแหล่งยืนยัน
+  if(sourcesCount>=2){
+    factors.push({ok:true, text:`ยืนยันข้ามแหล่งข่าว (${sourcesCount} แหล่ง)`});
+  } else {
+    factors.push({ok:false, text:'ยังมีแหล่งข่าวเดียว ยังไม่ยืนยันไขว้'});
+  }
+  // สถานะข่าวลือ/ทางการ
+  if(rumorStatus==='rumor'){
+    factors.push({ok:false, text:'มีลักษณะเป็นข่าวลือ ยังไม่มีแหล่งทางการยืนยัน'});
+  } else if(rumorStatus==='unverified'){
+    factors.push({ok:false, text:'ยังไม่มีการยืนยันอย่างเป็นทางการ (ใช้คำว่า "คาดว่า/รายงานว่า")'});
+  } else {
+    factors.push({ok:true, text:'ไม่มีคำบ่งชี้ว่าเป็นข่าวลือ/ยังไม่ยืนยัน'});
+  }
+  // impact สูงแต่แหล่งเดียว
+  if(impactScore>=9 && sourcesCount<2){
+    factors.push({ok:false, text:'ข่าว impact สูงแต่มาจากแหล่งเดียว ควรรอการยืนยันเพิ่มก่อนตัดสินใจ'});
+  }
+  return factors;
+}
+
+// ════════════════════════════════════════════════════════════
+// IMPACT SCORE FORMULA — กระทบตลาด 40% + ความเร่งด่วน 30% + ความน่าเชื่อถือ 30%
+// ════════════════════════════════════════════════════════════
+const URGENCY_BY_EVENT_TYPE = {
+  'fomc':9,'rate_decision':9,'central_bank':9,'geopolitical':9,
+  'inflation_data':8,'jobs_data':8,'gdp_data':8,'crypto':8,
+  'trade_policy':6,'political':6,'energy':6,'tech_ai':6,
+  'earnings':4,'m_and_a':4,
+};
+function _calcUrgencyScore(eventTypes){
+  if(!eventTypes||!eventTypes.length) return 5;
+  const scores=eventTypes.map(et=>URGENCY_BY_EVENT_TYPE[et]).filter(s=>s!=null);
+  if(!scores.length) return 5;
+  return Math.max(...scores);
+}
+function _buildImpactScore(aiImpact,eventTypes,confidenceScore){
+  const marketScore=Math.min(10,Math.max(1,Number(aiImpact)||5));
+  const urgencyScore=_calcUrgencyScore(eventTypes);
+  const credibilityScore=Math.round((Number(confidenceScore)||50)/10);
+  const final=Math.round(marketScore*0.4 + urgencyScore*0.3 + credibilityScore*0.3);
+  const factors=[
+    {label:'กระทบตลาด', score:marketScore, weight:40},
+    {label:'ความเร่งด่วน', score:urgencyScore, weight:30},
+    {label:'ความน่าเชื่อถือ', score:credibilityScore, weight:30},
+  ];
+  return {score:Math.min(10,Math.max(1,final)), factors};
 }
 function _buildVerifiedStatus(sourceQuality,rumorStatus,sourcesCount){
   if(rumorStatus==='rumor'||sourceQuality<50) return 'unverified';
@@ -13948,23 +14032,23 @@ function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScor
 // ENGINE 3: EVENT DETECTION ENGINE
 // ════════════════════════════════════════════════════════════
 const EVENT_DETECTION_RULES=[
-  {keywords:['rate','interest rate','fed funds','basis point','bps'],eventType:'rate_decision',sectors:['Financials','REIT','Utilities']},
-  {keywords:['fomc','federal reserve','powell','monetary policy'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
-  {keywords:['cpi','inflation','consumer price','price index'],eventType:'inflation_data',sectors:['Consumer','Tech','REIT']},
-  {keywords:['nfp','jobs report','payroll','unemployment','labor'],eventType:'jobs_data',sectors:['Consumer','Financials']},
-  {keywords:['gdp','gross domestic','economic growth','recession'],eventType:'gdp_data',sectors:['Broad Market']},
-  {keywords:['earnings','revenue','profit','eps','quarterly result'],eventType:'earnings',sectors:['Company Specific']},
-  {keywords:['tariff','trade war','import tax','sanction','export ban'],eventType:'trade_policy',sectors:['Manufacturing','Tech','Autos']},
-  {keywords:['geopolit','war','conflict','military','invasion','missile'],eventType:'geopolitical',sectors:['Energy','Defense','Gold']},
-  {keywords:['election','vote','president','congress','senate','political'],eventType:'political',sectors:['Broad Market']},
-  {keywords:['deal','merger','acquisition','buyout','takeover'],eventType:'m_and_a',sectors:['Company Specific']},
-  {keywords:['ai','artificial intelligence','llm','model','gpu','chip'],eventType:'tech_ai',sectors:['Tech','Semiconductors']},
-  {keywords:['oil','opec','crude','energy','petroleum','gas'],eventType:'energy',sectors:['Energy','Airlines','Chemicals']},
-  {keywords:['crypto','bitcoin','ethereum','digital asset','blockchain'],eventType:'crypto',sectors:['Fintech','Tech']},
-  {keywords:['fed','central bank','ecb','boj','pboc'],eventType:'central_bank',sectors:['Currencies','Bonds']},
+  {keywords:['rate','interest rate','fed funds','basis point','bps','ดอกเบี้ย','อัตราดอกเบี้ย'],eventType:'rate_decision',sectors:['Financials','REIT','Utilities']},
+  {keywords:['fomc','federal reserve','powell','monetary policy','เฟด','พาวเวล','นโยบายการเงิน','ธนาคารกลางสหรัฐ'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
+  {keywords:['cpi','inflation','consumer price','price index','เงินเฟ้อ','ดัชนีราคาผู้บริโภค'],eventType:'inflation_data',sectors:['Consumer','Tech','REIT']},
+  {keywords:['nfp','jobs report','payroll','unemployment','labor','การจ้างงาน','ตำแหน่งงาน','ว่างงาน','ค่าแรง'],eventType:'jobs_data',sectors:['Consumer','Financials']},
+  {keywords:['gdp','gross domestic','economic growth','recession','จีดีพี','เศรษฐกิจถดถอย','การเติบโตทางเศรษฐกิจ'],eventType:'gdp_data',sectors:['Broad Market']},
+  {keywords:['earnings','revenue','profit','eps','quarterly result','กำไร','รายได้','ผลประกอบการ','งบไตรมาส'],eventType:'earnings',sectors:['Company Specific']},
+  {keywords:['tariff','trade war','import tax','sanction','export ban','ภาษีนำเข้า','สงครามการค้า','มาตรการคว่ำบาตร','กำแพงภาษี'],eventType:'trade_policy',sectors:['Manufacturing','Tech','Autos']},
+  {keywords:['geopolit','war','conflict','military','invasion','missile','สงคราม','ความขัดแย้ง','ทหาร','การรุกราน','ขีปนาวุธ','โจมตี'],eventType:'geopolitical',sectors:['Energy','Defense','Gold']},
+  {keywords:['election','vote','president','congress','senate','political','การเลือกตั้ง','ประธานาธิบดี','สภาคองเกรส','รัฐสภา'],eventType:'political',sectors:['Broad Market']},
+  {keywords:['deal','merger','acquisition','buyout','takeover','ควบรวม','เข้าซื้อกิจการ','ดีล'],eventType:'m_and_a',sectors:['Company Specific']},
+  {keywords:['ai','artificial intelligence','llm','model','gpu','chip','ปัญญาประดิษฐ์','เอไอ','ชิป','จีพียู'],eventType:'tech_ai',sectors:['Tech','Semiconductors']},
+  {keywords:['oil','opec','crude','energy','petroleum','gas','น้ำมัน','พลังงาน','ก๊าซธรรมชาติ'],eventType:'energy',sectors:['Energy','Airlines','Chemicals']},
+  {keywords:['crypto','bitcoin','ethereum','digital asset','blockchain','คริปโต','บิตคอยน์'],eventType:'crypto',sectors:['Fintech','Tech']},
+  {keywords:['fed','central bank','ecb','boj','pboc','ธนาคารกลาง','ดอลลาร์สหรัฐ','ค่าเงินดอลลาร์'],eventType:'central_bank',sectors:['Currencies','Bonds']},
 ];
-function _detectEventTypes(headline,summary){
-  const text=((headline||'')+' '+(summary||'')).toLowerCase();
+function _detectEventTypes(headline,summary,extraText){
+  const text=((headline||'')+' '+(summary||'')+' '+(extraText||'')).toLowerCase();
   const detected=[];
   for(const rule of EVENT_DETECTION_RULES){
     const matchCount=rule.keywords.filter(k=>text.includes(k)).length;
@@ -13996,7 +14080,7 @@ const STOCK_UNIVERSE=new Set([
   'DIS','CMCSA','T','VZ','TMUS',
   'UBER','ABNB','BKNG','MAR','HLT','CCL',
   'GE','MMM','CAT','DE','HON',
-  'TSM','BABA','JD','PDD','NIO','RIVN'
+  'TSM','BABA','JD','PDD','NIO','RIVN','AMBA'
 ]);
 const ETF_EVENT_MAP={
   'fomc':         {up:[],down:['TLT','HYG','LQD','GLD'],neutral:['SPY','QQQ']},
@@ -14058,12 +14142,16 @@ const BENEFICIARY_MAP={
     negative_sentiment:[{t:'XOM',reason:'Exxon supply chain ในพื้นที่ขัดแย้งกระทบการผลิต'},{t:'BABA',reason:'Alibaba กระทบจาก geopolitical tension US-China'}]
   },
   'tech_ai':{
-    positive_sentiment:[{t:'NVDA',reason:'GPU demand เพิ่มจาก AI training workload'},{t:'MSFT',reason:'Azure AI revenue growth จาก enterprise adoption'},{t:'AMD',reason:'AMD MI300X เป็น alternative GPU สำหรับ AI'}],
+    positive_sentiment:[{t:'NVDA',reason:'GPU demand เพิ่มจาก AI training workload'},{t:'MSFT',reason:'Azure AI revenue growth จาก enterprise adoption'},{t:'AMD',reason:'AMD MI300X เป็น alternative GPU สำหรับ AI'},{t:'SMCI',reason:'Super Micro ได้ order server สำหรับ AI data center'},{t:'AMBA',reason:'Ambarella ได้ประโยชน์จาก edge-AI chip demand'}],
     negative_sentiment:[{t:'INTC',reason:'Intel ยังตามหลัง AI chip race ส่วนแบ่งตลาดลดลง'}]
   },
   'energy':{
-    positive_sentiment:[{t:'XOM',reason:'Exxon รายรับโดยตรงจากราคาน้ำมันที่สูงขึ้น'},{t:'CVX',reason:'Chevron กำไร upstream เพิ่มตามราคา crude'}],
+    positive_sentiment:[{t:'XOM',reason:'Exxon รายรับโดยตรงจากราคาน้ำมันที่สูงขึ้น'},{t:'CVX',reason:'Chevron กำไร upstream เพิ่มตามราคา crude'},{t:'OXY',reason:'Occidental ได้ประโยชน์โดยตรงจากราคาน้ำมันที่สูงขึ้น'}],
     negative_sentiment:[{t:'AMZN',reason:'Amazon logistics cost เพิ่มตามราคาน้ำมัน'},{t:'NFLX',reason:'Consumer discretionary กดดันจากพลังงานแพง'}]
+  },
+  'central_bank':{
+    positive_sentiment:[{t:'NVDA',reason:'Fed dovish/ดอลลาร์อ่อน ลด discount rate หนุน valuation หุ้น Growth'},{t:'MSFT',reason:'ต้นทุนทางการเงินถูกลง หนุนการลงทุน Cloud/AI ต่อเนื่อง'}],
+    negative_sentiment:[{t:'JPM',reason:'ดอลลาร์แข็ง/ดอกเบี้ยสูง หนุน Net Interest Margin ของธนาคาร'},{t:'BAC',reason:'Bank of America ได้ประโยชน์จากสภาพแวดล้อมดอกเบี้ยสูง'}]
   },
   'earnings':{
     positive_sentiment:[],
@@ -14074,7 +14162,21 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
   const beneficiaries=[];const seen=new Set();
 
-  // ใช้ข้อมูล stocks_to_monitor จาก AI ก่อน (ถ้ามี reason จาก AI ให้ใช้เลย)
+  // ── ลำดับแรก: Rule Mapping (BENEFICIARY_MAP) ตาม event type ที่ตรวจจับได้ — เฉพาะเจาะจงกว่า AI ทั่วไป ──
+  const key=isPositive?'positive_sentiment':'negative_sentiment';
+  for(const evType of eventTypes){
+    const map=BENEFICIARY_MAP[evType];
+    if(!map||!map[key]) continue;
+    for(const entry of map[key]){
+      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+      beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb'});
+      seen.add(entry.t);
+      if(beneficiaries.length>=3) break;
+    }
+    if(beneficiaries.length>=3) break;
+  }
+
+  // ── เติมจาก stocks_to_monitor ของ AI (ถ้ามี reason เฉพาะข่าวนี้) ──
   const aiMonitor = (aiItem?.stocks_to_monitor||[]).filter(s=>s&&s.t);
   for(const s of aiMonitor){
     const clean=String(s.t).toUpperCase().trim();
@@ -14084,7 +14186,7 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     if(beneficiaries.length>=4) break;
   }
 
-  // เพิ่มจาก stocks_buy ของ AI
+  // ── เติมจาก stocks_buy ของ AI (เติมที่ว่างหลังจาก Rule Mapping) ──
   for(const ticker of (aiStocksBuy||[])){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
@@ -14095,21 +14197,6 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     if(beneficiaries.length>=4) break;
   }
 
-  // Fallback: ใช้ template เฉพาะถ้า AI ไม่มีข้อมูล
-  if(beneficiaries.length<2){
-    const key=isPositive?'positive_sentiment':'negative_sentiment';
-    for(const evType of eventTypes){
-      const map=BENEFICIARY_MAP[evType];
-      if(!map||!map[key]) continue;
-      for(const entry of map[key]){
-        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-        beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb'});
-        seen.add(entry.t);
-        if(beneficiaries.length>=4) break;
-      }
-      if(beneficiaries.length>=4) break;
-    }
-  }
   return beneficiaries.slice(0,4);
 }
 
@@ -14117,7 +14204,21 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
   const losers=[];const seen=new Set();
 
-  // ใช้ข้อมูล stocks_at_risk จาก AI ก่อน (ถ้ามี reason ให้ใช้เลย)
+  // ── ลำดับแรก: Rule Mapping (BENEFICIARY_MAP) ฝั่งตรงข้าม sentiment ──
+  const key=isPositive?'negative_sentiment':'positive_sentiment';
+  for(const evType of eventTypes){
+    const map=BENEFICIARY_MAP[evType];
+    if(!map||!map[key]) continue;
+    for(const entry of map[key]){
+      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+      losers.push({t:entry.t,reason:entry.reason,source:'kb'});
+      seen.add(entry.t);
+      if(losers.length>=2) break;
+    }
+    if(losers.length>=2) break;
+  }
+
+  // ── เติมจาก stocks_at_risk ของ AI ──
   const aiRisk = (aiItem?.stocks_at_risk||[]).filter(s=>s&&s.t);
   for(const s of aiRisk){
     const clean=String(s.t).toUpperCase().trim();
@@ -14127,33 +14228,17 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
     if(losers.length>=3) break;
   }
 
-  // เพิ่มจาก stocks_watch ของ AI — แต่ตรวจสอบว่า reason ไม่ขัดกับ sentiment ก่อน
+  // ── เติมจาก stocks_watch ของ AI (เติมที่ว่างหลังจาก Rule Mapping) ──
   for(const ticker of (aiStocksWatch||[])){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
     if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    // ถ้า ticker อยู่ใน beneficiaries map ของ sentiment นี้ → ย้ายไป beneficiaries แทน
     const reason=`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
     losers.push({t:clean,reason,source:'ai'});
     seen.add(clean);
     if(losers.length>=3) break;
   }
 
-  // Fallback: template เฉพาะถ้า AI ไม่มีข้อมูล
-  if(losers.length<1){
-    const key=isPositive?'negative_sentiment':'positive_sentiment';
-    for(const evType of eventTypes){
-      const map=BENEFICIARY_MAP[evType];
-      if(!map||!map[key]) continue;
-      for(const entry of map[key]){
-        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-        losers.push({t:entry.t,reason:entry.reason,source:'kb'});
-        seen.add(entry.t);
-        if(losers.length>=3) break;
-      }
-      if(losers.length>=3) break;
-    }
-  }
   return losers.slice(0,3);
 }
 
@@ -14177,6 +14262,7 @@ function _sanitizeAiOutput(item){
     headline: _stripCJK(item.headline),
     summary: _stripCJK(item.summary),
     ai_take: _stripCJK(item.ai_take),
+    market_impact: _stripCJK(item.market_impact),
     why: _stripCJK(item.why),
     read_game: _stripCJK(item.read_game),
     watch: _stripCJK(item.watch),
@@ -14226,7 +14312,8 @@ function buildNewsAnalysis(item,sourceUrl){
     headlineLength:(clean.headline||'').length,
     hasSummary:!!(clean.summary)
   });
-  const eventTypes=_detectEventTypes(clean.headline,clean.summary);
+  const confidenceFactors=_buildConfidenceFactors(sourceQuality,sourcesCount,rumorStatus,clean.impact,sourceUrl);
+  const eventTypes=_detectEventTypes(clean.headline,clean.summary,(clean.why||'')+' '+(clean.read_game||'')+' '+(clean.market_impact||'')+' '+(clean.watch||''));
   // sector_tags — derive from EVENT_DETECTION_RULES sectors
   const sectorTags=[...new Set(eventTypes.flatMap(et=>{
     const rule=EVENT_DETECTION_RULES.find(r=>r.eventType===et);
@@ -14236,12 +14323,25 @@ function buildNewsAnalysis(item,sourceUrl){
   const beneficiaries=_buildBeneficiaries(eventTypes,clean.sentiment,clean.stocks_buy,clean.headline,clean);
   const losers=_buildLosers(eventTypes,clean.sentiment,clean.stocks_watch,clean.headline,clean);
   const aiTake=clean.ai_take||_buildAiTake(eventTypes,clean.sentiment,clean.impact,clean.headline);
-  // FIX: boost impact สำหรับ tech_ai + partnership ที่มี major company
+  // ── ตรวจ read_game ซ้ำกับ ai_take/headline — ถ้าคล้ายกันมาก (สรุปเดิมซ้ำ) ให้ตัดทิ้ง ──
+  const _wordSet=(s)=>new Set((s||'').replace(/[^\u0E00-\u0E7Fa-zA-Z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1));
+  const _jaccard=(a,b)=>{ if(!a.size||!b.size) return 0; let inter=0; for(const w of a) if(b.has(w)) inter++; return inter/Math.min(a.size,b.size); };
+  let readGame = clean.read_game||'';
+  if(readGame){
+    const rgWords=_wordSet(readGame);
+    const aiWords=_wordSet(aiTake);
+    const hlWords=_wordSet(clean.headline);
+    if(_jaccard(rgWords,aiWords)>0.6 || _jaccard(rgWords,hlWords)>0.6) readGame='';
+  }
+  // FIX: boost impact สำหรับ tech_ai + partnership ที่มี major company (ใช้เป็น market-impact ตั้งต้น)
   let adjustedImpact = clean.impact;
   const hasMajorTech = (clean.stocks_buy||[]).concat(clean.stocks_watch||[])
     .some(t=>['NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA'].includes(t));
   if(hasMajorTech && eventTypes.includes('tech_ai') && adjustedImpact < 7) adjustedImpact = 7;
   if(hasMajorTech && eventTypes.includes('partnership') && adjustedImpact < 6) adjustedImpact = 6;
+  // ── Impact Score Formula: กระทบตลาด 40% + ความเร่งด่วน 30% + ความน่าเชื่อถือ 30% ──
+  const impactResult=_buildImpactScore(adjustedImpact,eventTypes,confidence);
+  adjustedImpact=impactResult.score;
   // impact_level — derive from numeric impact score
   const impactLevel=adjustedImpact>=8?'high':adjustedImpact>=5?'medium':'low';
   // watchlist_hits — beneficiary/loser tickers that are in user's watchlist/portfolio
@@ -14253,13 +14353,15 @@ function buildNewsAnalysis(item,sourceUrl){
     .filter((v,i,a)=>a.indexOf(v)===i);
   return {
     headline:clean.headline||'',summary:clean.summary||'',
-    impact:clean.impact,sentiment:clean.sentiment,
+    impact:adjustedImpact,impact_factors:impactResult.factors,sentiment:clean.sentiment,
     markets:clean.markets||[],pros:clean.pros||[],cons:clean.cons||[],
-    why:clean.why||'',watch:clean.watch||'',read_game:clean.read_game||'',
+    why:clean.why||'',watch:clean.watch||'',read_game:readGame,
+    watch_card:_buildWatchCard(clean.watch||'',eventTypes,beneficiaries,losers),
+    market_impact:clean.market_impact||'',
     source_url:sourceUrl||'',source_quality:sourceQuality,
     source_count:sourcesCount,
     published_at:clean.published_at||new Date().toISOString(),
-    verified_status:verifiedStatus,confidence_score:confidence,
+    verified_status:verifiedStatus,confidence_score:confidence,confidence_factors:confidenceFactors,
     impact_level:impactLevel,
     sector_tags:sectorTags,
     event_types:eventTypes,etf_impact:etfImpact,
@@ -14307,6 +14409,79 @@ function enrichWatchWithDates(watchText){
   });
   result=result.replace(/(\d{1,2} [ก-ๆ]{2,5}\.)\s+\1/g,'$1');
   return result;
+}
+
+// ════════════════════════════════════════════════════════════
+// _buildWatchCard — แปลง watch field (เช่น "OPEC+Earnings") ให้เป็นการ์ด
+// 📅 ชื่อ event + วันที่จริงจาก ELITE_EVENTS, ⏳ countdown, 🎯 Relevance %
+// ════════════════════════════════════════════════════════════
+const _MACRO_LABEL_PATTERNS = [
+  {label:'FOMC', re:/FOMC|Federal Reserve|เฟด|พาวเวล/i, titleRe:/FOMC/i},
+  {label:'CPI',  re:/\bCPI\b|เงินเฟ้อ/i,                titleRe:/CPI/i},
+  {label:'NFP',  re:/\bNFP\b|Jobs Report|การจ้างงาน/i,  titleRe:/NFP|Jobs Report/i},
+  {label:'GDP',  re:/\bGDP\b|จีดีพี/i,                  titleRe:/GDP/i},
+  {label:'PPI',  re:/\bPPI\b/i,                         titleRe:/PPI/i},
+  {label:'PCE',  re:/\bPCE\b/i,                         titleRe:/PCE/i},
+];
+// ถ้า AI ไม่ได้ระบุ macro event ที่รู้จัก ใช้ event_types ที่ตรวจจับได้ ช่วยเดา event มหภาคที่เกี่ยวข้องที่สุด
+const _EVENT_TYPE_TO_MACRO = {
+  'fomc':'FOMC','rate_decision':'FOMC','central_bank':'FOMC',
+  'inflation_data':'CPI','energy':'CPI','trade_policy':'CPI',
+  'jobs_data':'NFP','gdp_data':'GDP','geopolitical':'FOMC',
+};
+function _buildWatchCard(watchText, eventTypes, beneficiaries, losers){
+  const THAI_MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  function findEvent(titleRe){
+    return (ELITE_EVENTS||[]).find(ev=>ev.date && titleRe.test(ev.title||'') && new Date(ev.date+'T00:00:00')>=today) || null;
+  }
+  function toCard(label, ev, relevance){
+    if(!ev) return null;
+    const d=new Date(ev.date+'T00:00:00');
+    const dateStr=`${d.getDate()} ${THAI_MONTHS[d.getMonth()]}`;
+    const daysLeft=Math.round((d-today)/86400000);
+    return {label, dateStr, daysLeft, relevance};
+  }
+
+  // 1) AI ระบุ macro event ที่รู้จักตรงๆ ใน watch field
+  for(const m of _MACRO_LABEL_PATTERNS){
+    if(m.re.test(watchText||'')){
+      const ev=findEvent(m.titleRe);
+      const matchesEventType=eventTypes.some(et=>_EVENT_TYPE_TO_MACRO[et]===m.label);
+      const card=toCard(m.label, ev, matchesEventType?92:75);
+      if(card) return card;
+    }
+  }
+
+  // 2) TICKER+Earnings ที่ ticker เป็นหุ้นจริงและเกี่ยวข้องกับข่าว (อยู่ใน beneficiaries/losers)
+  const tickerMatch=(watchText||'').match(/([A-Z]{2,5})\s*\+?\s*Earnings/i);
+  if(tickerMatch){
+    const tk=tickerMatch[1].toUpperCase();
+    if(STOCK_UNIVERSE.has(tk)){
+      const related=[...(beneficiaries||[]),...(losers||[])].some(s=>(s.t||s)===tk);
+      const earn=(window.earningsData||[]).find(e=>e.t===tk||e.ticker===tk);
+      if(earn && earn._date){
+        const d=new Date(earn._date+'T00:00:00');
+        const dateStr=`${d.getDate()} ${THAI_MONTHS[d.getMonth()]}`;
+        const daysLeft=Math.round((d-today)/86400000);
+        return {label:`${tk} Earnings`, dateStr, daysLeft, relevance: related?88:60};
+      }
+      return {label:`${tk} Earnings`, dateStr:null, daysLeft:null, relevance: related?80:50};
+    }
+  }
+
+  // 3) Fallback: เดา macro event ที่เกี่ยวข้องที่สุดจาก event_types ที่ตรวจจับได้จากเนื้อข่าว
+  for(const et of eventTypes){
+    const label=_EVENT_TYPE_TO_MACRO[et];
+    if(!label) continue;
+    const macro=_MACRO_LABEL_PATTERNS.find(m=>m.label===label);
+    const ev=findEvent(macro.titleRe);
+    const card=toCard(label, ev, 65);
+    if(card) return card;
+  }
+
+  return null;
 }
 
 let _eliteTab = 'map';
@@ -14651,8 +14826,8 @@ async function _eliteDirectFallback(overlay){
     return item.person.name+'('+item.id+'): '+item.headline+' — '+item.summary;
   }).join('\n');
 
-  const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n1. ALL text fields must be Thai — translate English headlines immediately\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news.\n3. ai_take = one specific second-order insight NOT mentioned in the headline. Example: if news is "Nvidia strong AI demand", ai_take should be "TSMC และ SK Hynix จะได้ order HBM เพิ่ม ไม่ใช่แค่ NVDA"\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings';
-  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","ai_take":"insight ที่ไม่อยู่ใน headline — second-order effect เฉพาะข่าวนี้ สอดคล้องกับ sentiment จริงของข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"เพราะอะไร","watch":"FOMC/CPI/NFP/GDP หรือ TICKER+Earnings","read_game":"second-order effect ที่คนส่วนใหญ่มองข้าม","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n1. ALL text fields must be Thai — translate English headlines immediately\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news.\n3. ai_take = 1-2 ประโยคเชิงคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ห้ามตอบสั้นแบบบอกทิศทางราคาเฉยๆ ต้องระบุชื่อหุ้น/สินทรัพย์ที่ได้และเสียประโยชน์อย่างน้อยฝั่งละ 1 ตัว/กลุ่ม เช่น ถ้าข่าวคือ "สหรัฐฯ ปล่อยกองกำลังหลังทรัมป์ขู่โจมตีอิหร่าน" ai_take ที่ดีคือ "หากความตึงเครียดยืดเยื้อ ราคาน้ำมัน Brent มีโอกาสขึ้นต่อ ส่งผลบวกต่อ XOM และ CVX แต่กดดันหุ้นขนส่งและสายการบิน" ห้ามตอบแบบ "ราคาน้ำมันจะสูงขึ้น" เฉยๆ โดยไม่ระบุหุ้น/sector ที่กระทบ\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings\n8. market_impact = วิเคราะห์ระดับตลาด/sector ก่อนเสมอ — ตอบว่าข่าวนี้กระทบดอกเบี้ย/ค่าเงิน USD/Bond yield/sector ไหน และ benchmark อย่าง SPY, QQQ, TLT, DXY, Gold น่าจะขึ้นหรือลงเพราะอะไร (ใช้เป็นบริบท ไม่ใช่คำแนะนำซื้อ) ต้องเขียนก่อนเสมอ แล้วค่อยให้ stocks_buy/stocks_watch เป็นการระบุหุ้นรายตัวที่ตามมาจาก market_impact นั้น\n9. read_game ห้ามพูดซ้ำ headline, ai_take หรือ summary เด็ดขาด — ต้องเป็นมุมมอง \"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับ\" ที่ตลาดยังไม่ได้ price-in เช่น ถ้าข่าวคือ \"ราคาน้ำมันพุ่งจากความตึงเครียดตะวันออกกลาง\" ai_take บอกว่าน้ำมันขึ้นกระทบเงินเฟ้อ แต่ read_game ต้องเป็นแบบ \"ถ้าฝ่ายตรงข้ามไม่ตอบโต้เพิ่มภายใน 48 ชม. ราคาน้ำมันอาจย่อตัวเร็วเพราะตลาดมักตอบสนองเกินจริงในช่วงแรก\" ต้องเป็นการคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ไม่ใช่การอธิบายผลกระทบที่ชัดเจนอยู่แล้ว';
+  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"insight ที่ไม่อยู่ใน headline — second-order effect เฉพาะข่าวนี้ สอดคล้องกับ sentiment จริงของข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"เพราะอะไร","watch":"FOMC/CPI/NFP/GDP หรือ TICKER+Earnings","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ ai_take/headline เช่น \\"ถ้า...อาจ...\\"","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   try{
     // ลอง Groq ก่อน (ฟรี ไม่หมดเงิน)
@@ -14750,7 +14925,7 @@ async function _eliteClaudeSearch(overlay, _ank){
   const topPeople = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;}).slice(0,10);
   const nameList = topPeople.map(function(p){return p.name+'('+p.id+')';}).join(', ');
   const today = new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-  const prompt = 'Today is '+today+'. Find significant market-moving news (last 24h) for: '+nameList+'\nReturn ONLY valid JSON array (ALL text in Thai, no markdown):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bearish","markets":["USD"],"pros":["ข้อดี"],"cons":["ความเสี่ยง"],"why":"เหตุผล","watch":"FOMC, CPI (event names only)","read_game":"second-order effect specific to this news","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]';
+  const prompt = 'Today is '+today+'. Find significant market-moving news (last 24h) for: '+nameList+'\nReturn ONLY valid JSON array (ALL text in Thai, no markdown):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bearish","markets":["USD"],"pros":["ข้อดี"],"cons":["ความเสี่ยง"],"why":"เหตุผล","watch":"FOMC, CPI (event names only)","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ summary เช่น \\"ถ้า...อาจ...\\"","stocks_buy":["NVDA","MSFT"],"stocks_watch":["INTC"]}]';
   const sysPrompt = 'Senior financial analyst for Thai investors. ALL text MUST be in Thai. stocks_buy/stocks_watch: ONLY real US stock tickers NOT ETFs. sentiment: bullish/bearish/neutral only. JSON array only, no markdown.';
   try{
     const resp1 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
@@ -14826,7 +15001,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
   }).join('\n');
 
   const sys = 'Senior financial analyst for Thai investors. CRITICAL: ALL fields must be in Thai language. If headline is in English, you MUST translate it to Thai. STRICT: stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) NEVER ETFs (SPY QQQ TLT). sentiment: bullish/bearish/neutral. JSON array only, no markdown.';
-  const msg = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย (ถ้า headline เป็นภาษาอังกฤษให้แปลเป็นไทยก่อน):\n'+newsItems+'\n\nตอบ JSON array (ทุก field ต้องเป็นภาษาไทย):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย (แปลจาก English ถ้าจำเป็น)","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลสำคัญ","watch":"FOMC, CPI, NFP (event names only)","read_game":"second-order effect เฉพาะข่าวนี้","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const msg = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย (ถ้า headline เป็นภาษาอังกฤษให้แปลเป็นไทยก่อน):\n'+newsItems+'\n\nตอบ JSON array (ทุก field ต้องเป็นภาษาไทย):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย (แปลจาก English ถ้าจำเป็น)","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลสำคัญ","watch":"FOMC, CPI, NFP (event names only)","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ summary_th เช่น \\"ถ้า...อาจ...\\"","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   let text = null;
 
@@ -14891,6 +15066,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
       pros:     (e.pros&&e.pros.length)     ? e.pros     : r.news.pros||[],
       cons:     (e.cons&&e.cons.length)     ? e.cons     : r.news.cons||[],
       why:      e.why         || r.news.why     || '',
+      market_impact: e.market_impact || r.news.market_impact || '',
       watch:    e.watch       || r.news.watch   || '',
       read_game:e.read_game   || r.news.read_game|| '',
       stocks_buy:   (e.stocks_buy&&e.stocks_buy.length)   ? e.stocks_buy   : r.news.stocks_buy||[],
@@ -15323,6 +15499,20 @@ function renderEliteScanResults(results, ageMs=0){
             ${wlBadge}
           </div>`;
         })()}
+        <!-- Confidence Factors breakdown — เหตุผลของ confidence score -->
+        ${(n.confidence_factors&&n.confidence_factors.length) ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:7px 10px;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">🎯 ที่มาของ Confidence ${n.confidence_score||0}%</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${n.confidence_factors.map(f=>`<div style="font-size:10px;line-height:1.5;color:${f.ok?'var(--green)':'var(--text3)'}"><span style="color:${f.ok?'var(--green)':'var(--red)'}">${f.ok?'✓':'✗'}</span> <span style="color:${f.ok?'var(--text2)':'var(--text3)'}">${f.text}</span></div>`).join('')}
+          </div>
+        </div>` : ''}
+        <!-- Impact Score breakdown — สูตร กระทบตลาด40% + เร่งด่วน30% + น่าเชื่อถือ30% -->
+        ${(n.impact_factors&&n.impact_factors.length) ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:7px 10px;margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">⚡ ที่มาของ Impact Score ${n.impact}/10</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${n.impact_factors.map(f=>`<div style="font-size:10px;line-height:1.5;color:var(--text2);display:flex;justify-content:space-between"><span>${f.label} (${f.weight}%)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--gold)">${f.score}/10</span></div>`).join('')}
+          </div>
+        </div>` : ''}
         <!-- AI Take -->
         ${n.ai_take ? `<div style="background:linear-gradient(135deg,rgba(100,210,255,0.08),rgba(201,168,76,0.06));border:1px solid rgba(100,210,255,0.2);border-radius:9px;padding:8px 10px;margin-bottom:8px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--ice);margin-bottom:3px">🤖 AI Take</div>
@@ -15332,6 +15522,11 @@ function renderEliteScanResults(results, ageMs=0){
         ${n.summary ? `<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;padding:8px 10px;background:rgba(255,255,255,0.03);border-left:2px solid ${impactColor};border-radius:0 8px 8px 0">${n.summary}</div>` : ''}
         <!-- Tags -->
         ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${tags}</div>` : ''}
+        <!-- Market Impact (ผลต่อตลาดโดยรวม — มาก่อนผลต่อหุ้นรายตัว) -->
+        ${n.market_impact ? `<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">📊 ผลต่อตลาดโดยรวม</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.market_impact}</div>
+        </div>` : ''}
         <!-- ETF Impact (Engine 4 — ETFs only, separated from stocks) -->
         ${n.etf_impact ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:6px">📊 ETF Impact</div>
@@ -15393,7 +15588,11 @@ function renderEliteScanResults(results, ageMs=0){
         <!-- สิ่งที่ควรจับตา -->
         ${n.watch ? `<div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 10px;margin-bottom:8px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">👁 จับตา — Event/ตัวเลขสำคัญ</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.6">${enrichWatchWithDates(n.watch)}</div>
+          ${n.watch_card ? `<div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="background:rgba(255,255,255,0.05);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--text)">📅 ${n.watch_card.label}${n.watch_card.dateStr?' '+n.watch_card.dateStr:''}</span>
+            ${n.watch_card.daysLeft!=null ? `<span style="background:rgba(255,255,255,0.05);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--ice)">⏳ ${n.watch_card.daysLeft<=0?'วันนี้':'อีก '+n.watch_card.daysLeft+' วัน'}</span>` : ''}
+            <span style="background:rgba(255,255,255,0.05);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--gold)">🎯 Relevance ${n.watch_card.relevance}%</span>
+          </div>` : `<div style="font-size:11px;color:var(--text2);line-height:1.6">${enrichWatchWithDates(n.watch)}</div>`}
         </div>` : ''}
         <!-- Verification + Confidence footer -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
@@ -15489,6 +15688,24 @@ function _renderEliteModal(idx){
       <div style="font-size:9px;color:#6b7fa0;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:6px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:#64d2ff">${(n.markets||[]).join(', ')}</span></div>
       <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#f0f4fc;line-height:1.4;margin-bottom:10px">${n.headline}</div>
 
+      <!-- Confidence Factors breakdown — เหตุผลของ confidence score -->
+      ${(n.confidence_factors&&n.confidence_factors.length) ? `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:5px">🎯 ที่มาของ Confidence ${n.confidence_score||0}%</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${n.confidence_factors.map(f=>`<div style="font-size:11px;line-height:1.6"><span style="color:${f.ok?'#00e676':'#ff4d6a'}">${f.ok?'✓':'✗'}</span> <span style="color:${f.ok?'#a8b8d0':'#6b7fa0'}">${f.text}</span></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Impact Score breakdown — สูตร กระทบตลาด40% + เร่งด่วน30% + น่าเชื่อถือ30% -->
+      ${(n.impact_factors&&n.impact_factors.length) ? `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:5px">⚡ ที่มาของ Impact Score ${n.impact}/10</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${n.impact_factors.map(f=>`<div style="font-size:11px;line-height:1.6;display:flex;justify-content:space-between"><span style="color:#a8b8d0">${f.label} (${f.weight}%)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#c9a84c">${f.score}/10</span></div>`).join('')}
+        </div>
+      </div>` : ''}
+
       <!-- impact_level + sector_tags + watchlist_hits badges -->
       ${(()=>{
         const il=n.impact_level||'medium';
@@ -15508,6 +15725,13 @@ function _renderEliteModal(idx){
 
       <!-- Summary -->
       ${n.summary ? `<div style="font-size:12px;color:#a8b8d0;line-height:1.7;margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,0.04);border-left:3px solid ${impactColor};border-radius:0 10px 10px 0">${n.summary}</div>` : ''}
+
+      <!-- Market Impact (ผลต่อตลาดโดยรวม — มาก่อนผลต่อหุ้นรายตัว) -->
+      ${n.market_impact ? `
+      <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#c9a84c;margin-bottom:6px;letter-spacing:0.5px">📊 ผลต่อตลาดโดยรวม</div>
+        <div style="font-size:12px;color:#a8b8d0;line-height:1.6">${n.market_impact}</div>
+      </div>` : ''}
 
       <!-- ETF Impact (Engine 4 — modal, ETFs only) -->
       ${n.etf_impact ? `
@@ -15611,7 +15835,11 @@ function _renderEliteModal(idx){
       ${n.watch ? `
       <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
         <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#c9a84c;margin-bottom:8px;letter-spacing:0.5px">👁 จับตา — Event/ตัวเลขสำคัญ</div>
-        ${enrichWatchWithDates(n.watch).split(/[,\n•]+/).filter(w=>w.trim()).map(w=>`<div style="font-size:12px;color:#a8b8d0;line-height:1.6;display:flex;gap:7px;margin-bottom:3px"><span style="color:#c9a84c;flex-shrink:0">•</span><span>${w.trim()}</span></div>`).join('')}
+        ${n.watch_card ? `<div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="background:rgba(255,255,255,0.05);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#f0f4fc">📅 ${n.watch_card.label}${n.watch_card.dateStr?' '+n.watch_card.dateStr:''}</span>
+          ${n.watch_card.daysLeft!=null ? `<span style="background:rgba(255,255,255,0.05);border-radius:8px;padding:4px 10px;font-size:12px;color:#64d2ff">⏳ ${n.watch_card.daysLeft<=0?'วันนี้':'อีก '+n.watch_card.daysLeft+' วัน'}</span>` : ''}
+          <span style="background:rgba(255,255,255,0.05);border-radius:8px;padding:4px 10px;font-size:12px;color:#c9a84c">🎯 Relevance ${n.watch_card.relevance}%</span>
+        </div>` : enrichWatchWithDates(n.watch).split(/[,\n•]+/).filter(w=>w.trim()).map(w=>`<div style="font-size:12px;color:#a8b8d0;line-height:1.6;display:flex;gap:7px;margin-bottom:3px"><span style="color:#c9a84c;flex-shrink:0">•</span><span>${w.trim()}</span></div>`).join('')}
       </div>` : ''}
 
       <!-- Stocks — Engine 5 with reasons -->
