@@ -1611,6 +1611,25 @@ function _fetchWithTimeout(url, options, ms=15000){
   });
   return fetch(url, opts).finally(()=>clearTimeout(tid));
 }
+
+// ── _fetchYahooQuoteSummary: v10/quoteSummary ไม่รองรับ CORS จากเบราว์เซอร์โดยตรง
+// → ลอง direct fetch ก่อน (เผื่อบาง endpoint/บาง browser ใช้ได้) แล้ว fallback ไป CORS proxy ──
+async function _fetchYahooQuoteSummary(yhTicker, modules, ms=6000){
+  const target = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=${modules}`;
+  try{
+    const r = await fetch(target, {signal:AbortSignal.timeout(ms)});
+    const j = await r.json();
+    if(j?.quoteSummary?.result) return j;
+  }catch(e){ /* CORS หรือ network error — ลอง proxy ต่อ */ }
+  try{
+    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+    const r2 = await fetch(proxied, {signal:AbortSignal.timeout(ms)});
+    const j2 = await r2.json();
+    if(j2?.quoteSummary?.result) return j2;
+  }catch(e){ /* proxy ก็ไม่ได้ — ส่ง null กลับ */ }
+  return null;
+}
+
 // ═══════════════════════════════════════
 // STOCK PRO v2 — Dark Premium Terminal
 // ═══════════════════════════════════════
@@ -1788,10 +1807,7 @@ async function initLiveData(){
           {
             try{
               const yhT = ticker.replace('.','-');
-              const yhR = await fetch(
-                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhT}?modules=incomeStatementHistoryQuarterly`,
-                {signal:AbortSignal.timeout(5000)}
-              ).then(r=>r.json());
+              const yhR = await _fetchYahooQuoteSummary(yhT, 'incomeStatementHistoryQuarterly', 5000);
               const qtrs = yhR?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
               const r0 = qtrs[0]?.totalRevenue?.raw;
               const r4 = qtrs[4]?.totalRevenue?.raw;
@@ -1951,8 +1967,7 @@ async function loadHistEarnings(ticker){
     const yhTicker = ticker.replace('.', '-');
     const [earnRes, yahooRes] = await Promise.allSettled([
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
-      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,earningsHistory,financialData`,
-        {signal:AbortSignal.timeout(5000)}).then(r=>r.json()),
+      _fetchYahooQuoteSummary(yhTicker, 'incomeStatementHistoryQuarterly,earningsHistory,financialData', 6000),
     ]);
     const d = (earnRes.status==='fulfilled') ? earnRes.value : null;
     const raw = d?.data||[];
@@ -9463,11 +9478,7 @@ async function fetchAndRenderEarnings(){
           const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
             try{
               const yh=ticker.replace('.', '-');
-              const r=await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yh}?modules=calendarEvents`,{
-                signal:AbortSignal.timeout(5000)
-              });
-              if(!r.ok) return null;
-              const d=await r.json();
+              const d=await _fetchYahooQuoteSummary(yh, 'calendarEvents', 5000);
               const earnings=d?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
               if(!earnings?.earningsDate?.[0]) return null;
               const ts=earnings.earningsDate[0].raw*1000;
@@ -9769,8 +9780,7 @@ async function _showEarningsHistory(ticker, btn){
     const [earnRes, metricRes, yahooRes, ratingRes] = await Promise.allSettled([
       fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
       fetch(`${PRICES_WORKER}/metrics?t=${ticker}`,{signal:new AbortController().signal}).then(r=>r.json()),
-      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly,recommendationTrend,financialData,defaultKeyStatistics,earningsTrend,cashflowStatementHistoryQuarterly,balanceSheetHistoryQuarterly`,
-        {signal:new AbortController().signal}).then(r=>r.json()),
+      _fetchYahooQuoteSummary(yhTicker, 'incomeStatementHistoryQuarterly,recommendationTrend,financialData,defaultKeyStatistics,earningsTrend,cashflowStatementHistoryQuarterly,balanceSheetHistoryQuarterly', 8000),
       fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_KEY}`,
         {signal:new AbortController().signal}).then(r=>r.json()),
     ]);
@@ -12884,11 +12894,7 @@ ${avNews}`;
         
         // 2. Financial details จาก Yahoo Finance
         const yhT = t.replace('.','-');
-        const yr = await _fetchWithTimeout(
-          `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhT}?modules=incomeStatementHistoryQuarterly,cashflowStatementHistoryQuarterly,financialData,defaultKeyStatistics,earningsTrend`,
-          {}, 8000
-        );
-        const yd = await yr.json();
+        const yd = await _fetchYahooQuoteSummary(yhT, 'incomeStatementHistoryQuarterly,cashflowStatementHistoryQuarterly,financialData,defaultKeyStatistics,earningsTrend', 8000);
         const yhData = yd?.quoteSummary?.result?.[0];
         
         // Parse ข้อมูล
