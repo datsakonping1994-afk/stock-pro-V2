@@ -1782,6 +1782,9 @@ async function initLiveData(){
           if(met.pe!=null){ const pe=+met.pe; if(pe>=-500&&pe<=5000) s.pe=+pe.toFixed(1); }
           if(met.eps!=null){ const eps=+met.eps; if(eps>=-500&&eps<=500) s.epsLive=eps.toFixed(2); }
           if(met.revGrowth!=null){ const rg=_normalizeRevGrowth(met.revGrowth); if(rg!=null){ s.revLive=rg; s._revFromWorker=true; } }
+          // FIX: revLatestQ (totalRevenue ไตรมาสล่าสุด, raw USD) มาจาก Worker โดยตรง
+          // (Worker fetch incomeStatementHistoryQuarterly ฝั่งเซิร์ฟเวอร์ ไม่มีปัญหา CORS)
+          if(met.revLatestQ!=null){ const rq=+met.revLatestQ; if(isFinite(rq)&&rq!==0) s.revLatestQ=rq; }
           if(met.mktcap!=null){ const mc=+met.mktcap; if(mc>=1) s.mktcapLive=mc>=1000000?`$${(mc/1000000).toFixed(1)}T`:mc>=1000?`$${(mc/1000).toFixed(1)}B`:`$${mc.toFixed(0)}M`; }
           if(met.beta!=null){ const b=+met.beta; if(b>=-5&&b<=10) s.beta=+b.toFixed(2); }
           if(met.div!=null){ const dv=+met.div; if(dv>=0&&dv<=30) s.divLive=dv.toFixed(2)+'%'; }
@@ -7133,6 +7136,7 @@ setTimeout(async()=>{
             const rg=_normalizeRevGrowth(m.revGrowth);
             if(rg!=null){ s.revLive=rg; s._revFromWorker=true; s._revNegBase=false; }
           }
+          if(m.revLatestQ!=null && s.revLatestQ==null){ const rq=+m.revLatestQ; if(isFinite(rq)&&rq!==0) s.revLatestQ=rq; }
         }
         // re-render cards ให้เห็นข้อมูลใหม่
         if(typeof renderStocks==='function') renderStocks();
