@@ -984,35 +984,6 @@ export default {
       }
       return new Response(JSON.stringify({ ok: true, metrics: results }), { headers: { ...cors, 'Content-Type': 'application/json' } });
     }
-        for (const key of finnhubKeys) {
-          try {
-            const r = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${key}`, { signal: AbortSignal.timeout(5000) });
-            if (!r.ok) continue;
-            const d = await r.json();
-            const m = d?.metric || {};
-
-            const result = {
-              pe: m['peNormalizedAnnual']||m['peTTM']||null,
-              mktcap: m['marketCapitalization']||null,
-              beta: m['beta']||null,
-              eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
-              div: m['dividendYieldIndicatedAnnual']||null,
-              high52: m['52WeekHigh']||null,
-              low52: m['52WeekLow']||null,
-              shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0)
-                ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null,
-              de: m['totalDebt/totalEquityAnnual']||m['longTermDebt/equityAnnual']||null,
-              fcf: m['freeCashFlowTTM']||m['freeCashFlowAnnual']||null,
-            };
-            results[ticker] = { ...result, revGrowth, revLatestQ };
-            try { await env.ALERT_KV.put(`metrics_${ticker}`, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
-            break;
-          } catch {}
-        }
-        await new Promise(r => setTimeout(r, 200));
-      }
-      return new Response(JSON.stringify({ ok: true, metrics: results }), { headers: { ...cors, 'Content-Type': 'application/json' } });
-    }
 
     if (url.pathname === '/refresh' && req.method === 'POST') {
       try {
