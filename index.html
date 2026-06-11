@@ -16501,6 +16501,12 @@ async function summarizeEvent(idx, btn){
     if(ev.previous) factsLines.push(`ครั้งก่อนหน้า: ${ev.previous}${unitStr}`);
     const facts = factsLines.join('\n');
 
+    // ── เช็กว่า event นี้ผ่านวันประกาศไปแล้วหรือยัง (เหมือน logic ตอน render การ์ด) ──
+    const _datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
+    const _timePart = (ev.time||'').slice(0,5)||'00:00';
+    const _evDate = new Date(_datePart+'T'+_timePart+':00');
+    const isPastEvent = !isNaN(_evDate.getTime()) && _evDate < new Date();
+
     if(!text){
       let prompt;
       if(hasActual){
@@ -16515,18 +16521,27 @@ ${facts}
 3. หุ้นหรือสินทรัพย์ไหนได้ประโยชน์ หรือเสียประโยชน์
 4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
 ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
-      } else {
-        // ── ยังไม่มี actual จาก API — ให้ Claude+web search ค้นหาเท่านั้น (ตัวเดียวที่เข้าเว็บได้จริง) ──
-        prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}
-ค้นหาและสรุปผลการรายงาน/ประกาศที่เกิดขึ้นจริง ตอบเป็นภาษาไทย ให้ครอบคลุม:
-1. ผลที่ออกมาคืออะไร (ตัวเลข/มติ/ประกาศ)
+      } else if(isPastEvent){
+        // ── event ผ่านไปแล้วแต่ระบบยังไม่มี actual — ต้อง "ค้นหาผลจริง" เท่านั้น ห้ามคาดการณ์ล่วงหน้า ──
+        prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date} (ประกาศไปแล้ว)
+${facts ? 'ข้อมูลก่อนประกาศที่มี:\n'+facts+'\n\n' : ''}ค้นหาผลการประกาศ/รายงานที่เกิดขึ้นจริงของเหตุการณ์นี้ ตอบเป็นภาษาไทย ให้ครอบคลุม:
+1. ผลที่ออกมาคืออะไร (ตัวเลข/มติ/ประกาศ) เทียบกับที่ตลาดคาดไว้
 2. ตลาดหุ้น/ค่าเงิน/สินค้าโภคภัณฑ์ตอบสนองอย่างไร
 3. หุ้นหรือสินทรัพย์ไหนได้ประโยชน์ หรือเสียประโยชน์
 4. ผลกระทบระยะสั้น และสิ่งที่นักลงทุนควรจับตา
 ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค ถ้าค้นหาไม่พบผลจริง ให้ตอบว่า "ยังไม่พบผลประกาศอย่างเป็นทางการ" เท่านั้น ห้ามเดาตัวเลข`;
+      } else {
+        // ── event ยังไม่ถึงวันประกาศ — วิเคราะห์แบบเตรียมรับมือล่วงหน้าได้ ──
+        prompt = `เหตุการณ์: "${ev.title}" วันที่ ${ev.date} (ยังไม่ประกาศ)
+${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}วิเคราะห์เป็นภาษาไทยแบบ "เตรียมรับมือล่วงหน้า" โดยครอบคลุม:
+1. ตลาดคาดหวังอะไรจากเหตุการณ์นี้ (อิงจาก forecast/previous ถ้ามี)
+2. ถ้าผลออกมา "ดีกว่าคาด" ตลาดหุ้น/ค่าเงิน/หุ้นกลุ่มไหนจะตอบสนองอย่างไร
+3. ถ้าผลออกมา "แย่กว่าคาด" จะกระทบอย่างไร
+4. สิ่งที่นักลงทุนควรจับตาเมื่อผลประกาศออกมา
+ตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค ห้ามสร้างหรือเดาตัวเลข actual ขึ้นมาเองเด็ดขาด`;
       }
 
-      // Claude with web_search — ใช้ได้ทั้งสองกรณี (กรณีมี actual ใช้แค่วิเคราะห์ ไม่ค้นเว็บก็ได้แต่ส่ง tool ไปด้วยไม่เป็นไร)
+      // Claude with web_search — ใช้ได้ทั้งสามกรณี (กรณีมี actual ใช้แค่วิเคราะห์ ไม่ค้นเว็บก็ได้แต่ส่ง tool ไปด้วยไม่เป็นไร)
       if(_ank){
         try{
           const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
@@ -16545,41 +16560,50 @@ ${facts}
         }catch(e){ console.warn('[elite:claude]',e.message); }
       }
 
-      // ── Groq/Gemini fallback: ใช้ได้ทั้งกรณีมีและไม่มีตัวเลขจริง (hasActual) ──
-      // กรณี !hasActual: Groq ไม่มี web search → ใช้ prompt แบบวิเคราะห์ล่วงหน้า (ห้ามมั่วตัวเลข actual)
-      //                  Gemini → เปิด google_search grounding tool เพื่อค้นหาผลจริงบนเว็บ
-      if(!text){
-        // Groq fallback
+      // ── Gemini/Groq fallback ──
+      // กรณี !hasActual && isPastEvent: ต้องค้นหาผลจริง → ลอง Gemini (google_search) ก่อน Groq (Groq เดาไม่ได้)
+      // กรณี !hasActual && !isPastEvent: Groq วิเคราะห์ล่วงหน้าได้ปกติ (ไม่ต้องค้นเว็บ)
+      // กรณี hasActual: ลำดับเดิม Groq ก่อน Gemini
+      const needsWebSearch = !hasActual && isPastEvent;
+
+      async function _tryGemini(){
+        const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
+        if(!gemKey) return;
+        try{
+          const gemBody = { contents:[{parts:[{text:prompt}]}] };
+          if(!hasActual) gemBody.tools = [{ google_search: {} }];
+          const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(gemBody)
+          }, 15000);
+          const gmd = await gem.json();
+          if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+          usedAI = 'Gemini';
+        }catch(e){ console.warn('[elite:gemini]',e.message); }
+      }
+
+      async function _tryGroq(){
         const groqKey=localStorage.getItem('groqKey')||localStorage.getItem('groqKey2')||'';
-        if(groqKey){
-          try{
-            const groqPrompt = hasActual ? prompt : `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}\n${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}หมายเหตุ: คุณไม่มีความสามารถค้นหาเว็บแบบเรียลไทม์ และระบบยังไม่มีตัวเลข "ผลจริง (actual)" ของเหตุการณ์นี้ ห้ามสร้างหรือเดาตัวเลข actual ขึ้นมาเองเด็ดขาด\n\nให้วิเคราะห์เป็นภาษาไทยแบบ \"เตรียมรับมือล่วงหน้า\" โดยครอบคลุม:\n1. ตลาดคาดหวังอะไรจากเหตุการณ์นี้ (อิงจาก forecast/previous ถ้ามี)\n2. ถ้าผลออกมา \"ดีกว่าคาด\" ตลาดหุ้น/ค่าเงิน/หุ้นกลุ่มไหนจะตอบสนองอย่างไร\n3. ถ้าผลออกมา \"แย่กว่าคาด\" จะกระทบอย่างไร\n4. สิ่งที่นักลงทุนควรจับตาเมื่อผลประกาศออกมา\nตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
-            const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
-              method:'POST',
-              headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:groqPrompt}]})
-            }, 15000);
-            const gd = await gr.json();
-            if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
-            usedAI = 'Groq';
-          }catch(e){ console.warn('[elite:groq]',e.message); }
-        }
-        // Gemini fallback (ใช้ google_search grounding tool ถ้ายังไม่มี actual เพื่อค้นหาผลจริงบนเว็บ)
-        if(!text){
-          const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
-          if(gemKey){
-            try{
-              const gemBody = { contents:[{parts:[{text:prompt}]}] };
-              if(!hasActual) gemBody.tools = [{ google_search: {} }];
-              const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
-                method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify(gemBody)
-              }, 15000);
-              const gmd = await gem.json();
-              if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
-              usedAI = 'Gemini';
-            }catch(e){ console.warn('[elite:gemini]',e.message); }
-          }
+        if(!groqKey) return;
+        try{
+          const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+            body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:prompt}]})
+          }, 15000);
+          const gd = await gr.json();
+          if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
+          usedAI = 'Groq';
+        }catch(e){ console.warn('[elite:groq]',e.message); }
+      }
+
+      if(!text){
+        if(needsWebSearch){
+          await _tryGemini();      // ค้นเว็บก่อน เพราะ Groq เดาไม่ได้สำหรับ event ที่ผ่านไปแล้ว
+          if(!text) await _tryGroq(); // ถ้า Gemini ไม่มี/ไม่สำเร็จ ลอง Groq (อาจตอบ "ยังไม่พบผลประกาศ")
+        } else {
+          await _tryGroq();
+          if(!text) await _tryGemini();
         }
       }
       if(text) try{ localStorage.setItem(cacheKey, JSON.stringify({text, ts:Date.now()})); }catch{}
