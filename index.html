@@ -16227,13 +16227,26 @@ async function fetchEliteEconomicCalendar(){
     console.log('[cal] corsproxy added, total:',allRawEvents.length);
   }catch(e){ console.warn('[cal] corsproxy failed:',e.message); }
 
-  // ── dedup by title+date ──
-  const seen = new Set();
-  let events = allRawEvents.filter(ev=>{
+  // ── dedup by title+date — merge ข้อมูลแทนการทิ้งทันที ──
+  // เพราะ source ที่มาก่อน (เช่น Finnhub) อาจมี actual/forecast/previous ว่าง
+  // แต่ source ที่มาทีหลัง (เช่น ForexFactory) อาจมีค่าจริงให้
+  const eventMap = new Map();
+  allRawEvents.forEach(ev=>{
     const key = ev.title+'|'+ev.date;
-    if(seen.has(key)) return false;
-    seen.add(key); return true;
-  }).filter(ev=>ev.date>=from && ev.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+    const exist = eventMap.get(key);
+    if(!exist){ eventMap.set(key, ev); return; }
+    // เติมฟิลด์ที่ว่างอยู่จาก entry ใหม่
+    ['actual','forecast','previous','unit','time'].forEach(f=>{
+      const existVal = exist[f];
+      const newVal = ev[f];
+      const existEmpty = existVal===undefined||existVal===null||String(existVal).trim()==='';
+      const newEmpty = newVal===undefined||newVal===null||String(newVal).trim()==='';
+      if(existEmpty && !newEmpty) exist[f] = newVal;
+    });
+  });
+  let events = Array.from(eventMap.values())
+    .filter(ev=>ev.date>=from && ev.date<=to)
+    .sort((a,b)=>a.date.localeCompare(b.date));
 
   console.log('[cal] final merged events:',events.length);
 
@@ -16532,34 +16545,38 @@ ${facts}
         }catch(e){ console.warn('[elite:claude]',e.message); }
       }
 
-      // ── Groq/Gemini fallback: ใช้ได้เฉพาะตอนมีตัวเลขจริง (hasActual) ──
-      // เพราะสองตัวนี้ไม่มี web search ถ้าไม่มีตัวเลขจริงให้แล้ว จะเดาตัวเลขเอง (hallucinate)
-      if(!text && hasActual){
+      // ── Groq/Gemini fallback: ใช้ได้ทั้งกรณีมีและไม่มีตัวเลขจริง (hasActual) ──
+      // กรณี !hasActual: Groq ไม่มี web search → ใช้ prompt แบบวิเคราะห์ล่วงหน้า (ห้ามมั่วตัวเลข actual)
+      //                  Gemini → เปิด google_search grounding tool เพื่อค้นหาผลจริงบนเว็บ
+      if(!text){
         // Groq fallback
         const groqKey=localStorage.getItem('groqKey')||localStorage.getItem('groqKey2')||'';
         if(groqKey){
           try{
+            const groqPrompt = hasActual ? prompt : `เหตุการณ์: "${ev.title}" วันที่ ${ev.date}\n${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}หมายเหตุ: คุณไม่มีความสามารถค้นหาเว็บแบบเรียลไทม์ และระบบยังไม่มีตัวเลข "ผลจริง (actual)" ของเหตุการณ์นี้ ห้ามสร้างหรือเดาตัวเลข actual ขึ้นมาเองเด็ดขาด\n\nให้วิเคราะห์เป็นภาษาไทยแบบ \"เตรียมรับมือล่วงหน้า\" โดยครอบคลุม:\n1. ตลาดคาดหวังอะไรจากเหตุการณ์นี้ (อิงจาก forecast/previous ถ้ามี)\n2. ถ้าผลออกมา \"ดีกว่าคาด\" ตลาดหุ้น/ค่าเงิน/หุ้นกลุ่มไหนจะตอบสนองอย่างไร\n3. ถ้าผลออกมา \"แย่กว่าคาด\" จะกระทบอย่างไร\n4. สิ่งที่นักลงทุนควรจับตาเมื่อผลประกาศออกมา\nตอบกระชับ ภาษาง่าย ไม่เกิน 6-8 ประโยค`;
             const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
               method:'POST',
               headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:prompt}]})
+              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:groqPrompt}]})
             }, 15000);
             const gd = await gr.json();
             if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
             usedAI = 'Groq';
           }catch(e){ console.warn('[elite:groq]',e.message); }
         }
-        // Gemini fallback
+        // Gemini fallback (ใช้ google_search grounding tool ถ้ายังไม่มี actual เพื่อค้นหาผลจริงบนเว็บ)
         if(!text){
           const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
           if(gemKey){
             try{
+              const gemBody = { contents:[{parts:[{text:prompt}]}] };
+              if(!hasActual) gemBody.tools = [{ google_search: {} }];
               const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
                 method:'POST',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-              }, 12000);
+                body:JSON.stringify(gemBody)
+              }, 15000);
               const gmd = await gem.json();
-              if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.[0]?.text||'';
+              if(gem.ok) text = gmd.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
               usedAI = 'Gemini';
             }catch(e){ console.warn('[elite:gemini]',e.message); }
           }
