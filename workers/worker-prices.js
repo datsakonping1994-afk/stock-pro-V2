@@ -360,14 +360,21 @@ function daysToFromTo(days) {
 // → ลองหลาย host + ใส่ User-Agent, และถ้าล้มเหลวทั้งหมดให้ใช้ค่าที่เคย fetch สำเร็จล่าสุด
 // (เก็บแยกใน KV คนละ key จาก metrics_ เพื่อไม่ให้ผลลัพธ์ที่ fetch ไม่สำเร็จไปเขียนทับค่าดีๆ เดิม)
 const _YAHOO_FUND_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
-async function getRevenueFromYahoo(ticker, env) {
-  const revKvKey = `revdata_${ticker}`;
-  let cachedVal = null;
-  try {
-    const raw = await env.ALERT_KV.get(revKvKey);
-    if (raw) cachedVal = JSON.parse(raw);
-  } catch {}
 
+// อ่านจาก cache อย่างเดียว -- ไม่ fetch เน็ตเวิร์ก เร็ว ใช้ใน /metrics/batch (10 ticker/request)
+// เพื่อไม่ให้ทั้ง batch ช้า/timeout จากการรอ Yahoo ทีละตัว
+async function getRevenueCached(ticker, env) {
+  try {
+    const raw = await env.ALERT_KV.get(`revdata_${ticker}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+// fetch สด จาก Yahoo (หลาย host + UA) แล้ว cache ไว้ 7 วัน -- ใช้ตอนไม่มี cache เลย
+// (เรียกแบบ await ใน /metrics เดี่ยว, หรือผ่าน ctx.waitUntil แบบ background ใน /metrics/batch)
+async function fetchAndCacheRevenue(ticker, env) {
+  const revKvKey = `revdata_${ticker}`;
   const yhTicker = ticker.replace('.', '-');
   for (const host of _YAHOO_FUND_HOSTS) {
     try {
@@ -397,9 +404,15 @@ async function getRevenueFromYahoo(ticker, env) {
       return fresh;
     } catch {}
   }
-  // fetch ไม่สำเร็จทุก host -- ใช้ค่าที่เคย fetch สำเร็จล่าสุด (ดีกว่า N/A)
-  if (cachedVal) return cachedVal;
-  return { revGrowth: null, revLatestQ: null };
+  return null; // ล้มเหลวทุก host -- ไม่ cache (ครั้งหน้าจะลองใหม่)
+}
+
+// ใช้ใน /metrics (เดี่ยว) -- รอ live fetch ได้ (ticker เดียว ไม่กระทบ batch อื่น)
+async function getRevenueFromYahoo(ticker, env) {
+  const cached = await getRevenueCached(ticker, env);
+  if (cached) return cached;
+  const fresh = await fetchAndCacheRevenue(ticker, env);
+  return fresh || { revGrowth: null, revLatestQ: null };
 }
 
 export default {
@@ -925,8 +938,16 @@ export default {
       const results = {};
       for (const ticker of tickers) {
         const kvKey = `metrics_${ticker}`;
-        // FIX: revGrowth/revLatestQ ดึงแยกเสมอ (มี cache + stale-fallback ของตัวเอง)
-        const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker, env);
+        // FIX: /metrics/batch ดึงทีละ 10 ticker -- ใช้แค่ cache (เร็ว ไม่ fetch เน็ตเวิร์ก)
+        // ถ้ายังไม่เคยมี cache ค่อย fetch สดแบบ background (ctx.waitUntil) ไม่บล็อก response
+        // (เดิม await fetch Yahoo ทุก ticker ทำให้ batch ทั้งก้อน timeout 8s ฝั่งแอป
+        //  → revGrowth หายไปหมดทุกตัว ไม่ใช่แค่ตัวที่มีปัญหา)
+        let revData = await getRevenueCached(ticker, env);
+        if (!revData) {
+          ctx.waitUntil(fetchAndCacheRevenue(ticker, env).catch(()=>{}));
+          revData = { revGrowth: null, revLatestQ: null };
+        }
+        const { revGrowth, revLatestQ } = revData;
         try {
           const cached = await env.ALERT_KV.get(kvKey);
           if (cached) {
@@ -934,6 +955,35 @@ export default {
             continue;
           }
         } catch {}
+        for (const key of finnhubKeys) {
+          try {
+            const r = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${key}`, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) continue;
+            const d = await r.json();
+            const m = d?.metric || {};
+
+            const result = {
+              pe: m['peNormalizedAnnual']||m['peTTM']||null,
+              mktcap: m['marketCapitalization']||null,
+              beta: m['beta']||null,
+              eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
+              div: m['dividendYieldIndicatedAnnual']||null,
+              high52: m['52WeekHigh']||null,
+              low52: m['52WeekLow']||null,
+              shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0)
+                ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null,
+              de: m['totalDebt/totalEquityAnnual']||m['longTermDebt/equityAnnual']||null,
+              fcf: m['freeCashFlowTTM']||m['freeCashFlowAnnual']||null,
+            };
+            results[ticker] = { ...result, revGrowth, revLatestQ };
+            try { await env.ALERT_KV.put(`metrics_${ticker}`, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
+            break;
+          } catch {}
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      return new Response(JSON.stringify({ ok: true, metrics: results }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
         for (const key of finnhubKeys) {
           try {
             const r = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${key}`, { signal: AbortSignal.timeout(5000) });
