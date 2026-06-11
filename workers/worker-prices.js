@@ -356,29 +356,50 @@ function daysToFromTo(days) {
 
 // ── Yahoo incomeStatementHistoryQuarterly helper (ใช้ฝั่ง Worker เพื่อหลีกเลี่ยง CORS)
 // คืน { revGrowth, revLatestQ } -- revLatestQ = totalRevenue ของไตรมาสล่าสุด (raw, USD)
-async function getRevenueFromYahoo(ticker) {
-  let revGrowth = null, revLatestQ = null;
+// FIX: Yahoo บางครั้ง fetch ไม่สำเร็จจาก Cloudflare Worker (rate limit/บล็อก IP ชั่วคราว)
+// → ลองหลาย host + ใส่ User-Agent, และถ้าล้มเหลวทั้งหมดให้ใช้ค่าที่เคย fetch สำเร็จล่าสุด
+// (เก็บแยกใน KV คนละ key จาก metrics_ เพื่อไม่ให้ผลลัพธ์ที่ fetch ไม่สำเร็จไปเขียนทับค่าดีๆ เดิม)
+const _YAHOO_FUND_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+async function getRevenueFromYahoo(ticker, env) {
+  const revKvKey = `revdata_${ticker}`;
+  let cachedVal = null;
   try {
-    const yhTicker = ticker.replace('.', '-');
-    const yr = await fetch(
-      `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    if (yr.ok) {
+    const raw = await env.ALERT_KV.get(revKvKey);
+    if (raw) cachedVal = JSON.parse(raw);
+  } catch {}
+
+  const yhTicker = ticker.replace('.', '-');
+  for (const host of _YAHOO_FUND_HOSTS) {
+    try {
+      const yr = await fetch(
+        `https://${host}/v10/finance/quoteSummary/${yhTicker}?modules=incomeStatementHistoryQuarterly`,
+        {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+          signal: AbortSignal.timeout(5000)
+        }
+      );
+      if (!yr.ok) continue;
       const yd = await yr.json();
       const qtrs = yd?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory || [];
       const r0 = qtrs[0]?.totalRevenue?.raw;
       const r4 = qtrs[4]?.totalRevenue?.raw;
-      if (r0 != null && isFinite(r0)) revLatestQ = r0;
-      if (r0 != null && r4 != null && r4 !== 0 && isFinite(r0) && isFinite(r4)) {
+      if (r0 == null || !isFinite(r0)) continue; // ผลลัพธ์ไม่สมบูรณ์ -- ลอง host ถัดไป
+
+      let revGrowth = null;
+      if (r4 != null && r4 !== 0 && isFinite(r4)) {
         const yoy = (r0 - r4) / Math.abs(r4) * 100;
         if (isFinite(yoy) && yoy >= -100 && yoy <= 5000) {
           revGrowth = r4 < 0 ? null : +(yoy.toFixed(1));
         }
       }
-    }
-  } catch {}
-  return { revGrowth, revLatestQ };
+      const fresh = { revGrowth, revLatestQ: r0 };
+      try { await env.ALERT_KV.put(revKvKey, JSON.stringify(fresh), { expirationTtl: 86400 * 7 }); } catch {}
+      return fresh;
+    } catch {}
+  }
+  // fetch ไม่สำเร็จทุก host -- ใช้ค่าที่เคย fetch สำเร็จล่าสุด (ดีกว่า N/A)
+  if (cachedVal) return cachedVal;
+  return { revGrowth: null, revLatestQ: null };
 }
 
 export default {
@@ -858,9 +879,16 @@ export default {
       const ticker = validateTicker(url.searchParams.get('t'));
       if (!ticker) return new Response(JSON.stringify({ ok: false, error: 'invalid ticker' }), { status: 400, headers: cors });
       const kvKey = `metrics_${ticker}`;
+      // FIX: revGrowth/revLatestQ ดึงแยกเสมอ (มี cache + stale-fallback ของตัวเอง)
+      // ไม่ผูกกับ cache ของ Finnhub metrics_ เพื่อไม่ให้ fetch Yahoo ล้มเหลวครั้งเดียว
+      // ไปค้างเป็น N/A อยู่ใน metrics_ cache นาน 24 ชม.
+      const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker, env);
       try {
         const cached = await env.ALERT_KV.get(kvKey);
-        if (cached) return new Response(JSON.stringify({ ok: true, ...JSON.parse(cached), cached: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        if (cached) {
+          const base = JSON.parse(cached);
+          return new Response(JSON.stringify({ ok: true, ...base, revGrowth, revLatestQ, cached: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
       } catch {}
       const finnhubKeys = getFinnhubKeys(env);
       for (const key of finnhubKeys) {
@@ -870,18 +898,11 @@ export default {
           const d = await r.json();
           const m = d?.metric || {};
 
-          // FIX: ดึง revGrowth + revLatestQ (totalRevenue ไตรมาสล่าสุด) จาก
-          // incomeStatementHistoryQuarterly ฝั่ง Worker เลย -- ไม่มีปัญหา CORS
-          // (แก้ปัญหา "Revenue (ล่าสุด)" ขึ้น N/A ที่ฝั่งแอปดึงผ่าน proxy แล้วล้มเหลวบ่อย)
-          const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker);
-
           const result = {
             pe: m['peNormalizedAnnual']||m['peTTM']||null,
             mktcap: m['marketCapitalization']||null,
             beta: m['beta']||null,
             eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
-            revGrowth,
-            revLatestQ,
             div: m['dividendYieldIndicatedAnnual']||null,
             high52: m['52WeekHigh']||null,
             low52: m['52WeekLow']||null,
@@ -891,7 +912,7 @@ export default {
             fcf: m['freeCashFlowTTM']||m['freeCashFlowAnnual']||null,
           };
           try { await env.ALERT_KV.put(kvKey, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
-          return new Response(JSON.stringify({ ok: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify({ ok: true, ...result, revGrowth, revLatestQ }), { headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch {}
       }
       return new Response(JSON.stringify({ ok: false }), { status: 404, headers: cors });
@@ -904,9 +925,14 @@ export default {
       const results = {};
       for (const ticker of tickers) {
         const kvKey = `metrics_${ticker}`;
+        // FIX: revGrowth/revLatestQ ดึงแยกเสมอ (มี cache + stale-fallback ของตัวเอง)
+        const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker, env);
         try {
           const cached = await env.ALERT_KV.get(kvKey);
-          if (cached) { results[ticker] = JSON.parse(cached); continue; }
+          if (cached) {
+            results[ticker] = { ...JSON.parse(cached), revGrowth, revLatestQ };
+            continue;
+          }
         } catch {}
         for (const key of finnhubKeys) {
           try {
@@ -915,18 +941,11 @@ export default {
             const d = await r.json();
             const m = d?.metric || {};
 
-            // FIX: ดึง revGrowth + revLatestQ (totalRevenue ไตรมาสล่าสุด) จาก
-            // incomeStatementHistoryQuarterly ฝั่ง Worker เลย -- ไม่มีปัญหา CORS
-            // (แก้ปัญหา "Revenue (ล่าสุด)" ขึ้น N/A ที่ฝั่งแอปดึงผ่าน proxy แล้วล้มเหลวบ่อย)
-            const { revGrowth, revLatestQ } = await getRevenueFromYahoo(ticker);
-
             const result = {
               pe: m['peNormalizedAnnual']||m['peTTM']||null,
               mktcap: m['marketCapitalization']||null,
               beta: m['beta']||null,
               eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null,
-              revGrowth,
-              revLatestQ,
               div: m['dividendYieldIndicatedAnnual']||null,
               high52: m['52WeekHigh']||null,
               low52: m['52WeekLow']||null,
@@ -935,7 +954,7 @@ export default {
               de: m['totalDebt/totalEquityAnnual']||m['longTermDebt/equityAnnual']||null,
               fcf: m['freeCashFlowTTM']||m['freeCashFlowAnnual']||null,
             };
-            results[ticker] = result;
+            results[ticker] = { ...result, revGrowth, revLatestQ };
             try { await env.ALERT_KV.put(`metrics_${ticker}`, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
             break;
           } catch {}
