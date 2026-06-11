@@ -10,7 +10,7 @@
 // ============================================================
 
 // Small cap tickers that need special handling
-const SMALL_CAP_TICKERS = new Set(['OSS','AEHR','SNDK','AVAV','AMBA','ONDS','FPS','STX','NOK','SLNH']);
+const SMALL_CAP_TICKERS = new Set(['OSS','AEHR','SNDK','AVAV','AMBA','ONDS','FPS','STX','NOK','SLNH','CBRS']);
 
 // [FIX #1] ย้าย SPY/QQQ/SMH/VIX ขึ้นต้น array -- chunk 0 จะดึงเสมอ
 const FALLBACK_TICKERS = [
@@ -24,6 +24,7 @@ const FALLBACK_TICKERS = [
   'TMDX','CRWV','MELI','QCOM','AMAT','LRCX','CRM','ADBE','SNOW','DDOG',
   'MDB','NET','V','MA','WMT','FPS','NOK','DELL','ONDS',
   'OSS','AEHR','SNDK','AVAV','STX','VST','AMBA',
+  'CBRS','PANW','MRVL',
 ];
 
 
