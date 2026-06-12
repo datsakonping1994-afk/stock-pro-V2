@@ -5,6 +5,13 @@
 //  Cron: 0 */2 * * *
 //  KV Binding: ALERT_KV
 //  ENV: TG_TOKEN, TG_CHAT_ID, GEMINI_KEY, GROQ_KEY, FINNHUB_KEY, GNEWS_KEY
+//
+//  [FIX 2026-06-12] เดิม scheduled() เช็ค h===1 (Morning Brief, 08:00 ไทย)
+//  และ h===9 (Pre-Market, 16:00 ไทย) แต่ cron "0 */2 * * *" รันแค่ตอน
+//  ชั่วโมงคู่ (0,2,4,...) ทำให้ h===1 และ h===9 ไม่เคยเป็นจริงเลย
+//  → Morning Brief / Pre-Market ไม่เคยถูกส่งอัตโนมัติ
+//  แก้โดยขยายเงื่อนไขให้ครอบ tick ที่ใกล้ที่สุด (h===2, h===10) ด้วย
+//  cooldown เดิม (20 ชม.) ป้องกันการส่งซ้ำอยู่แล้ว จึงปลอดภัย
 // ============================================================
 
 async function sendTG(env, text, token=null, chatId=null){
@@ -345,6 +352,17 @@ export default {
       return new Response('Economic alert triggered',{headers:h});
     }
     if(url.pathname==='/trigger/insider'){ ctx.waitUntil(checkInsiderAlerts(env)); return new Response('Insider triggered',{headers:h}); }
+    // [FIX] debug endpoint เพื่อดูว่า worker เห็นเวลาเป็นเท่าไหร่ และ cron เงื่อนไขจะ trigger ไหม
+    if(url.pathname==='/debug/time'){
+      const now = new Date();
+      const utcH = now.getUTCHours();
+      return new Response(JSON.stringify({
+        utc_now: now.toISOString(),
+        utc_hour: utcH,
+        will_run_morning_brief: (utcH===1||utcH===2),
+        will_run_premarket: (utcH===9||utcH===10)
+      }, null, 2), {headers:{...h,'Content-Type':'application/json'}});
+    }
     return new Response('STOCK PRO -- Brief Worker OK',{headers:h});
   },
 
@@ -353,7 +371,13 @@ export default {
     const d = new Date().getUTCDay();
     ctx.waitUntil(sendEconomicAlert(env));
     ctx.waitUntil(checkInsiderAlerts(env));
-    if(h===1) ctx.waitUntil(sendMorningBrief(env));            // 08:00 ไทย
-    if(h===9 && d>=1 && d<=5) ctx.waitUntil(sendPreMarket(env)); // 16:00 ไทย จ-ศ
+
+    // [FIX 2026-06-12] เดิม h===1 / h===9 ไม่เคยตรงกับ cron "0 */2 * * *"
+    // (cron รันแค่เลขคู่: 0,2,4,6,8,10,...) เพราะ 1 และ 9 เป็นเลขคี่
+    // → ขยายเป็น h===1||h===2 และ h===9||h===10 เพื่อให้ tick ที่ใกล้สุด
+    //   (h=2, h=10) จับเงื่อนไขได้จริง — cooldown 20 ชม. ในแต่ละฟังก์ชัน
+    //   ป้องกันการส่งซ้ำอยู่แล้ว จึงไม่กระทบ
+    if(h===1||h===2) ctx.waitUntil(sendMorningBrief(env));              // 08:00 ไทย (UTC 01:00)
+    if((h===9||h===10) && d>=1 && d<=5) ctx.waitUntil(sendPreMarket(env)); // 16:00 ไทย (UTC 09:00) จ-ศ
   }
 };
