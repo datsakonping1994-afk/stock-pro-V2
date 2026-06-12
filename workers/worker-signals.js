@@ -17,7 +17,7 @@ const SUP0={
   ELF:28.0,AMSC:18.0,APP:280.0,COST:920.0,UNH:260.0,FPS:38.0,NOK:4.0,DELL:105.0,ONDS:3.0,
   OSS:7.0,AEHR:10.0,SNDK:42.0,AVAV:165.0,STX:82.0,VST:120.0,AMBA:55.0,ORCL:190.0,
   SPY:510.0,QQQ:420.0,SMH:200.0,
-  PANW:250.0,MRVL:235.0,CBRS:210.0
+  PANW:250.0,MRVL:235.0,CBRS:210.0,SPCX:125.0
 };
 
 const LOG = {
@@ -457,6 +457,45 @@ export default {
         return new Response(JSON.stringify({ok:true}),{headers:{...cors,'Content-Type':'application/json'}});
       }catch(e){
         return new Response(JSON.stringify({ok:false,error:e.message}),{status:500,headers:{...cors,'Content-Type':'application/json'}});
+      }
+    }
+    if(url.pathname==='/stocks/add'){
+      try{
+        const t = validateTicker(url.searchParams.get('t'));
+        if(!t) return new Response(JSON.stringify({ok:false,error:'invalid ticker'}),{status:400,headers:{...cors,'Content-Type':'application/json'}});
+        const shortParam = parseFloat(url.searchParams.get('short')) || 0;
+        let stocks=[];
+        try{const r=await env.ALERT_KV.get('stocks');if(r){const s=JSON.parse(r);if(Array.isArray(s))stocks=s;}}catch{}
+        if(stocks.some(s=>s.t===t)){
+          return new Response(JSON.stringify({ok:true,message:`${t} already exists`,stocks}),{headers:{...cors,'Content-Type':'application/json'}});
+        }
+        stocks.push({t, short:shortParam});
+        await env.ALERT_KV.put('stocks', JSON.stringify(stocks));
+        return new Response(JSON.stringify({ok:true,message:`${t} added`,stocks}),{headers:{...cors,'Content-Type':'application/json'}});
+      }catch(e){
+        return new Response(JSON.stringify({ok:false,error:e.message}),{status:500,headers:{...cors,'Content-Type':'application/json'}});
+      }
+    }
+    if(url.pathname==='/stocks/remove'){
+      try{
+        const t = validateTicker(url.searchParams.get('t'));
+        if(!t) return new Response(JSON.stringify({ok:false,error:'invalid ticker'}),{status:400,headers:{...cors,'Content-Type':'application/json'}});
+        let stocks=[];
+        try{const r=await env.ALERT_KV.get('stocks');if(r){const s=JSON.parse(r);if(Array.isArray(s))stocks=s;}}catch{}
+        const filtered = stocks.filter(s=>s.t!==t);
+        await env.ALERT_KV.put('stocks', JSON.stringify(filtered));
+        return new Response(JSON.stringify({ok:true,message:`${t} removed`,stocks:filtered}),{headers:{...cors,'Content-Type':'application/json'}});
+      }catch(e){
+        return new Response(JSON.stringify({ok:false,error:e.message}),{status:500,headers:{...cors,'Content-Type':'application/json'}});
+      }
+    }
+    if(url.pathname==='/stocks/list'){
+      try{
+        let stocks=[];
+        try{const r=await env.ALERT_KV.get('stocks');if(r){const s=JSON.parse(r);if(Array.isArray(s))stocks=s;}}catch{}
+        return new Response(JSON.stringify({stocks}),{headers:{...cors,'Content-Type':'application/json'}});
+      }catch(e){
+        return new Response(JSON.stringify({stocks:[],error:e.message}),{status:500,headers:{...cors,'Content-Type':'application/json'}});
       }
     }
     if(url.pathname==='/health'){
