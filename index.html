@@ -1309,8 +1309,9 @@ canvas.bigchart{width:100%;height:100%}
         <!-- AI วิเคราะห์ -->
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
           <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px">🤖 AI จัดการพอร์ต <span style="font-size:9px;background:rgba(201,168,76,0.2);border-radius:6px;padding:2px 6px">Fund Manager Mode</span></button>
-          <div id="portAIResult" style="display:none;margin-top:10px;padding:12px;background:var(--bg3);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6;font-family:'Inter',sans-serif"></div>
+          <div id="portAIResult" style="display:none;margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6;font-family:'Inter',sans-serif"></div>
           <div id="portAIActions" style="display:none;margin-top:10px"></div>
+          <div id="portAISimulation" style="display:none;margin-top:10px"></div>
         </div>
       </div>
 
@@ -11109,12 +11110,34 @@ function _fmExecuteAction(action){
   }catch(e){ toast('❌ '+e.message); }
 }
 
+// ── UI helpers for AI Fund Manager cards ──
+function _fmRiskColor(score){
+  if(score<=30) return 'var(--green)';
+  if(score<=70) return 'var(--yellow)';
+  return 'var(--red)';
+}
+function _fmBar(pct,color){
+  pct=Math.max(0,Math.min(100,pct));
+  return `<div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 0.5s ease"></div></div>`;
+}
+function _fmCard(title,bodyHtml){
+  return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">${title}</div>
+    ${bodyHtml}
+  </div>`;
+}
+function _fmRow(label,value,color){
+  return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px;gap:8px"><span style="color:var(--text3)">${label}</span><span style="color:${color||'var(--text)'};font-weight:700;text-align:right">${value}</span></div>`;
+}
+
 async function analyzePortfolioAI(){
   const resultEl=document.getElementById('portAIResult');
   const actionsEl=document.getElementById('portAIActions');
+  const simEl=document.getElementById('portAISimulation');
   if(!resultEl) return;
   resultEl.style.display='block';
-  if(actionsEl) actionsEl.style.display='none';
+  if(actionsEl){ actionsEl.style.display='none'; actionsEl.innerHTML=''; }
+  if(simEl){ simEl.style.display='none'; simEl.innerHTML=''; }
   resultEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--gold)">
     <div class="elite-ai-dot"></div><div class="elite-ai-dot"></div><div class="elite-ai-dot"></div>
     <span style="font-size:12px">AI Fund Manager กำลังวิเคราะห์พอร์ต...</span>
@@ -11128,51 +11151,38 @@ async function analyzePortfolioAI(){
       const cur=stocksMap.get(p.t)?.p||0;
       return s+cur*p.shares;
     },0);
+    const totalCost=port.reduce((s,p)=>s+(p.avgPrice||0)*p.shares,0);
 
-    const holdings=port.map(p=>{
+    // ── ข้อมูลแต่ละ holding ──
+    const holdingsData = port.map(p=>{
       const s=stocksMap.get(p.t);
       const cur=s?.p||0;
       const val=cur*p.shares;
-      const pct=totalVal>0?(val/totalVal*100).toFixed(1):0;
-      const pnl=cur>0?((cur-p.avgPrice)/p.avgPrice*100).toFixed(1):0;
-      const sector=getSector(p);
-      const limit=_posLimits[p.t]||_recommendedLimit(p.t);
-      const overLimit=parseFloat(pct)>limit?` ⚠️ เกิน limit ${limit}%`:'';
-      return `${p.t}(${sector}): ${p.shares}หุ้น เข้า$${p.avgPrice} ปัจจุบัน$${cur} P&L:${pnl}% สัดส่วน:${pct}%${overLimit}`;
-    }).join('\n');
+      const pct=totalVal>0?(val/totalVal*100):0;
+      const pnl=(cur>0&&p.avgPrice>0)?((cur-p.avgPrice)/p.avgPrice*100):0;
+      return {ticker:p.t, shares:p.shares, avgPrice:p.avgPrice, cur, val, pct, pnl, sector:getSector(p), rsi:s?.rsi, score:s?.score, target:s?.target};
+    });
 
     // Sector breakdown
     const sectorBreakdown={};
-    port.forEach(p=>{
-      const sector=getSector(p);
-      const val=(stocksMap.get(p.t)?.p||0)*p.shares;
-      sectorBreakdown[sector]=(sectorBreakdown[sector]||0)+val;
-    });
+    holdingsData.forEach(h=>{ sectorBreakdown[h.sector]=(sectorBreakdown[h.sector]||0)+h.val; });
     const sectorText=Object.entries(sectorBreakdown)
       .sort((a,b)=>b[1]-a[1])
       .map(([s,v])=>`${s}: ${totalVal>0?(v/totalVal*100).toFixed(0):0}%`)
       .join(' | ');
 
-    const cashPct=_portCash>0?((_portCash/(totalVal+_portCash))*100).toFixed(1):0;
+    const cashPct=(totalVal+_portCash)>0?((_portCash/(totalVal+_portCash))*100):0;
     const fng=window._fngForAI;
-    const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`; 
+    const mkt=`SPY ${marketCtx.SPY?.change||0}% | QQQ ${marketCtx.QQQ?.change||0}%${fng?` | Fear&Greed ${fng.value}/100`:''}`;
 
-    // ── ดึงข้อมูลตลาดแต่ละหุ้นก่อนส่ง AI ──
-    const holdingsEnriched = await Promise.all(port.map(async p => {
-      const s = stocksMap.get(p.t);
-      const cur = s?.p || 0;
-      const val = cur * p.shares;
-      const pct = totalVal > 0 ? (val / totalVal * 100).toFixed(1) : 0;
-      const pnl = cur > 0 ? ((cur - p.avgPrice) / p.avgPrice * 100).toFixed(1) : 0;
-      const sector = getSector(p);
-      const rsi = s?.rsi ? `RSI ${s.rsi.toFixed(0)}` : '';
-      const score = s?.score ? `Score ${s.score}/100` : '';
-      const target = s?.target ? `Target $${s.target}` : '';
-      const pnlNum = parseFloat(pnl);
-      const stopLoss = cur > 0 ? (cur * 0.92).toFixed(2) : ''; // -8% default
-      const takeProfit = cur > 0 ? (cur * 1.15).toFixed(2) : ''; // +15% default
-      return `${p.t}(${sector}): ${p.shares}หุ้น | เข้า$${p.avgPrice} | ปัจจุบัน$${cur.toFixed(2)} | P&L:${pnl}% | สัดส่วน:${pct}% | ${rsi} ${score} ${target} | Stop:$${stopLoss} | TP:$${takeProfit}`;
-    }));
+    const holdingsEnriched = holdingsData.map(h=>{
+      const rsi = h.rsi?`RSI ${h.rsi.toFixed(0)}`:'';
+      const score = h.score?`Score ${h.score}/100`:'';
+      const target = h.target?`Target $${h.target}`:'';
+      const stopLoss = h.cur>0?(h.cur*0.92).toFixed(2):'';
+      const takeProfit = h.cur>0?(h.cur*1.15).toFixed(2):'';
+      return `${h.ticker}(${h.sector}): ${h.shares}หุ้น | เข้า$${h.avgPrice} | ปัจจุบัน$${h.cur.toFixed(2)} | P&L:${h.pnl.toFixed(1)}% | สัดส่วน:${h.pct.toFixed(1)}% | ${rsi} ${score} ${target} | Stop:$${stopLoss} | TP:$${takeProfit}`;
+    });
 
     const sys = `คุณคือ AI Fund Manager ส่วนตัว ดูแลพอร์ต Aggressive
 Risk Profile: Aggressive (รับขาดทุนได้สูงสุด ${FM_CONFIG.maxDrawdown}%)
@@ -11183,90 +11193,175 @@ Risk Profile: Aggressive (รับขาดทุนได้สูงสุด
 - Stop Loss default -${FM_CONFIG.stopLossPct}% จากราคาปัจจุบัน
 - Take Profit default +${FM_CONFIG.takeProfitPct}%
 
-ตอบ 2 ส่วน:
-ส่วนที่ 1: วิเคราะห์เป็นข้อความภาษาไทย (ห้ามใช้ ** # Markdown)
-ส่วนที่ 2: JSON actions array เท่านั้น ในรูปแบบ:
-ACTIONS_JSON:
-[{"type":"sell_partial","ticker":"XXX","shares":N,"reason":"เหตุผล","priority":"high/medium"},{"type":"set_stoploss","ticker":"XXX","price":XX.XX,"reason":"เหตุผล","priority":"high"},{"type":"set_target","ticker":"XXX","price":XX.XX,"reason":"เหตุผล","priority":"medium"}]
-type ที่ใช้ได้: sell_partial, sell_all, set_stoploss, set_target`;
+วิเคราะห์พอร์ต ประเมินความเสี่ยง การกระจายตัว ความเชื่อมั่น และเสนอ Action Plan
+ตอบเป็น JSON เท่านั้น ห้ามมีข้อความ คำอธิบาย หรือ Markdown/code block ใดๆ นอกเหนือจาก JSON object เดียว ตามรูปแบบนี้:
+{
+  "health": {"riskScore": number(0-100), "diversification": "เกรดเช่น C+", "confidence": number(0-100)},
+  "executive": {"riskStatus": "LOW|MEDIUM|HIGH", "keyIssues": ["สั้น ไม่เกิน 6 คำ","...","..."], "recommendedAction": "สั้น ไม่เกิน 8 คำ"},
+  "actions": [
+    {"type":"sell_partial","ticker":"XXX","currentWeight":number,"targetWeight":number,"shares":number,"priority":"high|medium|low","expected":["สั้น","สั้น"]},
+    {"type":"reduce","ticker":"XXX","reason":"สั้น","priority":"medium","expected":["สั้น"]},
+    {"type":"hold","ticker":"XXX","reason":"สั้น","priority":"low","expected":["สั้น"]},
+    {"type":"set_stoploss","ticker":"XXX","price":number,"reason":"สั้น","priority":"high"},
+    {"type":"set_target","ticker":"XXX","price":number,"reason":"สั้น","priority":"medium"}
+  ],
+  "simulation": {"after": {"TICKER":number, "...":number, "cash":number}, "riskScoreAfter": number(0-100)}
+}
+type ที่ใช้ได้เท่านั้น: sell_partial, sell_all, reduce, hold, set_stoploss, set_target
+keyIssues สูงสุด 3 ข้อ, actions ครอบคลุมตัวที่สำคัญในพอร์ต, simulation.after รวมเฉพาะตัวที่ปรับสัดส่วน พร้อม cash`;
 
     const prompt = `พอร์ตปัจจุบัน (มูลค่า $${totalVal.toFixed(0)}):
 ${holdingsEnriched.join('\n')}
 
 Sector: ${sectorText}
-เงินสด: $${_portCash} (${cashPct}%)
+เงินสด: $${_portCash.toFixed(0)} (${cashPct.toFixed(1)}%)
 ตลาด: ${mkt}
 
-วิเคราะห์และแนะนำ:
-🎯 ภาพรวม — สุขภาพพอร์ต ความเสี่ยง Beta โดยประมาณ
-📋 ทีละตัว — ทุกตัว: ถือ/ลด/ขาย + เหตุผล + Stop Loss + Target
-⚖️ สัดส่วน — ตัวไหนเกิน ${FM_CONFIG.maxPerStock}%? Sector ไหนหนักเกิน ${FM_CONFIG.maxPerSector}%?
-🔄 Rebalance — ปรับยังไง ขายอะไร เท่าไหร่
-⚡ Action Plan — 3 ข้อเร่งด่วน
+วิเคราะห์และตอบเป็น JSON ตามรูปแบบที่กำหนดเท่านั้น`;
 
-แล้วสร้าง ACTIONS_JSON สำหรับ action ที่แนะนำให้ทำจริง`;
-
-    let reply = await callAI_Analyze(sys, prompt, 2000);
+    let reply = await callAI_Analyze(sys, prompt, 1500);
     if(!reply){ resultEl.innerHTML='❌ ไม่สามารถวิเคราะห์ได้'; return; }
 
-    // แยก analysis text และ actions JSON
-    let analysisText = reply;
-    let actions = [];
-    const jsonMatch = reply.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])/);
-    if(jsonMatch){
-      try{ actions = JSON.parse(jsonMatch[1]); }catch{}
-      analysisText = reply.replace(/ACTIONS_JSON:[\s\S]*/,'').trim();
+    // ── Parse JSON (รองรับกรณีมี code block หรือข้อความแทรก) ──
+    let data;
+    try{
+      let jsonStr = reply.replace(/```json/gi,'').replace(/```/g,'').trim();
+      const m = jsonStr.match(/\{[\s\S]*\}/);
+      data = JSON.parse(m?m[0]:jsonStr);
+    }catch(e){
+      resultEl.innerHTML='❌ AI ตอบรูปแบบไม่ถูกต้อง ลองวิเคราะห์อีกครั้ง';
+      return;
     }
-    analysisText = analysisText.replace(/\*\*/g,'').replace(/\*/g,'').replace(/^#+\s/gm,'').trim();
 
-    // Render analysis
-    const sections = analysisText.split('\n\n').filter(Boolean);
-    resultEl.innerHTML = sections.map(sec => {
-      const lines = sec.trim().split('\n');
-      const header = lines[0];
-      const body = lines.slice(1).join('\n');
-      const isHeader = /^[🎯📋⚖️🔄⚡]/.test(header);
-      if(isHeader){
-        return `<div style="margin-bottom:12px">
-          <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">${header}</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line">${body}</div>
-        </div>`;
-      }
-      return `<div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-line;margin-bottom:8px">${sec}</div>`;
-    }).join('');
+    const health = data.health||{};
+    const riskScore = Math.max(0,Math.min(100, Number(health.riskScore)||0));
+    const confidence = Math.max(0,Math.min(100, Number(health.confidence)||0));
+    const diversification = health.diversification||'-';
+    const riskColor = _fmRiskColor(riskScore);
 
-    // Render Action Cards
+    const exec = data.executive||{};
+    const actions = Array.isArray(data.actions)?data.actions:[];
+    const sim = data.simulation||null;
+
+    // ── Portfolio Summary (คำนวณจากข้อมูลพอร์ตจริง) ──
+    const portfolioValue = totalVal + _portCash;
+    const performance = totalCost>0 ? ((totalVal-totalCost)/totalCost*100) : 0;
+    const largest = holdingsData.slice().sort((a,b)=>b.pct-a.pct)[0];
+    const biggestLoss = holdingsData.slice().sort((a,b)=>a.pnl-b.pnl)[0];
+    const riskLabel = riskScore<=30?'Low':riskScore<=70?'Medium':'High';
+
+    // ══ Render: 1) AI Health Score → 2) Portfolio Summary → 3) Executive Summary ══
+    let html = '';
+
+    html += _fmCard('🧠 AI Portfolio Health', `
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">Risk Score</span><span style="font-weight:700;color:${riskColor}">${riskScore}/100</span></div>
+        ${_fmBar(riskScore, riskColor)}
+      </div>
+      ${_fmRow('Diversification', diversification)}
+      ${_fmRow('Cash Allocation', cashPct.toFixed(0)+'%')}
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">AI Confidence</span><span style="font-weight:700;color:var(--gold)">${confidence}%</span></div>
+        ${_fmBar(confidence,'var(--gold)')}
+      </div>
+    `);
+
+    html += _fmCard('📊 Portfolio Summary', `
+      ${_fmRow('Portfolio Value', '$'+portfolioValue.toFixed(0))}
+      ${_fmRow('Performance', (performance>=0?'+':'')+performance.toFixed(2)+'%', performance>=0?'var(--green)':'var(--red)')}
+      ${_fmRow('Cash Reserve', '$'+_portCash.toFixed(0))}
+      ${_fmRow('Risk Level', riskLabel, riskColor)}
+      ${largest?_fmRow('Largest Position', `${largest.ticker} (${largest.pct.toFixed(1)}%)`):''}
+      ${biggestLoss?_fmRow('Biggest Loss', `${biggestLoss.ticker} (${biggestLoss.pnl.toFixed(1)}%)`, biggestLoss.pnl<0?'var(--red)':'var(--green)'):''}
+    `);
+
+    const issues = Array.isArray(exec.keyIssues)?exec.keyIssues.slice(0,3):[];
+    html += _fmCard('📌 AI Recommendation', `
+      ${_fmRow('Risk Status', exec.riskStatus||'-', _fmRiskColor(riskScore))}
+      ${issues.length?`<div style="font-size:11px;color:var(--text3);margin:6px 0 2px">Key Issues</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6">${issues.map(i=>'• '+i).join('<br>')}</div>`:''}
+      ${exec.recommendedAction?`<div style="font-size:11px;color:var(--text3);margin-top:6px">Recommended Action</div><div style="font-size:12px;color:var(--text);font-weight:700">${exec.recommendedAction}</div>`:''}
+    `);
+
+    resultEl.innerHTML = html;
+
+    // ══ Action Plan ══
     if(actions.length && actionsEl){
       actionsEl.style.display='block';
-      const priorityColor = p => p==='high'?'#ff4d6a':p==='medium'?'#c9a84c':'#64d2ff';
-      const priorityLabel = p => p==='high'?'🔴 เร่งด่วน':p==='medium'?'🟡 ภายในสัปดาห์':'🔵 ติดตาม';
-      const actionLabel = t => ({
-        sell_partial:'🔽 ขายบางส่วน', sell_all:'❌ ขายทั้งหมด',
-        set_stoploss:'🛡 ตั้ง Stop Loss', set_target:'🎯 ตั้ง Target'
-      }[t]||t);
+      const priorityColor = p => p==='high'?'var(--red)':p==='medium'?'var(--yellow)':'var(--green)';
+      const priorityIcon = p => p==='high'?'🔴':p==='medium'?'🟡':'🟢';
+      const actionTitle = a => {
+        switch(a.type){
+          case 'sell_partial': return `Sell ${a.ticker}`;
+          case 'sell_all': return `Sell All ${a.ticker}`;
+          case 'reduce': return `Reduce ${a.ticker}`;
+          case 'hold': return `Hold ${a.ticker}`;
+          case 'set_stoploss': return `Set Stop Loss ${a.ticker}`;
+          case 'set_target': return `Set Target ${a.ticker}`;
+          default: return `${a.type} ${a.ticker}`;
+        }
+      };
+      const canExecute = a => ['sell_partial','sell_all','set_stoploss','set_target'].includes(a.type);
+
       actionsEl.innerHTML = `
-        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⚡ Action Plan — กดยืนยันเพื่อดำเนินการ</div>
-        ${actions.map((a,i)=>`
-          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.2);border-radius:10px;padding:10px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:12px;font-weight:700;color:white">${actionLabel(a.type)} ${a.ticker}</span>
-                ${a.shares?`<span style="font-size:10px;color:var(--text3)">${a.shares} หุ้น</span>`:''}
-                ${a.price?`<span style="font-size:10px;color:var(--text3)">$${a.price}</span>`:''}
-              </div>
-              <span style="font-size:9px;color:${priorityColor(a.priority)}">${priorityLabel(a.priority)}</span>
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">${a.reason||''}</div>
-            <button
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⚡ Action Plan</div>
+        ${actions.map(a=>{
+          const color = priorityColor(a.priority);
+          const icon = priorityIcon(a.priority);
+          let rows='';
+          if(a.type==='sell_partial' || a.type==='sell_all'){
+            if(a.currentWeight!=null) rows += _fmRow('Current Weight', Number(a.currentWeight).toFixed(1)+'%');
+            if(a.targetWeight!=null) rows += _fmRow('Target Weight', Number(a.targetWeight).toFixed(1)+'%');
+            if(a.shares!=null) rows += _fmRow('Shares To Sell', a.shares);
+            if(a.price!=null) rows += _fmRow('Price', '$'+a.price);
+          } else {
+            if(a.price!=null) rows += _fmRow('Price', '$'+a.price);
+            if(a.reason) rows += `<div style="font-size:11px;color:var(--text3);margin-top:2px">Reason</div><div style="font-size:12px;color:var(--text2);margin-bottom:4px">${a.reason}</div>`;
+          }
+          if(Array.isArray(a.expected)&&a.expected.length){
+            rows += `<div style="font-size:11px;color:var(--text3);margin-top:4px">Expected Result</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">${a.expected.map(e=>'+ '+e).join('<br>')}</div>`;
+          }
+          return `<div style="background:rgba(255,255,255,0.03);border:1px solid ${color}33;border-radius:10px;padding:10px;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:700;color:white;margin-bottom:6px">${icon} ${actionTitle(a)}</div>
+            ${rows}
+            ${canExecute(a)?`<button
               onclick="_fmExecuteAction(${JSON.stringify(a).replace(/"/g,'&quot;')})"
               data-ticker="${a.ticker}" data-atype="${a.type}"
-              style="width:100%;background:rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.12);border:1px solid rgba(${a.priority==='high'?'255,77,106':a.priority==='medium'?'201,168,76':'100,210,255'},0.3);border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:${priorityColor(a.priority)};cursor:pointer">
-              ✅ ยืนยัน — ${actionLabel(a.type)} ${a.ticker}
-            </button>
-          </div>
-        `).join('')}
+              style="width:100%;margin-top:8px;background:${color}1f;border:1px solid ${color}4d;border-radius:8px;padding:7px;font-size:11px;font-weight:700;color:${color};cursor:pointer">
+              ✅ ยืนยัน — ${actionTitle(a)}
+            </button>`:''}
+          </div>`;
+        }).join('')}
       `;
     }
+
+    // ══ Before / After Simulation (optional) ══
+    if(sim && sim.after && Object.keys(sim.after).length && simEl){
+      simEl.style.display='block';
+      const beforeRows = holdingsData.slice().sort((a,b)=>b.pct-a.pct).map(h=>_fmRow(h.ticker, h.pct.toFixed(1)+'%'));
+      beforeRows.push(_fmRow('Cash', cashPct.toFixed(1)+'%'));
+      const afterEntries = Object.entries(sim.after).map(([k,v])=>_fmRow(k.toLowerCase()==='cash'?'Cash':k, Number(v).toFixed(1)+'%'));
+      const riskAfter = sim.riskScoreAfter!=null ? Math.max(0,Math.min(100,Number(sim.riskScoreAfter))) : null;
+
+      simEl.innerHTML = _fmCard('🔄 Before / After Simulation', `
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Current</div>
+            ${beforeRows.join('')}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">After AI Actions</div>
+            ${afterEntries.join('')}
+          </div>
+        </div>
+        ${riskAfter!=null?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px">
+          <span style="color:var(--text3)">Risk Score</span>
+          <span style="font-weight:700"><span style="color:${riskColor}">${riskScore}</span> → <span style="color:${_fmRiskColor(riskAfter)}">${riskAfter}</span></span>
+        </div>`:''}
+      `);
+    }
+
   }catch(e){
     resultEl.innerHTML='❌ เกิดข้อผิดพลาด: '+e.message;
   }
