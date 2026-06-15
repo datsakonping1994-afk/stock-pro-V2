@@ -107,15 +107,6 @@ async function getElitePeople(env) {
 
 let ELITE_PEOPLE = ELITE_PEOPLE_DEFAULT;
 
-const NEWS_QUERIES = {
-  trump:    'Donald Trump policy economy markets',
-  powell:   'Kevin Warsh Federal Reserve interest rates',
-  jensen:   'Jensen Huang NVIDIA AI chips earnings',
-  xi:       'Xi Jinping China economy policy',
-  musk:     'Elon Musk Tesla SpaceX',
-  altman:   'Sam Altman OpenAI GPT',
-};
-
 function cleanText(text) {
   if (!text || typeof text !== 'string') return text;
   return text
@@ -163,6 +154,11 @@ async function sendTG(env, text) {
       });
     } catch (e) { console.error('sendTG error:', e.message); }
   }
+}
+
+// ── [NEW] สร้าง query อัตโนมัติจากชื่อ + role ของแต่ละคน ──
+function buildQuery(person) {
+  return `${person.name} ${person.role}`;
 }
 
 async function fetchNews(env, query) {
@@ -237,8 +233,9 @@ async function fetchNews(env, query) {
     nadella: 'MSFT', zuck: 'META', altman: 'MSFT',
     pichai: 'GOOGL', bezos: 'AMZN', dimon: 'JPM', iger: 'DIS'
   };
-  const queryId = Object.keys(NEWS_QUERIES).find(id => NEWS_QUERIES[id] === query);
-  const ticker = queryId ? PERSON_TICKERS[queryId] : null;
+  // หา id จากชื่อใน query
+  const matchedPerson = ELITE_PEOPLE.find(p => query.includes(p.name));
+  const ticker = matchedPerson ? PERSON_TICKERS[matchedPerson.id] : null;
 
   if (ticker && articles.length < 3 && finnhubKeys.length > 0) {
     const to = new Date().toISOString().slice(0, 10);
@@ -304,7 +301,7 @@ function cosineSimilarity(a, b) {
 function deduplicateNews(articles) {
   const merged = [];
   for (const art of articles) {
-    const dup = merged.find(m => cosineSimilarity(m.title, art.title) > 0.8);
+    const dup = merged.find(m => cosineSimilarity(m.title, art.title) > 0.55);
     if (dup) {
       if ((art.sourceQuality || 5) > (dup.sourceQuality || 5)) {
         dup.title = art.title; dup.source = art.source;
@@ -387,7 +384,6 @@ function scoreTradingRelevance(item, catalystScore, sourceQuality) {
   return Math.min(score, 100);
 }
 
-// ── [FIX] loadSeenBatch: โหลด dedup set จาก KV key เดียว ──
 async function loadSeenBatch(env) {
   if (!env.ALERT_KV) return new Set();
   try {
@@ -401,11 +397,9 @@ async function loadSeenBatch(env) {
   }
 }
 
-// ── [FIX] saveSeenBatch: บันทึก dedup set ลง KV key เดียว (1 write) ──
 async function saveSeenBatch(env, seenSet) {
   if (!env.ALERT_KV) return;
   try {
-    // เก็บแค่ 300 รายการล่าสุด ป้องกัน value ใหญ่เกิน
     const arr = [...seenSet].slice(-300);
     await env.ALERT_KV.put('elite:seen:batch', JSON.stringify(arr), { expirationTtl: 43200 });
     console.log('[KV] saveSeenBatch:', arr.length, 'items (1 write)');
@@ -542,14 +536,33 @@ async function runEliteScan(env) {
       timeZone: 'Asia/Bangkok'
     });
 
+    // ── [NEW] ดึงข่าวจาก ELITE_PEOPLE ทุกคน โดยใช้ชื่อ + role สร้าง query อัตโนมัติ ──
     let newsContext = '';
     let allArticles = [];
-    const ids = Object.keys(NEWS_QUERIES);
-    for (let i = 0; i < ids.length; i++) {
-      const result = await fetchNews(env, NEWS_QUERIES[ids[i]]);
-      if (result.text) newsContext += `\n[${ids[i]}] ${result.text}`;
-      if (result.articles?.length) allArticles.push(...result.articles.map(a => ({...a, person: ids[i]})));
-      await new Promise(r => setTimeout(r, 150));
+
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < ELITE_PEOPLE.length; i += BATCH_SIZE) {
+      const batch = ELITE_PEOPLE.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map(person => fetchNews(env, buildQuery(person))));
+
+      for (let j = 0; j < batch.length; j++) {
+        const person = batch[j];
+        const result = results[j];
+
+        // ── [NEW] ข้ามคนที่ไม่มีข่าวเลย ──
+        if (!result.articles?.length) {
+          console.log(`[skip] ไม่มีข่าว: ${person.name}`);
+          continue;
+        }
+
+        console.log(`[news] ${person.name}: ${result.articles.length} articles`);
+        newsContext += `\n[${person.id}] ${result.text}`;
+        allArticles.push(...result.articles.map(a => ({ ...a, person: person.id })));
+      }
+
+      if (i + BATCH_SIZE < ELITE_PEOPLE.length) {
+        await new Promise(r => setTimeout(r, 200));
+      }
     }
 
     allArticles = deduplicateNews(allArticles);
@@ -584,7 +597,7 @@ async function runEliteScan(env) {
 🚨 กฎ News Integrity (บังคับ):
 1. ห้ามสร้างข่าวขึ้นมาเอง ทุก item ต้องมาจาก source ที่ให้มาเท่านั้น
 2. source_url ต้องเป็น URL จริง ถ้าไม่มีให้ใส่ ""
-3. ถ้าไม่มีข่าวจริง impact>=5 ให้ return []
+3. ถ้าไม่มีข่าวจริง impact>=7 ให้ return []
 
 🔗 กฎ Chain Reasoning (บังคับ):
 ก่อนระบุ stocks_to_monitor และ stocks_at_risk ต้องคิด chain นี้ก่อนเสมอ:
@@ -639,7 +652,7 @@ async function runEliteScan(env) {
 📊 กฎ impact_stocks (หุ้นที่ได้รับผลกระทบ -- แสดงใต้ ai_take):
 ระบุ array ของ {"t":"TICKER","dir":"up"/"down"} อย่างน้อย 2 ตัว โดยต่อยอดจาก stocks_to_monitor (dir="up" ถ้าได้ประโยชน์) และ stocks_at_risk (dir="down" ถ้าเสียประโยชน์) ตาม chain_reasoning
 
-🚫 Filter ออก: stocks_to_monitor ว่างหรือมีแค่ ETF, impact < 5, ข่าวซ้ำ
+🚫 Filter ออก: stocks_to_monitor ว่างหรือมีแค่ ETF, impact < 7, ข่าวซ้ำ
 
 🎯 กฎการเลือก id (บังคับ -- แก้ปัญหา id ไม่ตรงกับเนื้อข่าว):
 id ของบุคคลต้องผูกกับข่าวที่เป็น "การกระทำ คำพูด คำสั่ง การประกาศ หรือการตัดสินใจของบุคคลนั้นโดยตรง" เท่านั้น
@@ -665,10 +678,10 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
   "bullish_reasons":["เหตุผลเชิงบวก"],"bearish_reasons":["เหตุผลเชิงลบ"],
   "action":"หุ้นที่ควรติดตาม: X, Y","risk_level":"low/medium/high",
   "timeline":{"short":"1-5 วัน","medium":"1-3 เดือน","long":"6+ เดือน"},
-  "impact":7,"pros":["ข้อดี"],"cons":["ความเสี่ยง"],
+  "impact":8,"pros":["ข้อดี"],"cons":["ความเสี่ยง"],
   "read_game":"insight เฉพาะเจาะจงพร้อม threshold หรือ null","watch":"event ที่เกี่ยวข้องเสมอ","markets":["NYSE"]
 }
-เฉพาะ impact>=5 ไม่เกิน 4 รายการ`;
+เฉพาะ impact>=7 ไม่เกิน 4 รายการ`;
 
     const newsCtxGroq = newsContext.slice(0, 6000);
     const newsCtxClaude = newsContext.slice(0, 4000);
@@ -680,7 +693,6 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
 
     const cleanedItems = items.map(cleanItem);
 
-    // ── [FIX] โหลด seen batch ครั้งเดียว (1 read) ──
     const seenSet = await loadSeenBatch(env);
     let seenDirty = false;
 
@@ -712,7 +724,6 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       newItems.push(item);
     }
 
-    // ── [FIX] บันทึก seen batch ครั้งเดียว (1 write แทน N writes) ──
     if (seenDirty) await saveSeenBatch(env, seenSet);
 
     newItems.sort((a, b) => (b._tradingScore || 0) - (a._tradingScore || 0));
@@ -736,7 +747,8 @@ id ต้องเป็นหนึ่งใน: trump, powell, jensen, cook, m
       return true;
     });
 
-    newItems = newItems.filter(item => (item.impact || 0) >= 5);
+    // ── [NEW] filter impact >= 7 ──
+    newItems = newItems.filter(item => (item.impact || 0) >= 7);
     if (!newItems.length) { LOG.info('no high-impact items'); return { ok: true, count: 0 }; }
 
     let msg = `🌐 <b>ELITE SCAN</b> -- ${today}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
@@ -791,7 +803,6 @@ export default {
 
     if (url.pathname === '/clear-dedup') {
       try {
-        // ── [FIX] ลบแค่ key เดียวแทนการ list ทั้งหมด ──
         await env.ALERT_KV.delete('elite:seen:batch');
         await env.ALERT_KV.delete('elite:running');
         ctx.waitUntil(runEliteScan(env).catch(e => console.error('scan error:', e.message)));
