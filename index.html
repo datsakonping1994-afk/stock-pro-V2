@@ -4896,10 +4896,15 @@ function logTrade(ticker, price, score, aiAnalysis=''){
   const s2 = getS2(ticker, price);
   const r1 = getR1(ticker, price);
   const log = _loadTradeLog();
-  // ป้องกัน signal ซ้ำภายใน 5 นาที
   const now = Date.now();
-  const dup = log.find(t => t.ticker===ticker && (now - new Date(t.time).getTime()) < 5*60*1000);
-  if(dup){ console.log(`[LOG] ${ticker} SKIP ซ้ำ`); return; }
+  // [FIX] ป้องกันสัญญาณซ้อน — ถ้า ticker นี้มี signal ที่ "ยังรอผล" (result===null) อยู่แล้ว
+  // ห้ามเปิดสัญญาณใหม่ซ้อนทับ จนกว่า signal เดิมจะปิด (มีผล win/loss) ก่อน
+  // (เดิมกันซ้ำแค่ 5 นาที ทำให้ scan รอบถัดไปที่ราคาขยับนิดหน่อยถูกมองเป็น signal ใหม่)
+  const pending = log.find(t => t.ticker===ticker && t.result===null);
+  if(pending){ console.log(`[LOG] ${ticker} SKIP ซ้อน — มี signal รอผลอยู่แล้ว (เข้า ${pending.price} @ ${pending.time})`); return; }
+  // กันซ้ำกรณี edge case เวลาเดียวกันเป๊ะๆ (เช่น double-fire ภายใน 1 นาที)
+  const dup = log.find(t => t.ticker===ticker && (now - new Date(t.time).getTime()) < 60*1000);
+  if(dup){ console.log(`[LOG] ${ticker} SKIP ซ้ำ (ภายใน 1 นาที)`); return; }
   const entry = {ticker, price, score, s1, s2, r1, time: new Date().toISOString(), result: null, pct: null, aiAnalysis};
   log.push(entry);
   _saveTradeLog(log);
