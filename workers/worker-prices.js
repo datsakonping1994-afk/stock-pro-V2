@@ -369,26 +369,30 @@ function getRevGrowthFromFinnhubMetric(m) {
 }
 
 // [NEW] ── Backfill past earnings reports จาก Finnhub /stock/earnings ──
-// เหตุผล: Finnhub free tier calendar/earnings มักไม่คืนรายการที่วันที่ผ่านมาแล้ว
-// (หรือไม่มี epsActual ทันทีหลังประกาศ) และ Yahoo calendarEvents.earnings คืนแค่
-// "นัดถัดไป" เท่านั้น ไม่มีวันที่ในอดีต -- ทำให้กลุ่ม "รายงานแล้ว" หายไปจาก UI
-// /stock/earnings (เหมือนที่ใช้ใน endpoint /stock/earnings อยู่แล้ว) คืนประวัติ
-// EPS จริงพร้อมวันที่ ใช้ backfill รายการที่ขาด actual/date ในช่วง from..to ได้ตรงจุด
+// เหตุผล: Finnhub free tier calendar/earnings มักไม่คืน epsActual ทันทีหลังประกาศ
+// และ Yahoo calendarEvents.earnings คืนแค่ "นัดถัดไป" เท่านั้น ทำให้กลุ่ม
+// "รายงานแล้ว" หายไปจาก UI เพราะไม่มี epsActual ให้แสดง
+//
+// ⚠️ สำคัญ: /stock/earnings คืน `period` ซึ่งคือ "วันสิ้นงวดบัญชี (fiscal quarter-end)"
+// ไม่ใช่วันที่ประกาศผลจริง (report date) -- ห้ามใช้ period เป็นวันที่แสดงผลเด็ดขาด
+// (บั๊กเดิม: ใช้ period เป็น date ทำให้หลายบริษัทที่ quarter-end ตรงกันโชว์วันเดียวกันผิดๆ
+// เช่น "30 มิ.ย. 2026" ทั้งที่เป็นวันสิ้นงวด ไม่ใช่วันประกาศ)
+// ดังนั้นฟังก์ชันนี้จะ "เติม epsActual/epsEstimate เท่านั้น" ให้ entry ที่มีวันที่ประกาศ
+// ที่ถูกต้องอยู่แล้ว (จาก Finnhub calendar หรือ Yahoo) -- จะไม่สร้าง entry ใหม่หรือ
+// เซ็ต/ทับวันที่ใดๆ ทั้งสิ้น
 async function backfillPastEarnings(items, tickers, from, to, finnhubKeys, env) {
   if (!tickers.length || !finnhubKeys.length) return items;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  const needBackfill = tickers.filter(t => {
-    const existing = items.find(e => e.symbol === t);
-    if (!existing) return true; // ไม่มีเลย -- อาจเป็นรายการที่ถูก Finnhub ตัดออก
-    if (!existing.date) return true; // มี entry แต่ไม่มีวันที่
-    // มี entry + วันที่ผ่านมาแล้ว แต่ยังไม่มีผลจริง -- ต้องลองดึงประวัติมา backfill
-    const isPast = existing.date < new Date().toISOString().slice(0, 10);
-    return isPast && existing.epsActual == null;
-  });
+  // เฉพาะ entry ที่มีวันที่ "ผ่านมาแล้ว" จริง (มาจาก calendar/Yahoo) แต่ขาด epsActual
+  const needBackfill = items.filter(e =>
+    tickers.includes(e.symbol) && e.date && e.date < todayStr && e.epsActual == null
+  );
 
   if (!needBackfill.length) return items;
 
-  const results = await Promise.allSettled(needBackfill.map(async ticker => {
+  const results = await Promise.allSettled(needBackfill.map(async (entry) => {
+    const ticker = entry.symbol;
     const kvKey = `stock_earnings_${ticker}`;
     let history = null;
     try {
@@ -411,33 +415,35 @@ async function backfillPastEarnings(items, tickers, from, to, finnhubKeys, env) 
     }
     if (!history?.length) return null;
 
-    // หา quarter ล่าสุดที่วันที่อยู่ในช่วง from..to (หรือใกล้เคียงที่สุด ไม่เกิน 'to')
-    const inRange = history.filter(h => h.period && h.period <= to && h.period >= from);
-    const latest = (inRange.length ? inRange : history)
-      .slice()
-      .sort((a, b) => (b.period || '').localeCompare(a.period || ''))[0];
-    if (!latest) return null;
+    // จับคู่ quarter จาก fiscal period ที่ใกล้เคียงวันประกาศจริงที่สุด (ภายใน ~120 วันก่อนวันประกาศ)
+    // -- ใช้แค่หา record ที่ "ใช่" เพื่อดึง epsActual/epsEstimate เท่านั้น ไม่ใช้ period เป็น date
+    const reportDate = new Date(entry.date + 'T00:00:00Z');
+    let best = null, bestDiff = Infinity;
+    for (const h of history) {
+      if (!h.period) continue;
+      const periodDate = new Date(h.period + 'T00:00:00Z');
+      const diffDays = (reportDate - periodDate) / 86400000;
+      // วันประกาศควรอยู่หลังวันสิ้นงวดไม่นาน (โดยทั่วไป 15-60 วัน, ยอมรับ 0-120 วัน)
+      if (diffDays >= 0 && diffDays <= 120 && diffDays < bestDiff) {
+        best = h; bestDiff = diffDays;
+      }
+    }
+    if (!best) return null;
 
     return {
       symbol: ticker,
-      date: latest.period || null,
-      epsEstimate: latest.estimate ?? null,
-      epsActual: latest.actual ?? null,
-      hour: null,
-      _source: 'finnhub_history_backfill',
+      epsEstimate: best.estimate ?? null,
+      epsActual: best.actual ?? null,
     };
   }));
 
   const backfilled = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
   for (const b of backfilled) {
     const existingIdx = items.findIndex(e => e.symbol === b.symbol);
-    if (existingIdx >= 0) {
-      if (b.epsActual != null && items[existingIdx].epsActual == null) items[existingIdx].epsActual = b.epsActual;
-      if (b.epsEstimate != null && items[existingIdx].epsEstimate == null) items[existingIdx].epsEstimate = b.epsEstimate;
-      if (b.date && !items[existingIdx].date) items[existingIdx].date = b.date;
-    } else if (b.date && b.date >= from && b.date <= to) {
-      items.push(b);
-    }
+    if (existingIdx < 0) continue;
+    // เติมเฉพาะ EPS เท่านั้น -- ห้ามแก้ date/d ของ entry เดิมเด็ดขาด
+    if (b.epsActual != null && items[existingIdx].epsActual == null) items[existingIdx].epsActual = b.epsActual;
+    if (b.epsEstimate != null && items[existingIdx].epsEstimate == null) items[existingIdx].epsEstimate = b.epsEstimate;
   }
   LOG.info('earnings backfill done', { requested: needBackfill.length, filled: backfilled.length });
   return items;
