@@ -368,6 +368,81 @@ function getRevGrowthFromFinnhubMetric(m) {
   return +pct.toFixed(1);
 }
 
+// [NEW] ── Backfill past earnings reports จาก Finnhub /stock/earnings ──
+// เหตุผล: Finnhub free tier calendar/earnings มักไม่คืนรายการที่วันที่ผ่านมาแล้ว
+// (หรือไม่มี epsActual ทันทีหลังประกาศ) และ Yahoo calendarEvents.earnings คืนแค่
+// "นัดถัดไป" เท่านั้น ไม่มีวันที่ในอดีต -- ทำให้กลุ่ม "รายงานแล้ว" หายไปจาก UI
+// /stock/earnings (เหมือนที่ใช้ใน endpoint /stock/earnings อยู่แล้ว) คืนประวัติ
+// EPS จริงพร้อมวันที่ ใช้ backfill รายการที่ขาด actual/date ในช่วง from..to ได้ตรงจุด
+async function backfillPastEarnings(items, tickers, from, to, finnhubKeys, env) {
+  if (!tickers.length || !finnhubKeys.length) return items;
+
+  const needBackfill = tickers.filter(t => {
+    const existing = items.find(e => e.symbol === t);
+    if (!existing) return true; // ไม่มีเลย -- อาจเป็นรายการที่ถูก Finnhub ตัดออก
+    if (!existing.date) return true; // มี entry แต่ไม่มีวันที่
+    // มี entry + วันที่ผ่านมาแล้ว แต่ยังไม่มีผลจริง -- ต้องลองดึงประวัติมา backfill
+    const isPast = existing.date < new Date().toISOString().slice(0, 10);
+    return isPast && existing.epsActual == null;
+  });
+
+  if (!needBackfill.length) return items;
+
+  const results = await Promise.allSettled(needBackfill.map(async ticker => {
+    const kvKey = `stock_earnings_${ticker}`;
+    let history = null;
+    try {
+      const cached = await env.ALERT_KV.get(kvKey);
+      if (cached) history = JSON.parse(cached);
+    } catch {}
+    if (!history) {
+      for (const key of finnhubKeys) {
+        try {
+          const r = await fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${ticker}&token=${key}`, { signal: AbortSignal.timeout(6000) });
+          if (!r.ok) continue;
+          const data = await r.json();
+          if (data?.length > 0) {
+            history = data;
+            try { await env.ALERT_KV.put(kvKey, JSON.stringify(data), { expirationTtl: 7200 }); } catch {}
+            break;
+          }
+        } catch {}
+      }
+    }
+    if (!history?.length) return null;
+
+    // หา quarter ล่าสุดที่วันที่อยู่ในช่วง from..to (หรือใกล้เคียงที่สุด ไม่เกิน 'to')
+    const inRange = history.filter(h => h.period && h.period <= to && h.period >= from);
+    const latest = (inRange.length ? inRange : history)
+      .slice()
+      .sort((a, b) => (b.period || '').localeCompare(a.period || ''))[0];
+    if (!latest) return null;
+
+    return {
+      symbol: ticker,
+      date: latest.period || null,
+      epsEstimate: latest.estimate ?? null,
+      epsActual: latest.actual ?? null,
+      hour: null,
+      _source: 'finnhub_history_backfill',
+    };
+  }));
+
+  const backfilled = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+  for (const b of backfilled) {
+    const existingIdx = items.findIndex(e => e.symbol === b.symbol);
+    if (existingIdx >= 0) {
+      if (b.epsActual != null && items[existingIdx].epsActual == null) items[existingIdx].epsActual = b.epsActual;
+      if (b.epsEstimate != null && items[existingIdx].epsEstimate == null) items[existingIdx].epsEstimate = b.epsEstimate;
+      if (b.date && !items[existingIdx].date) items[existingIdx].date = b.date;
+    } else if (b.date && b.date >= from && b.date <= to) {
+      items.push(b);
+    }
+  }
+  LOG.info('earnings backfill done', { requested: needBackfill.length, filled: backfilled.length });
+  return items;
+}
+
 export default {
   async fetch(req, env, ctx) {
     const cors = {
@@ -597,6 +672,14 @@ export default {
         }
         console.log(`[Yahoo] processed ${yahooItems.length} tickers`);
       }
+
+      // [NEW] Backfill รายงานที่ "ผ่านมาแล้ว" จากประวัติ Finnhub /stock/earnings
+      // แก้ปัญหา: รายการ "รายงานแล้ว" หายจาก UI เพราะ Finnhub calendar + Yahoo
+      // calendarEvents ทั้งคู่ไม่ค่อยคืนวันที่ในอดีตที่มี epsActual ครบ
+      if (allTickers.length > 0) {
+        items = await backfillPastEarnings(items, allTickers, from, to, finnhubKeys, env);
+      }
+
       if (items.length > 0) {
         try { await env.ALERT_KV.put(kvKey, JSON.stringify(items), { expirationTtl: 21600 }); } catch {}
         return new Response(JSON.stringify({ ok: true, items, cached: false }), {
