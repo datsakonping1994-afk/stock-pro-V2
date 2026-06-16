@@ -15632,19 +15632,10 @@ function renderEliteScanResults(results, ageMs=0){
             ${wlBadge}
           </div>`;
         })()}
-        <!-- Confidence Factors breakdown — เหตุผลของ confidence score -->
-        ${(n.confidence_factors&&n.confidence_factors.length) ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:7px 10px;margin-bottom:8px">
-          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">🎯 ที่มาของ Confidence ${n.confidence_score||0}%</div>
-          <div style="display:flex;flex-direction:column;gap:2px">
-            ${n.confidence_factors.map(f=>`<div style="font-size:10px;line-height:1.5;color:${f.ok?'var(--green)':'var(--text3)'}"><span style="color:${f.ok?'var(--green)':'var(--red)'}">${f.ok?'✓':'✗'}</span> <span style="color:${f.ok?'var(--text2)':'var(--text3)'}">${f.text}</span></div>`).join('')}
-          </div>
-        </div>` : ''}
-        <!-- Impact Score breakdown — สูตร กระทบตลาด40% + เร่งด่วน30% + น่าเชื่อถือ30% -->
-        ${(n.impact_factors&&n.impact_factors.length) ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:7px 10px;margin-bottom:8px">
-          <div style="font-size:9px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">⚡ ที่มาของ Impact Score ${n.impact}/10</div>
-          <div style="display:flex;flex-direction:column;gap:2px">
-            ${n.impact_factors.map(f=>`<div style="font-size:10px;line-height:1.5;color:var(--text2);display:flex;justify-content:space-between"><span>${f.label} (${f.weight}%)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--gold)">${f.score}/10</span></div>`).join('')}
-          </div>
+        <!-- Why -->
+        ${n.why ? `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">🔍 เพราะอะไร</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.why}</div>
         </div>` : ''}
         <!-- AI Take -->
         ${n.ai_take ? `<div style="background:linear-gradient(135deg,rgba(100,210,255,0.08),rgba(201,168,76,0.06));border:1px solid rgba(100,210,255,0.2);border-radius:9px;padding:8px 10px;margin-bottom:8px">
@@ -15659,22 +15650,6 @@ function renderEliteScanResults(results, ageMs=0){
         ${n.market_impact ? `<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--gold);margin-bottom:4px">📊 ผลต่อตลาดโดยรวม</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.market_impact}</div>
-        </div>` : ''}
-        <!-- ETF Impact (Engine 4 — ETFs only, separated from stocks) -->
-        ${n.etf_impact ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:6px">📊 ETF Impact</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${Object.entries(n.etf_impact).map(([k,v])=>{
-              const col=v==='positive'?'var(--green)':v==='negative'?'var(--red)':'var(--text3)';
-              const ico=v==='positive'?'▲':v==='negative'?'▼':'–';
-              return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
-            }).join('')}
-          </div>
-        </div>` : ''}
-        <!-- Why -->
-        ${n.why ? `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
-          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">🔍 เพราะอะไร</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.why}</div>
         </div>` : ''}
         <!-- หุ้นที่เกี่ยวข้อง (Engine 5 — with reasons) -->
         ${((n.beneficiaries||n.stocks_buy||[]).length || (n.losers||n.stocks_watch||[]).length) ? `
@@ -15700,6 +15675,17 @@ function renderEliteScanResults(results, ageMs=0){
             </div>
           </div>` : (n.stocks_watch||[]).length ? `<div><div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">⚠️ ระวัง</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:6px;padding:3px 8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--red)">${t}</span>`).join('')}</div></div>` : ''}
+        </div>` : ''}
+        <!-- ETF Impact (Engine 4 — ETFs only, separated from stocks) -->
+        ${n.etf_impact ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:6px">📊 ETF Impact</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${Object.entries(n.etf_impact).map(([k,v])=>{
+              const col=v==='positive'?'var(--green)':v==='negative'?'var(--red)':'var(--text3)';
+              const ico=v==='positive'?'▲':v==='negative'?'▼':'–';
+              return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
+            }).join('')}
+          </div>
         </div>` : ''}
         <!-- [NEW] Timeline -->
         ${n.timeline ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
@@ -15821,24 +15807,6 @@ function _renderEliteModal(idx){
       <div style="font-size:9px;color:#6b7fa0;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:6px">📰 หัวข้อข่าว · ตลาดที่กระทบ: <span style="color:#64d2ff">${(n.markets||[]).join(', ')}</span></div>
       <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#f0f4fc;line-height:1.4;margin-bottom:10px">${n.headline}</div>
 
-      <!-- Confidence Factors breakdown — เหตุผลของ confidence score -->
-      ${(n.confidence_factors&&n.confidence_factors.length) ? `
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:5px">🎯 ที่มาของ Confidence ${n.confidence_score||0}%</div>
-        <div style="display:flex;flex-direction:column;gap:3px">
-          ${n.confidence_factors.map(f=>`<div style="font-size:11px;line-height:1.6"><span style="color:${f.ok?'#00e676':'#ff4d6a'}">${f.ok?'✓':'✗'}</span> <span style="color:${f.ok?'#a8b8d0':'#6b7fa0'}">${f.text}</span></div>`).join('')}
-        </div>
-      </div>` : ''}
-
-      <!-- Impact Score breakdown — สูตร กระทบตลาด40% + เร่งด่วน30% + น่าเชื่อถือ30% -->
-      ${(n.impact_factors&&n.impact_factors.length) ? `
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:5px">⚡ ที่มาของ Impact Score ${n.impact}/10</div>
-        <div style="display:flex;flex-direction:column;gap:3px">
-          ${n.impact_factors.map(f=>`<div style="font-size:11px;line-height:1.6;display:flex;justify-content:space-between"><span style="color:#a8b8d0">${f.label} (${f.weight}%)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#c9a84c">${f.score}/10</span></div>`).join('')}
-        </div>
-      </div>` : ''}
-
       <!-- impact_level + sector_tags + watchlist_hits badges -->
       ${(()=>{
         const il=n.impact_level||'medium';
@@ -15856,6 +15824,13 @@ function _renderEliteModal(idx){
         </div>`;
       })()}
 
+      <!-- Why -->
+      ${n.why ? `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:6px;letter-spacing:0.5px">🔍 เพราะอะไร</div>
+        <div style="font-size:12px;color:#a8b8d0;line-height:1.7">${n.why}</div>
+      </div>` : ''}
+
       <!-- Summary -->
       ${n.summary ? `<div style="font-size:12px;color:#a8b8d0;line-height:1.7;margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,0.04);border-left:3px solid ${impactColor};border-radius:0 10px 10px 0">${n.summary}</div>` : ''}
 
@@ -15864,19 +15839,6 @@ function _renderEliteModal(idx){
       <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
         <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#c9a84c;margin-bottom:6px;letter-spacing:0.5px">📊 ผลต่อตลาดโดยรวม</div>
         <div style="font-size:12px;color:#a8b8d0;line-height:1.6">${n.market_impact}</div>
-      </div>` : ''}
-
-      <!-- ETF Impact (Engine 4 — modal, ETFs only) -->
-      ${n.etf_impact ? `
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:8px;letter-spacing:0.5px">📊 ETF Impact</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${Object.entries(n.etf_impact).map(([k,v])=>{
-            const col=v==='positive'?'#00e676':v==='negative'?'#ff4d6a':'#6b7fa0';
-            const ico=v==='positive'?'▲':v==='negative'?'▼':'–';
-            return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
-          }).join('')}
-        </div>
       </div>` : ''}
 
       <!-- ══ IMPACT SUMMARY (สิ่งที่ผู้ใช้เห็นทันที) ══ -->
@@ -15957,13 +15919,6 @@ function _renderEliteModal(idx){
         </div>
       </div>` : ''}
 
-      <!-- Why -->
-      ${n.why ? `
-      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:6px;letter-spacing:0.5px">🔍 เพราะอะไร</div>
-        <div style="font-size:12px;color:#a8b8d0;line-height:1.7">${n.why}</div>
-      </div>` : ''}
-
       <!-- Watch -->
       ${n.watch ? `
       <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:12px 14px;margin-bottom:8px">
@@ -16007,6 +15962,19 @@ function _renderEliteModal(idx){
           <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#ff4d6a">${t} 🇺🇸</span>`).join('')}</div>
         </div>` : ''}
+      </div>` : ''}
+
+      <!-- ETF Impact (Engine 4 — modal, ETFs only) -->
+      ${n.etf_impact ? `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:8px;letter-spacing:0.5px">📊 ETF Impact</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${Object.entries(n.etf_impact).map(([k,v])=>{
+            const col=v==='positive'?'#00e676':v==='negative'?'#ff4d6a':'#6b7fa0';
+            const ico=v==='positive'?'▲':v==='negative'?'▼':'–';
+            return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
+          }).join('')}
+        </div>
       </div>` : ''}
 
       <!-- Read Game -->
