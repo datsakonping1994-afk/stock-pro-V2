@@ -10707,7 +10707,7 @@ ${newsContext?'\n'+newsContext:''}
   btn.disabled=false;
 }
 const _econQueries={
-  fed:'Federal Reserve FOMC interest rate decision Powell rate hike cut',
+  fed:'Federal Reserve FOMC interest rate decision Powell Warsh rate hike cut',
   macro:'GDP inflation CPI PPI jobs report nonfarm payroll unemployment',
   earnings:'earnings results beat miss revenue Apple Microsoft Google Meta Amazon Nvidia Tesla',
   geopolitics:'trade war tariff sanction geopolitics conflict China US Taiwan',
@@ -10779,7 +10779,7 @@ async function loadEconNews(){
   }
 
   // score ความสำคัญ
-  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell',
+  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell','warsh',
     'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
     'earnings','beat','miss','trade war','tariff','sanction','war','conflict',
     'nvidia','openai','ai','crash','surge','plunge','record high','bankruptcy','crisis'];
@@ -13968,8 +13968,8 @@ const ELITE_PEOPLE = [
   { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=trump', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
     keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
     excludeKeywords:[],
-    ticker:'', backupIds:['powell'] },
-  { id:'powell',  name:'Kevin Warsh',     role:'Fed Chair',           emoji:'🏛️', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=powell', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
+    ticker:'', backupIds:['warsh'] },
+  { id:'warsh',   name:'Kevin Warsh',     role:'Fed Chair',           emoji:'🏛️', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=warsh', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
     // [FIX] Jerome Powell ลงจากตำแหน่ง Fed Chair เมื่อ 15 พ.ค. 2026 (ยังเป็น Fed Governor
     // ต่อจนถึงปี 2028 แต่ไม่ใช่ chair แล้ว) — Kevin Warsh เข้ารับตำแหน่งแทน
     keywords:['kevin warsh','warsh','federal reserve','fomc','rate cut','rate hike','fed funds','fed chair','fed meeting','fed decision'],
@@ -13991,7 +13991,7 @@ const ELITE_PEOPLE = [
     keywords:['xi jinping','xi jinping','china','beijing','pboc','yuan','renminbi','rmb','tariff china','us china','chinese government','ccp'],
     // [FIX] เพิ่ม iran/khamenei เพื่อกันข่าวที่พูดถึงทั้งจีนและอิหร่านพร้อมกัน (เช่น "BMW
     // ลดคาดการณ์กำไรจากการชะลอตัวจีนและสงครามอิหร่าน") ไม่ให้ถูกแมตช์เป็นข่าวของ Xi
-    excludeKeywords:['india','japan','korea','europe','fed','powell','fomc','iran','khamenei'],
+    excludeKeywords:['india','japan','korea','europe','fed','powell','warsh','fomc','iran','khamenei'],
     ticker:'', backupIds:['opec'] },
   { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12',
     keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
@@ -14024,7 +14024,7 @@ const ELITE_PEOPLE = [
   { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=dimon', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     excludeKeywords:[],
-    ticker:'JPM', backupIds:['powell'] },
+    ticker:'JPM', backupIds:['warsh'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14174,7 +14174,7 @@ function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScor
 // ════════════════════════════════════════════════════════════
 const EVENT_DETECTION_RULES=[
   {keywords:['rate','interest rate','fed funds','basis point','bps','ดอกเบี้ย','อัตราดอกเบี้ย'],eventType:'rate_decision',sectors:['Financials','REIT','Utilities']},
-  {keywords:['fomc','federal reserve','powell','monetary policy','เฟด','พาวเวล','นโยบายการเงิน','ธนาคารกลางสหรัฐ'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
+  {keywords:['fomc','federal reserve','powell','warsh','monetary policy','เฟด','พาวเวล','วอร์ช','นโยบายการเงิน','ธนาคารกลางสหรัฐ'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
   {keywords:['cpi','inflation','consumer price','price index','เงินเฟ้อ','ดัชนีราคาผู้บริโภค'],eventType:'inflation_data',sectors:['Consumer','Tech','REIT']},
   {keywords:['nfp','jobs report','payroll','unemployment','labor','การจ้างงาน','ตำแหน่งงาน','ว่างงาน','ค่าแรง'],eventType:'jobs_data',sectors:['Consumer','Financials']},
   {keywords:['gdp','gross domestic','economic growth','recession','จีดีพี','เศรษฐกิจถดถอย','การเติบโตทางเศรษฐกิจ'],eventType:'gdp_data',sectors:['Broad Market']},
@@ -14897,7 +14897,7 @@ async function _eliteDirectFallback(overlay){
     const PERSON_TICKERS = {
       jensen:'NVDA', cook:'AAPL', musk:'TSLA', nadella:'MSFT',
       zuck:'META', altman:'MSFT', pichai:'GOOGL', bezos:'AMZN',
-      dimon:'JPM', powell:'', trump:'', xi:'', buffett:'BRK.B', opec:'XOM',
+      dimon:'JPM', warsh:'', trump:'', xi:'', buffett:'BRK.B', opec:'XOM',
       khamenei:'' // ไม่มี company ticker — ต้องมีข่าวจาก general news เท่านั้น
     };
     const fk = FINNHUB_KEY || '';
