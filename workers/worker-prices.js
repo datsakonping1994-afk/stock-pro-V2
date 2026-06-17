@@ -190,7 +190,11 @@ async function getQuote(ticker, finnhubKeys) {
 }
 
 async function getCandlesPolygon(ticker, from, to, keys) {
-  const sym = ticker.replace('.', '-');
+  // [FIX] Polygon ใช้ "." (จุด) สำหรับ class shares เช่น BRK.B ไม่ใช่ "-" (ขีด)
+  // เดิมโค้ดแปลง "." → "-" ผิดทาง (BRK.B → BRK-B) ทำให้ Polygon หา ticker ไม่เจอ
+  // ตกไป fallback อื่นเสมอ ถ้า fallback อื่นพังพร้อมกัน (rate limit ฯลฯ) จะเหลือแค่ mock data
+  // อ้างอิง: Polygon เปลี่ยน "-" เป็น "." เสมอ เช่น BRK-A ในระบบอื่นคือ BRK.A ใน Polygon
+  const sym = ticker.replace('-', '.');
   for (const key of keys) {
     try {
       const url = `https://api.polygon.io/v2/aggs/ticker/${sym}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=120&apiKey=${key}`;
