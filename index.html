@@ -1308,7 +1308,7 @@ canvas.bigchart{width:100%;height:100%}
 
         <!-- AI วิเคราะห์ -->
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px">🤖 AI จัดการพอร์ต <span style="font-size:9px;background:rgba(201,168,76,0.2);border-radius:6px;padding:2px 6px">Fund Manager Mode</span></button>
+          <button onclick="analyzePortfolioAI()" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:8px">🤖 AI จัดการพอร์ต <span style="font-size:9px;background:rgba(201,168,76,0.2);border-radius:6px;padding:2px 6px">โหมดผู้จัดการกองทุน</span></button>
           <div id="portAIResult" style="display:none;margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6;font-family:'Inter',sans-serif"></div>
           <div id="portAIActions" style="display:none;margin-top:10px"></div>
           <div id="portAISimulation" style="display:none;margin-top:10px"></div>
@@ -1674,32 +1674,14 @@ function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]
 
 const STOCKS_DEFAULT=[
   // t=ticker, n=name — ข้อมูลอื่นทั้งหมดดึง live จาก Worker
-  {t:"RKLB",n:"Rocket Lab"},{t:"EOSE",n:"Eos Energy"},{t:"SLNH",n:"Soluna Holdings"},
-  {t:"MU",n:"Micron Technology"},{t:"NVTS",n:"Navitas Semi"},{t:"ASTS",n:"AST SpaceMobile"},
-  {t:"INTC",n:"Intel"},{t:"AMD",n:"AMD"},{t:"HIMS",n:"Hims & Hers"},{t:"IREN",n:"IREN Ltd"},
-  {t:"ASML",n:"ASML Holding"},{t:"CRWD",n:"CrowdStrike"},{t:"AVGO",n:"Broadcom"},
-  {t:"IONQ",n:"IonQ"},{t:"AAPL",n:"Apple"},{t:"NVDA",n:"Nvidia"},{t:"KTOS",n:"Kratos Defense"},
-  {t:"RBRK",n:"Rubrik"},{t:"AAOI",n:"Applied Optoelectronics"},{t:"HOOD",n:"Robinhood"},
-  {t:"OKLO",n:"Oklo"},{t:"TEM",n:"Tempus AI"},{t:"GOOGL",n:"Alphabet"},{t:"NVO",n:"Novo-Nordisk"},
-  {t:"AMZN",n:"Amazon"},{t:"PLTR",n:"Palantir"},{t:"CRDO",n:"Credo Technology"},
-  {t:"ANET",n:"Arista Networks"},{t:"VRT",n:"Vertiv Holdings"},{t:"ARM",n:"Arm Holdings"},
-  {t:"TSM",n:"Taiwan Semi"},{t:"ISRG",n:"Intuitive Surgical"},{t:"NFLX",n:"Netflix"},
-  {t:"META",n:"Meta Platforms"},{t:"MSFT",n:"Microsoft"},{t:"JPM",n:"JPMorgan Chase"},
-  {t:"XOM",n:"Exxon Mobil"},{t:"SOFI",n:"SoFi Technologies"},{t:"SPGI",n:"S&P Global"},
-  {t:"MP",n:"MP Materials"},{t:"ELF",n:"e.l.f. Beauty"},{t:"AMSC",n:"American Superconductor"},
-  {t:"APP",n:"Applovin"},{t:"COST",n:"Costco Wholesale"},{t:"UNH",n:"UnitedHealth Group"},
-  {t:"BRK.B",n:"Berkshire Hathaway B"},{t:"NOW",n:"ServiceNow"},{t:"LLY",n:"Eli Lilly"},
-  {t:"NBIS",n:"Nebius Group"},{t:"AXON",n:"Axon Enterprise"},{t:"TMDX",n:"Transmedics"},
-  {t:"CRWV",n:"CoreWeave"},{t:"MELI",n:"MercadoLibre"},{t:"QCOM",n:"Qualcomm"},
-  {t:"AMAT",n:"Applied Materials"},{t:"LRCX",n:"Lam Research"},{t:"CRM",n:"Salesforce"},
-  {t:"ADBE",n:"Adobe"},{t:"SNOW",n:"Snowflake"},{t:"DDOG",n:"Datadog"},{t:"MDB",n:"MongoDB"},
-  {t:"NET",n:"Cloudflare"},{t:"TSLA",n:"Tesla"},{t:"V",n:"Visa"},{t:"MA",n:"Mastercard"},
-  {t:"WMT",n:"Walmart"},{t:"FPS",n:"Forgent Power Solutions"},{t:"NOK",n:"Nokia"},
-  {t:"DELL",n:"Dell Technologies"},{t:"ONDS",n:"Ondas Holdings"},{t:"OSS",n:"One Stop Systems"},
-  {t:"AEHR",n:"Aehr Test Systems"},{t:"SNDK",n:"SanDisk"},{t:"AVAV",n:"AeroVironment"},
-  {t:"STX",n:"Seagate Technology"},{t:"VST",n:"Vistra Energy"},{t:"AMBA",n:"Ambarella"},
-  {t:"ORCL",n:"Oracle Corp"},
-  {t:"CBRS",n:"Cerebras Systems"},{t:"PANW",n:"Palo Alto Networks"},{t:"MRVL",n:"Marvell Technology"},
+  // [FIX] จำกัดเหลือเฉพาะหุ้นใหญ่ที่อยู่ใน alwaysShow list (ดูใน earnings calendar fetch)
+  // ตามที่ผู้ใช้ขอ — ตัด small/mid-cap ที่ไม่อยู่ใน alwaysShow ออกจาก default watchlist
+  {t:"AVGO",n:"Broadcom"},{t:"CRWD",n:"CrowdStrike"},{t:"NVDA",n:"Nvidia"},
+  {t:"AAPL",n:"Apple"},{t:"MSFT",n:"Microsoft"},{t:"GOOGL",n:"Alphabet"},
+  {t:"META",n:"Meta Platforms"},{t:"AMZN",n:"Amazon"},{t:"TSLA",n:"Tesla"},
+  {t:"AMD",n:"AMD"},{t:"PLTR",n:"Palantir"},{t:"NFLX",n:"Netflix"},
+  {t:"V",n:"Visa"},{t:"JPM",n:"JPMorgan Chase"},{t:"LLY",n:"Eli Lilly"},
+  {t:"ORCL",n:"Oracle Corp"},{t:"ADBE",n:"Adobe"},{t:"MU",n:"Micron Technology"},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF"},{t:"VIX",n:"Volatility Index"},
 ]
@@ -3412,11 +3394,14 @@ function _confirmPortSize(){
 }
 
 function updateDashboard(){
-  const up=stocks.filter(s=>s.c>0).length;
-  const dn=stocks.filter(s=>s.c<0).length;
+  // [FIX] เดิมนับ stocks.length ตรงๆ รวม HIDDEN_TICKERS (SPY/QQQ/SMH/VIX) ที่ไม่ใช่หุ้นจริง
+  // ทำให้ตัวเลข "ทั้งหมด" ในหน้า Overview ไม่ตรงกับหน้า Settings ที่กรอง HIDDEN_TICKERS ออกแล้ว
+  const visibleStocks = stocks.filter(s=>!HIDDEN_TICKERS.has(s.t));
+  const up=visibleStocks.filter(s=>s.c>0).length;
+  const dn=visibleStocks.filter(s=>s.c<0).length;
   document.getElementById('dashUp').textContent=up;
   document.getElementById('dashDn').textContent=dn;
-  document.getElementById('dashTotal').textContent=stocks.length;
+  document.getElementById('dashTotal').textContent=visibleStocks.length;
 
   // Market Breadth Bar
   const total=up+dn||1;
@@ -9528,12 +9513,15 @@ async function fetchAndRenderEarnings(){
       }
 
       if(items.length>0){
-        // [FIX] เดิมกรองเฉพาะหุ้นใน watchlist + alwaysShow 18 ตัว ทำให้ "เร็วๆ นี้" ว่างเปล่า
-        // ถ้าหุ้นที่ผู้ใช้ถือไม่มีใครประกาศในช่วง 7 วันข้างหน้า ทั้งที่ตลาดจริงมีบริษัทอื่น
-        // ประกาศผลทุกวันอยู่แล้ว — เอา filter นี้ออก ให้ดึงทุกบริษัทที่ Finnhub ส่งมาเลย
-        // ส่วนปุ่ม "⭐ Watchlist" (_earnWLOnly, ดูใน renderEarningsData) ทำหน้าที่กรองเฉพาะ
-        // watchlist ตอนแสดงผลแทน ถ้าผู้ใช้อยากดูแค่หุ้นตัวเองก็กดปุ่มนั้นได้
+        // กรองเฉพาะหุ้นที่มีใน watchlist/stocks list
+        const tickers=new Set(stocks.map(s=>s.t));
+        // เพิ่ม popular tickers ที่ควรแสดงเสมอ
+        const alwaysShow=new Set(['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','NVDA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU']);
         const matched=items
+          .filter(e=>{
+            const sym=e.symbol||e.t;
+            return tickers.has(sym)||alwaysShow.has(sym);
+          })
           .map(e=>({...e, symbol:e.symbol||e.t}))
           .filter(e=>e.symbol&&e.date);
 
@@ -10707,7 +10695,7 @@ ${newsContext?'\n'+newsContext:''}
   btn.disabled=false;
 }
 const _econQueries={
-  fed:'Federal Reserve FOMC interest rate decision Powell Warsh rate hike cut',
+  fed:'Federal Reserve FOMC interest rate decision Powell rate hike cut',
   macro:'GDP inflation CPI PPI jobs report nonfarm payroll unemployment',
   earnings:'earnings results beat miss revenue Apple Microsoft Google Meta Amazon Nvidia Tesla',
   geopolitics:'trade war tariff sanction geopolitics conflict China US Taiwan',
@@ -10779,7 +10767,7 @@ async function loadEconNews(){
   }
 
   // score ความสำคัญ
-  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell','warsh',
+  const _highKw=['federal reserve','fomc','interest rate','rate hike','rate cut','powell',
     'inflation','cpi','ppi','gdp','jobs report','nonfarm','unemployment','recession',
     'earnings','beat','miss','trade war','tariff','sanction','war','conflict',
     'nvidia','openai','ai','crash','surge','plunge','record high','bankruptcy','crisis'];
@@ -11255,34 +11243,35 @@ Sector: ${sectorText}
     // ══ Render: 1) AI Health Score → 2) Portfolio Summary → 3) Executive Summary ══
     let html = '';
 
-    html += _fmCard('🧠 AI Portfolio Health', `
+    html += _fmCard('🧠 สุขภาพพอร์ตโดย AI', `
       <div style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">Risk Score</span><span style="font-weight:700;color:${riskColor}">${riskScore}/100</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">ความเสี่ยง</span><span style="font-weight:700;color:${riskColor}">${riskScore}/100</span></div>
         ${_fmBar(riskScore, riskColor)}
       </div>
-      ${_fmRow('Diversification', diversification)}
-      ${_fmRow('Cash Allocation', cashPct.toFixed(0)+'%')}
+      ${_fmRow('การกระจายความเสี่ยง', diversification)}
+      ${_fmRow('สัดส่วนเงินสด', cashPct.toFixed(0)+'%')}
       <div style="margin-top:8px">
-        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">AI Confidence</span><span style="font-weight:700;color:var(--gold)">${confidence}%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">ความเชื่อมั่นของ AI</span><span style="font-weight:700;color:var(--gold)">${confidence}%</span></div>
         ${_fmBar(confidence,'var(--gold)')}
       </div>
     `);
 
-    html += _fmCard('📊 Portfolio Summary', `
-      ${_fmRow('Portfolio Value', '$'+portfolioValue.toFixed(0))}
-      ${_fmRow('Performance', (performance>=0?'+':'')+performance.toFixed(2)+'%', performance>=0?'var(--green)':'var(--red)')}
-      ${_fmRow('Cash Reserve', '$'+_portCash.toFixed(0))}
-      ${_fmRow('Risk Level', riskLabel, riskColor)}
-      ${largest?_fmRow('Largest Position', `${largest.ticker} (${largest.pct.toFixed(1)}%)`):''}
-      ${biggestLoss?_fmRow('Biggest Loss', `${biggestLoss.ticker} (${biggestLoss.pnl.toFixed(1)}%)`, biggestLoss.pnl<0?'var(--red)':'var(--green)'):''}
+    html += _fmCard('📊 สรุปพอร์ต', `
+      ${_fmRow('มูลค่าพอร์ต', '$'+portfolioValue.toFixed(0))}
+      ${_fmRow('ผลตอบแทน', (performance>=0?'+':'')+performance.toFixed(2)+'%', performance>=0?'var(--green)':'var(--red)')}
+      ${_fmRow('เงินสดสำรอง', '$'+_portCash.toFixed(0))}
+      ${_fmRow('ระดับความเสี่ยง', riskLabel==='Low'?'ต่ำ':riskLabel==='Medium'?'กลาง':'สูง', riskColor)}
+      ${largest?_fmRow('สัดส่วนใหญ่สุด', `${largest.ticker} (${largest.pct.toFixed(1)}%)`):''}
+      ${biggestLoss?_fmRow('ขาดทุนมากสุด', `${biggestLoss.ticker} (${biggestLoss.pnl.toFixed(1)}%)`, biggestLoss.pnl<0?'var(--red)':'var(--green)'):''}
     `);
 
     const issues = Array.isArray(exec.keyIssues)?exec.keyIssues.slice(0,3):[];
-    html += _fmCard('📌 AI Recommendation', `
-      ${_fmRow('Risk Status', exec.riskStatus||'-', _fmRiskColor(riskScore))}
-      ${issues.length?`<div style="font-size:11px;color:var(--text3);margin:6px 0 2px">Key Issues</div>
+    const riskStatusTH = exec.riskStatus==='HIGH'?'สูง':exec.riskStatus==='MEDIUM'?'กลาง':exec.riskStatus==='LOW'?'ต่ำ':(exec.riskStatus||'-');
+    html += _fmCard('📌 คำแนะนำจาก AI', `
+      ${_fmRow('สถานะความเสี่ยง', riskStatusTH, _fmRiskColor(riskScore))}
+      ${issues.length?`<div style="font-size:11px;color:var(--text3);margin:6px 0 2px">ปัญหาหลัก</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.6">${issues.map(i=>'• '+i).join('<br>')}</div>`:''}
-      ${exec.recommendedAction?`<div style="font-size:11px;color:var(--text3);margin-top:6px">Recommended Action</div><div style="font-size:12px;color:var(--text);font-weight:700">${exec.recommendedAction}</div>`:''}
+      ${exec.recommendedAction?`<div style="font-size:11px;color:var(--text3);margin-top:6px">คำแนะนำที่ควรทำ</div><div style="font-size:12px;color:var(--text);font-weight:700">${exec.recommendedAction}</div>`:''}
     `);
 
     resultEl.innerHTML = html;
@@ -11294,31 +11283,31 @@ Sector: ${sectorText}
       const priorityIcon = p => p==='high'?'🔴':p==='medium'?'🟡':'🟢';
       const actionTitle = a => {
         switch(a.type){
-          case 'sell_partial': return `Sell ${a.ticker}`;
-          case 'sell_all': return `Sell All ${a.ticker}`;
-          case 'reduce': return `Reduce ${a.ticker}`;
-          case 'hold': return `Hold ${a.ticker}`;
-          case 'set_stoploss': return `Set Stop Loss ${a.ticker}`;
-          case 'set_target': return `Set Target ${a.ticker}`;
+          case 'sell_partial': return `ขาย ${a.ticker}`;
+          case 'sell_all': return `ขายทั้งหมด ${a.ticker}`;
+          case 'reduce': return `ลดสัดส่วน ${a.ticker}`;
+          case 'hold': return `ถือต่อ ${a.ticker}`;
+          case 'set_stoploss': return `ตั้ง Stop Loss ${a.ticker}`;
+          case 'set_target': return `ตั้งราคาเป้าหมาย ${a.ticker}`;
           default: return `${a.type} ${a.ticker}`;
         }
       };
       const canExecute = a => ['sell_partial','sell_all','set_stoploss','set_target'].includes(a.type);
 
       actionsEl.innerHTML = `
-        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⚡ Action Plan</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">⚡ แผนการดำเนินการ</div>
         ${actions.map(a=>{
           const color = priorityColor(a.priority);
           const icon = priorityIcon(a.priority);
           let rows='';
           if(a.type==='sell_partial' || a.type==='sell_all'){
-            if(a.currentWeight!=null) rows += _fmRow('Current Weight', Number(a.currentWeight).toFixed(1)+'%');
-            if(a.targetWeight!=null) rows += _fmRow('Target Weight', Number(a.targetWeight).toFixed(1)+'%');
-            if(a.shares!=null) rows += _fmRow('Shares To Sell', a.shares);
-            if(a.price!=null) rows += _fmRow('Price', '$'+a.price);
+            if(a.currentWeight!=null) rows += _fmRow('สัดส่วนปัจจุบัน', Number(a.currentWeight).toFixed(1)+'%');
+            if(a.targetWeight!=null) rows += _fmRow('สัดส่วนเป้าหมาย', Number(a.targetWeight).toFixed(1)+'%');
+            if(a.shares!=null) rows += _fmRow('จำนวนหุ้นที่ขาย', a.shares);
+            if(a.price!=null) rows += _fmRow('ราคา', '$'+a.price);
           } else {
-            if(a.price!=null) rows += _fmRow('Price', '$'+a.price);
-            if(a.reason) rows += `<div style="font-size:11px;color:var(--text3);margin-top:2px">Reason</div><div style="font-size:12px;color:var(--text2);margin-bottom:4px">${a.reason}</div>`;
+            if(a.price!=null) rows += _fmRow('ราคา', '$'+a.price);
+            if(a.reason) rows += `<div style="font-size:11px;color:var(--text3);margin-top:2px">เหตุผล</div><div style="font-size:12px;color:var(--text2);margin-bottom:4px">${a.reason}</div>`;
           }
           if(Array.isArray(a.expected)&&a.expected.length){
             rows += `<div style="font-size:11px;color:var(--text3);margin-top:4px">Expected Result</div>
@@ -11346,19 +11335,19 @@ Sector: ${sectorText}
       const afterEntries = Object.entries(sim.after).map(([k,v])=>_fmRow(k.toLowerCase()==='cash'?'Cash':k, Number(v).toFixed(1)+'%'));
       const riskAfter = sim.riskScoreAfter!=null ? Math.max(0,Math.min(100,Number(sim.riskScoreAfter))) : null;
 
-      simEl.innerHTML = _fmCard('🔄 Before / After Simulation', `
+      simEl.innerHTML = _fmCard('🔄 เปรียบเทียบก่อน/หลัง', `
         <div style="display:flex;gap:10px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Current</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">ปัจจุบัน</div>
             ${beforeRows.join('')}
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">After AI Actions</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">หลังทำตาม AI</div>
             ${afterEntries.join('')}
           </div>
         </div>
         ${riskAfter!=null?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px">
-          <span style="color:var(--text3)">Risk Score</span>
+          <span style="color:var(--text3)">ความเสี่ยง</span>
           <span style="font-weight:700"><span style="color:${riskColor}">${riskScore}</span> → <span style="color:${_fmRiskColor(riskAfter)}">${riskAfter}</span></span>
         </div>`:''}
       `);
@@ -13968,8 +13957,8 @@ const ELITE_PEOPLE = [
   { id:'trump',   name:'Donald Trump',      role:'ประธานาธิบดีสหรัฐ',  emoji:'🇺🇸', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=trump', tickers:['SPY','GLD','USO'],    x:148, y:155, color:'#e74c3c',
     keywords:['trump','donald trump','white house','tariff','trade war','executive order'],
     excludeKeywords:[],
-    ticker:'', backupIds:['warsh'] },
-  { id:'warsh',   name:'Kevin Warsh',     role:'Fed Chair',           emoji:'🏛️', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=warsh', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
+    ticker:'', backupIds:['powell'] },
+  { id:'powell',  name:'Kevin Warsh',     role:'Fed Chair',           emoji:'🏛️', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=powell', tickers:['SPY','TLT','UUP'],    x:158, y:162, color:'#9b59b6',
     // [FIX] Jerome Powell ลงจากตำแหน่ง Fed Chair เมื่อ 15 พ.ค. 2026 (ยังเป็น Fed Governor
     // ต่อจนถึงปี 2028 แต่ไม่ใช่ chair แล้ว) — Kevin Warsh เข้ารับตำแหน่งแทน
     keywords:['kevin warsh','warsh','federal reserve','fomc','rate cut','rate hike','fed funds','fed chair','fed meeting','fed decision'],
@@ -13991,7 +13980,7 @@ const ELITE_PEOPLE = [
     keywords:['xi jinping','xi jinping','china','beijing','pboc','yuan','renminbi','rmb','tariff china','us china','chinese government','ccp'],
     // [FIX] เพิ่ม iran/khamenei เพื่อกันข่าวที่พูดถึงทั้งจีนและอิหร่านพร้อมกัน (เช่น "BMW
     // ลดคาดการณ์กำไรจากการชะลอตัวจีนและสงครามอิหร่าน") ไม่ให้ถูกแมตช์เป็นข่าวของ Xi
-    excludeKeywords:['india','japan','korea','europe','fed','powell','warsh','fomc','iran','khamenei'],
+    excludeKeywords:['india','japan','korea','europe','fed','powell','fomc','iran','khamenei'],
     ticker:'', backupIds:['opec'] },
   { id:'opec',    name:'OPEC+',             role:'กลุ่มผู้ผลิตน้ำมัน', emoji:'🛢️', logo:'', tickers:['XOM','USO'],          x:570, y:168, color:'#f39c12',
     keywords:['opec','oil production','crude oil','brent','wti','saudi','aramco','oil cut','oil output'],
@@ -14024,7 +14013,7 @@ const ELITE_PEOPLE = [
   { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=dimon', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     excludeKeywords:[],
-    ticker:'JPM', backupIds:['warsh'] },
+    ticker:'JPM', backupIds:['powell'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14174,7 +14163,7 @@ function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScor
 // ════════════════════════════════════════════════════════════
 const EVENT_DETECTION_RULES=[
   {keywords:['rate','interest rate','fed funds','basis point','bps','ดอกเบี้ย','อัตราดอกเบี้ย'],eventType:'rate_decision',sectors:['Financials','REIT','Utilities']},
-  {keywords:['fomc','federal reserve','powell','warsh','monetary policy','เฟด','พาวเวล','วอร์ช','นโยบายการเงิน','ธนาคารกลางสหรัฐ'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
+  {keywords:['fomc','federal reserve','powell','monetary policy','เฟด','พาวเวล','นโยบายการเงิน','ธนาคารกลางสหรัฐ'],eventType:'fomc',sectors:['Equities','Bonds','Gold']},
   {keywords:['cpi','inflation','consumer price','price index','เงินเฟ้อ','ดัชนีราคาผู้บริโภค'],eventType:'inflation_data',sectors:['Consumer','Tech','REIT']},
   {keywords:['nfp','jobs report','payroll','unemployment','labor','การจ้างงาน','ตำแหน่งงาน','ว่างงาน','ค่าแรง'],eventType:'jobs_data',sectors:['Consumer','Financials']},
   {keywords:['gdp','gross domestic','economic growth','recession','จีดีพี','เศรษฐกิจถดถอย','การเติบโตทางเศรษฐกิจ'],eventType:'gdp_data',sectors:['Broad Market']},
@@ -14897,7 +14886,7 @@ async function _eliteDirectFallback(overlay){
     const PERSON_TICKERS = {
       jensen:'NVDA', cook:'AAPL', musk:'TSLA', nadella:'MSFT',
       zuck:'META', altman:'MSFT', pichai:'GOOGL', bezos:'AMZN',
-      dimon:'JPM', warsh:'', trump:'', xi:'', buffett:'BRK.B', opec:'XOM',
+      dimon:'JPM', powell:'', trump:'', xi:'', buffett:'BRK.B', opec:'XOM',
       khamenei:'' // ไม่มี company ticker — ต้องมีข่าวจาก general news เท่านั้น
     };
     const fk = FINNHUB_KEY || '';
