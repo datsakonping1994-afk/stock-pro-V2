@@ -14172,7 +14172,7 @@ const EVENT_DETECTION_RULES=[
   {keywords:['geopolit','war','conflict','military','invasion','missile','สงคราม','ความขัดแย้ง','ทหาร','การรุกราน','ขีปนาวุธ','โจมตี'],eventType:'geopolitical',sectors:['Energy','Defense','Gold']},
   {keywords:['election','vote','president','congress','senate','political','การเลือกตั้ง','ประธานาธิบดี','สภาคองเกรส','รัฐสภา'],eventType:'political',sectors:['Broad Market']},
   {keywords:['deal','merger','acquisition','buyout','takeover','ควบรวม','เข้าซื้อกิจการ','ดีล'],eventType:'m_and_a',sectors:['Company Specific']},
-  {keywords:['ai','artificial intelligence','llm','model','gpu','chip','ปัญญาประดิษฐ์','เอไอ','ชิป','จีพียู'],eventType:'tech_ai',sectors:['Tech','Semiconductors']},
+  {keywords:['ai','artificial intelligence','llm','ai model','language model','foundation model','gpu','chip','ปัญญาประดิษฐ์','เอไอ','ชิป','จีพียู','โมเดลเอไอ'],eventType:'tech_ai',sectors:['Tech','Semiconductors']},
   {keywords:['oil','opec','crude','energy','petroleum','gas','น้ำมัน','พลังงาน','ก๊าซธรรมชาติ'],eventType:'energy',sectors:['Energy','Airlines','Chemicals']},
   {keywords:['crypto','bitcoin','ethereum','digital asset','blockchain','คริปโต','บิตคอยน์'],eventType:'crypto',sectors:['Fintech','Tech']},
   {keywords:['fed','central bank','ecb','boj','pboc','ธนาคารกลาง','ดอลลาร์สหรัฐ','ค่าเงินดอลลาร์'],eventType:'central_bank',sectors:['Currencies','Bonds']},
@@ -14219,6 +14219,41 @@ const STOCK_UNIVERSE=new Set([
   'GE','MMM','CAT','DE','HON',
   'TSM','BABA','JD','PDD','NIO','RIVN','AMBA','CBRS','PANW','MRVL'
 ]);
+// [FIX] ชื่อบริษัท/คำที่ใช้เรียกแต่ละ ticker ในข่าว (ไทย+อังกฤษ) ใช้เช็คว่า ticker ที่ AI
+// เลือกมาแบบไม่มี reason เฉพาะ ถูกพูดถึงในข่าวจริงหรือเปล่า ก่อนจะอ้างว่า "กระทบโดยตรง"
+// หมายเหตุ: ไม่ใส่ ticker symbol ดิบสำหรับตัวที่สั้น <=2 ตัวอักษร (เช่น V, C, T, MA, GE) เพราะ
+// เสี่ยงไปแมตช์ตัวอักษรเดี่ยว ๆ ในข้อความทั่วไปโดยไม่ได้ตั้งใจ
+const TICKER_NAME_MAP={
+  AAPL:['apple','แอปเปิล'],MSFT:['microsoft','ไมโครซอฟต์'],GOOGL:['google','alphabet','กูเกิล'],
+  GOOG:['google','alphabet','กูเกิล'],AMZN:['amazon','แอมะซอน','อเมซอน'],META:['meta','facebook','เฟซบุ๊ก','เมตา'],
+  NVDA:['nvidia','เอ็นวิเดีย'],TSLA:['tesla','เทสลา'],NFLX:['netflix','เน็ตฟลิกซ์'],AMD:['amd'],
+  INTC:['intel','อินเทล'],QCOM:['qualcomm'],AVGO:['broadcom'],MU:['micron'],AMAT:['applied materials'],
+  LRCX:['lam research'],KLAC:['kla corp'],TXN:['texas instruments'],ARM:['arm holdings'],SMCI:['super micro','supermicro'],
+  JPM:['jpmorgan','jp morgan'],BAC:['bank of america'],WFC:['wells fargo'],GS:['goldman sachs'],MS:['morgan stanley'],
+  C:['citigroup','citi'],BLK:['blackrock'],V:['visa'],MA:['mastercard'],AXP:['american express'],
+  PYPL:['paypal'],SQ:['block inc','square inc'],JNJ:['johnson & johnson','johnson and johnson'],UNH:['unitedhealth'],
+  PFE:['pfizer'],MRNA:['moderna'],BNTX:['biontech'],LLY:['eli lilly'],ABBV:['abbvie'],MRK:['merck'],
+  CVS:['cvs health'],CI:['cigna'],XOM:['exxon','exxonmobil','exxon mobil'],CVX:['chevron'],COP:['conocophillips'],
+  SLB:['schlumberger'],HAL:['halliburton'],OXY:['occidental petroleum','occidental'],BA:['boeing'],
+  LMT:['lockheed martin','lockheed'],RTX:['raytheon'],NOC:['northrop grumman','northrop'],GD:['general dynamics'],
+  AMGN:['amgen'],GILD:['gilead'],BIIB:['biogen'],REGN:['regeneron'],VRTX:['vertex pharmaceuticals'],ISRG:['intuitive surgical'],
+  'BRK.B':['berkshire hathaway','berkshire'],WMT:['walmart','วอลมาร์ท'],TGT:['target corp'],COST:['costco'],
+  HD:['home depot'],LOW:["lowe's",'lowes'],MCD:["mcdonald's",'mcdonalds','แมคโดนัลด์'],SBUX:['starbucks','สตาร์บัคส์'],
+  NKE:['nike','ไนกี้'],DIS:['disney','ดิสนีย์'],CMCSA:['comcast'],T:['at&t','att'],VZ:['verizon'],TMUS:['t-mobile','tmobile'],
+  UBER:['uber'],ABNB:['airbnb'],BKNG:['booking holdings','booking.com'],MAR:['marriott'],HLT:['hilton'],
+  CCL:['carnival corp','carnival cruise'],GE:['general electric'],MMM:['3m company'],CAT:['caterpillar'],
+  DE:['deere','john deere'],HON:['honeywell'],TSM:['taiwan semiconductor','tsmc'],BABA:['alibaba'],JD:['jd.com'],
+  PDD:['pinduoduo','temu'],NIO:['nio inc'],RIVN:['rivian'],AMBA:['ambarella'],PANW:['palo alto networks'],MRVL:['marvell technology','marvell'],
+};
+function _isCompanyMentioned(ticker,headline,summary){
+  const text=((headline||'')+' '+(summary||'')).toLowerCase();
+  const names=(TICKER_NAME_MAP[ticker]||[]).slice();
+  if(ticker.length>=3) names.push(ticker.toLowerCase()); // ticker symbol สั้นเกินไป (<=2 ตัว) ไม่เอามาเช็คตรง ๆ
+  return names.some(function(name){
+    const re=new RegExp('(?:^|[^a-z])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:[^a-z]|$)');
+    return re.test(text);
+  });
+}
 const ETF_EVENT_MAP={
   'fomc':         {up:[],down:['TLT','HYG','LQD','GLD'],neutral:['SPY','QQQ']},
   'rate_decision':{up:['XLF'],down:['TLT','XLRE','XLU','HYG'],neutral:['SPY']},
@@ -14328,7 +14363,13 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
     if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    const reason=`กระทบโดยตรงจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
+    // [FIX] เดิมอ้างว่า "กระทบโดยตรงจาก[หัวข้อข่าว]" กับทุก ticker ที่ AI แนะนำมา โดยไม่เช็คว่า
+    // บริษัทนั้นถูกพูดถึงในข่าวจริงหรือเปล่า ทำให้หุ้นที่ไม่เกี่ยวเลยก็โดนใส่ข้อความเหมือนเกี่ยวตรง ๆ
+    // ตอนนี้เช็คก่อน ถ้าไม่เจอชื่อบริษัทในข่าว ให้ใช้ข้อความกลาง ๆ แทน ไม่กล่าวอ้างความเกี่ยวข้องเกินจริง
+    const mentioned=_isCompanyMentioned(clean,headline,'');
+    const reason=mentioned
+      ?`กระทบโดยตรงจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`
+      :`AI แนะนำเพิ่มเติมจากแนวโน้มข่าวนี้ (ไม่ได้ถูกพูดถึงในข่าวตรง ๆ)`;
     beneficiaries.push({t:clean,reason,source:'ai'});
     seen.add(clean);
     if(beneficiaries.length>=4) break;
@@ -14370,7 +14411,11 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
     if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
     if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    const reason=`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
+    // [FIX] เช็คก่อนว่าบริษัทนี้ถูกพูดถึงในข่าวจริงไหม เหมือนที่แก้ใน _buildBeneficiaries
+    const mentioned=_isCompanyMentioned(clean,headline,'');
+    const reason=mentioned
+      ?`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`
+      :`AI มองว่าควรระมัดระวังเพิ่มเติมจากแนวโน้มข่าวนี้ (ไม่ได้ถูกพูดถึงในข่าวตรง ๆ)`;
     losers.push({t:clean,reason,source:'ai'});
     seen.add(clean);
     if(losers.length>=3) break;
