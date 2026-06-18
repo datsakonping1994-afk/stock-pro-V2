@@ -13973,7 +13973,7 @@ const ELITE_PEOPLE = [
     excludeKeywords:[],
     ticker:'MSFT', backupIds:['pichai','nadella'] },
   { id:'musk',    name:'Elon Musk',         role:'CEO Tesla/xAI',       emoji:'🚀', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=musk', tickers:['TSLA'],               x:142, y:178, color:'#e31937',
-    keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','twitter','x.com','grok'],
+    keywords:['elon musk','musk','tesla','tsla','spacex','xai','doge','dogecoin','twitter','x.com','grok'],
     excludeKeywords:[],
     ticker:'TSLA', backupIds:['jensen','cook'] },
   { id:'xi',      name:'Xi Jinping',        role:'ประธานาธิบดีจีน',     emoji:'🇨🇳', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=xi', tickers:['SPY','TSM','NVDA'],   x:755, y:130, color:'#e74c3c',
@@ -14007,7 +14007,7 @@ const ELITE_PEOPLE = [
     excludeKeywords:[],
     ticker:'GOOGL', backupIds:['altman'] },
   { id:'zuck',     name:'Mark Zuckerberg',  role:'CEO Meta',            emoji:'📘', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=zuck', tickers:['META'],               x:140, y:165, color:'#1877f2',
-    keywords:['mark zuckerberg','zuckerberg','zuck','meta','facebook','instagram','whatsapp','threads','llama','ray-ban'],
+    keywords:['mark zuckerberg','zuckerberg','zuck','meta','metaverse','facebook','instagram','whatsapp','threads','llama','ray-ban'],
     excludeKeywords:[],
     ticker:'META', backupIds:['pichai'] },
   { id:'dimon',    name:'Jamie Dimon',      role:'CEO JPMorgan',        emoji:'🏦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=dimon', tickers:['JPM','BAC','GS'],     x:155, y:158, color:'#005eb8',
@@ -14180,8 +14180,15 @@ const EVENT_DETECTION_RULES=[
 function _detectEventTypes(headline,summary,extraText){
   const text=((headline||'')+' '+(summary||'')+' '+(extraText||'')).toLowerCase();
   const detected=[];
+  // [FIX] เดิมใช้ text.includes(k) แบบดิบ ไม่มี word-boundary เลย ทำให้ keyword สั้น ๆ
+  // เช่น "eps","profit","war","ai" ไปแมตช์กับคำอื่นที่บังเอิญมีตัวนี้อยู่ข้างใน
+  // (steps/jeeps/biceps, nonprofit, software, air) แล้วติดแท็ก event ผิดประเภท
+  // เปลี่ยนเป็น whole-word boundary regex เหมือนที่แก้ใน _eliteNewsMatchesPerson
   for(const rule of EVENT_DETECTION_RULES){
-    const matchCount=rule.keywords.filter(k=>text.includes(k)).length;
+    const matchCount=rule.keywords.filter(function(k){
+      var re=new RegExp('(?:^|[^a-z])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:[^a-z]|$)');
+      return re.test(text);
+    }).length;
     if(matchCount>=1) detected.push({type:rule.eventType,strength:matchCount});
   }
   detected.sort((a,b)=>b.strength-a.strength);
@@ -14443,7 +14450,11 @@ function buildNewsAnalysis(item,sourceUrl){
     hasSummary:!!(clean.summary)
   });
   const confidenceFactors=_buildConfidenceFactors(sourceQuality,sourcesCount,rumorStatus,clean.impact,sourceUrl);
-  const eventTypes=_detectEventTypes(clean.headline,clean.summary,(clean.why||'')+' '+(clean.read_game||'')+' '+(clean.market_impact||'')+' '+(clean.watch||''));
+  // หมายเหตุ: ตัด clean.why/read_game/market_impact/watch ออกจาก input เพราะข้อความ AI Take
+  // มักพูดถึงคำว่า "ดอกเบี้ย/เงินเฟ้อ" ฯลฯ แม้ตอนบอกว่า "ไม่ได้รับผลกระทบ" ก็ตาม ทำให้ _detectEventTypes
+  // จับ keyword ผิดประเภท (false positive) แล้วดึงหุ้นจาก BENEFICIARY_MAP ผิดหมวดมาแสดง
+  // ให้ตรวจจับจาก headline+summary (เนื้อข่าวจริง) เท่านั้น
+  const eventTypes=_detectEventTypes(clean.headline,clean.summary);
   // sector_tags — derive from EVENT_DETECTION_RULES sectors
   const sectorTags=[...new Set(eventTypes.flatMap(et=>{
     const rule=EVENT_DETECTION_RULES.find(r=>r.eventType===et);
@@ -14629,14 +14640,15 @@ function _eliteNewsMatchesPerson(headline, summary, person){
   if(excl.length > 0 && excl.some(function(ek){ return text.includes(ek); })){
     return false;
   }
-  // ── Step 2: ตรวจ keyword match (whole-word สำหรับคำสั้น < 4 ตัว) ──
+  // ── Step 2: ตรวจ keyword match (whole-word ทุก keyword ไม่ว่ายาวแค่ไหน) ──
+  // [FIX] เดิม keyword ที่ยาว >= 4 ตัว ใช้ plain substring (text.includes) ทำให้แมตช์ผิดกับ
+  // คำที่บังเอิญมี keyword นั้นอยู่ข้างใน เช่น "meta" → metaverse/metadata/metaphor,
+  // "musk" → musket/musky, "trump" → trumpet, "apple" → pineapple/applesauce
+  // เปลี่ยนให้ทุก keyword ผ่าน word-boundary regex เหมือนกันหมด ไม่จำกัดความยาว
   const kws = person.keywords || person.name.toLowerCase().split(' ').filter(function(w){return w.length>3;});
   return kws.some(function(kw){
-    if(kw.length < 4){
-      var re = new RegExp('(?:^|[^a-z])' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?:[^a-z]|$)');
-      return re.test(text);
-    }
-    return text.includes(kw);
+    var re = new RegExp('(?:^|[^a-z])' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?:[^a-z]|$)');
+    return re.test(text);
   });
 }
 
