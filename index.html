@@ -9473,13 +9473,15 @@ async function translateNewsItems(items){
 async function fetchAndRenderEarnings(force=false){
   const body=document.getElementById('earningsBody');
 
-  // เช็ค localStorage cache ก่อน (TTL 6 ชั่วโมง) — ข้ามถ้า force=true
+  // เช็ค localStorage cache ก่อน (TTL 6 ชั่วโมง) — ข้ามถ้า force=true หรือ stocks เปลี่ยน
   if(!force){
     try{
       const ec=localStorage.getItem('_sp_earnings_cache');
       if(ec){
-        const {data,ts}=JSON.parse(ec);
-        if(Date.now()-ts<21600000&&data?.length>0){ // 6 ชั่วโมง
+        const {data,ts,stocksHash}=JSON.parse(ec);
+        const currentHash=stocks.map(s=>s.t).sort().join(',');
+        const stocksUnchanged=stocksHash===currentHash;
+        if(Date.now()-ts<21600000&&data?.length>0&&stocksUnchanged){ // 6 ชั่วโมง
           window.earningsData=data;
           renderEarningsData(data, true);
           setTimeout(()=>autoCheckEarningsResults(), 1500);
@@ -9523,33 +9525,62 @@ async function fetchAndRenderEarnings(force=false){
         if(r.ok){ const d=await r.json(); items=d?.earningsCalendar||[]; usedLive=true; }
       }
 
-      // [NEW] เพิ่ม Yahoo Finance earnings เพื่อได้วันที่แม่นขึ้น
+      // [NEW] เพิ่ม Finnhub + Yahoo fetch สำหรับหุ้นที่ยังไม่มีวันประกาศ
       {
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
-        const _apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
-        // Priority tickers — ดึงก่อนเสมอ
-        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT'];
+        const _apiTickers=new Set(items.filter(e=>e.date||e.d).map(e=>e.symbol||e.t));
+        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM'];
         const otherTickers=allNeeded.filter(t=>!priorityTickers.includes(t)&&!_apiTickers.has(t));
         const missingTickers=[
           ...priorityTickers.filter(t=>!_apiTickers.has(t)),
           ...otherTickers
         ].slice(0,60);
         if(missingTickers.length>0){
-          const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
+          const results=await Promise.allSettled(missingTickers.map(async ticker=>{
+            // 1. ลองผ่าน Worker /stock/earnings (endpoint ที่มีอยู่จริง)
             try{
-              const yh=ticker.replace('.', '-');
-              const d=await _fetchYahooQuoteSummary(yh, 'calendarEvents', 5000);
+              const r=await fetch(`${PRICES_WORKER}/stock/earnings?t=${ticker}`,{signal:AbortSignal.timeout(5000)});
+              if(r.ok){
+                const d=await r.json();
+                // Worker ส่งกลับ array ของ historical earnings — หาวันใกล้สุดในอนาคต
+                const arr=Array.isArray(d)?d:(d?.data||[]);
+                if(arr.length){
+                  const today=new Date().toISOString().slice(0,10);
+                  const next=arr.find(e=>(e.period||e.date||'')>today)||arr[0];
+                  const dt=next?.period||next?.date;
+                  if(dt) return {symbol:ticker,date:dt,epsEstimate:next?.estimate||next?.epsEstimate||null,revenueEstimate:null,hour:'amc'};
+                }
+              }
+            }catch{}
+            // 2. fallback Finnhub direct (ถ้ามี key)
+            if(FINNHUB_KEY){
+              try{
+                const r=await fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${ticker}&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(5000)});
+                if(r.ok){
+                  const d=await r.json();
+                  if(d?.length){
+                    const today=new Date().toISOString().slice(0,10);
+                    const next=d.find(e=>e.period>today)||d[0];
+                    if(next?.period) return {symbol:ticker,date:next.period,epsEstimate:next.estimate||null,revenueEstimate:null,hour:'amc'};
+                  }
+                }
+              }catch{}
+            }
+            // 2. fallback Yahoo
+            try{
+              const yh=ticker.replace('.','-');
+              const d=await _fetchYahooQuoteSummary(yh,'calendarEvents',5000);
               const earnings=d?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
               if(!earnings?.earningsDate?.[0]) return null;
               const ts=earnings.earningsDate[0].raw*1000;
               const dateStr=new Date(ts).toISOString().slice(0,10);
-              return {symbol:ticker, date:dateStr, epsEstimate:earnings.epsEstimate?.raw||null, revenueEstimate:null, hour:'amc'};
+              return {symbol:ticker,date:dateStr,epsEstimate:earnings.epsEstimate?.raw||null,revenueEstimate:null,hour:'amc'};
             }catch{ return null; }
           }));
-          const yahooItems=yahooResults.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
-          if(yahooItems.length>0){
-            items=[...items,...yahooItems];
-            console.log('[Yahoo Earnings] added',yahooItems.length,'tickers');
+          const newItems=results.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
+          if(newItems.length>0){
+            items=[...items,...newItems];
+            console.log('[Earnings] added',newItems.length,'tickers via Finnhub/Yahoo');
           }
         }
       }
@@ -9638,8 +9669,8 @@ async function fetchAndRenderEarnings(force=false){
             const db=_parseEarningsDate(b.d)||new Date('2099-01-01');
             return da-db;
           });
-          // บันทึก cache ไว้ 1 ชั่วโมง
-          try{ localStorage.setItem('_sp_earnings_cache',JSON.stringify({data:merged,ts:Date.now()})); }catch{}
+          // บันทึก cache ไว้ 6 ชั่วโมง พร้อม stocksHash เพื่อ detect เมื่อ stocks เปลี่ยน
+          try{ const _hash=stocks.map(s=>s.t).sort().join(','); localStorage.setItem('_sp_earnings_cache',JSON.stringify({data:merged,ts:Date.now(),stocksHash:_hash})); }catch{}
           window.earningsData=merged;
           renderEarningsData(merged, usedLive);
           // [NEW] Auto-check ผลจริง — ทั้งวันที่ผ่านมาแล้วและวันนี้หลังตลาดปิด
