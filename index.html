@@ -10899,7 +10899,7 @@ async function _translateNewsGemini(items){
 
   // fallback: Claude Haiku / Gemini direct
   try{
-    const prompt=`แปลหัวข้อข่าวต่อไปนี้เป็นภาษาไทยให้ครบทุกข้อ ตอบเป็น JSON array เท่านั้น รูปแบบ: [{"title":"...","summary":"..."},...]\n\n${texts.map((t,i)=>`${i+1}. ${t}`).join('\n')}`;
+    const prompt=`แปลหัวข้อข่าวต่อไปนี้เป็นภาษาไทยให้ครบทุกข้อ ตอบเป็น JSON array เท่านั้น รูปแบบ: [{"title":"...","summary":"..."},...]\nกฎสำคัญ: ถ้าหัวข้อพูดถึง "odds", "chance", "could", "may", "potential", "โอกาส" ให้ใช้คำว่า "มีโอกาส" หรือ "อาจ" ในภาษาไทยเสมอ ห้ามแปลเป็น "จะ" หรือ "กลายเป็น" อย่างชัดเจน\n\n${texts.map((t,i)=>`${i+1}. ${t}`).join('\n')}`;
     const raw=await callGemini('คุณคือนักแปลข่าวการเงิน แปลเป็นภาษาไทยที่อ่านง่าย กระชับ ตอบเป็น JSON array เท่านั้น ห้ามมี text อื่น',prompt,2000);
     const parsed=_parseNewsJson(raw||'');
     if(parsed.length) return _mapResult(parsed);
@@ -14176,6 +14176,7 @@ const EVENT_DETECTION_RULES=[
   {keywords:['oil','opec','crude','energy','petroleum','gas','น้ำมัน','พลังงาน','ก๊าซธรรมชาติ'],eventType:'energy',sectors:['Energy','Airlines','Chemicals']},
   {keywords:['crypto','bitcoin','ethereum','digital asset','blockchain','คริปโต','บิตคอยน์'],eventType:'crypto',sectors:['Fintech','Tech']},
   {keywords:['fed','central bank','ecb','boj','pboc','ธนาคารกลาง','ดอลลาร์สหรัฐ','ค่าเงินดอลลาร์'],eventType:'central_bank',sectors:['Currencies','Bonds']},
+  {keywords:['ipo','initial public offering','goes public','market cap rank','most valuable company','spacex','spcx','เข้าตลาดหุ้น','มูลค่าตลาด','บริษัทมูลค่าสูงสุด'],eventType:'ipo',sectors:['Tech','Broad Market']},
 ];
 function _detectEventTypes(headline,summary,extraText){
   const text=((headline||'')+' '+(summary||'')+' '+(extraText||'')).toLowerCase();
@@ -14291,7 +14292,7 @@ function _buildEtfImpact(eventTypes,sentiment){
 const BENEFICIARY_MAP={
   'fomc':{
     positive_sentiment:[{t:'JPM',reason:'ธนาคารใหญ่ได้ประโยชน์จากสภาพแวดล้อมดอกเบี้ยสูง'},{t:'GS',reason:'Goldman trading desk รายรับเพิ่มขณะตลาดผันผวน'}],
-    negative_sentiment:[{t:'XLRE',reason:'REIT กระทบหนักจากดอกเบี้ยสูง ต้นทุน refinancing เพิ่ม'},{t:'NVDA',reason:'Growth stock กดดันจาก discount rate สูงขึ้น'}]
+    negative_sentiment:[{t:'NVDA',reason:'Growth stock กดดันจาก discount rate สูงขึ้น'},{t:'SMCI',reason:'High-multiple server stock อ่อนไหวต่อดอกเบี้ยสูง'},{t:'PLTR',reason:'High-multiple software กดดันจาก discount rate ที่สูงขึ้น'},{t:'AMBA',reason:'Small-cap growth chip อ่อนไหวต่อ rate environment มากกว่าค่าเฉลี่ย'}]
   },
   'rate_decision':{
     positive_sentiment:[{t:'JPM',reason:'Net Interest Margin ขยายตัวเมื่อดอกเบี้ยสูง'},{t:'BAC',reason:'Bank of America ได้ประโยชน์จาก floating-rate loan'}],
@@ -14299,7 +14300,7 @@ const BENEFICIARY_MAP={
   },
   'inflation_data':{
     positive_sentiment:[{t:'XOM',reason:'Exxon ได้ประโยชน์จากเงินเฟ้อผ่านราคาน้ำมัน'},{t:'CVX',reason:'Chevron รายรับเพิ่มตามราคาพลังงาน'}],
-    negative_sentiment:[{t:'NFLX',reason:'Consumer spending ลดลงกระทบ streaming subscription'},{t:'AMZN',reason:'ต้นทุน logistics เพิ่มตามเงินเฟ้อ กดดัน margin'}]
+    negative_sentiment:[{t:'SMCI',reason:'Growth stock valuation กดดันจาก real yield สูงขึ้นตามเงินเฟ้อ'},{t:'PLTR',reason:'High-multiple software กดดันจาก discount rate ที่สูงขึ้น'},{t:'AMBA',reason:'Small-cap growth chip อ่อนไหวต่อ rate environment มากกว่าค่าเฉลี่ย'}]
   },
   'jobs_data':{
     positive_sentiment:[{t:'WMT',reason:'การจ้างงานแข็งแกร่ง consumer spending เพิ่ม Walmart ได้ประโยชน์'},{t:'COST',reason:'Costco กำไรเพิ่มเมื่อผู้บริโภคมีรายได้มากขึ้น'}],
@@ -14328,6 +14329,10 @@ const BENEFICIARY_MAP={
   'earnings':{
     positive_sentiment:[],
     negative_sentiment:[]
+  },
+  'ipo':{
+    positive_sentiment:[{t:'TSLA',reason:'SpaceX IPO หนุน Elon Musk portfolio effect กระทบ Tesla sentiment'},{t:'NVDA',reason:'SpaceX เพิ่ม demand AI/compute infrastructure ที่ NVDA ได้ประโยชน์'}],
+    negative_sentiment:[{t:'GOOGL',reason:'SpaceX มีโอกาสแซง Alphabet ขึ้นเป็น market cap อันดับ 3 — กดดัน sentiment GOOGL'},{t:'AAPL',reason:'SpaceX market cap competition กดดัน valuation ranking ของ Apple'}]
   }
 };
 function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
@@ -15023,7 +15028,7 @@ async function _eliteDirectFallback(overlay){
   }).join('\n');
 
   const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n0. VERIFY PERSON MATCH FIRST: each input line is "Name(id): headline — summary" where the news was pre-matched by keyword search (e.g. matched on a topic word like "china" or "iran"), NOT verified by you. Before writing any output for that id, check: is this person actually the subject/actor of this news (they said/did/announced something, or the news is specifically about them/their company/their country\'s government action)? If the news only mentions a related topic/country/sector in passing and the named person is NOT actually central to it (e.g. a company earnings article that happens to mention "china slowdown" gets matched to a China president id, or a generic Fed rate news gets matched to the Fed chair id without the chair saying anything), then DROP that id entirely — do not include it in the output array, do not force-fit a market_impact for them. Only keep ids where the match is genuinely about that specific person.\n1. ALL text fields must be Thai — translate English headlines immediately. สำหรับชื่อเฉพาะ/หน่วยงาน/ตำแหน่ง (เช่น Congress, Senate, White House, Federal Reserve, NATO) ต้องแปล/ทับศัพท์ให้ถูกต้องตามที่ใช้จริงในสื่อไทย (Congress = "สภาคองเกรส", Senate = "วุฒิสภา", White House = "ทำเนียบขาว") ห้ามเดาเสียงทับศัพท์ผิดๆ (เช่นห้ามเขียน Congress เป็น "กองเรส") ถ้าไม่แน่ใจการทับศัพท์ที่ถูกต้อง ให้ใช้ชื่อภาษาอังกฤษเดิมแทนการเดา\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news.\n3. ai_take = 1-2 ประโยคเชิงคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ห้ามตอบสั้นแบบบอกทิศทางราคาเฉยๆ ต้องระบุชื่อหุ้น/สินทรัพย์ที่ได้และเสียประโยชน์อย่างน้อยฝั่งละ 1 ตัว/กลุ่ม เช่น ถ้าข่าวคือ "สหรัฐฯ ปล่อยกองกำลังหลังทรัมป์ขู่โจมตีอิหร่าน" ai_take ที่ดีคือ "หากความตึงเครียดยืดเยื้อ ราคาน้ำมัน Brent มีโอกาสขึ้นต่อ ส่งผลบวกต่อ XOM และ CVX แต่กดดันหุ้นขนส่งและสายการบิน" ห้ามตอบแบบ "ราคาน้ำมันจะสูงขึ้น" เฉยๆ โดยไม่ระบุหุ้น/sector ที่กระทบ\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings\n8. market_impact = วิเคราะห์ระดับตลาด/sector ก่อนเสมอ — ตอบว่าข่าวนี้กระทบดอกเบี้ย/ค่าเงิน USD/Bond yield/sector ไหน และ benchmark อย่าง SPY, QQQ, TLT, DXY, Gold น่าจะขึ้นหรือลงเพราะอะไร (ใช้เป็นบริบท ไม่ใช่คำแนะนำซื้อ) ต้องเขียนก่อนเสมอ แล้วค่อยให้ stocks_buy/stocks_watch เป็นการระบุหุ้นรายตัวที่ตามมาจาก market_impact นั้น\n9. read_game ห้ามพูดซ้ำ headline, ai_take หรือ summary เด็ดขาด — ต้องเป็นมุมมอง \"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับ\" ที่ตลาดยังไม่ได้ price-in เช่น ถ้าข่าวคือ \"ราคาน้ำมันพุ่งจากความตึงเครียดตะวันออกกลาง\" ai_take บอกว่าน้ำมันขึ้นกระทบเงินเฟ้อ แต่ read_game ต้องเป็นแบบ \"ถ้าฝ่ายตรงข้ามไม่ตอบโต้เพิ่มภายใน 48 ชม. ราคาน้ำมันอาจย่อตัวเร็วเพราะตลาดมักตอบสนองเกินจริงในช่วงแรก\" ต้องเป็นการคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ไม่ใช่การอธิบายผลกระทบที่ชัดเจนอยู่แล้ว';
-  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"insight ที่ไม่อยู่ใน headline — second-order effect เฉพาะข่าวนี้ สอดคล้องกับ sentiment จริงของข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"เพราะอะไร","watch":"FOMC/CPI/NFP/GDP หรือ TICKER+Earnings","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ ai_take/headline เช่น \\"ถ้า...อาจ...\\"","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"insight ที่ไม่อยู่ใน headline — second-order effect เฉพาะข่าวนี้ สอดคล้องกับ sentiment จริงของข่าว","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"เหตุผลเชิงลึก 2-3 ประโยค ต้องระบุชื่อบุคคล/องค์กรที่เกี่ยวข้อง + ทิศทางนโยบายหรือการตัดสินใจที่เกิดขึ้น + ผลกระทบต่อตลาด ห้ามตอบสั้นแบบ 1 ประโยคที่ไม่มีรายละเอียด เช่นถ้าเป็นข่าว Fed ต้องระบุชื่อ Chair + ทิศทาง Hawkish/Dovish + เหตุผลว่าทำไมถึงส่งผลต่อตลาด","watch":"FOMC/CPI/NFP/GDP หรือ TICKER+Earnings","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ ai_take/headline เช่น \\"ถ้า...อาจ...\\"","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   try{
     // ลอง Groq ก่อน (ฟรี ไม่หมดเงิน)
@@ -15199,7 +15204,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
   }).join('\n');
 
   const sys = 'Senior financial analyst for Thai investors. CRITICAL: ALL fields must be in Thai language. If headline is in English, you MUST translate it to Thai. STRICT: stocks_buy/stocks_watch must ONLY be real US stock tickers (NVDA AAPL MSFT JPM etc) NEVER ETFs (SPY QQQ TLT). sentiment: bullish/bearish/neutral. JSON array only, no markdown.';
-  const msg = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย (ถ้า headline เป็นภาษาอังกฤษให้แปลเป็นไทยก่อน):\n'+newsItems+'\n\nตอบ JSON array (ทุก field ต้องเป็นภาษาไทย):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย (แปลจาก English ถ้าจำเป็น)","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลสำคัญ","watch":"FOMC, CPI, NFP (event names only)","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ summary_th เช่น \\"ถ้า...อาจ...\\"","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
+  const msg = 'แปลและวิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย (ถ้า headline เป็นภาษาอังกฤษให้แปลเป็นไทยก่อน):\n'+newsItems+'\n\nตอบ JSON array (ทุก field ต้องเป็นภาษาไทย):\n[{"id":"trump","headline_th":"หัวข้อภาษาไทย (แปลจาก English ถ้าจำเป็น)","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","summary_th":"สรุป 2 ประโยคภาษาไทย","pros":["ข้อดี1"],"cons":["ความเสี่ยง1"],"why":"เหตุผลเชิงลึก 2-3 ประโยค ต้องระบุชื่อบุคคล/องค์กรที่เกี่ยวข้อง + ทิศทางนโยบายหรือการตัดสินใจที่เกิดขึ้น + ผลกระทบที่ตามมาต่อตลาด เช่น \\\"Kevin Warsh ส่งสัญญาณว่า Fed อาจคงดอกเบี้ยสูงนานกว่าที่ตลาดคาด เพื่อควบคุมเงินเฟ้อ ทำให้มุมมองนโยบายการเงินมีความ Hawkish มากขึ้น\\\" ห้ามตอบสั้นแบบ \\\"เพราะเฟดพยายามควบคุมอัตราเงินเฟ้อ\\\" โดยไม่มีรายละเอียด","watch":"FOMC, CPI, NFP (event names only)","read_game":"เงื่อนไข/สถานการณ์ที่อาจพลิกกลับซึ่งตลาดยังไม่ price-in — ห้ามซ้ำกับ summary_th เช่น \\"ถ้า...อาจ...\\"","impact":7,"sentiment":"bearish","stocks_buy":["NVDA"],"stocks_watch":["INTC"]}]';
 
   let text = null;
 
