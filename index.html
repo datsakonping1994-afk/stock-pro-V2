@@ -9516,7 +9516,7 @@ async function fetchAndRenderEarnings(){
         // กรองเฉพาะหุ้นที่มีใน watchlist/stocks list
         const tickers=new Set(stocks.map(s=>s.t));
         // เพิ่ม popular tickers ที่ควรแสดงเสมอ
-        const alwaysShow=new Set(['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','NVDA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU']);
+        const alwaysShow=new Set(['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU','AVAV','SMCI','AMBA','ARM','SOFI','HOOD','LRCX','QCOM']);
         const matched=items
           .filter(e=>{
             const sym=e.symbol||e.t;
