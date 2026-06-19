@@ -9524,12 +9524,16 @@ async function fetchAndRenderEarnings(force=false){
       }
 
       // [NEW] เพิ่ม Yahoo Finance earnings เพื่อได้วันที่แม่นขึ้น
-      // ดึงเฉพาะหุ้นที่ยังไม่มีวันแน่นอน (hardcoded เดิม)
       {
-        // รวม stocks ทั้งหมดของผู้ใช้ — รองรับหุ้นที่เพิ่มใหม่อัตโนมัติ
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
         const _apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
-        const missingTickers=allNeeded.filter(t=>!_apiTickers.has(t)).slice(0,30);
+        // Priority tickers — ดึงก่อนเสมอ
+        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT'];
+        const otherTickers=allNeeded.filter(t=>!priorityTickers.includes(t)&&!_apiTickers.has(t));
+        const missingTickers=[
+          ...priorityTickers.filter(t=>!_apiTickers.has(t)),
+          ...otherTickers
+        ].slice(0,60);
         if(missingTickers.length>0){
           const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
             try{
