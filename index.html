@@ -1227,7 +1227,7 @@ canvas.bigchart{width:100%;height:100%}
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
     <button onclick="closeModal('earningsModal')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
-    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear');}catch{}await fetchAndRenderEarnings();this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
+    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear',{method:'POST'});}catch{}try{await fetch(PRICES_WORKER+'/earnings/clear');}catch{}await fetchAndRenderEarnings(true);this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
   </div>
   <div id="earningsBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
@@ -9470,22 +9470,24 @@ async function translateNewsItems(items){
 }
 
 // ── fetchAndRenderEarnings ──
-async function fetchAndRenderEarnings(){
+async function fetchAndRenderEarnings(force=false){
   const body=document.getElementById('earningsBody');
 
-  // เช็ค localStorage cache ก่อน (TTL 6 ชั่วโมง) — ไม่โหลดซ้ำถ้ายังไม่หมดอายุ
-  try{
-    const ec=localStorage.getItem('_sp_earnings_cache');
-    if(ec){
-      const {data,ts}=JSON.parse(ec);
-      if(Date.now()-ts<21600000&&data?.length>0){ // 6 ชั่วโมง
-        window.earningsData=data;
-        renderEarningsData(data, true);
-        setTimeout(()=>autoCheckEarningsResults(), 1500);
-        return;
+  // เช็ค localStorage cache ก่อน (TTL 6 ชั่วโมง) — ข้ามถ้า force=true
+  if(!force){
+    try{
+      const ec=localStorage.getItem('_sp_earnings_cache');
+      if(ec){
+        const {data,ts}=JSON.parse(ec);
+        if(Date.now()-ts<21600000&&data?.length>0){ // 6 ชั่วโมง
+          window.earningsData=data;
+          renderEarningsData(data, true);
+          setTimeout(()=>autoCheckEarningsResults(), 1500);
+          return;
+        }
       }
-    }
-  }catch{}
+    }catch{}
+  }
 
   body.innerHTML='<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--dim);padding:12px 0">⏳ กำลังดึงข้อมูล Earnings...</div>';
 
