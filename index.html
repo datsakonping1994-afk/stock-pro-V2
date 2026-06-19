@@ -14089,6 +14089,22 @@ const ELITE_PEOPLE = [
     keywords:['jamie dimon','dimon','jpmorgan','jpm','jp morgan','bank earnings','banking sector'],
     excludeKeywords:[],
     ticker:'JPM', backupIds:['powell'] },
+  { id:'lisa_su',  name:'Lisa Su',          role:'CEO AMD',             emoji:'🔴', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=lisa_su', tickers:['AMD','NVDA','AVGO'],  x:138, y:172, color:'#ed1c24',
+    keywords:['lisa su','amd','advanced micro devices','mi300','instinct','radeon','ryzen','epyc','amd chip','amd gpu','amd ai'],
+    excludeKeywords:[],
+    ticker:'AMD', backupIds:['jensen'] },
+  { id:'jassy',    name:'Andy Jassy',       role:'CEO Amazon/AWS',      emoji:'📦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=jassy', tickers:['AMZN','MSFT','GOOGL'], x:145, y:168, color:'#ff9900',
+    keywords:['andy jassy','jassy','amazon','aws','amzn','amazon web services','amazon ai','amazon cloud','bedrock','alexa','amazon prime'],
+    excludeKeywords:[],
+    ticker:'AMZN', backupIds:['nadella'] },
+  { id:'lagarde',  name:'Christine Lagarde', role:'ประธาน ECB',          emoji:'🇪🇺', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=lagarde', tickers:['SPY','TLT','GLD'],   x:490, y:148, color:'#003399',
+    keywords:['lagarde','ecb','european central bank','euro rate','eurozone','euro inflation','ecb rate','ecb decision','ecb meeting','eu rate'],
+    excludeKeywords:['fed','fomc','powell','warsh','boj','pboc','bank of japan'],
+    ticker:'', backupIds:['powell'] },
+  { id:'buffett',  name:'Warren Buffett',    role:'CEO Berkshire',        emoji:'🏦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=buffett', tickers:['BRK.B','AAPL','BAC','KO'], x:152, y:162, color:'#c9a84c',
+    keywords:['warren buffett','buffett','berkshire hathaway','berkshire','brk','13f','buffett buys','buffett sells','berkshire portfolio','omaha','annual letter'],
+    excludeKeywords:[],
+    ticker:'BRK.B', backupIds:['dimon'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -14200,15 +14216,32 @@ function _calcUrgencyScore(eventTypes){
   if(!scores.length) return 5;
   return Math.max(...scores);
 }
+// ตารางคะแนน Impact ตาม event type — เป็น floor (ขั้นต่ำ) ไม่ใช่ค่าสุดท้าย
+const IMPACT_FLOOR_BY_EVENT = {
+  'fomc':9, 'rate_decision':8, 'central_bank':8,
+  'inflation_data':8, 'jobs_data':8, 'gdp_data':8,
+  'geopolitical':7, 'trade_policy':7, 'political':6,
+  'tech_ai':6, 'energy':6, 'crypto':5,
+  'earnings':5, 'm_and_a':4,
+};
+const IMPACT_CAP_BY_EVENT = {
+  'fomc':10, 'rate_decision':10, 'central_bank':10,
+  'inflation_data':10, 'jobs_data':10, 'gdp_data':9,
+  'geopolitical':10, 'trade_policy':9, 'political':8,
+  'tech_ai':8, 'energy':8, 'crypto':8,
+  'earnings':7, 'm_and_a':6,
+};
 function _buildImpactScore(aiImpact,eventTypes,confidenceScore){
-  const marketScore=Math.min(10,Math.max(1,Number(aiImpact)||5));
-  const urgencyScore=_calcUrgencyScore(eventTypes);
-  const credibilityScore=Math.round((Number(confidenceScore)||50)/10);
-  const final=Math.round(marketScore*0.4 + urgencyScore*0.3 + credibilityScore*0.3);
+  const aiScore=Math.min(10,Math.max(1,Number(aiImpact)||5));
+  const evType=(eventTypes||[])[0]||'general';
+  const floor=IMPACT_FLOOR_BY_EVENT[evType]||3;
+  const cap=IMPACT_CAP_BY_EVENT[evType]||8;
+  // ใช้ค่าสูงสุดระหว่าง AI score กับ floor แล้ว cap ด้วย ceiling
+  const final=Math.min(cap, Math.max(floor, aiScore));
   const factors=[
-    {label:'กระทบตลาด', score:marketScore, weight:40},
-    {label:'ความเร่งด่วน', score:urgencyScore, weight:30},
-    {label:'ความน่าเชื่อถือ', score:credibilityScore, weight:30},
+    {label:'กระทบตลาด', score:aiScore, weight:40},
+    {label:'ความเร่งด่วน', score:floor, weight:30},
+    {label:'ความน่าเชื่อถือ', score:Math.round((Number(confidenceScore)||50)/10), weight:30},
   ];
   return {score:Math.min(10,Math.max(1,final)), factors};
 }
@@ -14223,24 +14256,41 @@ function _buildVerifiedStatus(sourceQuality,rumorStatus,sourcesCount){
 // ENGINE 2: CONFIDENCE ENGINE
 // ════════════════════════════════════════════════════════════
 function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScore,headlineLength,hasSummary,eventTypes,sourceUrl}){
-  let score=0;
-  score+=Math.round((sourceQuality/100)*40);
-  if(sourcesCount>=3) score+=20; else if(sourcesCount===2) score+=12; else score+=5;
-  if(rumorStatus==='rumor') score-=20; else if(rumorStatus==='unverified') score-=8;
-  if(impactScore>=9&&sourcesCount<2) score-=15;
-  if(hasSummary) score+=10;
-  if(headlineLength>30) score+=5;
-  // [FIX] เพิ่ม bonus สำหรับ authoritative sources + high-certainty macro events
   const url=(sourceUrl||'').toLowerCase();
-  const authSources=['cnbc.com','reuters.com','bloomberg.com','wsj.com','ft.com','federalreserve.gov','sec.gov','whitehouse.gov'];
-  if(authSources.some(s=>url.includes(s))) score+=15;
-  // Macro events ที่มีความแน่นอนสูง (Fed meeting จริง, FOMC statement, earnings จริง)
-  const highCertaintyEvents=['fomc','rate_decision','inflation_data','jobs_data','gdp_data','earnings'];
   const evArr=eventTypes||[];
-  if(evArr.some(e=>highCertaintyEvents.includes(e))) score+=10;
-  // ถ้ามีทั้ง authoritative source + macro event → bonus เพิ่ม
-  if(authSources.some(s=>url.includes(s))&&evArr.some(e=>highCertaintyEvents.includes(e))) score+=5;
-  return Math.min(99,Math.max(20,score));
+
+  // Tier 1: authoritative sources → base 75
+  // Tier 2: good sources → base 60
+  // Tier 3: unknown → base 45
+  const tier1=['cnbc.com','reuters.com','bloomberg.com','wsj.com','ft.com','federalreserve.gov','sec.gov','whitehouse.gov','apnews.com','bbc.com'];
+  const tier2=['marketwatch.com','economist.com','fortune.com','businessinsider.com','yahoo.com','seekingalpha.com','barrons.com'];
+  let base = tier1.some(s=>url.includes(s)) ? 75
+           : tier2.some(s=>url.includes(s)) ? 60
+           : Math.round((sourceQuality/100)*55) + 10; // unknown source fallback
+
+  let score = base;
+
+  // หลายแหล่งยืนยัน
+  if(sourcesCount>=3) score+=15;
+  else if(sourcesCount===2) score+=8;
+
+  // Macro events ที่มีความแน่นอนสูง
+  const highCertaintyEvents=['fomc','rate_decision','inflation_data','jobs_data','gdp_data','earnings'];
+  if(evArr.some(e=>highCertaintyEvents.includes(e))) score+=8;
+
+  // tier1 + macro event = ข่าวระดับ Fed/CNBC/FOMC → bonus
+  if(tier1.some(s=>url.includes(s)) && evArr.some(e=>highCertaintyEvents.includes(e))) score+=5;
+
+  // penalty
+  if(rumorStatus==='rumor') score-=30;
+  else if(rumorStatus==='unverified') score-=15;
+  if(impactScore>=9&&sourcesCount<2) score-=10;
+
+  // เล็กน้อย
+  if(hasSummary) score+=3;
+  if(headlineLength>30) score+=2;
+
+  return Math.min(99,Math.max(20,Math.round(score)));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -14960,7 +15010,7 @@ async function _eliteDirectFallback(overlay){
       // (ไม่มีใครตั้งเป็น backupId ให้) และ Cook/Pichai ขึ้นได้แค่ตอนแทนที่ primary ที่ไม่มีข่าว
       // เปลี่ยนเป็นสแกนทุกคนใน ELITE_PEOPLE เลย — ใครมีข่าวจริงก็ได้สล็อต ไม่ผูกกับ primary/backup
       // แล้วจำกัดจำนวนรวมด้วย ALL_PEOPLE_CAP กันการ์ดล้นหน้าจอ
-      const ALL_PEOPLE_CAP = 12;
+      const ALL_PEOPLE_CAP = 16;
       const ALL_PEOPLE = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;});
       const foundIds = new Set();
       // [FIX] กันข่าวเดียวกันถูกผูกกับหลายคนพร้อมกัน (เช่น ข่าวที่พูดถึงทั้ง "china" และ
@@ -15003,7 +15053,7 @@ async function _eliteDirectFallback(overlay){
         // [FIX] เดิมเช็คแค่ 8 คนหลัก (topPeople.slice(0,8)) แล้วใช้ backupIds แทนที่คนที่ไม่มีข่าว
         // ทำให้ Zuck/Dimon ไม่มีทางได้ขึ้นเลย (ไม่มีใครตั้งเป็น backupId) และ Cook/Pichai ขึ้นได้
         // แค่ตอนแทนที่ primary — เปลี่ยนเป็นสแกนทุกคนตรงๆ ใครมีข่าวจริงก็ได้สล็อต จำกัดด้วย cap รวม
-        const ALL_PEOPLE_CAP = 12;
+        const ALL_PEOPLE_CAP = 16;
         const ALL_PEOPLE = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;});
         const foundIds = new Set();
         // [FIX] กันข่าวเดียวกันถูกผูกกับหลายคนพร้อมกัน (เช่น ข่าวพูดถึงทั้ง "china" และ "iran"
@@ -15833,14 +15883,14 @@ function renderEliteScanResults(results, ageMs=0){
             const indirectLosers=(n.losers||[]).filter(l=>l.indirect);
             let html='';
             if(direct.length) html+=`<div style="margin-bottom:6px">
-              <div style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">✅ น่าจับตา</div>
+              <div style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">✅ Direct Impact</div>
               <div style="display:flex;flex-direction:column;gap:4px">${direct.map(b=>`
                 <div style="display:flex;align-items:flex-start;gap:6px">
                   <span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.3);border-radius:6px;padding:2px 7px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--green);flex-shrink:0">${b.t||b}</span>
                   ${b.reason?`<span style="font-size:10px;color:var(--text3);line-height:1.4;padding-top:2px">${b.reason}</span>`:''}
                 </div>`).join('')}
               </div></div>`;
-            else if((n.stocks_buy||[]).length) html+=`<div style="margin-bottom:6px"><div style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">✅ น่าจับตา</div>
+            else if((n.stocks_buy||[]).length) html+=`<div style="margin-bottom:6px"><div style="font-size:9px;color:var(--green);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">✅ Direct Impact</div>
               <div style="display:flex;flex-wrap:wrap;gap:5px">${(n.stocks_buy||[]).map(t=>`<span style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.3);border-radius:6px;padding:3px 8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--green)">${t}</span>`).join('')}</div></div>`;
             if(directLosers.length) html+=`<div style="margin-bottom:6px">
               <div style="font-size:9px;color:var(--red);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">⚠️ ระวัง</div>
@@ -15852,10 +15902,10 @@ function renderEliteScanResults(results, ageMs=0){
               </div></div>`;
             else if((n.stocks_watch||[]).length) html+=`<div><div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">⚠️ ระวัง</div>
               <div style="display:flex;flex-wrap:wrap;gap:5px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:6px;padding:3px 8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--red)">${t}</span>`).join('')}</div></div>`;
-            // AI Idea section — indirect only
+            // AI Inference section — indirect only
             const allIndirect=[...indirect,...indirectLosers];
             if(allIndirect.length) html+=`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
-              <div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">💡 AI Idea — Secondary Impact</div>
+              <div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">🤖 AI Inference — ไม่ได้พูดถึงในข่าวโดยตรง</div>
               <div style="display:flex;flex-direction:column;gap:4px">${allIndirect.map(s=>`
                 <div style="display:flex;align-items:flex-start;gap:6px">
                   <span style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.2);border-radius:6px;padding:2px 7px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0">${s.t||s}</span>
@@ -16123,34 +16173,45 @@ function _renderEliteModal(idx){
       ${((n.beneficiaries||n.stocks_buy||[]).length || (n.losers||n.stocks_watch||[]).length) ? `
       <div style="background:rgba(100,210,255,0.05);border:1px solid rgba(100,210,255,0.15);border-radius:12px;padding:12px 14px;margin-bottom:8px">
         <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#64d2ff;margin-bottom:10px;letter-spacing:0.5px">📊 หุ้นที่เกี่ยวข้อง</div>
-        ${(n.beneficiaries||[]).length ? `
-        <div style="margin-bottom:10px">
-          <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ น่าจับตา</div>
-          <div style="display:flex;flex-direction:column;gap:6px">${(n.beneficiaries||[]).map(b=>`
-            <div style="display:flex;align-items:flex-start;gap:8px">
-              <span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${b.t||b}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer;flex-shrink:0">${b.t||b}</span>
-              ${b.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${b.reason}</span>`:''}
-            </div>`).join('')}
-          </div>
-        </div>` : (n.stocks_buy||[]).length ? `
-        <div style="margin-bottom:8px">
-          <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ น่าจับตา</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_buy||[]).map(t=>`<span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${t}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer">${t} 🇺🇸</span>`).join('')}</div>
-        </div>` : ''}
-        ${(n.losers||[]).length ? `
-        <div>
-          <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
-          <div style="display:flex;flex-direction:column;gap:6px">${(n.losers||[]).map(l=>`
-            <div style="display:flex;align-items:flex-start;gap:8px">
-              <span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#ff4d6a;flex-shrink:0">${l.t||l}</span>
-              ${l.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${l.reason}</span>`:''}
-            </div>`).join('')}
-          </div>
-        </div>` : (n.stocks_watch||[]).length ? `
-        <div>
-          <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#ff4d6a">${t} 🇺🇸</span>`).join('')}</div>
-        </div>` : ''}
+        ${(()=>{
+          const direct=(n.beneficiaries||[]).filter(b=>!b.indirect);
+          const indirect=(n.beneficiaries||[]).filter(b=>b.indirect);
+          const directLosers=(n.losers||[]).filter(l=>!l.indirect);
+          const indirectLosers=(n.losers||[]).filter(l=>l.indirect);
+          let h='';
+          if(direct.length) h+=`<div style="margin-bottom:10px">
+            <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ Direct Impact</div>
+            <div style="display:flex;flex-direction:column;gap:6px">${direct.map(b=>`
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${b.t||b}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer;flex-shrink:0">${b.t||b}</span>
+                ${b.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${b.reason}</span>`:''}
+              </div>`).join('')}
+            </div></div>`;
+          else if((n.stocks_buy||[]).length) h+=`<div style="margin-bottom:8px">
+            <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ Direct Impact</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_buy||[]).map(t=>`<span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${t}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer">${t}</span>`).join('')}</div></div>`;
+          if(directLosers.length) h+=`<div style="margin-bottom:8px">
+            <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
+            <div style="display:flex;flex-direction:column;gap:6px">${directLosers.map(l=>`
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#ff4d6a;flex-shrink:0">${l.t||l}</span>
+                ${l.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${l.reason}</span>`:''}
+              </div>`).join('')}
+            </div></div>`;
+          else if((n.stocks_watch||[]).length) h+=`<div style="margin-bottom:8px">
+            <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_watch||[]).map(t=>`<span style="background:rgba(255,77,106,0.12);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#ff4d6a">${t}</span>`).join('')}</div></div>`;
+          const allIndirect=[...indirect,...indirectLosers];
+          if(allIndirect.length) h+=`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+            <div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">🤖 AI Inference — ไม่ได้พูดถึงในข่าวโดยตรง</div>
+            <div style="display:flex;flex-direction:column;gap:6px">${allIndirect.map(s=>`
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <span style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.2);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0">${s.t||s}</span>
+                ${s.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${s.reason}</span>`:''}
+              </div>`).join('')}
+            </div></div>`;
+          return h;
+        })()}
       </div>` : ''}
 
       <!-- ETF Impact (Engine 4 — modal, ETFs only) -->
