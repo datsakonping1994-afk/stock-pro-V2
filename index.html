@@ -9524,11 +9524,10 @@ async function fetchAndRenderEarnings(){
       // [NEW] เพิ่ม Yahoo Finance earnings เพื่อได้วันที่แม่นขึ้น
       // ดึงเฉพาะหุ้นที่ยังไม่มีวันแน่นอน (hardcoded เดิม)
       {
-        const _alwaysShowList=['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU','AVAV','SMCI','AMBA','ARM','SOFI','HOOD','LRCX','QCOM'];
-        const apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
-        // รวม stocks ใน app + alwaysShow ทั้งหมด
-        const allNeeded=[...new Set([...stocks.map(s=>s.t), ..._alwaysShowList])];
-        const missingTickers=allNeeded.filter(t=>!apiTickers.has(t)).slice(0,30);
+        // รวม stocks ทั้งหมดของผู้ใช้ — รองรับหุ้นที่เพิ่มใหม่อัตโนมัติ
+        const allNeeded=[...new Set(stocks.map(s=>s.t))];
+        const _apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
+        const missingTickers=allNeeded.filter(t=>!_apiTickers.has(t)).slice(0,30);
         if(missingTickers.length>0){
           const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
             try{
@@ -9553,7 +9552,8 @@ async function fetchAndRenderEarnings(){
         // กรองเฉพาะหุ้นที่มีใน watchlist/stocks list
         const tickers=new Set(stocks.map(s=>s.t));
         // เพิ่ม popular tickers ที่ควรแสดงเสมอ
-        const alwaysShow=new Set(['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU','AVAV','SMCI','AMBA','ARM','SOFI','HOOD','LRCX','QCOM']);
+        // ใช้ stocks array ที่ผู้ใช้มีอยู่แทน hardcode — รองรับหุ้นที่เพิ่มใหม่อัตโนมัติ
+        const alwaysShow=new Set(stocks.map(s=>s.t));
         const matched=items
           .filter(e=>{
             const sym=e.symbol||e.t;
@@ -14341,7 +14341,7 @@ const BENEFICIARY_MAP={
   },
   'rate_decision':{
     positive_sentiment:[{t:'JPM',reason:'Net Interest Margin ขยายตัวเมื่อดอกเบี้ยสูง'},{t:'BAC',reason:'Bank of America ได้ประโยชน์จาก floating-rate loan'}],
-    negative_sentiment:[{t:'TSLA',reason:'Growth valuation กดดันจาก discount rate'},{t:'AMZN',reason:'Amazon กู้ยืมเยอะ ต้นทุนการเงินสูงขึ้น'}]
+    negative_sentiment:[{t:'TSLA',reason:'Growth valuation กดดันจาก discount rate'},{t:'PLTR',reason:'High-multiple software กดดันจาก discount rate ที่สูงขึ้น'}]
   },
   'inflation_data':{
     positive_sentiment:[{t:'XOM',reason:'Exxon ได้ประโยชน์จากเงินเฟ้อผ่านราคาน้ำมัน'},{t:'CVX',reason:'Chevron รายรับเพิ่มตามราคาพลังงาน'}],
@@ -14365,7 +14365,7 @@ const BENEFICIARY_MAP={
   },
   'energy':{
     positive_sentiment:[{t:'XOM',reason:'Exxon รายรับโดยตรงจากราคาน้ำมันที่สูงขึ้น'},{t:'CVX',reason:'Chevron กำไร upstream เพิ่มตามราคา crude'},{t:'OXY',reason:'Occidental ได้ประโยชน์โดยตรงจากราคาน้ำมันที่สูงขึ้น'}],
-    negative_sentiment:[{t:'AMZN',reason:'Amazon logistics cost เพิ่มตามราคาน้ำมัน'},{t:'NFLX',reason:'Consumer discretionary กดดันจากพลังงานแพง'}]
+    negative_sentiment:[{t:'UBER',reason:'Uber ต้นทุนเชื้อเพลิงและ driver incentive สูงขึ้นตามราคาน้ำมัน'},{t:'RIVN',reason:'Rivian demand ชะลอเมื่อราคาพลังงานสูง กระทบ EV adoption'}]
   },
   'central_bank':{
     positive_sentiment:[{t:'NVDA',reason:'Fed dovish/ดอลลาร์อ่อน ลด discount rate หนุน valuation หุ้น Growth'},{t:'MSFT',reason:'ต้นทุนทางการเงินถูกลง หนุนการลงทุน Cloud/AI ต่อเนื่อง'}],
