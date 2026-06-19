@@ -9489,9 +9489,12 @@ async function fetchAndRenderEarnings(){
 
       // [NEW] เพิ่ม Yahoo Finance earnings เพื่อได้วันที่แม่นขึ้น
       // ดึงเฉพาะหุ้นที่ยังไม่มีวันแน่นอน (hardcoded เดิม)
-      if(items.length>0){
+      {
+        const _alwaysShowList=['AVGO','CRWD','NVDA','AAPL','MSFT','GOOGL','META','AMZN','TSLA','AMD','PLTR','NFLX','V','JPM','LLY','ORCL','ADBE','MU','AVAV','SMCI','AMBA','ARM','SOFI','HOOD','LRCX','QCOM'];
         const apiTickers=new Set(items.filter(e=>e.date).map(e=>e.symbol||e.t));
-        const missingTickers=stocks.map(s=>s.t).filter(t=>!apiTickers.has(t)).slice(0,20);
+        // รวม stocks ใน app + alwaysShow ทั้งหมด
+        const allNeeded=[...new Set([...stocks.map(s=>s.t), ..._alwaysShowList])];
+        const missingTickers=allNeeded.filter(t=>!apiTickers.has(t)).slice(0,30);
         if(missingTickers.length>0){
           const yahooResults=await Promise.allSettled(missingTickers.map(async ticker=>{
             try{
