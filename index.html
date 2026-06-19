@@ -14105,6 +14105,10 @@ const ELITE_PEOPLE = [
     keywords:['warren buffett','buffett','berkshire hathaway','berkshire','brk','13f','buffett buys','buffett sells','berkshire portfolio','omaha','annual letter'],
     excludeKeywords:[],
     ticker:'BRK.B', backupIds:['dimon'] },
+  { id:'cathie',   name:'Cathie Wood',       role:'CEO ARK Invest',       emoji:'🚀', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=cathie', tickers:['ARKK','TSLA','COIN','ROKU','PLTR'], x:148, y:165, color:'#7b2ff7',
+    keywords:['cathie wood','cathie','ark invest','arkk','ark innovation','ark buys','ark sells','ark etf','wood buys','wood sells','ark portfolio'],
+    excludeKeywords:[],
+    ticker:'ARKK', backupIds:['musk'] },
 ];
 
 // ELITE_EVENTS: ดึง real-time จาก API — ไม่ hardcode วันที่/event เพราะทำให้ AI วิเคราะห์ผิด
@@ -15010,7 +15014,7 @@ async function _eliteDirectFallback(overlay){
       // (ไม่มีใครตั้งเป็น backupId ให้) และ Cook/Pichai ขึ้นได้แค่ตอนแทนที่ primary ที่ไม่มีข่าว
       // เปลี่ยนเป็นสแกนทุกคนใน ELITE_PEOPLE เลย — ใครมีข่าวจริงก็ได้สล็อต ไม่ผูกกับ primary/backup
       // แล้วจำกัดจำนวนรวมด้วย ALL_PEOPLE_CAP กันการ์ดล้นหน้าจอ
-      const ALL_PEOPLE_CAP = 16;
+      const ALL_PEOPLE_CAP = 17;
       const ALL_PEOPLE = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;});
       const foundIds = new Set();
       // [FIX] กันข่าวเดียวกันถูกผูกกับหลายคนพร้อมกัน (เช่น ข่าวที่พูดถึงทั้ง "china" และ
@@ -15053,7 +15057,7 @@ async function _eliteDirectFallback(overlay){
         // [FIX] เดิมเช็คแค่ 8 คนหลัก (topPeople.slice(0,8)) แล้วใช้ backupIds แทนที่คนที่ไม่มีข่าว
         // ทำให้ Zuck/Dimon ไม่มีทางได้ขึ้นเลย (ไม่มีใครตั้งเป็น backupId) และ Cook/Pichai ขึ้นได้
         // แค่ตอนแทนที่ primary — เปลี่ยนเป็นสแกนทุกคนตรงๆ ใครมีข่าวจริงก็ได้สล็อต จำกัดด้วย cap รวม
-        const ALL_PEOPLE_CAP = 16;
+        const ALL_PEOPLE_CAP = 17;
         const ALL_PEOPLE = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;});
         const foundIds = new Set();
         // [FIX] กันข่าวเดียวกันถูกผูกกับหลายคนพร้อมกัน (เช่น ข่าวพูดถึงทั้ง "china" และ "iran"
