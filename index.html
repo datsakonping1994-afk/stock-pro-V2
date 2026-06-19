@@ -1674,14 +1674,46 @@ function _clearDomCache(){ Object.keys(_domCache).forEach(k=>delete _domCache[k]
 
 const STOCKS_DEFAULT=[
   // t=ticker, n=name — ข้อมูลอื่นทั้งหมดดึง live จาก Worker
-  // [FIX] จำกัดเหลือเฉพาะหุ้นใหญ่ที่อยู่ใน alwaysShow list (ดูใน earnings calendar fetch)
-  // ตามที่ผู้ใช้ขอ — ตัด small/mid-cap ที่ไม่อยู่ใน alwaysShow ออกจาก default watchlist
-  {t:"AVGO",n:"Broadcom"},{t:"CRWD",n:"CrowdStrike"},{t:"NVDA",n:"Nvidia"},
-  {t:"AAPL",n:"Apple"},{t:"MSFT",n:"Microsoft"},{t:"GOOGL",n:"Alphabet"},
-  {t:"META",n:"Meta Platforms"},{t:"AMZN",n:"Amazon"},{t:"TSLA",n:"Tesla"},
-  {t:"AMD",n:"AMD"},{t:"PLTR",n:"Palantir"},{t:"NFLX",n:"Netflix"},
-  {t:"V",n:"Visa"},{t:"JPM",n:"JPMorgan Chase"},{t:"LLY",n:"Eli Lilly"},
-  {t:"ORCL",n:"Oracle Corp"},{t:"ADBE",n:"Adobe"},{t:"MU",n:"Micron Technology"},
+  // ── Core Tech ──
+  {t:"NVDA",n:"Nvidia"},{t:"AAPL",n:"Apple"},{t:"MSFT",n:"Microsoft"},{t:"GOOGL",n:"Alphabet"},
+  {t:"META",n:"Meta Platforms"},{t:"AMZN",n:"Amazon"},{t:"TSLA",n:"Tesla"},{t:"AMD",n:"AMD"},
+  {t:"PLTR",n:"Palantir"},{t:"NFLX",n:"Netflix"},{t:"AVGO",n:"Broadcom"},{t:"CRWD",n:"CrowdStrike"},
+  {t:"ORCL",n:"Oracle Corp"},{t:"ADBE",n:"Adobe"},{t:"NOW",n:"ServiceNow"},{t:"CRM",n:"Salesforce"},
+  {t:"SNOW",n:"Snowflake"},{t:"DDOG",n:"Datadog"},{t:"MDB",n:"MongoDB"},{t:"NET",n:"Cloudflare"},
+  {t:"ANET",n:"Arista Networks"},{t:"VRT",n:"Vertiv"},{t:"DELL",n:"Dell Technologies"},
+  {t:"APP",n:"AppLovin"},{t:"VST",n:"Vistra"},{t:"MELI",n:"MercadoLibre"},
+  // ── Semiconductors ──
+  {t:"MU",n:"Micron Technology"},{t:"INTC",n:"Intel"},{t:"QCOM",n:"Qualcomm"},
+  {t:"AMAT",n:"Applied Materials"},{t:"LRCX",n:"Lam Research"},{t:"KLAC",n:"KLA Corp"},
+  {t:"TXN",n:"Texas Instruments"},{t:"ARM",n:"Arm Holdings"},{t:"SMCI",n:"Super Micro Computer"},
+  {t:"ASML",n:"ASML Holding"},{t:"TSM",n:"TSMC"},{t:"MRVL",n:"Marvell Technology"},
+  {t:"AMBA",n:"Ambarella"},{t:"NVTS",n:"Navitas Semiconductor"},{t:"AEHR",n:"Aehr Test Systems"},
+  {t:"SNDK",n:"SanDisk"},{t:"STX",n:"Seagate"},{t:"NOK",n:"Nokia"},
+  // ── AI/Defense/Space ──
+  {t:"AVAV",n:"AeroVironment"},{t:"RKLB",n:"Rocket Lab"},{t:"SPCX",n:"SpaceX"},
+  {t:"KTOS",n:"Kratos Defense"},{t:"AXON",n:"Axon Enterprise"},{t:"NBIS",n:"Nebius Group"},
+  {t:"RBRK",n:"Rubrik"},{t:"CRDO",n:"Credo Technology"},{t:"AAOI",n:"Applied Optoelectronics"},
+  // ── Quantum/Energy ──
+  {t:"IONQ",n:"IonQ"},{t:"OKLO",n:"Oklo"},{t:"IREN",n:"IREN Ltd"},{t:"ASTS",n:"AST SpaceMobile"},
+  {t:"ONDS",n:"Ondas Holdings"},{t:"OSS",n:"One Stop Systems"},{t:"FPS",n:"FPS"},
+  {t:"CBRS",n:"CBRS"},{t:"PANW",n:"Palo Alto Networks"},
+  // ── Biotech/Health ──
+  {t:"LLY",n:"Eli Lilly"},{t:"UNH",n:"UnitedHealth"},{t:"NVO",n:"Novo Nordisk"},
+  {t:"ISRG",n:"Intuitive Surgical"},{t:"HIMS",n:"Hims & Hers"},{t:"TEM",n:"Tempus AI"},
+  {t:"TMDX",n:"TransMedics"},{t:"ELF",n:"e.l.f. Beauty"},
+  // ── Financials ──
+  {t:"V",n:"Visa"},{t:"MA",n:"Mastercard"},{t:"JPM",n:"JPMorgan Chase"},
+  {t:"SOFI",n:"SoFi Technologies"},{t:"HOOD",n:"Robinhood"},{t:"SPGI",n:"S&P Global"},
+  {t:"BRK.B",n:"Berkshire Hathaway"},
+  // ── Consumer/Retail ──
+  {t:"COST",n:"Costco"},{t:"WMT",n:"Walmart"},{t:"MP",n:"MP Materials"},
+  // ── Energy/Industrial ──
+  {t:"XOM",n:"ExxonMobil"},{t:"AMSC",n:"American Superconductor"},
+  // ── China ──
+  {t:"BABA",n:"Alibaba"},{t:"PDD",n:"PDD Holdings"},
+  // ── Other ──
+  {t:"SLNH",n:"Soluna Holdings"},{t:"EOSE",n:"Eos Energy"},
+  {t:"PL",n:"Planet Labs"},{t:"CRWV",n:"CoreWeave"},
   // ── ETF ──
   {t:"SMH",n:"Semiconductor ETF"},{t:"VIX",n:"Volatility Index"},
 ]
@@ -6812,6 +6844,8 @@ async function addStock(){
   }
 
   stocks.push({t, n:name, p:0, c:0, pe, mktcap, rev:'N/A', earn, div, beta, short:null, target}); _rebuildStocksMap();
+  // [FIX] เพิ่มเข้า STOCK_UNIVERSE ด้วย เพื่อให้ AI วิเคราะห์ได้ + Earnings Calendar แสดงได้
+  STOCK_UNIVERSE.add(t);
   document.getElementById('addTickerInput').value='';
   toast('✅ เพิ่ม '+t+' แล้ว'+(name!==t ? ' ('+name+')' : ''));
   saveStocks();
@@ -11498,6 +11532,7 @@ function addPortPosition(){
     // ถ้าหุ้นไม่อยู่ใน stocks array ให้เพิ่มเข้าไปชั่วคราว
     if(!stocksMap.get(ticker)){
       stocks.push({t:ticker, n:ticker, p:0, c:0, pe:null, mktcap:'N/A', rev:'N/A', earn:null}); _rebuildStocksMap();
+      STOCK_UNIVERSE.add(ticker);
       // ดึงราคาทันที
       fetchSingleQuoteFast({t:ticker}).then(q=>{
         if(q&&q.p>0){
@@ -14221,7 +14256,14 @@ const STOCK_UNIVERSE=new Set([
   'DIS','CMCSA','T','VZ','TMUS',
   'UBER','ABNB','BKNG','MAR','HLT','CCL',
   'GE','MMM','CAT','DE','HON',
-  'TSM','BABA','JD','PDD','NIO','RIVN','AMBA','CBRS','PANW','MRVL'
+  'TSM','BABA','JD','PDD','NIO','RIVN','AMBA','CBRS','PANW','MRVL',
+  // ── เพิ่มใหม่จาก user list ──
+  'RKLB','EOSE','SLNH','NVTS','ASTS','HIMS','IREN','ASML','IONQ','KTOS',
+  'RBRK','AAOI','OKLO','TEM','NVO','CRDO','ANET','VRT','SPGI','MP',
+  'ELF','AMSC','APP','NBIS','AXON','TMDX','CRWV','MELI','NOW','CRM',
+  'SNOW','DDOG','MDB','NET','DELL','FPS','NOK','ONDS','OSS','AEHR',
+  'SNDK','STX','VST','SPCX','PL','AVAV','SMCI','PLTR','CRWD','ORCL',
+  'ADBE','HOOD','SOFI','QCOM','LRCX','AXON','SPGI','BRK.B','COST','WMT',
 ]);
 // [FIX] ชื่อบริษัท/คำที่ใช้เรียกแต่ละ ticker ในข่าว (ไทย+อังกฤษ) ใช้เช็คว่า ticker ที่ AI
 // เลือกมาแบบไม่มี reason เฉพาะ ถูกพูดถึงในข่าวจริงหรือเปล่า ก่อนจะอ้างว่า "กระทบโดยตรง"
