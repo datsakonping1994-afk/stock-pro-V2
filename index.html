@@ -9572,6 +9572,17 @@ async function fetchAndRenderEarnings(force=false){
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
         const _apiTickers=new Set(items.filter(e=>e.date||e.d).map(e=>e.symbol||e.t));
         const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM'];
+        // [FIX] hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
+        const KNOWN_EARNINGS={
+          'MU':  {date:'2026-06-24',epsEstimate:19.15,hour:'amc'},
+          'AVAV':{date:'2026-06-29',epsEstimate:null,hour:'amc'},
+        };
+        // ใส่ KNOWN_EARNINGS เข้า items ก่อน ถ้ายังไม่มีใน items
+        for(const [ticker,info] of Object.entries(KNOWN_EARNINGS)){
+          if(!items.find(e=>(e.symbol||e.t)===ticker)){
+            items.push({symbol:ticker,date:info.date,epsEstimate:info.epsEstimate,hour:info.hour,_source:'known'});
+          }
+        }
         const otherTickers=allNeeded.filter(t=>!priorityTickers.includes(t)&&!_apiTickers.has(t));
         const missingTickers=[
           ...priorityTickers.filter(t=>!_apiTickers.has(t)),
