@@ -1942,9 +1942,11 @@ function _normalizeRevGrowth(raw){
   if(raw==null||isNaN(+raw)) return null;
   const v = +raw;
   // invalid range
-  if(v < -100 || v > 5000) return null;
-  // > 200% มักมาจาก negative base — แสดงพร้อม * เพื่อบอกว่าผิดปกติ
-  if(v > 200) return v.toFixed(1) + '%*';
+  if(v < -100) return null;
+  // > 300% มักเกิดจาก M&A (เช่น Broadcom+VMware) ทำให้ตัวเลขบิดเบือน → แสดง N/A
+  if(v > 300) return null;
+  // 100-300% ผิดปกติ แสดงพร้อม * เพื่อบอกว่าอาจมี base effect หรือ M&A
+  if(v > 100) return v.toFixed(1) + '%*';
   return v.toFixed(1) + '%';
 }
 
