@@ -14540,8 +14540,16 @@ const BENEFICIARY_MAP={
     negative_sentiment:[{t:'AAPL',reason:'Apple ผลิตใน China กระทบจาก tariff โดยตรง'},{t:'NVDA',reason:'ข้อจำกัดส่งออก chip ไป China กระทบ data center revenue'},{t:'TSLA',reason:'Tesla โรงงาน Shanghai กระทบถ้าจีน-สหรัฐตึงเครียด'}]
   },
   'geopolitical':{
-    positive_sentiment:[{t:'LMT',reason:'ความขัดแย้งทางภูมิรัฐศาสตร์กระตุ้นให้ประเทศต่างๆ เพิ่มงบกลาโหม Lockheed Martin ได้รับ order missile และเครื่องบินรบเพิ่มโดยตรง'},{t:'RTX',reason:'Raytheon เป็นผู้ผลิต missile defense system รายใหญ่ ความไม่มั่นคงโลกเพิ่ม demand ซึ่งส่งผลต่อ revenue โดยตรง'}],
-    negative_sentiment:[{t:'XOM',reason:'ความขัดแย้งในตะวันออกกลางดันราคาน้ำมันขึ้น Exxon ได้ประโยชน์โดยตรงจาก upstream revenue ที่สูงขึ้น แต่ความไม่แน่นอนระยะยาวกระทบ supply chain'},{t:'BABA',reason:'Alibaba ถูกกระทบทั้งจาก export ban สหรัฐฯ และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China ราคาหุ้นมักตกหนัก'}]
+    positive_sentiment:[
+      {t:'LMT',reason:'ความขัดแย้งทางภูมิรัฐศาสตร์กระตุ้นให้ประเทศต่างๆ เพิ่มงบกลาโหม Lockheed Martin ได้รับ order missile และเครื่องบินรบเพิ่มโดยตรง'},
+      {t:'RTX',reason:'Raytheon เป็นผู้ผลิต missile defense system รายใหญ่ ความไม่มั่นคงโลกเพิ่ม demand ซึ่งส่งผลต่อ revenue โดยตรง'},
+      {t:'XOM',reason:'ความขัดแย้งในตะวันออกกลางดันราคาน้ำมันขึ้น Exxon ได้ประโยชน์โดยตรงจาก upstream revenue ที่สูงขึ้น'},
+      {t:'CVX',reason:'Chevron ได้ประโยชน์จากราคาน้ำมันที่สูงขึ้นในช่วงความตึงเครียดภูมิรัฐศาสตร์ กำไร upstream เพิ่มทันที'},
+    ],
+    negative_sentiment:[
+      {t:'BABA',reason:'Alibaba ถูกกระทบทั้งจาก export ban สหรัฐฯ และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China ราคาหุ้นมักตกหนัก'},
+      {t:'AAPL',reason:'Apple ผลิตสินค้าใน China เป็นหลัก ความตึงเครียด US-China กระทบ supply chain และความเสี่ยง tariff โดยตรง'},
+    ]
   },
   'tech_ai':{
     positive_sentiment:[
@@ -14574,7 +14582,7 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
   const beneficiaries=[];const seen=new Set();
 
-  // ── ลำดับแรก: person ticker — ถ้าข่าวเป็นเรื่องของ CEO/person ที่มี primary ticker → direct benefit ──
+  // ── ลำดับ 1: person ticker — direct benefit จาก CEO/person ──
   const personId=aiItem?.id||'';
   const person=typeof ELITE_PEOPLE!=='undefined'?ELITE_PEOPLE.find(p=>p.id===personId):null;
   if(person&&person.ticker&&STOCK_UNIVERSE.has(person.ticker)&&!ETF_UNIVERSE.has(person.ticker)){
@@ -14585,38 +14593,20 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     seen.add(person.ticker);
   }
 
-  // ── ลำดับแรก: Rule Mapping (BENEFICIARY_MAP) ตาม event type ที่ตรวจจับได้ — เฉพาะเจาะจงกว่า AI ทั่วไป ──
-  const key=isPositive?'positive_sentiment':'negative_sentiment';
-  for(const evType of eventTypes){
-    const map=BENEFICIARY_MAP[evType];
-    if(!map||!map[key]) continue;
-    for(const entry of map[key]){
-      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-      beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb',indirect:!!entry.indirect});
-      seen.add(entry.t);
-      if(beneficiaries.length>=3) break;
-    }
-    if(beneficiaries.length>=3) break;
-  }
-
-  // ── เติมจาก stocks_to_monitor ของ AI (ถ้ามี reason เฉพาะข่าวนี้) ──
-  const aiMonitor = (aiItem?.stocks_to_monitor||[]).filter(s=>s&&s.t);
+  // ── ลำดับ 2: AI stocks_to_monitor (AI อ่าน context ข่าวจริง — แม่นยำที่สุด) ──
+  const aiMonitor=(aiItem?.stocks_to_monitor||[]).filter(s=>s&&s.t&&s.reason);
   for(const s of aiMonitor){
     const clean=String(s.t).toUpperCase().trim();
     if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    beneficiaries.push({t:clean, reason:s.reason||`กระทบโดยตรงจากข่าวนี้`, source:'ai'});
+    beneficiaries.push({t:clean,reason:s.reason,source:'ai',indirect:false});
     seen.add(clean);
     if(beneficiaries.length>=4) break;
   }
 
-  // ── เติมจาก stocks_buy ของ AI (เติมที่ว่างหลังจาก Rule Mapping) ──
+  // ── ลำดับ 3: stocks_buy จาก AI ──
   for(const ticker of (aiStocksBuy||[])){
-    if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
-    if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    // [FIX] เดิมอ้างว่า "กระทบโดยตรงจาก[หัวข้อข่าว]" กับทุก ticker ที่ AI แนะนำมา โดยไม่เช็คว่า
-    // บริษัทนั้นถูกพูดถึงในข่าวจริงหรือเปล่า ทำให้หุ้นที่ไม่เกี่ยวเลยก็โดนใส่ข้อความเหมือนเกี่ยวตรง ๆ
-    // ตอนนี้เช็คก่อน ถ้าไม่เจอชื่อบริษัทในข่าว ให้ใช้ข้อความกลาง ๆ แทน ไม่กล่าวอ้างความเกี่ยวข้องเกินจริง
+    if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
     const mentioned=_isCompanyMentioned(clean,headline,'');
     const reason=mentioned
       ?`กระทบโดยตรงจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`
@@ -14626,6 +14616,25 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     if(beneficiaries.length>=4) break;
   }
 
+  // ── ลำดับ 4: BENEFICIARY_MAP เป็น fallback สุดท้าย (เฉพาะ event type ที่ชัดเจน เช่น fomc/rate_decision) ──
+  // ข้าม geopolitical/trade_policy เพราะ context ต่างกันมากในแต่ละข่าว
+  const mapFallbackEvents=['fomc','rate_decision','inflation_data','jobs_data','energy','central_bank','tech_ai'];
+  if(beneficiaries.length<2){
+    const key=isPositive?'positive_sentiment':'negative_sentiment';
+    for(const evType of eventTypes){
+      if(!mapFallbackEvents.includes(evType)) continue;
+      const map=BENEFICIARY_MAP[evType];
+      if(!map||!map[key]) continue;
+      for(const entry of map[key]){
+        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+        beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb',indirect:!!entry.indirect});
+        seen.add(entry.t);
+        if(beneficiaries.length>=3) break;
+      }
+      if(beneficiaries.length>=3) break;
+    }
+  }
+
   return beneficiaries.slice(0,4);
 }
 
@@ -14633,36 +14642,20 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
   const isPositive=sentiment==='bullish'||sentiment==='positive';
   const losers=[];const seen=new Set();
 
-  // ── ลำดับแรก: Rule Mapping (BENEFICIARY_MAP) ฝั่งตรงข้าม sentiment ──
-  const key=isPositive?'negative_sentiment':'positive_sentiment';
-  for(const evType of eventTypes){
-    const map=BENEFICIARY_MAP[evType];
-    if(!map||!map[key]) continue;
-    for(const entry of map[key]){
-      if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
-      losers.push({t:entry.t,reason:entry.reason,source:'kb',indirect:!!entry.indirect});
-      seen.add(entry.t);
-      if(losers.length>=2) break;
-    }
-    if(losers.length>=2) break;
-  }
-
-  // ── เติมจาก stocks_at_risk ของ AI ──
-  const aiRisk = (aiItem?.stocks_at_risk||[]).filter(s=>s&&s.t);
+  // ── ลำดับ 1: AI stocks_at_risk (AI อ่าน context ข่าวจริง — แม่นยำที่สุด) ──
+  const aiRisk=(aiItem?.stocks_at_risk||[]).filter(s=>s&&s.t&&s.reason);
   for(const s of aiRisk){
     const clean=String(s.t).toUpperCase().trim();
     if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    losers.push({t:clean, reason:s.reason||`อาจได้รับผลกระทบจากข่าวนี้`, source:'ai'});
+    losers.push({t:clean,reason:s.reason,source:'ai',indirect:false});
     seen.add(clean);
     if(losers.length>=3) break;
   }
 
-  // ── เติมจาก stocks_watch ของ AI (เติมที่ว่างหลังจาก Rule Mapping) ──
+  // ── ลำดับ 2: stocks_watch จาก AI ──
   for(const ticker of (aiStocksWatch||[])){
-    if(seen.has(ticker)) continue;
     const clean=String(ticker).toUpperCase().trim();
-    if(!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
-    // [FIX] เช็คก่อนว่าบริษัทนี้ถูกพูดถึงในข่าวจริงไหม เหมือนที่แก้ใน _buildBeneficiaries
+    if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
     const mentioned=_isCompanyMentioned(clean,headline,'');
     const reason=mentioned
       ?`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`
@@ -14670,6 +14663,25 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
     losers.push({t:clean,reason,source:'ai',indirect:!mentioned});
     seen.add(clean);
     if(losers.length>=3) break;
+  }
+
+  // ── ลำดับ 3: BENEFICIARY_MAP fallback (เฉพาะ event ที่ชัดเจน ข้าม geopolitical) ──
+  const mapFallbackEvents=['fomc','rate_decision','inflation_data','jobs_data','energy','central_bank','tech_ai'];
+  if(losers.length<1){
+    const key=isPositive?'negative_sentiment':'positive_sentiment';
+    for(const evType of eventTypes){
+      if(!mapFallbackEvents.includes(evType)) continue;
+      const map=BENEFICIARY_MAP[evType];
+      if(!map||!map[key]) continue;
+      for(const entry of map[key]){
+        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+        losers.push({t:entry.t,reason:entry.reason,source:'kb',indirect:!!entry.indirect});
+        seen.add(entry.t);
+        if(losers.length>=2) break;
+      }
+      if(losers.length>=2) break;
+    }
+  }
   }
 
   return losers.slice(0,3);
@@ -15319,7 +15331,7 @@ async function _eliteDirectFallback(overlay){
   }).join('\n');
 
   const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n0. VERIFY PERSON MATCH FIRST: each input line is "Name(id): headline — summary" where the news was pre-matched by keyword search (e.g. matched on a topic word like "china" or "iran"), NOT verified by you. Before writing any output for that id, check: is this person actually the subject/actor of this news (they said/did/announced something, or the news is specifically about them/their company/their country\'s government action)? If the news only mentions a related topic/country/sector in passing and the named person is NOT actually central to it (e.g. a company earnings article that happens to mention "china slowdown" gets matched to a China president id, or a generic Fed rate news gets matched to the Fed chair id without the chair saying anything), then DROP that id entirely — do not include it in the output array, do not force-fit a market_impact for them. Only keep ids where the match is genuinely about that specific person.\n1. ALL text fields must be Thai — translate English headlines immediately. สำหรับชื่อเฉพาะ/หน่วยงาน/ตำแหน่ง (เช่น Congress, Senate, White House, Federal Reserve, NATO) ต้องแปล/ทับศัพท์ให้ถูกต้องตามที่ใช้จริงในสื่อไทย (Congress = "สภาคองเกรส", Senate = "วุฒิสภา", White House = "ทำเนียบขาว") ห้ามเดาเสียงทับศัพท์ผิดๆ (เช่นห้ามเขียน Congress เป็น "กองเรส") ถ้าไม่แน่ใจการทับศัพท์ที่ถูกต้อง ให้ใช้ชื่อภาษาอังกฤษเดิมแทนการเดา คำศัพท์การเงินที่ต้องแปลให้ถูกความหมาย: voting power/voting rights = \"สิทธิออกเสียง\" หรือ \"Voting Power\" (ห้ามแปลเป็น \"การถือหุ้น\"), stake = \"สัดส่วนการถือหุ้น\", ownership = \"การเป็นเจ้าของ\", buyback = \"การซื้อหุ้นคืน\", dilution = \"การเจือจางหุ้น\", short selling = \"การขายชอร์ต\"\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news. NEVER restate headline — ai_take ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เช่น Bad: "หาก Musk เพิ่มสัดส่วนอาจส่งผลบวกต่อ TSLA" (restate). Good: "Voting Power 19.9% ช่วยเพิ่มอิทธิพล Musk ต่อ board แต่ยังต่ำกว่าเป้า 25% ที่ต้องการสนับสนุนกลยุทธ์ AI" (new context). ตัวอย่างที่ถูกสำหรับข่าว AI/Tech GOOGL: \"Gemini และ Google Cloud ที่เติบโต 63% YoY เป็น growth driver หลัก แต่ capex $185B สร้าง margin pressure ในระยะสั้น ขณะที่การแข่งขันจาก ChatGPT และ Claude ยังเป็นความเสี่ยงสำคัญ\" — ห้ามทวนข่าวแบบ \"หากอัลฟาเบตพัฒนา AI ได้ หุ้นอาจขึ้น\" และห้ามใส่ PLTR ในข่าว tech/AI ทั่วไปที่ไม่ได้พูดถึง PLTR โดยตรง.\n3. ai_take = 1-2 ประโยคเชิงคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ห้ามตอบสั้นแบบบอกทิศทางราคาเฉยๆ ต้องระบุชื่อหุ้น/สินทรัพย์ที่ได้และเสียประโยชน์อย่างน้อยฝั่งละ 1 ตัว/กลุ่ม เช่น ถ้าข่าวคือ "สหรัฐฯ ปล่อยกองกำลังหลังทรัมป์ขู่โจมตีอิหร่าน" ai_take ที่ดีคือ "หากความตึงเครียดยืดเยื้อ ราคาน้ำมัน Brent มีโอกาสขึ้นต่อ ส่งผลบวกต่อ XOM และ CVX แต่กดดันหุ้นขนส่งและสายการบิน" ห้ามตอบแบบ "ราคาน้ำมันจะสูงขึ้น" เฉยๆ โดยไม่ระบุหุ้น/sector ที่กระทบ\n3b. MACRO CAUSAL CHAIN — ใช้ logic นี้เสมอ ห้าม invert:\n- Fed Hawkish → DXY ↑, Bond Yield ↑, TLT ↓, Gold ↓, Growth stocks (NVDA/TSLA/AMD) ↓\n- Fed Dovish → DXY ↓, Bond Yield ↓, TLT ↑, Gold ↑, Growth stocks ↑\n- น้ำมันลง → XOM/CVX เสียประโยชน์ ไม่ใช่ได้ประโยชน์\n- ทองลง → miners/GDX เสียประโยชน์ (ทองลง ≠ หุ้นเหมืองดี)\n- DXY ↑ → EM/BABA เสีย\\n- ข่าว SpaceX/xAI/Musk → TSLA Direct (halo effect), NVDA/GOOGL/AMZN indirect (AI compute users)nตัวอย่าง ai_take ที่ถูกสำหรับ Fed Hawkish: \"ดอลลาร์แข็งค่าและ Bond Yield สูงขึ้น อาจกดดัน Growth stocks อย่าง NVDA และ AMD\"\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10 — ข่าวที่กระทบรายได้ทันที (earnings/FOMC/CPI) = 8-10, ข่าวทั่วไป = 6-7, ข่าวแนวคิด/vision/อวกาศ/ระยะยาวที่ยังไม่กระทบรายได้ = 4-5 ห้ามให้ 7+ กับข่าวที่เป็นแค่ "พูดถึง/กล่าวถึง" โดยไม่มี action จริง\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings\n8. market_impact = วิเคราะห์ระดับตลาด/sector ก่อนเสมอ — ตอบว่าข่าวนี้กระทบดอกเบี้ย/ค่าเงิน USD/Bond yield/sector ไหน และ benchmark อย่าง SPY, QQQ, TLT, DXY, Gold น่าจะขึ้นหรือลงเพราะอะไร (ใช้เป็นบริบท ไม่ใช่คำแนะนำซื้อ) ต้องเขียนก่อนเสมอ แล้วค่อยให้ stocks_buy/stocks_watch เป็นการระบุหุ้นรายตัวที่ตามมาจาก market_impact นั้น\n9. read_game ต้องเป็น insight ที่ตลาดมองข้ามหรือ price-in ผิด — ระบุ (1) สิ่งที่ตลาดเชื่อ vs ความจริงที่ต่างออกไป หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจจริงอาจต้องใช้เวลาอีกหลายปี\\" — ห้ามพูดซ้ำ headline/ai_take/summary เด็ดขาด';
-  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"1-2 ประโยคสมบูรณ์ที่ต้องมี: บริบทเชิงลึกที่ headline ไม่ได้พูดถึง + ผลกระทบต่อหุ้นหรือตลาด ตัวอย่างที่ถูกสำหรับ Fed Hawkish: \"Kevin Warsh ส่งสัญญาณ Hawkish มากกว่าที่ตลาดคาด ทำให้โอกาสคงดอกเบี้ยสูงนานขึ้น Bond Yield มีแนวโน้มปรับขึ้น กดดันหุ้น Growth เช่น NVDA และ AMD ขณะที่ดอลลาร์อาจแข็งค่า\" ตัวอย่างที่ถูกสำหรับข่าว Corporate Action (voting power/stock options/ownership): \"การเพิ่ม Voting Power ช่วยเพิ่มอิทธิพลของ Musk ต่อทิศทางบริษัท และอาจสร้างความเชื่อมั่นให้ผู้ถือหุ้น อย่างไรก็ตามยังต่ำกว่าเป้าหมาย 25% ที่ Musk เคยระบุเพื่อสนับสนุนกลยุทธ์ AI\" ห้ามตอบแบบ \"หากX เกิดขึ้น อาจส่งผลบวกต่อ Y\" ซึ่งเป็นการ restate headline ห้ามซ้ำ headline เด็ดขาด ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เสมอ","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"ประโยคสมบูรณ์ 2-3 ประโยค ต้องมีครบ: ชื่อบุคคล + กริยา + ทิศทางนโยบาย + ผลกระทบ ตัวอย่างที่ถูก: \"Kevin Warsh ส่งสัญญาณว่าเฟดมีแนวโน้มใช้นโยบายการเงินที่เข้มงวดมากขึ้น เพื่อควบคุมเงินเฟ้อ ทำให้ดอกเบี้ยอาจคงสูงนานกว่าที่ตลาดคาด\" ห้ามตอบแบบ \"Kevin Warsh Chair ของเฟดมีทิศทางมากขึ้น\" ซึ่งประโยคไม่สมบูรณ์","watch":"ระบุ event ที่ถูกต้องตาม context ข่าว: FOMC/CPI/NFP/GDP สำหรับ macro, TICKER+Earnings สำหรับงบการเงิน, SEC Filing/Corporate Governance/Insider Ownership สำหรับข่าว Form 4/voting power/stock options/board — ห้ามใส่ TICKER+Earnings ถ้าข่าวไม่ใช่ earnings release","read_game":"insight ที่ตลาดมองข้ามหรือ price-in ผิด — ต้องระบุ: (1) สิ่งที่ตลาดเชื่อ vs ความจริง หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจอาจต้องใช้เวลาอีกหลายปี\\\" — ห้ามใช้รูปแบบ \\\"หากประสบความสำเร็จ อาจส่งผลบวก\\\" ซึ่งไม่มี insight ใหม่","etf_impact":{"SPY":"neutral","QQQ":"negative","TLT":"negative","GLD":"negative","DXY":"positive"},"stocks_buy":["NVDA"],"stocks_watch":["TSLA"]}] RULES FOR etf_impact: วิเคราะห์ตาม context ข่าวจริงเท่านั้น ใช้ positive/negative/neutral เท่านั้น ETF ที่รองรับ: SPY QQQ TLT GLD DXY XLF XLE SMH IWM HYG เลือกเฉพาะที่เกี่ยวข้อง 3-6 ตัว MACRO LOGIC: Fed Hawkish→TLT negative/GLD negative/DXY positive/QQQ negative, Fed Dovish→TLT positive/GLD positive/DXY negative/QQQ positive, Oil↑→XLE positive/SPY neutral, Geopolitical tension→GLD positive/SPY negative';
+  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"1-2 ประโยคสมบูรณ์ที่ต้องมี: บริบทเชิงลึกที่ headline ไม่ได้พูดถึง + ผลกระทบต่อหุ้นหรือตลาด ตัวอย่างที่ถูกสำหรับ Fed Hawkish: \"Kevin Warsh ส่งสัญญาณ Hawkish มากกว่าที่ตลาดคาด ทำให้โอกาสคงดอกเบี้ยสูงนานขึ้น Bond Yield มีแนวโน้มปรับขึ้น กดดันหุ้น Growth เช่น NVDA และ AMD ขณะที่ดอลลาร์อาจแข็งค่า\" ตัวอย่างที่ถูกสำหรับข่าว Corporate Action (voting power/stock options/ownership): \"การเพิ่ม Voting Power ช่วยเพิ่มอิทธิพลของ Musk ต่อทิศทางบริษัท และอาจสร้างความเชื่อมั่นให้ผู้ถือหุ้น อย่างไรก็ตามยังต่ำกว่าเป้าหมาย 25% ที่ Musk เคยระบุเพื่อสนับสนุนกลยุทธ์ AI\" ห้ามตอบแบบ \"หากX เกิดขึ้น อาจส่งผลบวกต่อ Y\" ซึ่งเป็นการ restate headline ห้ามซ้ำ headline เด็ดขาด ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เสมอ","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"ประโยคสมบูรณ์ 2-3 ประโยค ต้องมีครบ: ชื่อบุคคล + กริยา + ทิศทางนโยบาย + ผลกระทบ ตัวอย่างที่ถูก: \"Kevin Warsh ส่งสัญญาณว่าเฟดมีแนวโน้มใช้นโยบายการเงินที่เข้มงวดมากขึ้น เพื่อควบคุมเงินเฟ้อ ทำให้ดอกเบี้ยอาจคงสูงนานกว่าที่ตลาดคาด\" ห้ามตอบแบบ \"Kevin Warsh Chair ของเฟดมีทิศทางมากขึ้น\" ซึ่งประโยคไม่สมบูรณ์","watch":"ระบุ event ที่ถูกต้องตาม context ข่าว: FOMC/CPI/NFP/GDP สำหรับ macro, TICKER+Earnings สำหรับงบการเงิน, SEC Filing/Corporate Governance/Insider Ownership สำหรับข่าว Form 4/voting power/stock options/board — ห้ามใส่ TICKER+Earnings ถ้าข่าวไม่ใช่ earnings release","read_game":"insight ที่ตลาดมองข้ามหรือ price-in ผิด — ต้องระบุ: (1) สิ่งที่ตลาดเชื่อ vs ความจริง หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจอาจต้องใช้เวลาอีกหลายปี\\\" — ห้ามใช้รูปแบบ \\\"หากประสบความสำเร็จ อาจส่งผลบวก\\\" ซึ่งไม่มี insight ใหม่","etf_impact":{"SPY":"neutral","QQQ":"negative","TLT":"negative","GLD":"negative","DXY":"positive"},"stocks_to_monitor":[{"t":"XOM","reason":"ราคาน้ำมันพุ่งจากความตึงเครียดตะวันออกกลาง XOM upstream revenue เพิ่มโดยตรง"},{"t":"LMT","reason":"งบกลาโหมเพิ่มจากวิกฤต Lockheed Martin รับ order เพิ่ม"}],"stocks_at_risk":[{"t":"AAPL","reason":"supply chain ใน China อาจกระทบถ้าตึงเครียดบาน"}],"stocks_buy":["XOM"],"stocks_watch":["AAPL"]}] RULES FOR stocks_to_monitor และ stocks_at_risk (บังคับ): ต้องผ่าน chain of thought นี้ก่อนระบุหุ้นทุกตัว: (1) ข่าวนี้กระทบ INDUSTRY ไหนโดยตรง (2) บริษัทใน industry นั้นคือใคร (3) บริษัทไหนได้ประโยชน์ (monitor) / เสียประโยชน์ (at_risk) — ห้ามใส่หุ้นที่ไม่ผ่าน chain นี้ ห้ามใส่หุ้นที่ไม่เกี่ยวกับ industry ที่ข่าวกระทบ reason ต้องอธิบายการเชื่อมโยงชัดเจน RULES FOR etf_impact: วิเคราะห์ตาม context ข่าวจริงเท่านั้น ใช้ positive/negative/neutral เท่านั้น ETF ที่รองรับ: SPY QQQ TLT GLD DXY XLF XLE SMH IWM HYG เลือกเฉพาะที่เกี่ยวข้อง 3-6 ตัว MACRO LOGIC: Fed Hawkish→TLT negative/GLD negative/DXY positive/QQQ negative, Fed Dovish→TLT positive/GLD positive/DXY negative/QQQ positive, Oil↑→XLE positive/SPY neutral, Geopolitical tension→GLD positive/SPY negative';
 
   try{
     let rawText = null;
