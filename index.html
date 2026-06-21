@@ -1710,7 +1710,7 @@ const STOCKS_DEFAULT=[
   // ── Energy/Industrial ──
   {t:"XOM",n:"ExxonMobil"},{t:"AMSC",n:"American Superconductor"},
   // ── China ──
-  {t:"BABA",n:"Alibaba"},{t:"PDD",n:"PDD Holdings"},
+  {t:"BABA",n:"Alibaba"},{t:"PDD",n:"PDD Holdings"},{t:"ALAB",n:"Astera Labs"},
   // ── Other ──
   {t:"SLNH",n:"Soluna Holdings"},{t:"EOSE",n:"Eos Energy"},
   {t:"PL",n:"Planet Labs"},{t:"CRWV",n:"CoreWeave"},
@@ -1767,8 +1767,42 @@ let stocks=(()=>{
   return STOCKS_DEFAULT.map(d=>({t:d.t, n:d.n, p:0, c:0}));
 })();
 
+// [NEW] ถ้า localStorage ว่าง ลอง restore จาก Worker KV
+(async()=>{
+  try{
+    const saved=localStorage.getItem('_sp_stocks');
+    if(!saved||JSON.parse(saved).length===0){
+      const r=await fetch(`${PRICES_WORKER}/user/stocks`,{signal:AbortSignal.timeout(5000)});
+      if(r.ok){
+        const arr=await r.json();
+        if(Array.isArray(arr)&&arr.length>0){
+          localStorage.setItem('_sp_stocks',JSON.stringify(arr));
+          // merge กับ stocks array ปัจจุบัน
+          const existing=new Set(stocks.map(s=>s.t));
+          for(const s of arr){
+            if(!existing.has(s.t)){
+              stocks.push({t:s.t,n:s.n||s.t,p:0,c:0});
+              STOCK_UNIVERSE.add(s.t);
+            }
+          }
+          console.log('[Worker KV] restored',arr.length,'stocks');
+          if(typeof renderStockList==='function') renderStockList();
+        }
+      }
+    }
+  }catch{}
+})();
+
 function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
+  // [NEW] sync ไป Worker KV เพื่อให้ stocks ไม่หายแม้ clear localStorage
+  try{
+    fetch(`${PRICES_WORKER}/user/stocks`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(stocks.map(s=>({t:s.t,n:s.n||s.t})))
+    }).catch(()=>{});
+  }catch{}
   _rebuildStocksMap();
 }
 
@@ -14369,6 +14403,7 @@ const STOCK_UNIVERSE=new Set([
   'SNOW','DDOG','MDB','NET','DELL','FPS','NOK','ONDS','OSS','AEHR',
   'SNDK','STX','VST','SPCX','PL','AVAV','SMCI','PLTR','CRWD','ORCL',
   'ADBE','HOOD','SOFI','QCOM','LRCX','AXON','SPGI','BRK.B','COST','WMT',
+  'KLAC','TXN','ALAB',
 ]);
 // [FIX] ชื่อบริษัท/คำที่ใช้เรียกแต่ละ ticker ในข่าว (ไทย+อังกฤษ) ใช้เช็คว่า ticker ที่ AI
 // เลือกมาแบบไม่มี reason เฉพาะ ถูกพูดถึงในข่าวจริงหรือเปล่า ก่อนจะอ้างว่า "กระทบโดยตรง"
