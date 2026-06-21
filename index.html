@@ -14331,10 +14331,12 @@ function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScor
   if(['earnings call','earnings','said','announced','confirmed','form 4','sec filing','investor day'].some(k=>srcText.includes(k))) score+=8;
   if(evArr.includes('earnings')) score+=5;
 
-  // penalty
-  if(rumorStatus==='rumor') score-=30;
-  else if(rumorStatus==='unverified') score-=15;
-  if(impactScore>=9&&sourcesCount<2) score-=10;
+  // [NEW] geopolitical/political statement จาก tier1 → bonus เพราะเป็น official statement
+  const geoPoliticalEvents=['geopolitical','political','trade_policy','m_and_a'];
+  if(tier1.some(s=>url.includes(s)) && evArr.some(e=>geoPoliticalEvents.includes(e))) score+=10;
+
+  // [NEW] ลด penalty ถ้าเป็น tier1 source เพราะ Reuters/Bloomberg ยืนยันแล้ว
+  if(impactScore>=9&&sourcesCount<2&&!tier1.some(s=>url.includes(s))) score-=10;
 
   // เล็กน้อย
   if(hasSummary) score+=3;
@@ -14505,7 +14507,7 @@ const BENEFICIARY_MAP={
   },
   'geopolitical':{
     positive_sentiment:[{t:'LMT',reason:'ความขัดแย้งทางภูมิรัฐศาสตร์กระตุ้นให้ประเทศต่างๆ เพิ่มงบกลาโหม Lockheed Martin ได้รับ order missile และเครื่องบินรบเพิ่มโดยตรง'},{t:'RTX',reason:'Raytheon เป็นผู้ผลิต missile defense system รายใหญ่ ความไม่มั่นคงโลกเพิ่ม demand ซึ่งส่งผลต่อ revenue โดยตรง'}],
-    negative_sentiment:[{t:'XOM',reason:'Exxon มีแหล่งผลิตน้ำมันในพื้นที่ขัดแย้ง ความไม่มั่นคงด้านความปลอดภัยกระทบ supply chain และการดำเนินงาน'},{t:'BABA',reason:'Alibaba ถูกกระทบทั้งจาก export ban สหรัฐฯ และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China ราคาหุ้นมักตกหนัก'}]
+    negative_sentiment:[{t:'XOM',reason:'ความขัดแย้งในตะวันออกกลางดันราคาน้ำมันขึ้น Exxon ได้ประโยชน์โดยตรงจาก upstream revenue ที่สูงขึ้น แต่ความไม่แน่นอนระยะยาวกระทบ supply chain'},{t:'BABA',reason:'Alibaba ถูกกระทบทั้งจาก export ban สหรัฐฯ และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China ราคาหุ้นมักตกหนัก'}]
   },
   'tech_ai':{
     positive_sentiment:[
@@ -15354,6 +15356,73 @@ async function _eliteDirectFallback(overlay){
     if(!jsonMatch) return _mapNewsToResults(allNews);
     let items = [];
     try{ items = JSON.parse(jsonMatch[0]); }catch(e){ return _mapNewsToResults(allNews); }
+
+    // ── Post-processing Validator ──
+    // ตรวจและแก้ไข output ของ AI อัตโนมัติ แทนที่จะหวัง AI ทำตาม rule ทุกครั้ง
+    function _textSimilarity(a, b){
+      if(!a||!b) return 0;
+      const wa=new Set(a.toLowerCase().replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g,'').split(/\s+/).filter(w=>w.length>2));
+      const wb=new Set(b.toLowerCase().replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g,'').split(/\s+/).filter(w=>w.length>2));
+      const inter=[...wa].filter(w=>wb.has(w)).length;
+      const denom=Math.max(wa.size,wb.size,1);
+      return inter/denom;
+    }
+    items = items.map(function(item){
+      if(!item) return item;
+
+      // 1. ai_take ซ้ำ headline/summary → clear
+      if(item.ai_take){
+        const simH=_textSimilarity(item.ai_take, item.headline||'');
+        const simS=_textSimilarity(item.ai_take, item.summary||'');
+        if(simH>0.65||simS>0.65) item.ai_take='';
+      }
+
+      // 2. why ซ้ำ summary/headline → clear
+      if(item.why){
+        const simS=_textSimilarity(item.why, item.summary||'');
+        const simH=_textSimilarity(item.why, item.headline||'');
+        const simA=_textSimilarity(item.why, item.ai_take||'');
+        if(simS>0.65||simH>0.65||simA>0.65) item.why='';
+      }
+
+      // 3. read_game ทั่วไปเกินไป → set null
+      const readGame=item.read_game||'';
+      const genericReadGame=[
+        'นักลงทุนควรติดตาม','อาจส่งผลกระทบ','ตลาดอาจผันผวน',
+        'หากประสบความสำเร็จ','อาจส่งผลบวก','อาจส่งผลลบ',
+        'ควรจับตามอง','ยังต้องรอดู'
+      ];
+      const hasSpecific=readGame.includes('ตลาดมอง')||readGame.includes('นักลงทุนมอง')||
+        readGame.includes(' → ')||readGame.includes('แต่')||
+        /\d/.test(readGame); // มีตัวเลข threshold
+      if(readGame && (!hasSpecific || genericReadGame.some(g=>readGame.includes(g)&&readGame.length<60))){
+        item.read_game=null;
+      }
+
+      // 4. impact สูงเกินสำหรับข่าว vision/แนวคิด
+      const h=(item.headline||'').toLowerCase();
+      const s=(item.summary||'').toLowerCase();
+      const visionKw=['อวกาศ','space','vision','แนวคิด','พูดถึง','กล่าวถึง','ระยะยาว','อนาคต','โครงการ'];
+      if(visionKw.some(k=>(h+s).includes(k)) && (item.impact||0)>6){
+        item.impact=Math.min(item.impact,6);
+      }
+
+      // 5. stocks_watch มีแต่ ETF → clear (ไม่มีประโยชน์)
+      const etfSet=new Set(['SPY','QQQ','IWM','DIA','VTI','GLD','TLT','XLK','XLF','ARKK']);
+      if(Array.isArray(item.stocks_watch)){
+        item.stocks_watch=item.stocks_watch.filter(t=>!etfSet.has(t));
+      }
+
+      // 6. confidence ต่ำเกินสำหรับ Reuters/Bloomberg
+      const url=(item.source_url||item.sourceUrl||'').toLowerCase();
+      const tier1=['reuters.com','bloomberg.com','wsj.com','ft.com','apnews.com','federalreserve.gov'];
+      if(tier1.some(s=>url.includes(s)) && (item.confidence||0)<65){
+        item.confidence=Math.max(item.confidence||0, 72);
+      }
+
+      return item;
+    });
+
     return items.filter(function(item){return item&&item.id&&item.headline;}).map(function(item){
       const person = ELITE_PEOPLE.find(function(p){return p.id===item.id;});
       if(!person) return null;
@@ -15995,8 +16064,8 @@ function renderEliteScanResults(results, ageMs=0){
             ${wlBadge}
           </div>`;
         })()}
-        <!-- Why -->
-        ${n.why ? `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+        <!-- Why — แสดงเฉพาะเมื่อเนื้อหาไม่ซ้ำกับ summary -->
+        ${n.why && n.why !== n.summary && (!n.summary || n.why.slice(0,30) !== n.summary.slice(0,30)) ? `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
           <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text3);margin-bottom:4px">🔍 เพราะอะไร</div>
           <div style="font-size:11px;color:var(--text2);line-height:1.6">${n.why}</div>
         </div>` : ''}
@@ -16203,8 +16272,8 @@ function _renderEliteModal(idx){
         </div>`;
       })()}
 
-      <!-- Why -->
-      ${n.why ? `
+      <!-- Why — แสดงเฉพาะเมื่อเนื้อหาไม่ซ้ำกับ summary -->
+      ${n.why && n.why !== n.summary && (!n.summary || n.why.slice(0,30) !== n.summary.slice(0,30)) ? `
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px">
         <div style="font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:#6b7fa0;margin-bottom:6px;letter-spacing:0.5px">🔍 เพราะอะไร</div>
         <div style="font-size:12px;color:#a8b8d0;line-height:1.7">${n.why}</div>
