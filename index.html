@@ -9540,7 +9540,7 @@ async function fetchAndRenderEarnings(force=false){
       // ดึง earnings calendar ผ่าน PRICES_WORKER ก่อน (ประหยัด Finnhub quota)
       const today=new Date();
       const from=new Date(today); from.setDate(from.getDate()-45);
-      const to=new Date(today); to.setDate(to.getDate()+90);
+      const to=new Date(today); to.setDate(to.getDate()+60);
       const fmt=d=>d.toISOString().slice(0,10);
 
       let items=[];
@@ -9571,49 +9571,27 @@ async function fetchAndRenderEarnings(force=false){
       {
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
         const _apiTickers=new Set(items.filter(e=>e.date||e.d).map(e=>e.symbol||e.t));
-        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM',
-          'GOOGL','AAPL','AMZN','MSFT','META','TSLA','NVDA']; // big tech ที่ Finnhub มักไม่มีวันอนาคต
-        // [FIX] known_EARNINGS hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
+        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM'];
+        // [FIX] hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
         const KNOWN_EARNINGS={
           'MU':  {date:'2026-06-24',epsEstimate:19.15,hour:'amc'},
           'AVAV':{date:'2026-06-29',epsEstimate:null,hour:'amc'},
+          'TSLA':{date:'2026-07-29',epsEstimate:null,hour:'amc'},
+          'META':{date:'2026-07-29',epsEstimate:null,hour:'amc'},
+          'GOOGL':{date:'2026-07-28',epsEstimate:null,hour:'amc'},
+          'AAPL':{date:'2026-07-30',epsEstimate:null,hour:'amc'},
+          'AMZN':{date:'2026-07-30',epsEstimate:null,hour:'amc'},
+          'MSFT':{date:'2026-07-28',epsEstimate:null,hour:'amc'},
         };
-        // ใส่ KNOWN_EARNINGS เข้า items ก่อน ถ้ายังไม่มีใน items
+        // ใส่ KNOWN_EARNINGS เข้า items ก่อน ถ้ายังไม่มีวันอนาคต
+        const todayStr=new Date().toISOString().slice(0,10);
         for(const [ticker,info] of Object.entries(KNOWN_EARNINGS)){
-          if(!items.find(e=>(e.symbol||e.t)===ticker)){
-            items.push({symbol:ticker,date:info.date,epsEstimate:info.epsEstimate,hour:info.hour,_source:'known'});
+          const existing=items.find(e=>(e.symbol||e.t)===ticker);
+          const hasValidFuture=existing&&existing.date&&existing.date>todayStr;
+          if(!hasValidFuture){
+            if(existing) existing.date=info.date; // อัปเดตวันที่ถ้ามีอยู่แล้วแต่วันผิด
+            else items.push({symbol:ticker,date:info.date,epsEstimate:info.epsEstimate,hour:info.hour,_source:'known'});
           }
-        }
-        // [NEW] force Yahoo fetch สำหรับ big tech ที่ Finnhub calendar มักขาดวันอนาคต
-        const BIG_TECH=['TSLA','META','GOOGL','AAPL','AMZN','MSFT','NVDA','AAPL'];
-        const bigTechMissing=BIG_TECH.filter(t=>{
-          const existing=items.find(e=>(e.symbol||e.t)===t);
-          // ถ้าไม่มีวันอนาคต ให้ดึง Yahoo ใหม่
-          const today=new Date().toISOString().slice(0,10);
-          return !existing||!existing.date||(existing.date<=today);
-        });
-        if(bigTechMissing.length>0){
-          const bigTechResults=await Promise.allSettled(bigTechMissing.map(async ticker=>{
-            try{
-              const yh=ticker.replace('.','-');
-              const d=await _fetchYahooQuoteSummary(yh,'calendarEvents',6000);
-              const earnings=d?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
-              if(!earnings?.earningsDate?.[0]) return null;
-              const ts=earnings.earningsDate[0].raw*1000;
-              const dateStr=new Date(ts).toISOString().slice(0,10);
-              const today=new Date().toISOString().slice(0,10);
-              if(dateStr<=today) return null; // ผ่านมาแล้ว
-              return {symbol:ticker,date:dateStr,epsEstimate:earnings.epsEstimate?.raw||null,hour:'amc',_source:'yahoo_forced'};
-            }catch{ return null; }
-          }));
-          for(const r of bigTechResults){
-            if(r.status==='fulfilled'&&r.value){
-              const idx=items.findIndex(e=>(e.symbol||e.t)===r.value.symbol);
-              if(idx>=0) items[idx]={...items[idx],...r.value};
-              else items.push(r.value);
-            }
-          }
-          console.log('[Earnings] big tech Yahoo forced fetch done');
         }
         const otherTickers=allNeeded.filter(t=>!priorityTickers.includes(t)&&!_apiTickers.has(t));
         const missingTickers=[
