@@ -9585,30 +9585,33 @@ async function fetchAndRenderEarnings(force=false){
               if(r.ok){
                 const d=await r.json();
                 // Worker ส่งกลับ array ของ historical earnings — หาวันใกล้สุดในอนาคต
+                // [FIX] ใช้ 'period' แค่สำหรับ EPS เท่านั้น ห้ามใช้เป็นวันประกาศ
+                // เพราะ period คือวันสิ้นงวดบัญชี ไม่ใช่วันประกาศจริง
                 const arr=Array.isArray(d)?d:(d?.data||[]);
                 if(arr.length){
-                  const today=new Date().toISOString().slice(0,10);
-                  const next=arr.find(e=>(e.period||e.date||'')>today)||arr[0];
-                  const dt=next?.period||next?.date;
-                  if(dt) return {symbol:ticker,date:dt,epsEstimate:next?.estimate||next?.epsEstimate||null,revenueEstimate:null,hour:'amc'};
+                  // ดึง EPS estimate จาก latest record เท่านั้น ไม่ใช้ period เป็น date
+                  const latest=arr[0];
+                  const epsEstimate=latest?.estimate||latest?.epsEstimate||null;
+                  // ไม่ return date จาก period — ให้ Yahoo fetch ด้านล่างหาวันจริงแทน
+                  if(epsEstimate) return {symbol:ticker,date:null,epsEstimate,revenueEstimate:null,hour:'amc',_epsOnly:true};
                 }
               }
             }catch{}
-            // 2. fallback Finnhub direct (ถ้ามี key)
+            // 2. fallback Finnhub direct — ดึง EPS เท่านั้น ไม่ใช้ period เป็น date
             if(FINNHUB_KEY){
               try{
                 const r=await fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${ticker}&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(5000)});
                 if(r.ok){
                   const d=await r.json();
                   if(d?.length){
-                    const today=new Date().toISOString().slice(0,10);
-                    const next=d.find(e=>e.period>today)||d[0];
-                    if(next?.period) return {symbol:ticker,date:next.period,epsEstimate:next.estimate||null,revenueEstimate:null,hour:'amc'};
+                    // [FIX] period คือวันสิ้นงวด ไม่ใช่วันประกาศ — ใช้แค่ EPS
+                    const latest=d[0];
+                    if(latest?.estimate) return {symbol:ticker,date:null,epsEstimate:latest.estimate,revenueEstimate:null,hour:'amc',_epsOnly:true};
                   }
                 }
               }catch{}
             }
-            // 2. fallback Yahoo
+            // 3. Yahoo calendarEvents — วันประกาศจริง (ถูกต้องที่สุด)
             try{
               const yh=ticker.replace('.','-');
               const d=await _fetchYahooQuoteSummary(yh,'calendarEvents',5000);
@@ -9621,8 +9624,16 @@ async function fetchAndRenderEarnings(force=false){
           }));
           const newItems=results.filter(r=>r.status==='fulfilled'&&r.value).map(r=>r.value);
           if(newItems.length>0){
-            items=[...items,...newItems];
-            console.log('[Earnings] added',newItems.length,'tickers via Finnhub/Yahoo');
+            // แยก items ที่มีวันจริง กับ items ที่มีแค่ EPS
+            const withDate=newItems.filter(i=>i.date&&!i._epsOnly);
+            const epsOnly=newItems.filter(i=>i._epsOnly);
+            // merge EPS เข้ากับ items ที่มีวันอยู่แล้ว
+            for(const ep of epsOnly){
+              const existing=items.find(e=>(e.symbol||e.t)===ep.symbol);
+              if(existing && ep.epsEstimate && !existing.epsEstimate) existing.epsEstimate=ep.epsEstimate;
+            }
+            items=[...items,...withDate];
+            console.log('[Earnings] added',withDate.length,'tickers with date,',epsOnly.length,'EPS-only merged');
           }
         }
       }
