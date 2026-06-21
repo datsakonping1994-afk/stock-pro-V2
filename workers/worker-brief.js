@@ -5,13 +5,6 @@
 //  Cron: 0 */2 * * *
 //  KV Binding: ALERT_KV
 //  ENV: TG_TOKEN, TG_CHAT_ID, GEMINI_KEY, GROQ_KEY, FINNHUB_KEY, GNEWS_KEY
-//
-//  [FIX 2026-06-12] เดิม scheduled() เช็ค h===1 (Morning Brief, 08:00 ไทย)
-//  และ h===9 (Pre-Market, 16:00 ไทย) แต่ cron "0 */2 * * *" รันแค่ตอน
-//  ชั่วโมงคู่ (0,2,4,...) ทำให้ h===1 และ h===9 ไม่เคยเป็นจริงเลย
-//  → Morning Brief / Pre-Market ไม่เคยถูกส่งอัตโนมัติ
-//  แก้โดยขยายเงื่อนไขให้ครอบ tick ที่ใกล้ที่สุด (h===2, h===10) ด้วย
-//  cooldown เดิม (20 ชม.) ป้องกันการส่งซ้ำอยู่แล้ว จึงปลอดภัย
 // ============================================================
 
 async function sendTG(env, text, token=null, chatId=null){
@@ -44,6 +37,7 @@ async function sendTGAll(env, text){
   }catch{}
 }
 
+// [FIX] systemInstruction (camelCase) ตาม Gemini API spec
 async function callAI(env, system, user, maxTokens=1200){
   const gkey = env.GEMINI_KEY||'';
   if(gkey){
@@ -51,13 +45,13 @@ async function callAI(env, system, user, maxTokens=1200){
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gkey}`,{
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          system_instruction:{parts:[{text:system}]},
-          contents:[{parts:[{text:user}]}],
-          generationConfig:{maxOutputTokens:maxTokens}
+          systemInstruction:{parts:[{text:system}]},
+          contents:[{role:'user', parts:[{text:user}]}],
+          generationConfig:{maxOutputTokens:maxTokens, temperature:0.3}
         }), signal:AbortSignal.timeout(25000)
       });
       if(r.ok){ const d=await r.json(); const t=d?.candidates?.[0]?.content?.parts?.[0]?.text; if(t) return t; }
-    }catch{}
+    }catch(e){ console.warn('[callAI Gemini]', e.message); }
   }
   const grok = env.GROQ_KEY||'';
   if(grok){
@@ -65,7 +59,7 @@ async function callAI(env, system, user, maxTokens=1200){
       try{
         const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+grok},
-          body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'system',content:system},{role:'user',content:user}], max_tokens:maxTokens}),
+          body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'system',content:system},{role:'user',content:user}], max_tokens:maxTokens, temperature:0.3}),
           signal:AbortSignal.timeout(20000)
         });
         if(r.status===429){ await new Promise(r=>setTimeout(r,(2**i)*5000)); continue; }
@@ -92,8 +86,6 @@ async function getQuote(env, ticker){
 async function fetchNews(env){
   const articles = [];
   const cutoff = Date.now() - 24*3600*1000;
-
-  // GNews
   const gnewsKey = env.GNEWS_KEY||'';
   if(gnewsKey){
     try{
@@ -111,8 +103,6 @@ async function fetchNews(env){
       }
     }catch{}
   }
-
-  // Finnhub fallback
   if(articles.length < 3){
     try{
       const r = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${env.FINNHUB_KEY}`,{signal:AbortSignal.timeout(8000)});
@@ -128,11 +118,18 @@ async function fetchNews(env){
       }
     }catch{}
   }
-
   return articles;
 }
 
-// ── Morning Brief หลัก ──
+// [FIX] โหลด portfolio จาก KV 'portfolio' (sync มาจาก index.html)
+async function loadPortfolio(env){
+  try{
+    const r = await env.ALERT_KV.get('portfolio');
+    if(r) return JSON.parse(r);
+  }catch{}
+  return [];
+}
+
 async function sendMorningBrief(env){
   const coolKey = 'morning_brief_sent_v2';
   try{
@@ -140,14 +137,9 @@ async function sendMorningBrief(env){
     if(l && Date.now()-parseInt(l) < 20*3600*1000) return;
   }catch{}
 
-  // ดึงพอร์ต
-  let portfolio = [];
-  try{ const r=await env.ALERT_KV.get('portfolio'); if(r) portfolio=JSON.parse(r); }catch{}
-
-  // ดึงราคาตลาด
+  const portfolio = await loadPortfolio(env);
   const [spy, qqq, vix] = await Promise.all([getQuote(env,'SPY'), getQuote(env,'QQQ'), getQuote(env,'VIX')]);
 
-  // ดึงราคาพอร์ตทุกตัว
   const portQuotes = {};
   if(portfolio.length){
     await Promise.all(portfolio.map(async pos => {
@@ -156,10 +148,7 @@ async function sendMorningBrief(env){
     }));
   }
 
-  // ดึงข่าว Finnhub
   const articles = await fetchNews(env);
-
-  // สร้าง prompt สรุปพอร์ต
   const date = new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Bangkok'});
   const fmt = v => v>=0?`+${v.toFixed(2)}%`:`${v.toFixed(2)}%`;
 
@@ -178,7 +167,6 @@ async function sendMorningBrief(env){
     : 'ไม่มีข่าวใหม่';
 
   const system = `คุณคือที่ปรึกษาการลงทุนส่วนตัว วิเคราะห์พอร์ตและตลาดแบบกระชับตรงประเด็น ภาษาไทยธรรมดา ห้ามใช้ ** # Markdown`;
-
   const user = `Morning Brief ${date}
 
 📊 ตลาดวันนี้
@@ -199,7 +187,6 @@ ${newsContext}
 
   const analysis = await callAI(env, system, user, 800);
 
-  // สร้างข้อความ TG
   let msg = `🌅 <b>Morning Brief -- ${date}</b>\n\n`;
   msg += `📊 <b>ตลาดเช้านี้</b>\n`;
   if(spy) msg += `SPY: $${spy.price.toFixed(2)} <b>${fmt(spy.change)}</b>\n`;
@@ -218,17 +205,13 @@ ${newsContext}
     });
   }
 
-  if(analysis){
-    msg += `\n🤖 <b>AI วิเคราะห์พอร์ต</b>\n${analysis}`;
-  }
-
+  if(analysis) msg += `\n🤖 <b>AI วิเคราะห์พอร์ต</b>\n${analysis}`;
   msg += `\n\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`;
 
   await sendTG(env, msg);
   try{ await env.ALERT_KV.put(coolKey, Date.now().toString()); }catch{}
 }
 
-// ── Economic News Alert (ทุก 4 ชม.) ──
 async function sendEconomicAlert(env, force=false){
   const coolKey = 'econ_alert_ts';
   if(!force){
@@ -238,9 +221,7 @@ async function sendEconomicAlert(env, force=false){
   const articles = await fetchNews(env);
   if(!articles.length) return;
 
-  let ownerPort = [];
-  try{ const r=await env.ALERT_KV.get('portfolio'); if(r) ownerPort=JSON.parse(r); }catch{}
-
+  const ownerPort = await loadPortfolio(env);
   const portTickers = ownerPort.length ? ownerPort.map(p=>p.t).join(', ') : '';
   const now = new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'});
 
@@ -273,15 +254,12 @@ ${portTickers ? `3) กระทบพอร์ต (${portTickers}) อย่า
   try{ await env.ALERT_KV.put(coolKey, Date.now().toString()); }catch{}
 }
 
-// ── Pre-market (16:00 ไทย) ──
 async function sendPreMarket(env){
   const coolKey = 'premarket_sent';
   try{ const l=await env.ALERT_KV.get(coolKey); if(l&&Date.now()-parseInt(l)<20*3600*1000) return; }catch{}
 
   const articles = await fetchNews(env);
-  let ownerPort = [];
-  try{ const r=await env.ALERT_KV.get('portfolio'); if(r) ownerPort=JSON.parse(r); }catch{}
-
+  const ownerPort = await loadPortfolio(env);
   if(!articles.length && !ownerPort.length) return;
 
   const date = new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',timeZone:'Asia/Bangkok'});
@@ -294,12 +272,10 @@ async function sendPreMarket(env){
   const analysis = await callAI(env, system, user, 600);
   if(!analysis) return;
 
-  let msg = `☀️ <b>Pre-Market Brief -- ${date}</b>\n\n${analysis}\n\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`;
-  await sendTG(env, msg);
+  await sendTG(env, `☀️ <b>Pre-Market Brief -- ${date}</b>\n\n${analysis}\n\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`);
   try{ await env.ALERT_KV.put(coolKey, Date.now().toString()); }catch{}
 }
 
-// ── Insider Alert ──
 async function checkInsiderAlerts(env){
   const coolKey = 'insider_alert_sent';
   try{ const l=await env.ALERT_KV.get(coolKey); if(l&&Date.now()-parseInt(l)<24*3600*1000) return; }catch{}
@@ -341,18 +317,13 @@ export default {
     const h = {'Access-Control-Allow-Origin':'*','Content-Type':'text/plain'};
     if(url.pathname==='/trigger/morning'){ ctx.waitUntil(sendMorningBrief(env)); return new Response('Morning Brief triggered',{headers:h}); }
     if(url.pathname==='/trigger/morning/force'){
-      // force reset cooldown แล้วส่ง
       try{ await env.ALERT_KV.delete('morning_brief_sent_v2'); }catch{}
       ctx.waitUntil(sendMorningBrief(env));
       return new Response('Morning Brief forced',{headers:h});
     }
     if(url.pathname==='/trigger/premarket'){ ctx.waitUntil(sendPreMarket(env)); return new Response('Pre-market triggered',{headers:h}); }
-    if(url.pathname==='/trigger/news'){
-      ctx.waitUntil(sendEconomicAlert(env, true));
-      return new Response('Economic alert triggered',{headers:h});
-    }
+    if(url.pathname==='/trigger/news'){ ctx.waitUntil(sendEconomicAlert(env, true)); return new Response('Economic alert triggered',{headers:h}); }
     if(url.pathname==='/trigger/insider'){ ctx.waitUntil(checkInsiderAlerts(env)); return new Response('Insider triggered',{headers:h}); }
-    // [FIX] debug endpoint เพื่อดูว่า worker เห็นเวลาเป็นเท่าไหร่ และ cron เงื่อนไขจะ trigger ไหม
     if(url.pathname==='/debug/time'){
       const now = new Date();
       const utcH = now.getUTCHours();
@@ -363,6 +334,11 @@ export default {
         will_run_premarket: (utcH===9||utcH===10)
       }, null, 2), {headers:{...h,'Content-Type':'application/json'}});
     }
+    // [NEW] /debug/portfolio — ดูว่า worker เห็น portfolio อะไร
+    if(url.pathname==='/debug/portfolio'){
+      const port = await loadPortfolio(env);
+      return new Response(JSON.stringify({count:port.length, portfolio:port}, null, 2), {headers:{...h,'Content-Type':'application/json'}});
+    }
     return new Response('STOCK PRO -- Brief Worker OK',{headers:h});
   },
 
@@ -371,13 +347,7 @@ export default {
     const d = new Date().getUTCDay();
     ctx.waitUntil(sendEconomicAlert(env));
     ctx.waitUntil(checkInsiderAlerts(env));
-
-    // [FIX 2026-06-12] เดิม h===1 / h===9 ไม่เคยตรงกับ cron "0 */2 * * *"
-    // (cron รันแค่เลขคู่: 0,2,4,6,8,10,...) เพราะ 1 และ 9 เป็นเลขคี่
-    // → ขยายเป็น h===1||h===2 และ h===9||h===10 เพื่อให้ tick ที่ใกล้สุด
-    //   (h=2, h=10) จับเงื่อนไขได้จริง — cooldown 20 ชม. ในแต่ละฟังก์ชัน
-    //   ป้องกันการส่งซ้ำอยู่แล้ว จึงไม่กระทบ
-    if(h===1||h===2) ctx.waitUntil(sendMorningBrief(env));              // 08:00 ไทย (UTC 01:00)
-    if((h===9||h===10) && d>=1 && d<=5) ctx.waitUntil(sendPreMarket(env)); // 16:00 ไทย (UTC 09:00) จ-ศ
+    if(h===1||h===2) ctx.waitUntil(sendMorningBrief(env));
+    if((h===9||h===10) && d>=1 && d<=5) ctx.waitUntil(sendPreMarket(env));
   }
 };
