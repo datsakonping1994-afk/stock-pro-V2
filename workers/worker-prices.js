@@ -318,8 +318,50 @@ function getRevGrowthFromFinnhubMetric(m) {
   const raw = m?.['revenueGrowthQuarterlyYoy'];
   if (raw == null || !isFinite(raw)) return null;
   const pct = +raw * 100;
-  if (!isFinite(pct) || pct < -100 || pct > 5000) return null;
+  // [FIX] cap ที่ 300% — ตัวเลขสูงกว่านี้มักเกิดจาก M&A (เช่น AVGO+VMware) ไม่สะท้อนการเติบโตจริง
+  if (!isFinite(pct) || pct < -100 || pct > 300) return null;
   return +pct.toFixed(1);
+}
+
+// [NEW] ดึง Revenue Growth จาก Polygon financials (แม่นยำกว่า Finnhub โดยเฉพาะหุ้นที่มี M&A)
+async function getRevGrowthFromPolygon(ticker, polygonKeys) {
+  for (const key of polygonKeys) {
+    try {
+      // ดึง 2 ไตรมาสล่าสุด เพื่อคำนวณ YoY
+      const url = `https://api.polygon.io/vX/reference/financials?ticker=${ticker}&timeframe=quarterly&limit=5&sort=period_of_report_date&order=desc&apiKey=${key}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (r.status === 429) continue;
+      if (!r.ok) continue;
+      const d = await r.json();
+      const results = d?.results || [];
+      if (results.length < 2) continue;
+
+      // หา latest quarter และ same quarter ปีก่อน
+      const latest = results[0];
+      const latestRev = latest?.financials?.income_statement?.revenues?.value;
+      const latestPeriod = latest?.start_date?.slice(0, 7); // YYYY-MM
+
+      if (!latestRev || !latestPeriod) continue;
+
+      // หา quarter เดียวกันปีก่อน (period ห่างกัน ~12 เดือน)
+      const latestDate = new Date(latest.start_date);
+      const priorYear = results.find(r => {
+        if (!r.start_date) return false;
+        const d = new Date(r.start_date);
+        const monthDiff = (latestDate - d) / (1000 * 60 * 60 * 24 * 30);
+        return monthDiff >= 10 && monthDiff <= 14; // ~12 เดือนก่อน
+      });
+
+      if (!priorYear) continue;
+      const priorRev = priorYear?.financials?.income_statement?.revenues?.value;
+      if (!priorRev || priorRev === 0) continue;
+
+      const growth = ((latestRev - priorRev) / Math.abs(priorRev)) * 100;
+      if (!isFinite(growth) || growth < -100 || growth > 300) continue;
+      return +growth.toFixed(1);
+    } catch {}
+  }
+  return null;
 }
 
 async function backfillPastEarnings(items, tickers, from, to, finnhubKeys, env) {
@@ -394,7 +436,28 @@ export default {
 
     const url = new URL(req.url);
 
-    // ── [NEW] /user/stocks — sync stocks list กับ KV ──
+    // ── [NEW] /user/portfolio — sync portfolio จาก index.html ให้ brief worker อ่านได้ ──
+    if (url.pathname === '/user/portfolio') {
+      if (req.method === 'POST') {
+        try {
+          const body = await req.json();
+          if (!Array.isArray(body)) return new Response(JSON.stringify({ok:false,error:'expected array'}), {status:400,headers:cors});
+          await env.ALERT_KV.put('portfolio', JSON.stringify(body), { expirationTtl: 365*24*3600 });
+          return new Response(JSON.stringify({ok:true,count:body.length}), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        } catch(e) {
+          return new Response(JSON.stringify({ok:false,error:e.message}), {status:500,headers:cors});
+        }
+      }
+      if (req.method === 'GET') {
+        try {
+          const raw = await env.ALERT_KV.get('portfolio');
+          return new Response(raw || '[]', { headers: { ...cors, 'Content-Type': 'application/json' } });
+        } catch {
+          return new Response('[]', { headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+      }
+      return new Response(JSON.stringify({ok:false,error:'method not allowed'}), {status:405,headers:cors});
+    }
     if (url.pathname === '/user/stocks') {
       if (req.method === 'GET') {
         try {
@@ -781,7 +844,15 @@ export default {
           if (!r.ok) continue;
           const d = await r.json();
           const m = d?.metric || {};
-          const result = { pe: m['peNormalizedAnnual']||m['peTTM']||null, mktcap: m['marketCapitalization']||null, beta: m['beta']||null, eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null, revGrowth: getRevGrowthFromFinnhubMetric(m), revLatestQ: null, div: m['dividendYieldIndicatedAnnual']||null, high52: m['52WeekHigh']||null, low52: m['52WeekLow']||null, shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0) ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null, de: m['totalDebt/totalEquityAnnual']||null, fcf: m['freeCashFlowTTM']||null };
+          let revGrowth = getRevGrowthFromFinnhubMetric(m);
+          // [NEW] ถ้า Finnhub ให้ null (เช่น M&A distortion) → ลอง Polygon แทน
+          if (revGrowth == null) {
+            const polygonKeys = getPolygonKeys(env);
+            if (polygonKeys.length > 0) {
+              revGrowth = await getRevGrowthFromPolygon(ticker, polygonKeys);
+            }
+          }
+          const result = { pe: m['peNormalizedAnnual']||m['peTTM']||null, mktcap: m['marketCapitalization']||null, beta: m['beta']||null, eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null, revGrowth, revLatestQ: null, div: m['dividendYieldIndicatedAnnual']||null, high52: m['52WeekHigh']||null, low52: m['52WeekLow']||null, shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0) ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null, de: m['totalDebt/totalEquityAnnual']||null, fcf: m['freeCashFlowTTM']||null };
           try { await env.ALERT_KV.put(kvKey, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
           return new Response(JSON.stringify({ ok: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
         } catch {}
@@ -802,7 +873,12 @@ export default {
             if (!r.ok) continue;
             const d = await r.json();
             const m = d?.metric || {};
-            const result = { pe: m['peNormalizedAnnual']||m['peTTM']||null, mktcap: m['marketCapitalization']||null, beta: m['beta']||null, eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null, revGrowth: getRevGrowthFromFinnhubMetric(m), revLatestQ: null, div: m['dividendYieldIndicatedAnnual']||null, high52: m['52WeekHigh']||null, low52: m['52WeekLow']||null, shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0) ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null, de: m['totalDebt/totalEquityAnnual']||null, fcf: m['freeCashFlowTTM']||null };
+            let revGrowth = getRevGrowthFromFinnhubMetric(m);
+            if (revGrowth == null) {
+              const polygonKeys = getPolygonKeys(env);
+              if (polygonKeys.length > 0) revGrowth = await getRevGrowthFromPolygon(ticker, polygonKeys);
+            }
+            const result = { pe: m['peNormalizedAnnual']||m['peTTM']||null, mktcap: m['marketCapitalization']||null, beta: m['beta']||null, eps: m['epsBasicExclExtraItemsTTM']||m['epsTTM']||null, revGrowth, revLatestQ: null, div: m['dividendYieldIndicatedAnnual']||null, high52: m['52WeekHigh']||null, low52: m['52WeekLow']||null, shortFloat: (m['shortInterest']!=null&&m['sharesOutstanding']>0) ? +((m['shortInterest']/m['sharesOutstanding']*100).toFixed(2)) : null, de: m['totalDebt/totalEquityAnnual']||null, fcf: m['freeCashFlowTTM']||null };
             results[ticker] = result;
             try { await env.ALERT_KV.put(`metrics_${ticker}`, JSON.stringify(result), { expirationTtl: 86400 }); } catch {}
             break;
