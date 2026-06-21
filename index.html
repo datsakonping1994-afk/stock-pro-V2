@@ -9571,8 +9571,9 @@ async function fetchAndRenderEarnings(force=false){
       {
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
         const _apiTickers=new Set(items.filter(e=>e.date||e.d).map(e=>e.symbol||e.t));
-        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM'];
-        // [FIX] hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
+        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM',
+          'GOOGL','AAPL','AMZN','MSFT','META','TSLA','NVDA']; // big tech ที่ Finnhub มักไม่มีวันอนาคต
+        // [FIX] known_EARNINGS hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
         const KNOWN_EARNINGS={
           'MU':  {date:'2026-06-24',epsEstimate:19.15,hour:'amc'},
           'AVAV':{date:'2026-06-29',epsEstimate:null,hour:'amc'},
@@ -9582,6 +9583,37 @@ async function fetchAndRenderEarnings(force=false){
           if(!items.find(e=>(e.symbol||e.t)===ticker)){
             items.push({symbol:ticker,date:info.date,epsEstimate:info.epsEstimate,hour:info.hour,_source:'known'});
           }
+        }
+        // [NEW] force Yahoo fetch สำหรับ big tech ที่ Finnhub calendar มักขาดวันอนาคต
+        const BIG_TECH=['TSLA','META','GOOGL','AAPL','AMZN','MSFT','NVDA','AAPL'];
+        const bigTechMissing=BIG_TECH.filter(t=>{
+          const existing=items.find(e=>(e.symbol||e.t)===t);
+          // ถ้าไม่มีวันอนาคต ให้ดึง Yahoo ใหม่
+          const today=new Date().toISOString().slice(0,10);
+          return !existing||!existing.date||(existing.date<=today);
+        });
+        if(bigTechMissing.length>0){
+          const bigTechResults=await Promise.allSettled(bigTechMissing.map(async ticker=>{
+            try{
+              const yh=ticker.replace('.','-');
+              const d=await _fetchYahooQuoteSummary(yh,'calendarEvents',6000);
+              const earnings=d?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
+              if(!earnings?.earningsDate?.[0]) return null;
+              const ts=earnings.earningsDate[0].raw*1000;
+              const dateStr=new Date(ts).toISOString().slice(0,10);
+              const today=new Date().toISOString().slice(0,10);
+              if(dateStr<=today) return null; // ผ่านมาแล้ว
+              return {symbol:ticker,date:dateStr,epsEstimate:earnings.epsEstimate?.raw||null,hour:'amc',_source:'yahoo_forced'};
+            }catch{ return null; }
+          }));
+          for(const r of bigTechResults){
+            if(r.status==='fulfilled'&&r.value){
+              const idx=items.findIndex(e=>(e.symbol||e.t)===r.value.symbol);
+              if(idx>=0) items[idx]={...items[idx],...r.value};
+              else items.push(r.value);
+            }
+          }
+          console.log('[Earnings] big tech Yahoo forced fetch done');
         }
         const otherTickers=allNeeded.filter(t=>!priorityTickers.includes(t)&&!_apiTickers.has(t));
         const missingTickers=[
