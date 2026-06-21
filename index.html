@@ -14540,15 +14540,17 @@ const BENEFICIARY_MAP={
     negative_sentiment:[{t:'AAPL',reason:'Apple ผลิตใน China กระทบจาก tariff โดยตรง'},{t:'NVDA',reason:'ข้อจำกัดส่งออก chip ไป China กระทบ data center revenue'},{t:'TSLA',reason:'Tesla โรงงาน Shanghai กระทบถ้าจีน-สหรัฐตึงเครียด'}]
   },
   'geopolitical':{
+    // geopolitical bearish (สงคราม/ความตึงเครียด) → defense/energy ได้ประโยชน์
+    // geopolitical bullish (สงบศึก/ดีลสันติภาพ) → defense/energy เสียประโยชน์
+    // แต่ทั้งสองกรณี map นี้เป็นแค่ fallback — AI stocks_to_monitor มาก่อนเสมอ
     positive_sentiment:[
-      {t:'LMT',reason:'ความขัดแย้งทางภูมิรัฐศาสตร์กระตุ้นให้ประเทศต่างๆ เพิ่มงบกลาโหม Lockheed Martin ได้รับ order missile และเครื่องบินรบเพิ่มโดยตรง'},
-      {t:'RTX',reason:'Raytheon เป็นผู้ผลิต missile defense system รายใหญ่ ความไม่มั่นคงโลกเพิ่ม demand ซึ่งส่งผลต่อ revenue โดยตรง'},
-      {t:'XOM',reason:'ความขัดแย้งในตะวันออกกลางดันราคาน้ำมันขึ้น Exxon ได้ประโยชน์โดยตรงจาก upstream revenue ที่สูงขึ้น'},
-      {t:'CVX',reason:'Chevron ได้ประโยชน์จากราคาน้ำมันที่สูงขึ้นในช่วงความตึงเครียดภูมิรัฐศาสตร์ กำไร upstream เพิ่มทันที'},
+      {t:'LMT',reason:'งบกลาโหมเพิ่มจากความตึงเครียด Lockheed Martin ได้รับ order missile และเครื่องบินรบเพิ่มโดยตรง'},
+      {t:'RTX',reason:'Raytheon ผู้ผลิต missile defense system รายใหญ่ demand เพิ่มโดยตรงจากความไม่มั่นคงโลก'},
+      {t:'XOM',reason:'ความขัดแย้งดันราคาน้ำมันขึ้น Exxon upstream revenue เพิ่มทันที'},
     ],
     negative_sentiment:[
-      {t:'BABA',reason:'Alibaba ถูกกระทบทั้งจาก export ban สหรัฐฯ และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China ราคาหุ้นมักตกหนัก'},
-      {t:'AAPL',reason:'Apple ผลิตสินค้าใน China เป็นหลัก ความตึงเครียด US-China กระทบ supply chain และความเสี่ยง tariff โดยตรง'},
+      {t:'BABA',reason:'Alibaba กระทบจาก export ban และความเสี่ยงกฎระเบียบจีน ในช่วงตึงเครียด US-China'},
+      {t:'AAPL',reason:'Apple supply chain ใน China กระทบจากความตึงเครียด US-China และความเสี่ยง tariff'},
     ]
   },
   'tech_ai':{
@@ -14635,6 +14637,20 @@ function _buildBeneficiaries(eventTypes,sentiment,aiStocksBuy,headline,aiItem){
     }
   }
 
+  // [NEW] geopolitical fallback แยกต่างหาก — bearish news → defense/energy เป็น beneficiary เสมอ
+  if(beneficiaries.length<2 && eventTypes.includes('geopolitical')){
+    const geoKey=!isPositive?'positive_sentiment':'negative_sentiment'; // invert: bearish news → positive_sentiment เป็น beneficiary
+    const map=BENEFICIARY_MAP['geopolitical'];
+    if(map&&map[geoKey]){
+      for(const entry of map[geoKey]){
+        if(seen.has(entry.t)||ETF_UNIVERSE.has(entry.t)) continue;
+        beneficiaries.push({t:entry.t,reason:entry.reason,source:'kb',indirect:false});
+        seen.add(entry.t);
+        if(beneficiaries.length>=3) break;
+      }
+    }
+  }
+
   return beneficiaries.slice(0,4);
 }
 
@@ -14681,7 +14697,6 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
       }
       if(losers.length>=2) break;
     }
-  }
   }
 
   return losers.slice(0,3);
@@ -15458,6 +15473,8 @@ async function _eliteDirectFallback(overlay){
       if(Array.isArray(item.stocks_watch)){
         item.stocks_watch=item.stocks_watch.filter(t=>!etfSet.has(t));
       }
+
+
 
       // 6. confidence ต่ำเกินสำหรับ Reuters/Bloomberg
       const url=(item.source_url||item.sourceUrl||'').toLowerCase();
