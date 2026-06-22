@@ -279,7 +279,7 @@ async function callAI(env, system, user) {
   const gemKeys = [env.GEMINI_KEY, env.GEMINI_KEY_2, env.GEMINI_KEY_3].filter(Boolean);
   for (const gk of gemKeys) {
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gk}`, {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gk}`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           systemInstruction:{parts:[{text:system}]},
