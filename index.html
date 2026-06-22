@@ -15449,7 +15449,16 @@ async function _eliteDirectFallback(overlay){
         if(rawText) console.log('[Elite] using Claude Haiku');
       }
     }
-    if(!rawText) return _mapNewsToResults(allNews);
+    if(!rawText){
+      const errDetails=[];
+      if(!groqKey) errDetails.push('Groq: ไม่มี key');
+      else errDetails.push('Groq: ไม่ตอบสนอง (rate limit หรือ timeout)');
+      if(!geminiKeys.length) errDetails.push('Gemini: ไม่มี key');
+      else errDetails.push('Gemini: quota หมดหรือ error');
+      if(!orKey) errDetails.push('OpenRouter: ไม่มี key');
+      if(!_ank) errDetails.push('Claude: ไม่มี key');
+      return _mapNewsToResults(allNews, errDetails.join(' | '));
+    }
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if(!jsonMatch) return _mapNewsToResults(allNews);
     let items = [];
@@ -15580,7 +15589,9 @@ function _isEnglish(text){
   return !/[\u0E00-\u0E7F]/.test(text);
 }
 
-function _mapNewsToResults(allNews){
+function _mapNewsToResults(allNews, errorDetail){
+  if(errorDetail) console.warn('[Elite API Error]', errorDetail);
+  window._eliteLastError = errorDetail||null;
   return allNews.map(function(item){
     const baseItem = {
       headline:item.headline, summary:item.summary,
@@ -15607,7 +15618,7 @@ function _showEliteNoApiOverlay(overlay){
   overlay.innerHTML = hasAnyKey
     ? `<div style="font-size:22px">😔</div>
        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">วิเคราะห์ไม่สำเร็จ</div>
-       <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">API ทั้งหมดไม่ตอบสนองในขณะนี้</div>
+       <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6;padding:0 20px">${window._eliteLastError||'API ทั้งหมดไม่ตอบสนองในขณะนี้'}</div>
        <button onclick="runEliteScan(true)" style="margin-top:10px;background:linear-gradient(135deg,rgba(255,107,53,0.2),rgba(255,107,53,0.1));border:1px solid rgba(255,107,53,0.5);border-radius:12px;padding:10px 24px;font-size:12px;font-weight:700;color:#ff6b35;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px">🔄 ลองใหม่</button>`
     : `<div style="font-size:22px">🔑</div>
        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text)">ยังไม่มี API Key</div>
