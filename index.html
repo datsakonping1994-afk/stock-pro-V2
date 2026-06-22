@@ -14492,7 +14492,7 @@ const ETF_EVENT_MAP={
   'gdp_data':     {up:['SPY','IWM'],down:['TLT'],neutral:['QQQ']},
   'earnings':     {up:[],down:[],neutral:['SPY','QQQ']},
   'trade_policy': {up:['GLD','USO'],down:['SPY','QQQ','SMH'],neutral:['EEM']},
-  'geopolitical': {up:['GLD','USO','XLE'],down:['EEM','FXI','SPY'],neutral:['TLT']},
+  'geopolitical': {up:['GLD','TLT','USO','XLE','DXY'],down:['SPY','QQQ','EEM','FXI'],neutral:[]},
   'political':    {up:['GLD'],down:['EEM'],neutral:['SPY','TLT']},
   'm_and_a':      {up:[],down:[],neutral:['SPY']},
   'tech_ai':      {up:['QQQ','SOXX','SMH','ARKK'],down:[],neutral:['SPY']},
@@ -15541,9 +15541,18 @@ async function _eliteDirectFallback(overlay){
         // ไม่เพิ่มอัตโนมัติ — แค่ลบออกจาก stocks_to_monitor พอ
       }
       const url=(item.source_url||item.sourceUrl||'').toLowerCase();
-      const tier1=['reuters.com','bloomberg.com','wsj.com','ft.com','apnews.com','federalreserve.gov'];
-      if(tier1.some(s=>url.includes(s)) && (item.confidence||0)<65){
+      const tier1=['reuters.com','bloomberg.com','wsj.com','ft.com','apnews.com','federalreserve.gov','whitehouse.gov','sec.gov','bbc.com','cnbc.com'];
+      const isTier1=tier1.some(s=>url.includes(s));
+      if(isTier1){
+        // Reuters/Bloomberg → ขั้นต่ำ 72% เสมอ
         item.confidence=Math.max(item.confidence||0, 72);
+        // Official statement (Trump/Fed/CEO พูดโดยตรง) → ขั้นต่ำ 80%
+        const h=(item.headline||'').toLowerCase();
+        const isOfficial=h.includes('says')||h.includes('said')||h.includes('warns')||
+          h.includes('announces')||h.includes('ระบุ')||h.includes('กล่าว')||
+          h.includes('ประกาศ')||h.includes('เตือน')||h.includes('แถลง')||
+          h.includes('ระบุว่า')||h.includes('จะ');
+        if(isOfficial) item.confidence=Math.max(item.confidence, 80);
       }
 
       return item;
@@ -16238,10 +16247,25 @@ function renderEliteScanResults(results, ageMs=0){
                 </div>`).join('')}
               </div></div>`;
             // AI Inference section — indirect only
-            const allIndirect=[...indirect,...indirectLosers];
-            if(allIndirect.length) html+=`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+            // [FIX] ซ่อนถ้า reason เป็น generic หรือไม่เกี่ยวกับ sector ของข่าว
+            const _nSector=(n.sector||'').toLowerCase();
+            const _isGeoEnergyNews=_nSector.includes('geo')||_nSector.includes('energy')||_nSector.includes('defense');
+            const _genericReasons=['ai แนะนำเพิ่มเติม','ai มองว่าควรระมัดระวัง','แนวโน้มข่าวนี้'];
+            const _techOnlySet=new Set(['NVDA','AMD','MSFT','META','GOOGL','TSLA','AAPL','AMZN']);
+            const filteredIndirect=([...indirect,...indirectLosers]).filter(s=>{
+              // ถ้าข่าว geo/energy → ซ่อน pure tech stocks ที่ reason เป็น generic
+              if(_isGeoEnergyNews && _techOnlySet.has(s.t||s)){
+                const r=(s.reason||'').toLowerCase();
+                const isGeneric=_genericReasons.some(g=>r.includes(g));
+                if(isGeneric) return false;
+              }
+              // ซ่อนถ้าไม่มี reason เลย
+              if(!s.reason) return false;
+              return true;
+            });
+            if(filteredIndirect.length) html+=`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
               <div style="font-size:9px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px">🤖 AI Inference — ไม่ได้พูดถึงในข่าวโดยตรง</div>
-              <div style="display:flex;flex-direction:column;gap:4px">${allIndirect.map(s=>`
+              <div style="display:flex;flex-direction:column;gap:4px">${filteredIndirect.map(s=>`
                 <div style="display:flex;align-items:flex-start;gap:6px">
                   <span style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.2);border-radius:6px;padding:2px 7px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0">${s.t||s}</span>
                   ${s.reason?`<span style="font-size:10px;color:var(--text3);line-height:1.4;padding-top:2px">${s.reason}</span>`:''}
@@ -16260,6 +16284,23 @@ function renderEliteScanResults(results, ageMs=0){
               return `<span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${col}">${ico} ${k}</span>`;
             }).join('')}
           </div>
+          ${(()=>{
+            // [NEW] Energy Impact section สำหรับข่าว geo/energy
+            const _sec=(n.sector||'').toLowerCase();
+            const _hl=(n.headline||'').toLowerCase();
+            const _isEnergyGeo=_sec.includes('geo')||_sec.includes('energy')||_sec.includes('defense')||
+              _hl.includes('น้ำมัน')||_hl.includes('oil')||_hl.includes('อิหร่าน')||_hl.includes('ตะวันออกกลาง')||_hl.includes('iran')||_hl.includes('opec');
+            if(!_isEnergyGeo) return '';
+            const _sent=n.sentiment||'neutral';
+            const _energyDir=_sent==='bearish'?'▲':'▼'; // geo bearish → oil ↑
+            const _energyCol=_sent==='bearish'?'var(--green)':'var(--red)';
+            return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+              <div style="font-size:9px;color:#f97316;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px">⚡ Energy Impact</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                ${['XLE','XOM','CVX'].map(t=>`<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.3);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${_energyCol}">${_energyDir} ${t}</span>`).join('')}
+              </div>
+            </div>`;
+          })()}
         </div>` : ''}
         <!-- [NEW] Timeline -->
         ${n.timeline ? `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:8px 10px;margin-bottom:6px">
@@ -16419,7 +16460,20 @@ function _renderEliteModal(idx){
       ${(()=>{
         const sent = n.sentiment||'neutral';
         const conf = n.confidence_score||n.confidence||0;
-        const bullPct = sent==='bullish'?conf:sent==='bearish'?(100-conf):50;
+        // [FIX] Bearish/Bullish % ไม่ควรผูกกับ confidence
+        // ใช้ sentiment_strength จาก AI หรือ คำนวณจาก event type
+        const _evTypes = n._eventTypes||[];
+        const _isGeoRisk = _evTypes.includes('geopolitical')||_evTypes.includes('trade_policy')||
+          (n.sector||'').toLowerCase().includes('geo')||
+          (n.sector||'').toLowerCase().includes('defense');
+        // geo risk bearish → Bearish 65-70%, bullish → Bullish 65%
+        let sentStrength = n.sentiment_strength || null;
+        if(!sentStrength){
+          if(_isGeoRisk && sent==='bearish') sentStrength=67;
+          else if(_isGeoRisk && sent==='bullish') sentStrength=65;
+          else sentStrength=Math.round(50+(conf-50)*0.5); // อิง confidence บางส่วน
+        }
+        const bullPct = sent==='bullish'?sentStrength:sent==='bearish'?(100-sentStrength):50;
         const bearPct = 100-bullPct;
         const sentColor = sent==='bullish'?'#00e676':sent==='bearish'?'#ff4d6a':'#c9a84c';
         const sentLabel = sent==='bullish'?'Bullish':sent==='bearish'?'Bearish':'Neutral';
