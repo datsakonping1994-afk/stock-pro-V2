@@ -15476,7 +15476,28 @@ async function _eliteDirectFallback(overlay){
 
 
 
-      // 6. confidence ต่ำเกินสำหรับ Reuters/Bloomberg
+      // [NEW] 7. กรอง stocks_to_monitor/stocks_at_risk ที่ไม่เกี่ยวกับ sector ของข่าว
+      // ข่าว geo/energy/defense → กรอง EV/ride-share/pure-consumer ออก ถ้า reason ไม่ชัดพอ
+      const itemSector=(item.sector||'').toLowerCase();
+      const itemTags=((item.tags||[]).join(' ')).toLowerCase();
+      const isGeoEnergy=itemSector.includes('geo')||itemSector.includes('energy')||
+        itemSector.includes('defense')||itemTags.includes('geo')||itemTags.includes('energy');
+
+      // หุ้นที่ไม่เกี่ยวกับ geo/energy โดยตรง
+      const nonGeoTickers=new Set(['UBER','RIVN','LYFT','LCID','NIO','DASH','ABNB',
+        'NVDA','AMD','MSFT','GOOGL','META','AAPL','TSLA','AMZN']);
+
+      if(isGeoEnergy && Array.isArray(item.stocks_to_monitor)){
+        item.stocks_to_monitor=item.stocks_to_monitor.filter(s=>{
+          if(!nonGeoTickers.has(s.t)) return true;
+          // ยกเว้นถ้า reason อธิบายการเชื่อมโยงกับ energy/geo ชัดเจน (>40 chars)
+          const r=s.reason||'';
+          const hasEnergyLink=r.includes('น้ำมัน')||r.includes('oil')||r.includes('energy')||
+            r.includes('เชื้อเพลิง')||r.includes('geo')||r.includes('ภูมิรัฐ')||
+            r.includes('defense')||r.includes('กลาโหม');
+          return hasEnergyLink && r.length>30;
+        });
+      }
       const url=(item.source_url||item.sourceUrl||'').toLowerCase();
       const tier1=['reuters.com','bloomberg.com','wsj.com','ft.com','apnews.com','federalreserve.gov'];
       if(tier1.some(s=>url.includes(s)) && (item.confidence||0)<65){
@@ -15491,7 +15512,7 @@ async function _eliteDirectFallback(overlay){
       if(!person) return null;
       const rawNews = allNews.find(function(n){return n.id===item.id;});
       item._sourcesCount = 1;
-      return {person:person, news: buildNewsAnalysis(item, rawNews?rawNews.url:'')};
+      return {person:person, news: buildNewsAnalysis(item, item.source_url||rawNews?.url||'')};
     }).filter(Boolean);
   }catch(e){
     return _mapNewsToResults(allNews);
