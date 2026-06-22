@@ -1957,7 +1957,8 @@ function calcFundScore(s){
   // 1. กำไร/ขาดทุน
   if(s.pe) score+=20; else score+=0;
   // 2. Revenue Growth (prefer live)
-  const rev=parseFloat(s.revLive||s.rev||0);
+  const _revRaw=parseFloat(s.revLive||s.rev||0);
+  const rev=isNaN(_revRaw)?0:_revRaw; // [FIX] ป้องกัน NaN จาก "N/A"
   if(rev>=50) score+=25;
   else if(rev>=20) score+=18;
   else if(rev>=10) score+=12;
@@ -10382,7 +10383,7 @@ ${results}`.slice(0,4000);
                      'anthropic-version':'2023-06-01',
                      'anthropic-dangerous-direct-browser-access':'true'},
             body:JSON.stringify({
-              model:'claude-sonnet-4-20250514',
+              model:'claude-haiku-4-5-20251001',
               max_tokens:800,
               tools:[{type:'web_search_20250305',name:'web_search'}],
               messages:[{role:'user',content:`Search for ${ticker} latest earnings call highlights, management guidance, CEO comments, and business outlook.`}]
@@ -10708,7 +10709,7 @@ ${buyCandidates||'ไม่มีหุ้นผ่านเกณฑ์'}
                  'anthropic-version':'2023-06-01',
                  'anthropic-dangerous-direct-browser-access':'true'},
         body: JSON.stringify({
-          model:'claude-sonnet-4-20250514',
+          model:'claude-haiku-4-5-20251001',
           max_tokens:800,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           messages:[{role:'user',content:`ค้นหาข่าวตลาดหุ้นสหรัฐฯ วันนี้ที่สำคัญ 5 ข่าว รวมถึง S&P500, Nasdaq, Fed, เงินเฟ้อ, เศรษฐกิจ ตอบเป็น bullet points ภาษาอังกฤษ กระชับ`}]
@@ -12634,8 +12635,8 @@ async function runMorningBrief(){
   toast('☀️ กำลังสรุป Morning Brief...', 4000);
 
   // ดึงข้อมูลพอร์ต
-  let portfolio=[];
-  try{portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{}
+  let _briefPortfolio=[];
+  try{_briefPortfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]');}catch{}
 
   // สรุปภาพรวมตลาด
   const up=stocks.filter(s=>s.c>0).length;
@@ -12645,8 +12646,8 @@ async function runMorningBrief(){
 
   // สรุปพอร์ต
   let portSummary='ไม่มีหุ้นในพอร์ต';
-  if(portfolio.length){
-    const portDetails=portfolio.map(pos=>{
+  if(_briefPortfolio.length){
+    const portDetails=_briefPortfolio.map(pos=>{
       const s=stocksMap.get(pos.t);
       if(!s) return null;
       const pnlPct=pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
@@ -12657,7 +12658,7 @@ async function runMorningBrief(){
   }
 
   // Earnings วันนี้–3 วัน
-  const portTickers=new Set(portfolio.map(p=>p.t));
+  const portTickers=new Set(_briefPortfolio.map(p=>p.t));
   const wlTickers=watchlist;
   const earnSoon=[...new Set([...portTickers,...wlTickers])]
     .map(t=>stocksMap.get(t))
@@ -12694,8 +12695,8 @@ ${earnSoon.length?earnSoon.join(', '):'ไม่มี'}
 
   // ── สรุปพอร์ตสำหรับ TG ──
   let portTGLines = '';
-  if(portfolio.length>0){
-    const portLines = portfolio.map(pos=>{
+  if(_briefPortfolio.length>0){
+    const portLines = _briefPortfolio.map(pos=>{
       const s = stocksMap.get(pos.t);
       if(!s||!s.p) return null;
       const pnlPct = pos.avgPrice>0?((s.p-pos.avgPrice)/pos.avgPrice*100):0;
@@ -13049,7 +13050,7 @@ ${t} ข่าวล่าสุด: ${headlines}`;
                    'anthropic-version':'2023-06-01',
                    'anthropic-dangerous-direct-browser-access':'true'},
           body:JSON.stringify({
-            model:'claude-sonnet-4-20250514',
+            model:'claude-haiku-4-5-20251001',
             max_tokens:1500,
             tools:[{type:'web_search_20250305',name:'web_search'}],
             messages:[{role:'user',content:`Search for the latest news about ${tickers.join(', ')} stock. Find:
@@ -13601,9 +13602,9 @@ window.toast = function(msg, dur=3000){
 
 // ── Hook Buy Signal + Exit Signal → Push ──
 const _origSendTGLocal = window._sendBuyAlertLocal;
-function _sendPushAlert(title, body){
+function _sendPushAlert(title, body, options={}){
   if(_lsGet('push_enabled')==='1'){
-    showLocalNotification(title, body, {tag: 'signal-'+Date.now(), requireInteraction: true});
+    showLocalNotification(title, body, {tag: 'signal-'+Date.now(), requireInteraction: true, ...options});
   }
 }
 
@@ -16735,9 +16736,9 @@ async function analyzePortfolioImpact(personId, btn){
     const _ank=localStorage.getItem('anthropicKey')||'';
     const response = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-5',
+        model:'claude-haiku-4-5-20251001',
         max_tokens:800,
         messages:[{role:'user',content:prompt}]
       })
@@ -17631,9 +17632,10 @@ async function eliteBackgroundScan(){
 ถ้าไม่มีข่าวสำคัญตอบ []`;
 
     const _ank=localStorage.getItem('anthropicKey')||'';
+    if(!_ank) return; // [FIX] ไม่มี key → ไม่ต้องเรียก API
     const response = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:600,
