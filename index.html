@@ -1227,7 +1227,7 @@ canvas.bigchart{width:100%;height:100%}
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
     <button onclick="closeModal('earningsModal')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
-    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear',{method:'POST'});}catch{}try{await fetch(PRICES_WORKER+'/earnings/clear');}catch{}await fetchAndRenderEarnings(true);this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
+    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear',{method:'POST',signal:AbortSignal.timeout(5000)});}catch{}try{await fetch(PRICES_WORKER+'/earnings/clear',{signal:AbortSignal.timeout(5000)});}catch{}await fetchAndRenderEarnings(true);this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
   </div>
   <div id="earningsBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
@@ -1776,7 +1776,7 @@ let stocks=(()=>{
       if(r.ok){
         const arr=await r.json();
         if(Array.isArray(arr)&&arr.length>0){
-          localStorage.setItem('_sp_stocks',JSON.stringify(arr));
+          try{ localStorage.setItem('_sp_stocks',JSON.stringify(arr)); }catch{}
           // merge กับ stocks array ปัจจุบัน
           const existing=new Set(stocks.map(s=>s.t));
           for(const s of arr){
@@ -2101,8 +2101,8 @@ async function loadHistEarnings(ticker){
         });
       }
       if(mapped.length>0){
-        mapped.reverse(); // เรียงเก่า→ใหม่
-        histEarnings[ticker]=mapped;
+        const mappedSorted = [...mapped].reverse(); // [FIX] ไม่แก้ array ต้นฉบับ
+        histEarnings[ticker]=mappedSorted;
         return mapped;
       }
     }
@@ -3900,7 +3900,7 @@ async function fetchAnalystData(ticker){
               return (isBuy?'🟢':'🔴')+' '+t.name+' '+(isBuy?'ซื้อ':'ขาย')+' '+fmtVal+' ('+t.date+')';
             }).join('\n');
             _sendPushAlert(
-              txns[0].type==='buy'?'🟢':'🔴'+' Insider: '+ticker,
+              (txns[0].type==='buy'?'🟢':'🔴')+' Insider: '+ticker,
               txns[0].name+(txns[0].type==='buy'?' ซื้อ':' ขาย')+' '+txns[0].val,
               {tag:'insider-'+ticker, data:{url:'/stock-pro-V2/?open='+ticker}}
             );
@@ -5227,7 +5227,7 @@ function importPortfolioBackup(input){
       if(Array.isArray(raw)) imported=raw;
       else if(raw.portfolio&&Array.isArray(raw.portfolio)){
         imported=raw.portfolio;
-        if(raw.cash&&!isNaN(raw.cash)){ _portCash=parseFloat(raw.cash); localStorage.setItem('_sp_cash',_portCash.toString()); }
+        if(raw.cash&&!isNaN(raw.cash)){ _portCash=parseFloat(raw.cash); try{ localStorage.setItem('_sp_cash',_portCash.toString()); }catch{} }
       }
       const valid=imported.filter(function(p){return p&&p.t&&typeof p.avgPrice==='number'&&p.shares>0;});
       if(!valid.length){ toast('❌ ไฟล์ไม่มีข้อมูลพอร์ต'); return; }
@@ -5627,11 +5627,11 @@ ${news.length?`\n📰 ข่าวล่าสุด:\n${news.map((n,i)=>`${i+1}
 // ── แจ้งเตือนหุ้นในพอร์ตที่ Earnings ใกล้ (1 วัน) ──
 const _earnAlerted = new Set();
 function checkEarningsAlert(){
-  let portfolio=[];
-  try{ portfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
-  if(!portfolio.length) return;
+  let _earnPortfolio=[];
+  try{ _earnPortfolio=JSON.parse(localStorage.getItem('_sp_portfolio')||'[]'); }catch{}
+  if(!_earnPortfolio.length) return;
 
-  portfolio.forEach(pos=>{
+  _earnPortfolio.forEach(pos=>{
     const s = stocksMap.get(pos.t);
     const earnDate = s?.earnLive||s?.earn;
     if(!s||!earnDate) return;
@@ -6174,10 +6174,13 @@ async function sendTG(msg){
   try{
     const adminKey=localStorage.getItem('adminKey')||'';
     if(adminKey){
-      const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey));
+      const _flCtrl=new AbortController(); setTimeout(()=>_flCtrl.abort(),8000);
+      const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey),{signal:_flCtrl.signal});
       const d=await r.json();
       if(d.ok && d.users && d.users.length){
-        await Promise.all(d.users.filter(u=>u.tgToken&&u.tgChatId).map(u=>_sendOneTG(u.tgToken,u.tgChatId,msg)));
+        // [FIX] จำกัด 50 คนต่อครั้ง + allSettled แทน all เพื่อไม่ให้ 1 คน error กระทบทั้งหมด
+        const friendBatch = d.users.filter(u=>u.tgToken&&u.tgChatId).slice(0,50);
+        await Promise.allSettled(friendBatch.map(u=>_sendOneTG(u.tgToken,u.tgChatId,msg)));
       }
     }
   }catch{}
@@ -6210,7 +6213,8 @@ async function registerFriend(){
     const r=await fetch(ALERT_WORKER+'/user/register',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({adminKey,name,tgToken,tgChatId})
+      body:JSON.stringify({adminKey,name,tgToken,tgChatId}),
+      signal:AbortSignal.timeout(10000)
     });
     const d=await r.json();
     if(d.ok){
@@ -6230,7 +6234,7 @@ async function loadFriendList(){
   const adminKey=document.getElementById('adminKeyInput')?.value?.trim();
   if(!adminKey){ toast('❌ ใส่ Admin Key ก่อน'); return; }
   try{
-    const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey));
+    const r=await fetch(ALERT_WORKER+'/user/list?adminKey='+encodeURIComponent(adminKey),{signal:AbortSignal.timeout(8000)});
     const d=await r.json();
     const el=document.getElementById('friendList');
     if(!d.ok){ el.innerHTML=`<div style="color:var(--red);font-size:12px">${d.error}</div>`; return; }
@@ -6255,7 +6259,8 @@ async function removeFriend(token, name){
     const r=await fetch(ALERT_WORKER+'/user/remove',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({adminKey,token})
+      body:JSON.stringify({adminKey,token}),
+      signal:AbortSignal.timeout(8000)
     });
     const d=await r.json();
     if(d.ok){ toast('✅ ลบแล้ว'); loadFriendList(); }
@@ -6456,7 +6461,7 @@ async function testAlphaVantageKey(){
   statusEl.style.background='rgba(100,210,255,0.08)';
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.textContent='⏳ กำลังทดสอบทุก key...';
-  const results = await Promise.all(keys.map(async(key,i)=>{
+  const results = await Promise.allSettled(keys.map(async(key,i)=>{
     try{
       const r=await _fetchWithTimeout(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&limit=1&apikey=${key}`,{},8000);
       const d=await r.json();
@@ -6499,7 +6504,7 @@ async function testTavilyKey(){
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
   statusEl.textContent='⏳ กำลังทดสอบ Tavily ทุก key...';
-  const results = await Promise.all(keys.map(async(key,i)=>{
+  const results = await Promise.allSettled(keys.map(async(key,i)=>{
     try{
       const r=await _fetchWithTimeout('https://api.tavily.com/search',{
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -6573,8 +6578,9 @@ async function testGroqKey(){
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
   statusEl.textContent='⏳ กำลังทดสอบ Groq ทุก key...';
-  const results = await Promise.all(keys.map((k,i)=>_testOneGroqKey(k,i+1)));
-  const lines = results.map((r,i)=>{
+  const results = await Promise.allSettled(keys.map((k,i)=>_testOneGroqKey(k,i+1)));
+  const lines = results.map((res,i)=>{
+    const r = res.status==='fulfilled' ? res.value : {ok:false, err:res.reason?.message||'timeout'};
     const label='Key '+(i+1);
     if(r.ok===true) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
     if(r.status===429) return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด</span>';
@@ -6797,8 +6803,9 @@ async function testGeminiKey(){
   statusEl.style.border='1px solid rgba(100,210,255,0.2)';
   statusEl.style.color='var(--text2)';
   statusEl.textContent='⏳ กำลังทดสอบ Gemini ทุก key...';
-  const results = await Promise.all(keys.map((k,i)=>_testOneGeminiKey(k,i+1)));
-  const lines = results.map((r,i)=>{
+  const results = await Promise.allSettled(keys.map((k,i)=>_testOneGeminiKey(k,i+1)));
+  const lines = results.map((res,i)=>{
+    const r = res.status==='fulfilled' ? res.value : {ok:false, err:res.reason?.message||'timeout'};
     const label='Key '+(i+1);
     if(r.ok===true) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
     if(r.ok==='quota') return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด (key ถูกต้อง)</span>';
@@ -6868,10 +6875,10 @@ async function addStock(){
   // ดึงข้อมูล Fundamental จาก Finnhub
   let name=t, pe=null, mktcap='N/A', beta=null, target=null, earn=null, div=null;
   try{
-    const [profileRes, metricRes] = await Promise.all([
-      fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${t}&token=${FINNHUB_KEY}`).then(r=>r.json()).catch(()=>({})),
-      fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${t}&metric=all&token=${FINNHUB_KEY}`).then(r=>r.json()).catch(()=>({}))
-    ]);
+    const [profileRes, metricRes] = await Promise.allSettled([
+      fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${t}&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()).catch(()=>({})),
+      fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${t}&metric=all&token=${FINNHUB_KEY}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json()).catch(()=>({}))
+    ]).then(rs=>rs.map(r=>r.status==='fulfilled'?r.value:{}));
 
     if(profileRes?.name) name = profileRes.name;
     if(profileRes?.marketCapitalization){
@@ -9476,11 +9483,12 @@ async function translateNewsItems(items){
 
     // ── 1. Google Translate (เร็ว ฟรี ไม่ต้อง key) ──
     try{
-      const gtResults=await Promise.all(batch.map(async n=>{
+      const gtRaw=await Promise.allSettled(batch.map(async n=>{
         const h=await _googleTranslate((n.h||'').slice(0,200));
         const x=n.x?(await _googleTranslate((n.x||'').slice(0,150))):null;
         return{h:h||n.h,x:x||n.x||''};
       }));
+      const gtResults=gtRaw.map((r,i)=>r.status==='fulfilled'?r.value:{h:batch[i]?.h||'',x:batch[i]?.x||''});
       const anyChanged=gtResults.some((t,i)=>t.h&&t.h!==batch[i]?.h);
       if(anyChanged) translated=gtResults;
     }catch(e){ console.warn('Google Translate error:',e.message); }
@@ -10472,7 +10480,9 @@ function _parseEarningsDate(dstr){
     const mon=_thMonths[p[1]];
     // FIX: ข้อมูลใช้ ค.ศ. (2026) ไม่ใช่ พ.ศ. (2569) — ไม่ต้องลบ 543
     const yr=parseInt(p[2]);
-    if(!isNaN(day)&&mon!==undefined&&!isNaN(yr)) return new Date(yr,mon,day,20,30,0);
+    // [FIX] ถ้าปี > 2500 แสดงว่าเป็น พ.ศ. → แปลงเป็น ค.ศ.
+    const yrCE = yr > 2500 ? yr - 543 : yr;
+    if(!isNaN(day)&&mon!==undefined&&!isNaN(yrCE)&&yrCE>=2020&&yrCE<=2050) return new Date(yrCE,mon,day,20,30,0);
   }
   return null;
 }
@@ -10617,26 +10627,34 @@ async function runAIMarketSummaryV2(){
   const nowTime=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
 
   // ── สร้าง Buy Candidates พร้อม S1/R1/ATR จริง ──
+  // [FIX] cache _calcBuyScore per ticker ป้องกันคำนวณซ้ำ 3 รอบ
+  const _buyScoreCache = new Map();
+  const _getBuyScore = (s) => {
+    if(!_buyScoreCache.has(s.t)){
+      const s1=getS1(s.t,s.p), r1=getR1(s.t,s.p);
+      _buyScoreCache.set(s.t, {ind:_calcBuyScore(s.t,s.p,s1,r1), s1, r1});
+    }
+    return _buyScoreCache.get(s.t);
+  };
   const buyCandidates = stocks
     .filter(s=>{
       if(!s.p||s.p<=0) return false;
       if(!candleCache[s.t]?.data||candleCache[s.t]?.data?._mock) return false;
-      const s1=getS1(s.t,s.p);
+      const {ind, s1}=_getBuyScore(s);
       const pctFromS1=(s.p-s1)/s1*100;
       const rsi=rsiData[s.t]||50;
-      const ind=_calcBuyScore(s.t,s.p,s1,getR1(s.t,s.p));
       return pctFromS1<=3 && rsi<=60 && ind?.score>=45;
     })
     .sort((a,b)=>{
-      const indA=_calcBuyScore(a.t,a.p,getS1(a.t,a.p),getR1(a.t,a.p));
-      const indB=_calcBuyScore(b.t,b.p,getS1(b.t,b.p),getR1(b.t,b.p));
+      const indA=_getBuyScore(a).ind;
+      const indB=_getBuyScore(b).ind;
       return (indB?.score||0)-(indA?.score||0);
     })
     .slice(0,5)
     .map(s=>{
-      const s1=+getS1(s.t,s.p).toFixed(2);
-      const r1=+getR1(s.t,s.p).toFixed(2);
-      const ind=_calcBuyScore(s.t,s.p,s1,r1);
+      const {ind, s1:_s1, r1:_r1}=_getBuyScore(s);
+      const s1=+_s1.toFixed(2);
+      const r1=+_r1.toFixed(2);
       const rsi=rsiData[s.t]||50;
       const atrStop=ind?.atrStopLoss?+ind.atrStopLoss.toFixed(2):s1;
       const riskPct=+(((s.p-atrStop)/s.p)*100).toFixed(1);
@@ -12859,7 +12877,8 @@ async function syncPortfolioNow(){
     const r = await fetch(ALERT_WORKER+'/portfolio/sync',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userToken, portfolio:portMapped})
+      body:JSON.stringify({userToken, portfolio:portMapped}),
+      signal:AbortSignal.timeout(10000)
     });
     const d = await r.json();
     if(d.ok){
@@ -17801,7 +17820,7 @@ async function fetchTHBRate() {
   // ใช้ cache 10 นาที
   if(_thbRate && Date.now() - _thbRateTime < 10 * 60 * 1000) return _thbRate;
   try {
-    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=THB');
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=THB', {signal:AbortSignal.timeout(6000)});
     const data = await res.json();
     if(data && data.rates && data.rates.THB) {
       _thbRate = data.rates.THB;
