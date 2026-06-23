@@ -1,0 +1,10 @@
+name = "stock-elite"
+main = "worker-elite.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "ALERT_KV"
+id = "9cc947d9186e440bbc3026b5d04a4bf5"
+
+[triggers]
+crons = ["*/30 * * * *"]
