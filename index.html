@@ -14189,6 +14189,10 @@ const ELITE_PEOPLE = [
     keywords:['lisa su','amd','advanced micro devices','mi300','instinct','radeon','ryzen','epyc','amd chip','amd gpu','amd ai'],
     excludeKeywords:[],
     ticker:'AMD', backupIds:['jensen'] },
+  { id:'mehrotra', name:'Sanjay Mehrotra',  role:'CEO Micron',          emoji:'💾', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=mehrotra', tickers:['MU','NVDA','AMD'],    x:143, y:174, color:'#0066cc',
+    keywords:['sanjay mehrotra','mehrotra','micron','mu stock','hbm memory','dram','nand','hbm3','micron earnings','micron ai','micron memory','micron hbm'],
+    excludeKeywords:[],
+    ticker:'MU', backupIds:['jensen','lisa_su'] },
   { id:'jassy',    name:'Andy Jassy',       role:'CEO Amazon/AWS',      emoji:'📦', logo:'https://stock-prices.datsakonping1994.workers.dev/person-img?id=jassy', tickers:['AMZN','MSFT','GOOGL'], x:145, y:168, color:'#ff9900',
     keywords:['andy jassy','jassy','amazon','aws','amzn','amazon web services','amazon ai','amazon cloud','bedrock','alexa','amazon prime'],
     excludeKeywords:[],
@@ -14389,16 +14393,19 @@ function _calcConfidenceScore({sourceQuality,sourcesCount,rumorStatus,impactScor
 
   // [NEW] geopolitical/political statement จาก tier1 → bonus เพราะเป็น official statement
   const geoPoliticalEvents=['geopolitical','political','trade_policy','m_and_a'];
-  if(tier1.some(s=>url.includes(s)) && evArr.some(e=>geoPoliticalEvents.includes(e))) score+=10;
-
-  // [NEW] ลด penalty ถ้าเป็น tier1 source เพราะ Reuters/Bloomberg ยืนยันแล้ว
-  if(impactScore>=9&&sourcesCount<2&&!tier1.some(s=>url.includes(s))) score-=10;
+  const _isTier1 = tier1.some(s=>url.includes(s));
+  const _isOfficialStatement = evArr.some(e=>['geopolitical','political','trade_policy'].includes(e));
+  // [FIX] tier1 + geo/political official statement = +20 bonus
+  // Reuters/AP covering Trump/Fed/official govt action with direct quote → ควรได้ ~80-85%
+  if(_isTier1 && evArr.some(e=>geoPoliticalEvents.includes(e))) score+=15;
+  if(_isOfficialStatement && _isTier1) score+=10;
+  if(impactScore>=9&&sourcesCount<2&&!_isTier1) score-=10;
 
   // เล็กน้อย
   if(hasSummary) score+=3;
   if(headlineLength>30) score+=2;
 
-  return Math.min(99,Math.max(20,Math.round(score)));
+  return Math.min(92,Math.max(20,Math.round(score))); // [FIX] cap 92 — ไม่มีข่าวไหนแน่นอน 100%
 }
 
 // ════════════════════════════════════════════════════════════
@@ -14514,7 +14521,7 @@ const ETF_EVENT_MAP={
   'gdp_data':     {up:['SPY','IWM'],down:['TLT'],neutral:['QQQ']},
   'earnings':     {up:[],down:[],neutral:['SPY','QQQ']},
   'trade_policy': {up:['GLD','USO'],down:['SPY','QQQ','SMH'],neutral:['EEM']},
-  'geopolitical': {up:['GLD','TLT','USO','XLE','DXY'],down:['SPY','QQQ','EEM','FXI'],neutral:[]},
+  'geopolitical': {up:['GLD','USO','XLE','DXY'],down:['SPY','QQQ','EEM','FXI'],neutral:['TLT']}, // [FIX] TLT neutral — geo ไม่ได้ทำ bond yield ลงเสมอ ขึ้นกับ risk appetite
   'political':    {up:['GLD'],down:['EEM'],neutral:['SPY','TLT']},
   'm_and_a':      {up:[],down:[],neutral:['SPY']},
   'tech_ai':      {up:['QQQ','SOXX','SMH','ARKK'],down:[],neutral:['SPY']},
@@ -14523,18 +14530,31 @@ const ETF_EVENT_MAP={
   'central_bank': {up:['GLD'],down:['TLT','HYG','QQQ'],neutral:['SPY']},
 };
 function _buildEtfImpact(eventTypes,sentiment){
-  // mapping.up/down เป็นทิศทางสัมบูรณ์ของ event นั้น
-  // เช่น fomc.down=['TLT'] หมายถึง TLT ลงเสมอเมื่อ Fed Hawkish
-  // ไม่ต้อง flip ตาม sentiment เพราะ event type สะท้อน context อยู่แล้ว
+  // [FIX] geo de-escalation (peace deal/sanctions waived) = BEARISH event แต่ ETF ต้อง reverse
+  // Oil ↓ → XLE/USO ↓, Risk-on → SPY/QQQ ↑, GLD ↓, TLT neutral
   const etfResult={};
   for(const evType of eventTypes){
     const mapping=ETF_EVENT_MAP[evType];
     if(!mapping) continue;
-    for(const etf of mapping.up)      etfResult[etf]='positive';
-    for(const etf of mapping.down)    etfResult[etf]='negative';
-    for(const etf of mapping.neutral) if(!etfResult[etf]) etfResult[etf]='neutral';
+    const isGeoDeEscalation = evType==='geopolitical' && sentiment==='bearish';
+    for(const etf of mapping.up){
+      if(isGeoDeEscalation){
+        if(['XLE','USO','GLD'].includes(etf)){ etfResult[etf]='negative'; continue; }
+        if(['DXY'].includes(etf)){ etfResult[etf]='neutral'; continue; }
+      }
+      if(!etfResult[etf]) etfResult[etf]='positive';
+    }
+    for(const etf of mapping.down){
+      if(isGeoDeEscalation){
+        if(['SPY','QQQ','EEM','FXI'].includes(etf)){ etfResult[etf]='positive'; continue; }
+      }
+      if(!etfResult[etf]) etfResult[etf]='negative';
+    }
+    for(const etf of (mapping.neutral||[])){
+      if(!etfResult[etf]) etfResult[etf]='neutral';
+    }
   }
-  return Object.keys(etfResult).length ? Object.fromEntries(Object.entries(etfResult).slice(0,8)) : null;
+  return Object.keys(etfResult).length>0?etfResult:null;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -15050,13 +15070,17 @@ function _eliteNewsMatchesPerson(headline, summary, person){
   // เปลี่ยนให้ทุก keyword ผ่าน word-boundary regex เหมือนกันหมด ไม่จำกัดความยาว
   const kws = person.keywords || person.name.toLowerCase().split(' ').filter(function(w){return w.length>3;});
   return kws.some(function(kw){
-    var re = new RegExp('(?:^|[^a-z])' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '(?:[^a-z]|$)');
+    // [FIX] keyword >= 6 ตัว → plain includes เพิ่มเติม ลด false-negative
+    // เช่น "xi jinping", "khamenei", "nvidia" บางครั้งอยู่ติดกับ special char ทำให้ regex ไม่ match
+    if(kw.length >= 6 && text.includes(kw)) return true;
+    var escaped = kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var re = new RegExp('(?:^|[^a-z])' + escaped + '(?:[^a-z]|$)');
     return re.test(text);
   });
 }
 
 const ELITE_CACHE_KEY = '_elite_cache';
-const ELITE_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 ชั่วโมง — auto-rescan
+const ELITE_CACHE_TTL = 1 * 60 * 60 * 1000; // [FIX] 1 ชั่วโมง — rescan บ่อยขึ้น
 const ELITE_CACHE_VERSION = 4; // bump เมื่อ news schema เปลี่ยน — auto-bust old cache
 const ELITE_TRIGGER_COOLDOWN = 60 * 60 * 1000; // 1 ชั่วโมง — ป้องกัน KV put() limit
 const ELITE_TRIGGER_TS_KEY  = '_elite_last_trigger_ts';
@@ -15269,12 +15293,11 @@ async function _eliteDirectFallback(overlay){
         // [FIX] เดิมเช็คแค่ 8 คนหลัก (topPeople.slice(0,8)) แล้วใช้ backupIds แทนที่คนที่ไม่มีข่าว
         // ทำให้ Zuck/Dimon ไม่มีทางได้ขึ้นเลย (ไม่มีใครตั้งเป็น backupId) และ Cook/Pichai ขึ้นได้
         // แค่ตอนแทนที่ primary — เปลี่ยนเป็นสแกนทุกคนตรงๆ ใครมีข่าวจริงก็ได้สล็อต จำกัดด้วย cap รวม
-        const ALL_PEOPLE_CAP = 17;
+        const ALL_PEOPLE_CAP = 20; // [FIX] เพิ่ม cap ให้ทุกคนมีโอกาสได้สล็อต
         const ALL_PEOPLE = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;});
         const foundIds = new Set();
-        // [FIX] กันข่าวเดียวกันถูกผูกกับหลายคนพร้อมกัน (เช่น ข่าวพูดถึงทั้ง "china" และ "iran"
-        // จะแมตช์ทั้ง Xi และ Khamenei พร้อมกัน ทั้งที่เป็นข่าวเดียวกันและไม่เกี่ยวกับทั้งคู่จริงๆ)
-        const usedUrls = new Set(allNews.map(n=>n.url).filter(Boolean));
+        // [FIX] ใช้เฉพาะ url ที่แมตช์แล้ว ไม่ใช่ allNews ทั้งหมด (allNews ตอนนี้ยังว่าง)
+        const usedUrls = new Set();
 
         ALL_PEOPLE.forEach(function(person){
           if(allNews.length >= ALL_PEOPLE_CAP) return;
@@ -15301,6 +15324,11 @@ async function _eliteDirectFallback(overlay){
             if(top.url) usedUrls.add(top.url);
           } else {
             console.log('[Elite] ไม่มีข่าวของ '+person.name+' ในรอบนี้ — ข้ามไป');
+            // [FIX] push placeholder เพื่อให้ยังแสดงคนนั้นบน UI แต่ไม่มีข่าว
+            if(person.ticker || ['trump','powell','xi','khamenei','opec'].includes(person.id)){
+              allNews.push({id:person.id, person:person, headline:'', summary:'', url:'', noNews:true});
+              foundIds.add(person.id);
+            }
           }
         });
         if(allNews.length) console.log('[Finnhub] got', allNews.length, 'articles');
@@ -15311,7 +15339,9 @@ async function _eliteDirectFallback(overlay){
   } // end if(allNews.length < 3)
 
   // Fallback: Finnhub Company News สำหรับตัวที่ยังไม่มีข่าว
-  if(allNews.length < 3){
+  // [FIX] ทำ fallback เสมอถ้ายังมีคนที่ไม่มีข่าว ไม่ใช่แค่ถ้า allNews < 3
+  const _missingCount = ELITE_PEOPLE.filter(function(p,i,arr){return arr.findIndex(function(x){return x.id===p.id;})===i;}).filter(p=>!allNews.find(n=>n.id===p.id)).length;
+  if(_missingCount > 0){
     const PERSON_TICKERS = {
       jensen:'NVDA', cook:'AAPL', musk:'TSLA', nadella:'MSFT',
       zuck:'META', altman:'MSFT', pichai:'GOOGL', bezos:'AMZN',
@@ -15401,7 +15431,7 @@ async function _eliteDirectFallback(overlay){
   }).join('\n');
 
   const eliteSys = 'You are a senior financial analyst for Thai investors. Respond ONLY with valid JSON array. No markdown, no explanation outside JSON.\n\nCRITICAL RULES:\n0. VERIFY PERSON MATCH FIRST: each input line is "Name(id): headline — summary" where the news was pre-matched by keyword search (e.g. matched on a topic word like "china" or "iran"), NOT verified by you. Before writing any output for that id, check: is this person actually the subject/actor of this news (they said/did/announced something, or the news is specifically about them/their company/their country\'s government action)? If the news only mentions a related topic/country/sector in passing and the named person is NOT actually central to it (e.g. a company earnings article that happens to mention "china slowdown" gets matched to a China president id, or a generic Fed rate news gets matched to the Fed chair id without the chair saying anything), then DROP that id entirely — do not include it in the output array, do not force-fit a market_impact for them. Only keep ids where the match is genuinely about that specific person.\n1. ALL text fields must be Thai — translate English headlines immediately. สำหรับชื่อเฉพาะ/หน่วยงาน/ตำแหน่ง (เช่น Congress, Senate, White House, Federal Reserve, NATO) ต้องแปล/ทับศัพท์ให้ถูกต้องตามที่ใช้จริงในสื่อไทย (Congress = "สภาคองเกรส", Senate = "วุฒิสภา", White House = "ทำเนียบขาว") ห้ามเดาเสียงทับศัพท์ผิดๆ (เช่นห้ามเขียน Congress เป็น "กองเรส") ถ้าไม่แน่ใจการทับศัพท์ที่ถูกต้อง ให้ใช้ชื่อภาษาอังกฤษเดิมแทนการเดา คำศัพท์การเงินที่ต้องแปลให้ถูกความหมาย: voting power/voting rights = \"สิทธิออกเสียง\" หรือ \"Voting Power\" (ห้ามแปลเป็น \"การถือหุ้น\"), stake = \"สัดส่วนการถือหุ้น\", ownership = \"การเป็นเจ้าของ\", buyback = \"การซื้อหุ้นคืน\", dilution = \"การเจือจางหุ้น\", short selling = \"การขายชอร์ต\"\n2. ai_take MUST reflect the actual sentiment of the news article — if news says "AI spending strong" then ai_take must be bullish, NOT bearish. NEVER contradict the news. NEVER restate headline — ai_take ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เช่น Bad: "หาก Musk เพิ่มสัดส่วนอาจส่งผลบวกต่อ TSLA" (restate). Good: "Voting Power 19.9% ช่วยเพิ่มอิทธิพล Musk ต่อ board แต่ยังต่ำกว่าเป้า 25% ที่ต้องการสนับสนุนกลยุทธ์ AI" (new context). ตัวอย่างที่ถูกสำหรับข่าว AI/Tech GOOGL: \"Gemini และ Google Cloud ที่เติบโต 63% YoY เป็น growth driver หลัก แต่ capex $185B สร้าง margin pressure ในระยะสั้น ขณะที่การแข่งขันจาก ChatGPT และ Claude ยังเป็นความเสี่ยงสำคัญ\" — ห้ามทวนข่าวแบบ \"หากอัลฟาเบตพัฒนา AI ได้ หุ้นอาจขึ้น\" และห้ามใส่ PLTR ในข่าว tech/AI ทั่วไปที่ไม่ได้พูดถึง PLTR โดยตรง.\n3. ai_take = 1-2 ประโยคเชิงคาดการณ์ไปข้างหน้า (forward-looking) แบบมีเงื่อนไข ห้ามตอบสั้นแบบบอกทิศทางราคาเฉยๆ ต้องระบุชื่อหุ้น/สินทรัพย์ที่ได้และเสียประโยชน์อย่างน้อยฝั่งละ 1 ตัว/กลุ่ม เช่น ถ้าข่าวคือ "สหรัฐฯ ปล่อยกองกำลังหลังทรัมป์ขู่โจมตีอิหร่าน" ai_take ที่ดีคือ "หากความตึงเครียดยืดเยื้อ ราคาน้ำมัน Brent มีโอกาสขึ้นต่อ ส่งผลบวกต่อ XOM และ CVX แต่กดดันหุ้นขนส่งและสายการบิน" ห้ามตอบแบบ "ราคาน้ำมันจะสูงขึ้น" เฉยๆ โดยไม่ระบุหุ้น/sector ที่กระทบ\n3b. MACRO CAUSAL CHAIN — ใช้ logic นี้เสมอ ห้าม invert:\n- Fed Hawkish → DXY ↑, Bond Yield ↑, TLT ↓, Gold ↓, Growth stocks (NVDA/TSLA/AMD) ↓\n- Fed Dovish → DXY ↓, Bond Yield ↓, TLT ↑, Gold ↑, Growth stocks ↑\n- น้ำมันลง → XOM/CVX เสียประโยชน์ ไม่ใช่ได้ประโยชน์\n- ทองลง → miners/GDX เสียประโยชน์ (ทองลง ≠ หุ้นเหมืองดี)\n- DXY ↑ → EM/BABA เสีย\\n- ข่าว SpaceX/xAI/Musk → TSLA Direct (halo effect), NVDA/GOOGL/AMZN indirect (AI compute users)\\n- น้ำมันพุ่ง/geo tension → XOM/CVX/LMT/RTX ใส่ใน stocks_to_monitor (ได้ประโยชน์), UBER/RIVN/AAPL ใส่ใน stocks_at_risk (เสียประโยชน์) ห้ามสลับ\\n- ข่าว energy/geo ห้ามใส่ NVDA/AMD/MSFT/META ใน stocks_to_monitor เด็ดขาด\\nตัวอย่าง ai_take ที่ถูกสำหรับ Fed Hawkish: \"ดอลลาร์แข็งค่าและ Bond Yield สูงขึ้น อาจกดดัน Growth stocks อย่าง NVDA และ AMD\"\n4. sentiment MUST match the news tone — bullish news = bullish sentiment\n5. stocks_buy/stocks_watch = real US tickers only (NVDA AAPL MSFT etc), NEVER ETFs\n6. impact = integer 1-10 — ข่าวที่กระทบรายได้ทันที (earnings/FOMC/CPI) = 8-10, ข่าวทั่วไป = 6-7, ข่าวแนวคิด/vision/อวกาศ/ระยะยาวที่ยังไม่กระทบรายได้ = 4-5 ห้ามให้ 7+ กับข่าวที่เป็นแค่ "พูดถึง/กล่าวถึง" โดยไม่มี action จริง\n7. watch = exact event names: FOMC CPI NFP GDP or TICKER+Earnings\n8. market_impact = วิเคราะห์ระดับตลาด/sector ก่อนเสมอ — ตอบว่าข่าวนี้กระทบดอกเบี้ย/ค่าเงิน USD/Bond yield/sector ไหน และ benchmark อย่าง SPY, QQQ, TLT, DXY, Gold น่าจะขึ้นหรือลงเพราะอะไร (ใช้เป็นบริบท ไม่ใช่คำแนะนำซื้อ) ต้องเขียนก่อนเสมอ แล้วค่อยให้ stocks_buy/stocks_watch เป็นการระบุหุ้นรายตัวที่ตามมาจาก market_impact นั้น\n9. read_game ต้องเป็น insight ที่ตลาดมองข้ามหรือ price-in ผิด — ระบุ (1) สิ่งที่ตลาดเชื่อ vs ความจริงที่ต่างออกไป หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจจริงอาจต้องใช้เวลาอีกหลายปี\\" — ห้ามพูดซ้ำ headline/ai_take/summary เด็ดขาด';
-  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"1-2 ประโยคสมบูรณ์ที่ต้องมี: บริบทเชิงลึกที่ headline ไม่ได้พูดถึง + ผลกระทบต่อหุ้นหรือตลาด ตัวอย่างที่ถูกสำหรับ Fed Hawkish: \"Kevin Warsh ส่งสัญญาณ Hawkish มากกว่าที่ตลาดคาด ทำให้โอกาสคงดอกเบี้ยสูงนานขึ้น Bond Yield มีแนวโน้มปรับขึ้น กดดันหุ้น Growth เช่น NVDA และ AMD ขณะที่ดอลลาร์อาจแข็งค่า\" ตัวอย่างที่ถูกสำหรับข่าว Corporate Action (voting power/stock options/ownership): \"การเพิ่ม Voting Power ช่วยเพิ่มอิทธิพลของ Musk ต่อทิศทางบริษัท และอาจสร้างความเชื่อมั่นให้ผู้ถือหุ้น อย่างไรก็ตามยังต่ำกว่าเป้าหมาย 25% ที่ Musk เคยระบุเพื่อสนับสนุนกลยุทธ์ AI\" ห้ามตอบแบบ \"หากX เกิดขึ้น อาจส่งผลบวกต่อ Y\" ซึ่งเป็นการ restate headline ห้ามซ้ำ headline เด็ดขาด ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เสมอ","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"ประโยคสมบูรณ์ 2-3 ประโยค ต้องมีครบ: ชื่อบุคคล + กริยา + ทิศทางนโยบาย + ผลกระทบ ตัวอย่างที่ถูก: \"Kevin Warsh ส่งสัญญาณว่าเฟดมีแนวโน้มใช้นโยบายการเงินที่เข้มงวดมากขึ้น เพื่อควบคุมเงินเฟ้อ ทำให้ดอกเบี้ยอาจคงสูงนานกว่าที่ตลาดคาด\" ห้ามตอบแบบ \"Kevin Warsh Chair ของเฟดมีทิศทางมากขึ้น\" ซึ่งประโยคไม่สมบูรณ์","watch":"ระบุ event ที่ถูกต้องตาม context ข่าว: FOMC/CPI/NFP/GDP สำหรับ macro, TICKER+Earnings สำหรับงบการเงิน, SEC Filing/Corporate Governance/Insider Ownership สำหรับข่าว Form 4/voting power/stock options/board — ห้ามใส่ TICKER+Earnings ถ้าข่าวไม่ใช่ earnings release","read_game":"insight ที่ตลาดมองข้ามหรือ price-in ผิด — ต้องระบุ: (1) สิ่งที่ตลาดเชื่อ vs ความจริง หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจอาจต้องใช้เวลาอีกหลายปี\\\" — ห้ามใช้รูปแบบ \\\"หากประสบความสำเร็จ อาจส่งผลบวก\\\" ซึ่งไม่มี insight ใหม่","etf_impact":{"SPY":"neutral","QQQ":"negative","TLT":"negative","GLD":"negative","DXY":"positive"},"stocks_to_monitor":[{"t":"XOM","reason":"ราคาน้ำมันพุ่งจากความตึงเครียดตะวันออกกลาง XOM upstream revenue เพิ่มโดยตรง"},{"t":"LMT","reason":"งบกลาโหมเพิ่มจากวิกฤต Lockheed รับ order missile เพิ่ม"}],"stocks_at_risk":[{"t":"UBER","reason":"ต้นทุนเชื้อเพลิงสูงขึ้นทำให้ margin UBER ลด"},{"t":"RIVN","reason":"ราคาพลังงานสูงชะลอ EV adoption"}],\"stocks_buy\":[\"XOM\",\"LMT\"],\"stocks_watch\":[\"UBER\",\"RIVN\"]}]\\nRULES FOR stocks_to_monitor และ stocks_at_risk (บังคับ):\\nstocks_to_monitor = หุ้นที่ได้ประโยชน์โดยตรงจากข่าวนี้ (BENEFICIARY เท่านั้น)\\nstocks_at_risk = หุ้นที่เสียประโยชน์โดยตรงจากข่าวนี้ (LOSER เท่านั้น)\\nห้ามสลับ field เด็ดขาด เช่น ข่าวน้ำมันพุ่ง → XOM/CVX/LMT ใส่ใน stocks_to_monitor, UBER/RIVN/AAPL ใส่ใน stocks_at_risk\\nต้องผ่าน chain of thought ก่อนทุกครั้ง: (1) ข่าวกระทบ INDUSTRY ไหน (2) ใครใน industry นั้น (3) ใครได้ (to_monitor) ใครเสีย (at_risk)\\nห้ามใส่หุ้นที่ industry ไม่ตรงกับข่าว เช่น ข่าว geo/energy ห้ามใส่ NVDA/TSLA/META ใน stocks_to_monitor RULES FOR etf_impact: วิเคราะห์ตาม context ข่าวจริงเท่านั้น ใช้ positive/negative/neutral เท่านั้น ETF ที่รองรับ: SPY QQQ TLT GLD DXY XLF XLE SMH IWM HYG เลือกเฉพาะที่เกี่ยวข้อง 3-6 ตัว MACRO LOGIC: Fed Hawkish→TLT negative/GLD negative/DXY positive/QQQ negative, Fed Dovish→TLT positive/GLD positive/DXY negative/QQQ positive, Oil↑→XLE positive/SPY neutral, Geopolitical tension→GLD positive/SPY negative';
+  const eliteUser = 'วิเคราะห์ข่าวต่อไปนี้สำหรับนักลงทุนไทย ยึดตามเนื้อหาข่าวจริงเท่านั้น ห้าม assume หรือ contradict ข่าว ห้ามรวมรายการที่ person ไม่ใช่ตัวเอกของข่าวจริงๆ ตามกฎข้อ 0:\n\n'+newsSummary+'\n\nJSON format (ตอบเป็น array — ข้าม id ที่ไม่ผ่านกฎข้อ 0 ไปเลย):\n[{"id":"trump","headline":"หัวข้อภาษาไทย","market_impact":"ผลกระทบระดับตลาด/sector ก่อน — ดอกเบี้ย/USD/Bond yield/sector ไหนได้-เสีย และ SPY/QQQ/TLT/DXY/Gold น่าจะไปทางไหนเพราะอะไร","ai_take":"1-2 ประโยคสมบูรณ์ที่ต้องมี: บริบทเชิงลึกที่ headline ไม่ได้พูดถึง + ผลกระทบต่อหุ้นหรือตลาด ตัวอย่างที่ถูกสำหรับ Fed Hawkish: \"Kevin Warsh ส่งสัญญาณ Hawkish มากกว่าที่ตลาดคาด ทำให้โอกาสคงดอกเบี้ยสูงนานขึ้น Bond Yield มีแนวโน้มปรับขึ้น กดดันหุ้น Growth เช่น NVDA และ AMD ขณะที่ดอลลาร์อาจแข็งค่า\" ตัวอย่างที่ถูกสำหรับข่าว Corporate Action (voting power/stock options/ownership): \"การเพิ่ม Voting Power ช่วยเพิ่มอิทธิพลของ Musk ต่อทิศทางบริษัท และอาจสร้างความเชื่อมั่นให้ผู้ถือหุ้น อย่างไรก็ตามยังต่ำกว่าเป้าหมาย 25% ที่ Musk เคยระบุเพื่อสนับสนุนกลยุทธ์ AI\" ห้ามตอบแบบ \"หากX เกิดขึ้น อาจส่งผลบวกต่อ Y\" ซึ่งเป็นการ restate headline ห้ามซ้ำ headline เด็ดขาด ต้องเพิ่ม context ใหม่ที่ไม่อยู่ใน headline เสมอ","summary":"สรุป 2 ประโยค","impact":8,"sentiment":"bullish/bearish/neutral ตาม tone จริงของข่าว","markets":["USD"],"pros":["ข้อดีจากข่าวนี้จริงๆ"],"cons":["ความเสี่ยงจากข่าวนี้"],"why":"ประโยคสมบูรณ์ 2-3 ประโยค ต้องมีครบ: ชื่อบุคคล + กริยา + ทิศทางนโยบาย + ผลกระทบ ตัวอย่างที่ถูก: \"Kevin Warsh ส่งสัญญาณว่าเฟดมีแนวโน้มใช้นโยบายการเงินที่เข้มงวดมากขึ้น เพื่อควบคุมเงินเฟ้อ ทำให้ดอกเบี้ยอาจคงสูงนานกว่าที่ตลาดคาด\" ห้ามตอบแบบ \"Kevin Warsh Chair ของเฟดมีทิศทางมากขึ้น\" ซึ่งประโยคไม่สมบูรณ์","watch":"ระบุ event ที่ถูกต้องตาม context ข่าว: FOMC/CPI/NFP/GDP สำหรับ macro, TICKER+Earnings สำหรับงบการเงิน, SEC Filing/Corporate Governance/Insider Ownership สำหรับข่าว Form 4/voting power/stock options/board — ห้ามใส่ TICKER+Earnings ถ้าข่าวไม่ใช่ earnings release","read_game":"insight ที่ตลาดมองข้ามหรือ price-in ผิด — ต้องระบุ: (1) สิ่งที่ตลาดเชื่อ vs ความจริง หรือ (2) ปัจจัยเสี่ยง/โอกาสที่ยังไม่ถูกพูดถึง ตัวอย่างที่ดี: \\\"ตลาดมอง Space AI Data Center เป็นทางออกของข้อจำกัดด้านพลังงาน แต่ต้นทุนส่งอุปกรณ์ขึ้นวงโคจรยังสูงมาก ผลกระทบทางธุรกิจอาจต้องใช้เวลาอีกหลายปี\\\" — ห้ามใช้รูปแบบ \\\"หากประสบความสำเร็จ อาจส่งผลบวก\\\" ซึ่งไม่มี insight ใหม่","etf_impact":{"SPY":"neutral","QQQ":"negative","TLT":"negative","GLD":"negative","DXY":"positive"},"stocks_to_monitor":[{"t":"XOM","reason":"ราคาน้ำมันพุ่งจากความตึงเครียดตะวันออกกลาง XOM upstream revenue เพิ่มโดยตรง"},{"t":"LMT","reason":"งบกลาโหมเพิ่มจากวิกฤต Lockheed รับ order missile เพิ่ม"}],"stocks_at_risk":[{"t":"UBER","reason":"ต้นทุนเชื้อเพลิงสูงขึ้นทำให้ margin UBER ลด"},{"t":"RIVN","reason":"ราคาพลังงานสูงชะลอ EV adoption"}],\"stocks_buy\":[\"XOM\",\"LMT\"],\"stocks_watch\":[\"UBER\",\"RIVN\"]}]\\nRULES FOR stocks_to_monitor และ stocks_at_risk (บังคับ):\\nstocks_to_monitor = หุ้นที่ได้ประโยชน์โดยตรงจากข่าวนี้ (BENEFICIARY เท่านั้น)\\nstocks_at_risk = หุ้นที่เสียประโยชน์โดยตรงจากข่าวนี้ (LOSER เท่านั้น)\\nห้ามสลับ field เด็ดขาด เช่น ข่าวน้ำมันพุ่ง → XOM/CVX/LMT ใส่ใน stocks_to_monitor, UBER/RIVN/AAPL ใส่ใน stocks_at_risk\\nต้องผ่าน chain of thought ก่อนทุกครั้ง: (1) ข่าวกระทบ INDUSTRY ไหน (2) ใครใน industry นั้น (3) ใครได้ (to_monitor) ใครเสีย (at_risk)\\nห้ามใส่หุ้นที่ industry ไม่ตรงกับข่าว เช่น ข่าว geo/energy ห้ามใส่ NVDA/TSLA/META ใน stocks_to_monitor RULES FOR etf_impact: วิเคราะห์ตาม context ข่าวจริงเท่านั้น ใช้ positive/negative/neutral เท่านั้น ETF ที่รองรับ: SPY QQQ TLT GLD DXY XLF XLE SMH IWM HYG เลือกเฉพาะที่เกี่ยวข้อง 3-6 ตัว MACRO LOGIC: Fed Hawkish→TLT negative/GLD negative/DXY positive/QQQ negative, Fed Dovish→TLT positive/GLD positive/DXY negative/QQQ positive, Oil↑→XLE positive/SPY neutral, Geopolitical tension (escalation)→GLD positive/SPY negative/XLE positive/TLT neutral, Geopolitical de-escalation (peace deal/sanctions waived)→GLD negative/XLE negative/SPY positive/QQQ positive/TLT neutral — [KEY] sanctions waived/peace deal = BEARISH for energy, BULLISH for equities';
 
   try{
     let rawText = null;
@@ -16180,6 +16210,16 @@ function renderEliteScanResults(results, ageMs=0){
       return;
     }
     cards.innerHTML = results.map(({person:p, news:n}, idx) => {
+      // [FIX] noNews placeholder — แสดงการ์ดว่างแทนการหายไป
+      if(n && n.noNews){
+        return `<div id="elite-card-${p.id}" style="background:linear-gradient(145deg,rgba(20,28,42,0.6),rgba(12,18,30,0.6));border:1px solid rgba(255,255,255,0.04);border-radius:14px;padding:13px;opacity:0.5">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:20px">${p.emoji}</div>
+            <div><div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text3)">${p.name}</div>
+            <div style="font-size:10px;color:var(--text3);opacity:0.6">ไม่มีข่าวสำคัญวันนี้</div></div>
+          </div>
+        </div>`;
+      }
       const impactColor = n.impact>=9 ? 'var(--red)' : n.impact>=7 ? 'var(--gold)' : 'var(--ice)';
       const impactBg = n.impact>=9 ? 'rgba(255,77,106,0.15)' : n.impact>=7 ? 'rgba(201,168,76,0.15)' : 'rgba(100,210,255,0.12)';
       const tags = (n.tags||[]).map(t=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${t}</span>`).join('');
