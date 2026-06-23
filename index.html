@@ -5462,7 +5462,7 @@ ${exitReason}
 
   toast(`🚨 ${ticker} — ${exitReason} | ${sellAction}`, 6000);
   _sendPushAlert(`🚨 Exit Signal: ${ticker}`, `${exitReason} | ${sellAction} | P&L: ${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%`);
-  sendTG(tgMsg);
+  // sendTG(tgMsg); // [ปิด] ไม่ส่ง Exit Signal ไป Telegram
 }
 
 // ── AI วิเคราะห์ผลประกอบการที่รายงานแล้ว ──
