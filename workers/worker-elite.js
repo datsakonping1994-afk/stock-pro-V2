@@ -277,27 +277,7 @@ async function saveSeenBatch(env, seenSet) {
 
 // [FIX] เพิ่ม Gemini เป็น priority 1 ก่อน Groq และ Claude
 async function callAI(env, system, user) {
-  // 1. Gemini Flash
-  const gemKeys = [env.GEMINI_KEY, env.GEMINI_KEY_2, env.GEMINI_KEY_3].filter(Boolean);
-  for (const gk of gemKeys) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gk}`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          systemInstruction:{parts:[{text:system}]},
-          contents:[{role:'user',parts:[{text:user}]}],
-          generationConfig:{maxOutputTokens:2000,temperature:0.3}
-        }), signal:AbortSignal.timeout(25000)
-      });
-      if (r.ok) {
-        const d = await r.json();
-        const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-        const match = raw.match(/\[[\s\S]*\]/);
-        if (match) { const items=JSON.parse(match[0]); if(Array.isArray(items)) { console.log('[AI] Gemini ok'); return items; } }
-      }
-    } catch(e) { console.warn('[AI Gemini]',e.message); }
-  }
-  // 2. Groq
+  // 1. Groq (ฟรี เร็ว — ลองก่อนเสมอ)
   if (env.GROQ_KEY) {
     for (let attempt=0; attempt<2; attempt++) {
       try {
@@ -318,7 +298,7 @@ async function callAI(env, system, user) {
       } catch(e) { console.warn('[AI Groq]',e.message); if(attempt===0) continue; break; }
     }
   }
-  // 3. Claude Haiku
+  // 2. Claude Haiku (คุณภาพสูง)
   if (env.ANTHROPIC_KEY) {
     try {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -334,6 +314,26 @@ async function callAI(env, system, user) {
         if (match) { const items=JSON.parse(match[0]); if(Array.isArray(items)) { console.log('[AI] Claude ok'); return items; } }
       }
     } catch(e) { console.warn('[AI Claude]',e.message); }
+  }
+  // 3. Gemini Flash (fallback)
+  const gemKeys = [env.GEMINI_KEY, env.GEMINI_KEY_2, env.GEMINI_KEY_3].filter(Boolean);
+  for (const gk of gemKeys) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gk}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          systemInstruction:{parts:[{text:system}]},
+          contents:[{role:'user',parts:[{text:user}]}],
+          generationConfig:{maxOutputTokens:2000,temperature:0.3}
+        }), signal:AbortSignal.timeout(25000)
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+        const match = raw.match(/\[[\s\S]*\]/);
+        if (match) { const items=JSON.parse(match[0]); if(Array.isArray(items)) { console.log('[AI] Gemini ok'); return items; } }
+      }
+    } catch(e) { console.warn('[AI Gemini]',e.message); }
   }
   throw new Error('All AI providers failed');
 }
