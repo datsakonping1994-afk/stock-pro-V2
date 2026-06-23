@@ -4,7 +4,7 @@
 //  หน้าที่: Morning Brief สรุปพอร์ต + ตลาด ทุกเช้า 08:00 ไทย
 //  Cron: 0 */2 * * *
 //  KV Binding: ALERT_KV
-//  ENV: TG_TOKEN, TG_CHAT_ID, GEMINI_KEY, GROQ_KEY, FINNHUB_KEY, GNEWS_KEY
+//  ENV: TG_TOKEN, TG_CHAT_ID, ANTHROPIC_KEY, GEMINI_KEY, GROQ_KEY, FINNHUB_KEY, GNEWS_KEY
 // ============================================================
 
 async function sendTG(env, text, token=null, chatId=null){
@@ -37,8 +37,38 @@ async function sendTGAll(env, text){
   }catch{}
 }
 
-// [FIX] systemInstruction (camelCase) ตาม Gemini API spec
+// [FIX] ลำดับ AI ตรงกับแอป: Groq → Claude → Gemini
 async function callAI(env, system, user, maxTokens=1200){
+  // 1. Groq (ฟรี เร็ว — ลองก่อนเสมอ)
+  const grok = env.GROQ_KEY||'';
+  if(grok){
+    for(let i=0; i<3; i++){
+      try{
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+          method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+grok},
+          body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'system',content:system},{role:'user',content:user}], max_tokens:maxTokens, temperature:0.3}),
+          signal:AbortSignal.timeout(20000)
+        });
+        if(r.status===429){ await new Promise(r=>setTimeout(r,(2**i)*5000)); continue; }
+        if(r.ok){ const d=await r.json(); const t=d?.choices?.[0]?.message?.content; if(t) return t; }
+        break;
+      }catch{ break; }
+    }
+  }
+  // 2. Claude Haiku (คุณภาพสูง)
+  const ank = env.ANTHROPIC_KEY||'';
+  if(ank){
+    try{
+      const r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':ank,'anthropic-version':'2023-06-01'},
+        body: JSON.stringify({model:'claude-haiku-4-5', max_tokens:maxTokens, system, messages:[{role:'user',content:user}]}),
+        signal:AbortSignal.timeout(20000)
+      });
+      if(r.ok){ const d=await r.json(); const t=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join(''); if(t) return t; }
+    }catch(e){ console.warn('[callAI Claude]', e.message); }
+  }
+  // 3. Gemini Flash (fallback)
   const gkey = env.GEMINI_KEY||'';
   if(gkey){
     try{
@@ -52,21 +82,6 @@ async function callAI(env, system, user, maxTokens=1200){
       });
       if(r.ok){ const d=await r.json(); const t=d?.candidates?.[0]?.content?.parts?.[0]?.text; if(t) return t; }
     }catch(e){ console.warn('[callAI Gemini]', e.message); }
-  }
-  const grok = env.GROQ_KEY||'';
-  if(grok){
-    for(let i=0; i<3; i++){
-      try{
-        const r = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-          method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+grok},
-          body: JSON.stringify({model:'llama-3.3-70b-versatile', messages:[{role:'system',content:system},{role:'user',content:user}], max_tokens:maxTokens, temperature:0.3}),
-          signal:AbortSignal.timeout(20000)
-        });
-        if(r.status===429){ await new Promise(r=>setTimeout(r,(2**i)*5000)); continue; }
-        if(r.ok){ const d=await r.json(); return d?.choices?.[0]?.message?.content||null; }
-        break;
-      }catch{ break; }
-    }
   }
   return null;
 }
@@ -121,7 +136,6 @@ async function fetchNews(env){
   return articles;
 }
 
-// [FIX] โหลด portfolio จาก KV 'portfolio' (sync มาจาก index.html)
 async function loadPortfolio(env){
   try{
     const r = await env.ALERT_KV.get('portfolio');
@@ -334,7 +348,6 @@ export default {
         will_run_premarket: (utcH===9||utcH===10)
       }, null, 2), {headers:{...h,'Content-Type':'application/json'}});
     }
-    // [NEW] /debug/portfolio — ดูว่า worker เห็น portfolio อะไร
     if(url.pathname==='/debug/portfolio'){
       const port = await loadPortfolio(env);
       return new Response(JSON.stringify({count:port.length, portfolio:port}, null, 2), {headers:{...h,'Content-Type':'application/json'}});
