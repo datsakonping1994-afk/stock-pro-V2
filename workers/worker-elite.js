@@ -89,6 +89,7 @@ function cleanText(text) {
   if (!text || typeof text !== 'string') return text;
   return text
     .replace(/[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F]/g, '')
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/gu, '') // [FIX] กรอง emoji ออกจาก field ภาษาไทย
     .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s$%+\-.,!?:;()/&@#'"°฿\u2019\u2018\u201C\u201D]/g, '')
     .replace(/\s+/g, ' ').trim();
 }
@@ -115,7 +116,8 @@ async function sendTG(env, text) {
     try {
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text.slice(i,i+4000), parse_mode: 'HTML' })
+        body: JSON.stringify({ chat_id: chatId, text: text.slice(i,i+4000), parse_mode: 'HTML' }),
+        signal: AbortSignal.timeout(8000) // [FIX] ป้องกัน Worker ค้างถ้า TG ไม่ตอบ
       });
     } catch {}
   }
@@ -238,7 +240,7 @@ function cosineSimilarity(a, b) {
 function deduplicateNews(articles) {
   const merged = [];
   for (const art of articles) {
-    const dup = merged.find(m=>cosineSimilarity(m.title,art.title)>0.55);
+    const dup = merged.find(m=>cosineSimilarity(m.title,art.title)>0.70); // [FIX] เพิ่ม threshold ป้องกัน dedupe ข่าวต่างกัน
     if (dup) { if((art.sourceQuality||5)>(dup.sourceQuality||5)){ dup.title=art.title; dup.source=art.source; dup.url=art.url; dup.sourceQuality=art.sourceQuality; } dup.sourceCount=(dup.sourceCount||1)+1; }
     else merged.push({...art,sourceCount:1});
   }
@@ -311,8 +313,9 @@ async function callAI(env, system, user) {
           const match = raw.match(/\[[\s\S]*\]/);
           if (match) { const items=JSON.parse(match[0]); if(Array.isArray(items)) { console.log('[AI] Groq ok'); return items; } }
         }
-        break;
-      } catch(e) { console.warn('[AI Groq]',e.message); break; }
+        // [FIX] 5xx → retry, 4xx → break
+        if (r.status >= 500) continue; else break;
+      } catch(e) { console.warn('[AI Groq]',e.message); if(attempt===0) continue; break; }
     }
   }
   // 3. Claude Haiku
@@ -321,7 +324,7 @@ async function callAI(env, system, user) {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':env.ANTHROPIC_KEY,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,system,messages:[{role:'user',content:user}]}),
+        body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:2000,system,messages:[{role:'user',content:user}]}),
         signal:AbortSignal.timeout(20000)
       });
       if (r.ok) {
@@ -357,14 +360,15 @@ async function runEliteScan(env) {
     const BATCH_SIZE = 4;
     for (let i=0; i<ELITE_PEOPLE.length; i+=BATCH_SIZE) {
       const batch = ELITE_PEOPLE.slice(i,i+BATCH_SIZE);
-      const results = await Promise.all(batch.map(p=>fetchNews(env,p)));
+      const rawResults = await Promise.allSettled(batch.map(p=>fetchNews(env,p))); // [FIX] allSettled
+      const results = rawResults.map(r=>r.status==='fulfilled'?r.value:{articles:[],text:''});
       for (let j=0; j<batch.length; j++) {
         const person=batch[j], result=results[j];
         if (!result.articles?.length) continue;
         newsContext += `\n[${person.id}] ${result.text}`;
         allArticles.push(...result.articles.map(a=>({...a,person:person.id})));
       }
-      if (i+BATCH_SIZE<ELITE_PEOPLE.length) await new Promise(r=>setTimeout(r,200));
+      if (i+BATCH_SIZE<ELITE_PEOPLE.length) await new Promise(r=>setTimeout(r,350)); // [FIX] delay ลด rate limit
     }
 
     allArticles = deduplicateNews(allArticles);
@@ -409,7 +413,10 @@ async function runEliteScan(env) {
 "read_game":"insight+threshold หรือ null","watch":"event ที่เกี่ยวข้อง"}
 เฉพาะ impact>=6 ไม่เกิน 5 รายการ`;
 
-    const userPrompt = `บริบทข่าว (วิเคราะห์จากนี้เท่านั้น):\n${newsContext.slice(0,6000)}\n\nตอบ JSON array ภาษาไทย`;
+    // [FIX] ตัดที่ article boundary แทนตัดกลางประโยค
+    let _ctx = newsContext;
+    if (_ctx.length > 6000) { const lastPipe = _ctx.lastIndexOf(' | ', 6000); _ctx = lastPipe > 3000 ? _ctx.slice(0, lastPipe) : _ctx.slice(0, 6000); }
+    const userPrompt = `บริบทข่าว (วิเคราะห์จากนี้เท่านั้น):\n${_ctx}\n\nตอบ JSON array ภาษาไทย`;
 
     let items;
     try { items = await callAI(env, system, userPrompt); }
@@ -426,7 +433,7 @@ async function runEliteScan(env) {
       if (!ELITE_PEOPLE.find(p=>p.id===item.id)) { console.log('[skip] invalid id:', item.id); continue; }
 
       if (item.headline) {
-        const key = item.headline.toLowerCase().replace(/\s+/g,'').slice(0,40);
+        const key = item.headline.toLowerCase().replace(/\s+/g,'').slice(0,60); // [FIX] 60 chars ลด collision
         if (seenSet.has(key)) continue;
         seenSet.add(key); seenDirty=true;
       }
