@@ -10079,10 +10079,29 @@ async function _showEarningsHistory(ticker, btn){
         </div>
         ${epsGrowthHtml}
         ${revGrowthHtml}
-        ${metrics?.pe!=null?`<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px">
-          <span style="color:var(--text3)">P/E</span><br>
-          <b style="color:var(--text);font-size:14px">${(+metrics.pe).toFixed(1)}x</b>
-        </div>`:''}
+        ${(()=>{
+          // แก้ P/E: ใช้ลำดับความน่าเชื่อถือ
+          // 1. curStock.pe  = จาก Finnhub direct API (GAAP TTM) — แม่นที่สุด
+          // 2. curStock.peLive = จาก Worker batch — รองลงมา
+          // 3. คำนวณจาก price(USD) / EPS TTM เอง — ถ้าทั้งสองข้อบนไม่มี
+          // ห้ามใช้ metrics.pe จาก Worker /metrics เดี่ยวเพราะอาจคำนวณจากราคา THB
+          const _peGAAP   = curStock?.pe;
+          const _peLive   = curStock?.peLive;
+          const _epsLive  = curStock?.epsLive ? +curStock.epsLive : null;
+          const _priceUSD = curStock?.p || 0;
+          const _peCalc   = (_priceUSD>0 && _epsLive!=null && _epsLive>0)
+            ? +(_priceUSD/_epsLive).toFixed(1) : null;
+          const _peFinal  = (_peGAAP&&_peGAAP>1&&_peGAAP<3000) ? _peGAAP
+                          : (_peLive&&_peLive>1&&_peLive<3000) ? _peLive
+                          : _peCalc;
+          const _peSrc    = (_peGAAP&&_peGAAP>1&&_peGAAP<3000) ? ''
+                          : (_peLive&&_peLive>1&&_peLive<3000) ? ''
+                          : _peCalc ? '<span style="font-size:9px;color:var(--text3)"> (calc)</span>' : '';
+          return _peFinal ? `<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px">
+            <span style="color:var(--text3)">P/E</span><br>
+            <b style="color:var(--text);font-size:14px">${_peFinal}x${_peSrc}</b>
+          </div>` : '';
+        })()}
       </div>`;
 
       // ── EPS history table ──
