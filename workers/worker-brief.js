@@ -37,9 +37,8 @@ async function sendTGAll(env, text){
   }catch{}
 }
 
-// [FIX] ลำดับ AI ตรงกับแอป: Groq → Claude → Gemini
 async function callAI(env, system, user, maxTokens=1200){
-  // 1. Groq (ฟรี เร็ว — ลองก่อนเสมอ)
+  // 1. Groq
   const grok = env.GROQ_KEY||'';
   if(grok){
     for(let i=0; i<3; i++){
@@ -55,7 +54,7 @@ async function callAI(env, system, user, maxTokens=1200){
       }catch{ break; }
     }
   }
-  // 2. Claude Haiku (คุณภาพสูง)
+  // 2. Claude Haiku
   const ank = env.ANTHROPIC_KEY||'';
   if(ank){
     try{
@@ -68,7 +67,7 @@ async function callAI(env, system, user, maxTokens=1200){
       if(r.ok){ const d=await r.json(); const t=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join(''); if(t) return t; }
     }catch(e){ console.warn('[callAI Claude]', e.message); }
   }
-  // 3. Gemini Flash (fallback)
+  // 3. Gemini Flash
   const gkey = env.GEMINI_KEY||'';
   if(gkey){
     try{
@@ -86,6 +85,7 @@ async function callAI(env, system, user, maxTokens=1200){
   return null;
 }
 
+// แก้ #1: ดึงราคาจาก priceCache ก่อน ถ้าไม่มีค่อย fallback Finnhub
 async function getQuote(env, ticker){
   try{
     const r = await env.ALERT_KV.get('priceCache');
@@ -268,26 +268,108 @@ ${portTickers ? `3) กระทบพอร์ต (${portTickers}) อย่า
   try{ await env.ALERT_KV.put(coolKey, Date.now().toString()); }catch{}
 }
 
+// แก้ #2: sendPreMarket เพิ่มราคาตลาดจริง + ไม่ return เมื่อพอร์ตว่าง
 async function sendPreMarket(env){
-  const coolKey = 'premarket_sent';
-  try{ const l=await env.ALERT_KV.get(coolKey); if(l&&Date.now()-parseInt(l)<20*3600*1000) return; }catch{}
+  // แก้ cooldown key ให้เป็นรายวัน (reset ตาม UTC date ไม่ใช่ 20 ชม.)
+  const today = new Date().toISOString().slice(0,10);
+  const coolKey = `premarket_sent_${today}`;
+  try{ const l=await env.ALERT_KV.get(coolKey); if(l) return; }catch{}
 
-  const articles = await fetchNews(env);
-  const ownerPort = await loadPortfolio(env);
-  if(!articles.length && !ownerPort.length) return;
+  const fmt = v => v>=0?`+${v.toFixed(2)}%`:`${v.toFixed(2)}%`;
+
+  // แก้ #3: ดึงราคาตลาด + พอร์ตพร้อมกัน
+  const [articles, ownerPort, spy, qqq, vix, smh] = await Promise.all([
+    fetchNews(env),
+    loadPortfolio(env),
+    getQuote(env,'SPY'),
+    getQuote(env,'QQQ'),
+    getQuote(env,'VIX'),
+    getQuote(env,'SMH'),
+  ]);
+
+  // แก้ #4: ไม่ return ถ้าพอร์ตว่าง — ส่งข้อมูลตลาดได้เสมอ
+  const hasMarketData = spy || qqq || vix;
+  if(!articles.length && !ownerPort.length && !hasMarketData) return;
+
+  // ดึงราคาพอร์ตแต่ละตัว
+  const portQuotes = {};
+  if(ownerPort.length){
+    await Promise.all(ownerPort.map(async pos => {
+      const q = await getQuote(env, pos.t);
+      if(q) portQuotes[pos.t] = q;
+    }));
+  }
 
   const date = new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',timeZone:'Asia/Bangkok'});
+
+  // สร้าง market context ให้ AI ใช้
+  let marketLines = '';
+  if(spy)  marketLines += `SPY: $${spy.price.toFixed(2)} ${fmt(spy.change)}\n`;
+  if(qqq)  marketLines += `QQQ: $${qqq.price.toFixed(2)} ${fmt(qqq.change)}\n`;
+  if(smh)  marketLines += `SMH: $${smh.price.toFixed(2)} ${fmt(smh.change)}\n`;
+  if(vix)  marketLines += `VIX: ${vix.price.toFixed(1)} ${vix.price>20?'(สูง-ระวัง)':vix.price>15?'(ปานกลาง)':'(ต่ำ-calm)'}\n`;
+
+  let portLines = '';
+  if(ownerPort.length){
+    portLines = ownerPort.map(pos => {
+      const q = portQuotes[pos.t];
+      if(!q) return `${pos.t}: ไม่มีราคา`;
+      const pnlPct = pos.avgPrice>0 ? ((q.price-pos.avgPrice)/pos.avgPrice*100) : 0;
+      return `${pos.t}: $${q.price.toFixed(2)} ${fmt(q.change)} | P&L ${fmt(pnlPct)}`;
+    }).join('\n');
+  }
+
   const system = `คุณคือที่ปรึกษาการลงทุน สรุป Pre-Market Brief ภาษาไทยกระชับ ห้ามใช้ ** # Markdown`;
   const user = `Pre-Market Brief ${date}
-ข่าวล่าสุด: ${articles.map(a=>a.title).join(' | ')||'ไม่มี'}
-พอร์ต: ${ownerPort.map(p=>p.t).join(', ')||'ไม่มี'}
-สรุป: ตลาดคืนนี้ควรระวังอะไร และพอร์ตควรทำอะไร`;
 
-  const analysis = await callAI(env, system, user, 600);
+ราคาตลาด After-Hours / ล่าสุด:
+${marketLines||'ไม่มีข้อมูลตลาด'}
+
+${portLines ? `พอร์ตปัจจุบัน:\n${portLines}` : 'ไม่มีข้อมูลพอร์ต'}
+
+ข่าวล่าสุด:
+${articles.length ? articles.map(a=>a.title).join('\n') : 'ไม่มีข่าวสำคัญ'}
+
+สรุป 3 ข้อ:
+1) ตลาดคืนนี้/เช้าพรุ่งนี้ควรระวังอะไร พร้อมเหตุผลจากข้อมูลข้างบน
+2) หุ้นในพอร์ตตัวไหนน่าติดตามพิเศษ
+3) กลยุทธ์ 1 ประโยค`;
+
+  const analysis = await callAI(env, system, user, 700);
   if(!analysis) return;
 
-  await sendTG(env, `☀️ <b>Pre-Market Brief -- ${date}</b>\n\n${analysis}\n\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`);
-  try{ await env.ALERT_KV.put(coolKey, Date.now().toString()); }catch{}
+  // สร้าง message พร้อมข้อมูลจริง
+  let msg = `☀️ <b>Pre-Market Brief -- ${date}</b>\n\n`;
+
+  // แสดงราคาตลาดจริงใน message
+  if(hasMarketData){
+    msg += `📊 <b>ตลาดล่าสุด</b>\n`;
+    if(spy) msg += `SPY: $${spy.price.toFixed(2)} <b>${fmt(spy.change)}</b>\n`;
+    if(qqq) msg += `QQQ: $${qqq.price.toFixed(2)} <b>${fmt(qqq.change)}</b>\n`;
+    if(smh) msg += `SMH: $${smh.price.toFixed(2)} <b>${fmt(smh.change)}</b>\n`;
+    if(vix) msg += `VIX: ${vix.price.toFixed(1)} ${vix.price>20?'⚠️ สูง':vix.price>15?'🟡':'✅'}\n`;
+    msg += '\n';
+  }
+
+  // แสดงพอร์ตจริงใน message
+  if(ownerPort.length && Object.keys(portQuotes).length){
+    msg += `💼 <b>พอร์ตตอนนี้</b>\n`;
+    ownerPort.forEach(pos => {
+      const q = portQuotes[pos.t];
+      if(!q) return;
+      const pnlPct = pos.avgPrice>0 ? ((q.price-pos.avgPrice)/pos.avgPrice*100) : 0;
+      const em = q.change>=0?'🟢':'🔴';
+      const pem = pnlPct>=5?'🚀':pnlPct>=0?'✅':pnlPct>=-5?'⚠️':'🔴';
+      msg += `${em} <b>${pos.t}</b>: ${fmt(q.change)} | ${pem} P&L ${fmt(pnlPct)}\n`;
+    });
+    msg += '\n';
+  }
+
+  msg += `🤖 <b>AI วิเคราะห์</b>\n${analysis}`;
+  msg += `\n\n⚠️ ใช้ประกอบการตัดสินใจเท่านั้น`;
+
+  await sendTG(env, msg);
+  try{ await env.ALERT_KV.put(coolKey, '1', {expirationTtl: 86400}); }catch{}
 }
 
 async function checkInsiderAlerts(env){
@@ -336,6 +418,13 @@ export default {
       return new Response('Morning Brief forced',{headers:h});
     }
     if(url.pathname==='/trigger/premarket'){ ctx.waitUntil(sendPreMarket(env)); return new Response('Pre-market triggered',{headers:h}); }
+    if(url.pathname==='/trigger/premarket/force'){
+      // force: ลบ cooldown key ของวันนี้แล้ว trigger ใหม่
+      const today = new Date().toISOString().slice(0,10);
+      try{ await env.ALERT_KV.delete(`premarket_sent_${today}`); }catch{}
+      ctx.waitUntil(sendPreMarket(env));
+      return new Response('Pre-market forced',{headers:h});
+    }
     if(url.pathname==='/trigger/news'){ ctx.waitUntil(sendEconomicAlert(env, true)); return new Response('Economic alert triggered',{headers:h}); }
     if(url.pathname==='/trigger/insider'){ ctx.waitUntil(checkInsiderAlerts(env)); return new Response('Insider triggered',{headers:h}); }
     if(url.pathname==='/debug/time'){
