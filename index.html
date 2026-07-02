@@ -15770,10 +15770,10 @@ async function _eliteClaudeSearch(overlay, _ank){
   try{
     const resp1 = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01'},
+      headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:4000,system:sysPrompt,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
     });
-    if(!resp1.ok) throw new Error('API '+resp1.status);
+    if(!resp1.ok){ const errBody = await resp1.text().catch(function(){return '';}); throw new Error('API '+resp1.status+(errBody?': '+errBody.slice(0,150):'')); }
     const data1 = await resp1.json();
     let text = '';
     if(data1.stop_reason==='end_turn'){
