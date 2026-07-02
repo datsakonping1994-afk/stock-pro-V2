@@ -17992,17 +17992,25 @@ let _thbRateTime = 0;
 async function fetchTHBRate() {
   // ใช้ cache 10 นาที
   if(_thbRate && Date.now() - _thbRateTime < 10 * 60 * 1000) return _thbRate;
-  try {
-    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=THB', {signal:AbortSignal.timeout(6000)});
-    const data = await res.json();
-    if(data && data.rates && data.rates.THB) {
-      _thbRate = data.rates.THB;
-      _thbRateTime = Date.now();
-      return _thbRate;
-    }
-  } catch(e) {}
-  // fallback: ใช้ราคาโดยประมาณ
-  _thbRate = 33.5;
+  // [FIX] frankfurter ย้าย domain หลักไปที่ api.frankfurter.dev แล้ว (api.frankfurter.app เป็น legacy/ไม่เสถียร)
+  // ลองตัวใหม่ก่อน แล้วค่อย fallback ไปตัวเก่า
+  const endpoints = [
+    'https://api.frankfurter.dev/v1/latest?base=USD&symbols=THB',
+    'https://api.frankfurter.app/latest?from=USD&to=THB'
+  ];
+  for(const url of endpoints){
+    try {
+      const res = await fetch(url, {signal:AbortSignal.timeout(6000)});
+      const data = await res.json();
+      if(data && data.rates && data.rates.THB) {
+        _thbRate = data.rates.THB;
+        _thbRateTime = Date.now();
+        return _thbRate;
+      }
+    } catch(e) {}
+  }
+  // fallback: ใช้ราคาโดยประมาณ (อัปเดตตามตลาดล่าสุด — อาจคลาดเคลื่อนถ้านานเกิน)
+  _thbRate = 33.35;
   _thbRateTime = Date.now();
   return _thbRate;
 }
