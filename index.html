@@ -15509,21 +15509,25 @@ async function _eliteDirectFallback(overlay){
   try{
     let rawText = null;
 
-    // ── Priority 1: Groq Llama (ใช้ก่อนเพราะ Gemini quota อาจหมด) ──
-    const groqKey = localStorage.getItem('groqKey')||'';
-    if(!rawText && groqKey){
+    // ── Priority 1: Groq Llama (ใช้ก่อนเพราะ Gemini quota อาจหมด) — rotate ผ่านทุก key สำรอง ──
+    const groqKeys=[localStorage.getItem('groqKey'),localStorage.getItem('groqKey2'),localStorage.getItem('groqKey3')].filter(Boolean);
+    let groqErr = null;
+    for(const gqk of groqKeys){
+      if(rawText) break;
       try{
         const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+gqk},
           body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
         }, 15000);
-        if(gr.ok){ const gd=await gr.json(); rawText=gd?.choices?.[0]?.message?.content||null; if(rawText) console.log('[Elite] using Groq Llama'); }
-      }catch(e){ console.warn('[Elite Groq]',e.message); }
+        if(gr.ok){ const gd=await gr.json(); rawText=gd?.choices?.[0]?.message?.content||null; if(rawText) console.log('[Elite] using Groq Llama key ...'+gqk.slice(-6)); }
+        else { groqErr = 'HTTP '+gr.status; console.warn('[Elite Groq] key '+gqk.slice(-6)+' failed: '+groqErr); }
+      }catch(e){ groqErr = e.message; console.warn('[Elite Groq]',e.message); }
     }
 
     // ── Priority 2: Gemini Flash (ถ้า Groq ไม่ได้) ──
     const geminiKeys=[localStorage.getItem('geminiKey'),localStorage.getItem('geminiKey2'),localStorage.getItem('geminiKey3')].filter(Boolean);
+    let geminiErr = null;
     for(const gk of geminiKeys){
       if(rawText) break;
       try{
@@ -15539,17 +15543,21 @@ async function _eliteDirectFallback(overlay){
         if(gr.ok){
           const gd=await gr.json();
           // [FIX] ตรวจ quota error — Gemini return 200 แต่มี error ข้างใน
-          if(gd?.error||gd?.candidates?.[0]?.finishReason==='ERROR') continue;
+          if(gd?.error||gd?.candidates?.[0]?.finishReason==='ERROR'){ geminiErr = gd?.error?.message || gd?.candidates?.[0]?.finishReason || 'unknown error'; continue; }
           const t=gd?.candidates?.[0]?.content?.parts?.[0]?.text||null;
           if(t){ rawText=t; console.log('[Elite] using Gemini Flash'); }
         } else if(gr.status===429||gr.status===503){
+          geminiErr = 'HTTP '+gr.status+' (quota/rate limit)';
           console.warn('[Elite Gemini] quota/rate limit key',gk.slice(-6));
+        } else {
+          geminiErr = 'HTTP '+gr.status;
         }
-      }catch(e){ console.warn('[Elite Gemini]',e.message); }
+      }catch(e){ geminiErr = e.message; console.warn('[Elite Gemini]',e.message); }
     }
 
     // ── Priority 3: OpenRouter ──
     const orKey=localStorage.getItem('openrouterKey')||localStorage.getItem('openRouterKey')||'';
+    let orErr = null;
     if(!rawText && orKey){
       try{
         const or=await _fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions',{
@@ -15557,31 +15565,40 @@ async function _eliteDirectFallback(overlay){
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+orKey,'HTTP-Referer':'https://stockpro.app'},
           body:JSON.stringify({model:'google/gemini-2.0-flash-exp:free',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
         },18000);
-        if(or.ok){const od=await or.json();rawText=od?.choices?.[0]?.message?.content||null;if(rawText) console.log('[Elite] using OpenRouter');}
-      }catch(e){ console.warn('[Elite OpenRouter]',e.message); }
+        if(or.ok){const od=await or.json();rawText=od?.choices?.[0]?.message?.content||null;if(rawText) console.log('[Elite] using OpenRouter'); else orErr='empty response';}
+        else { orErr = 'HTTP '+or.status; }
+      }catch(e){ orErr = e.message; console.warn('[Elite OpenRouter]',e.message); }
     }
 
     // ── Priority 4: Anthropic Claude Haiku (last resort) ──
+    let claudeErr = null;
     if(!rawText && _ank){
-      const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:4000,system:eliteSys,messages:[{role:'user',content:eliteUser}]})
-      }, 20000);
-      if(resp.ok){
-        const data = await resp.json();
-        rawText = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
-        if(rawText) console.log('[Elite] using Claude Haiku');
-      }
+      try{
+        const resp = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:4000,system:eliteSys,messages:[{role:'user',content:eliteUser}]})
+        }, 20000);
+        if(resp.ok){
+          const data = await resp.json();
+          rawText = (data.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+          if(rawText) console.log('[Elite] using Claude Haiku'); else claudeErr='empty response';
+        } else {
+          const errBody = await resp.text().catch(function(){return '';});
+          claudeErr = 'HTTP '+resp.status+(errBody?': '+errBody.slice(0,150):'');
+        }
+      }catch(e){ claudeErr = e.message; console.warn('[Elite Claude]',e.message); }
     }
     if(!rawText){
       const errDetails=[];
-      if(!groqKey) errDetails.push('Groq: ไม่มี key');
-      else errDetails.push('Groq: ไม่ตอบสนอง (rate limit หรือ timeout)');
+      if(!groqKeys.length) errDetails.push('Groq: ไม่มี key');
+      else errDetails.push('Groq: ไม่ตอบสนอง'+(groqErr?' ('+groqErr+')':' (rate limit หรือ timeout)'));
       if(!geminiKeys.length) errDetails.push('Gemini: ไม่มี key');
-      else errDetails.push('Gemini: quota หมดหรือ error');
+      else errDetails.push('Gemini: '+(geminiErr||'quota หมดหรือ error'));
       if(!orKey) errDetails.push('OpenRouter: ไม่มี key');
+      else errDetails.push('OpenRouter: '+(orErr||'ไม่ตอบสนอง'));
       if(!_ank) errDetails.push('Claude: ไม่มี key');
+      else errDetails.push('Claude: '+(claudeErr||'ไม่ตอบสนอง'));
       return _mapNewsToResults(allNews, errDetails.join(' | '));
     }
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
