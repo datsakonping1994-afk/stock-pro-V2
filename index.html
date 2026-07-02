@@ -15807,21 +15807,29 @@ async function _eliteClaudeSearch(overlay, _ank){
         headers:{'Content-Type':'application/json','x-api-key':_ank,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:4000,system:sysPrompt,tools:[{type:'web_search_20250305',name:'web_search'}],messages:msgs})
       });
-      if(!resp2.ok) return [];
+      if(!resp2.ok){ const errBody2 = await resp2.text().catch(function(){return '';}); throw new Error('API (2nd call) '+resp2.status+(errBody2?': '+errBody2.slice(0,150):'')); }
       const data2 = await resp2.json();
       text = (data2.content||[]).filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    } else {
+      throw new Error('unexpected stop_reason: '+data1.stop_reason);
     }
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if(!jsonMatch) return [];
+    if(!jsonMatch) throw new Error('Claude ตอบกลับแต่ไม่มี JSON array (อาจเจอ safety refusal หรือ format ผิด)');
     let items = [];
-    try{ items = JSON.parse(jsonMatch[0]); }catch(e){ return []; }
-    return items.filter(function(item){return item&&item.id&&item.headline;}).map(function(item){
+    try{ items = JSON.parse(jsonMatch[0]); }catch(e){ throw new Error('JSON parse error: '+e.message); }
+    const results = items.filter(function(item){return item&&item.id&&item.headline;}).map(function(item){
       const person = ELITE_PEOPLE.find(function(p){return p.id===item.id;});
       if(!person) return null;
       item._sourcesCount = 1;
       return {person:person, news: buildNewsAnalysis(item, '')};
     }).filter(Boolean);
-  }catch(e){ console.warn('[elite claude search]',e.message); return []; }
+    if(!results.length) throw new Error('Claude ไม่พบข่าวที่ตรงกับรายชื่อ Elite ในรอบนี้ (ลองใหม่ภายหลัง)');
+    return results;
+  }catch(e){
+    console.warn('[elite claude search]',e.message);
+    window._eliteLastError = 'Claude search: '+e.message;
+    return [];
+  }
 }
 
 // ── Elite Enrich — เติม pros/cons/why ที่ขาดจาก Worker ──
