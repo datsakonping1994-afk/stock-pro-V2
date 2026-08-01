@@ -1679,14 +1679,14 @@ const STOCKS_DEFAULT=[
   {t:"META",n:"Meta Platforms"},{t:"AMZN",n:"Amazon"},{t:"TSLA",n:"Tesla"},{t:"AMD",n:"AMD"},
   {t:"PLTR",n:"Palantir"},{t:"NFLX",n:"Netflix"},{t:"AVGO",n:"Broadcom"},{t:"CRWD",n:"CrowdStrike"},
   {t:"ORCL",n:"Oracle Corp"},{t:"ADBE",n:"Adobe"},{t:"NOW",n:"ServiceNow"},{t:"CRM",n:"Salesforce"},
-  {t:"SNOW",n:"Snowflake"},{t:"DDOG",n:"Datadog"},{t:"MDB",n:"MongoDB"},{t:"NET",n:"Cloudflare"},
+  {t:"SNOW",n:"Snowflake"},{t:"MDB",n:"MongoDB"},{t:"NET",n:"Cloudflare"},
   {t:"ANET",n:"Arista Networks"},{t:"VRT",n:"Vertiv"},{t:"DELL",n:"Dell Technologies"},
   {t:"APP",n:"AppLovin"},{t:"VST",n:"Vistra"},{t:"MELI",n:"MercadoLibre"},
   // ── Semiconductors ──
   {t:"MU",n:"Micron Technology"},{t:"INTC",n:"Intel"},{t:"QCOM",n:"Qualcomm"},
-  {t:"AMAT",n:"Applied Materials"},{t:"LRCX",n:"Lam Research"},{t:"KLAC",n:"KLA Corp"},
-  {t:"TXN",n:"Texas Instruments"},{t:"ARM",n:"Arm Holdings"},{t:"SMCI",n:"Super Micro Computer"},
-  {t:"ASML",n:"ASML Holding"},{t:"TSM",n:"TSMC"},{t:"MRVL",n:"Marvell Technology"},
+  {t:"AMAT",n:"Applied Materials"},{t:"LRCX",n:"Lam Research"},
+  {t:"ARM",n:"Arm Holdings"},{t:"SMCI",n:"Super Micro Computer"},
+  {t:"ASML",n:"ASML Holding"},{t:"TSM",n:"TSMC"},{t:"MRVL",n:"Marvell Technology"},{t:"SKHY",n:"SK Hynix"},
   {t:"AMBA",n:"Ambarella"},{t:"NVTS",n:"Navitas Semiconductor"},{t:"AEHR",n:"Aehr Test Systems"},
   {t:"SNDK",n:"SanDisk"},{t:"STX",n:"Seagate"},{t:"NOK",n:"Nokia"},
   // ── AI/Defense/Space ──
@@ -1710,7 +1710,7 @@ const STOCKS_DEFAULT=[
   // ── Energy/Industrial ──
   {t:"XOM",n:"ExxonMobil"},{t:"AMSC",n:"American Superconductor"},
   // ── China ──
-  {t:"BABA",n:"Alibaba"},{t:"PDD",n:"PDD Holdings"},{t:"ALAB",n:"Astera Labs"},
+  {t:"BABA",n:"Alibaba"},{t:"ALAB",n:"Astera Labs"},
   // ── Other ──
   {t:"SLNH",n:"Soluna Holdings"},{t:"EOSE",n:"Eos Energy"},
   {t:"PL",n:"Planet Labs"},{t:"CRWV",n:"CoreWeave"},
@@ -1795,13 +1795,9 @@ let stocks=(()=>{
 
 function saveStocks(){
   try{ localStorage.setItem('_sp_stocks',JSON.stringify(stocks)); }catch{}
-  // [NEW] sync ไป Worker KV เพื่อให้ stocks ไม่หายแม้ clear localStorage
+  // [NEW] sync ไป Worker KV เพื่อให้ stocks ไม่หายแม้ clear localStorage (ผ่าน guard ป้องกันชน KV limit)
   try{
-    fetch(`${PRICES_WORKER}/user/stocks`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(stocks.map(s=>({t:s.t,n:s.n||s.t})))
-    }).catch(()=>{});
+    _kvPost(`${PRICES_WORKER}/user/stocks`, stocks.map(s=>({t:s.t,n:s.n||s.t})));
   }catch{}
   _rebuildStocksMap();
 }
@@ -2337,6 +2333,43 @@ const PRICES_WORKER='https://stock-prices.datsakonping1994.workers.dev';
 const MY_WORKER='https://my-ai-proxy.datsakonpppp1994.workers.dev';
 const ELITE_WORKER='https://stock-elite.datsakonping1994.workers.dev';
 
+// ══════════════════════════════════════════════════════════
+// ── KV Write Guard — จำกัดจำนวน POST ไป Worker KV ต่อวัน
+// ป้องกันชน Cloudflare Workers KV free tier limit (1000 writes/day)
+// เมื่อใกล้เต็มโควตาจะข้ามการเขียนแทนที่จะยิง request แล้วโดน 429 รัวๆ
+// ══════════════════════════════════════════════════════════
+const _KV_DAILY_SOFT_LIMIT = 850; // เผื่อ buffer ไว้ใต้ 1000 (เหลือไว้ให้ endpoint อื่นๆ ที่อาจเขียน KV ด้วย)
+function _kvWriteKey(){ return '_kv_writes_' + new Date().toISOString().slice(0,10); }
+function _kvWriteCount(){ try{ return parseInt(localStorage.getItem(_kvWriteKey())||'0'); }catch{ return 0; } }
+function _kvWriteAllowed(){ return _kvWriteCount() < _KV_DAILY_SOFT_LIMIT; }
+function _kvWriteRecord(){
+  try{
+    const key=_kvWriteKey();
+    localStorage.setItem(key, String(_kvWriteCount()+1));
+    // ล้าง counter ของวันเก่าทิ้ง กัน localStorage บวม
+    Object.keys(localStorage).forEach(k=>{ if(k.startsWith('_kv_writes_') && k!==key) localStorage.removeItem(k); });
+  }catch{}
+}
+// fetch แบบมี guard สำหรับ POST เขียน KV — ถ้าใกล้ชนโควตาจะข้าม ไม่ยิง request
+function _kvPost(url, body, opts={}){
+  if(!_kvWriteAllowed()){
+    console.warn('[KV Guard] ข้ามการเขียน — ใกล้ชน Workers KV free tier limit วันนี้ ('+_kvWriteCount()+'/'+_KV_DAILY_SOFT_LIMIT+')');
+    return Promise.resolve(null);
+  }
+  _kvWriteRecord();
+  return fetch(url, Object.assign({
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: typeof body==='string' ? body : JSON.stringify(body)
+  }, opts)).catch(()=>null);
+}
+// debounce: รวมหลายๆ การเรียกภายในช่วงเวลาสั้นๆ ให้เหลือแค่ครั้งเดียว
+let _syncAlertsDebounceTimer = null;
+function syncAlertsToWorkerDebounced(delay=6000){
+  clearTimeout(_syncAlertsDebounceTimer);
+  _syncAlertsDebounceTimer = setTimeout(syncAlertsToWorker, delay);
+}
+
 // ── Sync พอร์ต + alerts + trailing high ขึ้น Worker KV ──
 function syncAlertsToWorker(){
   try{
@@ -2355,28 +2388,16 @@ function syncAlertsToWorker(){
       stocks:stocks.map(s=>({t:s.t,short:s.short||null,earn:s.earn||null}))
     };
     // sync แบบเดิม (owner)
-    fetch(ALERT_WORKER+'/sync',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    }).catch(()=>{});
+    _kvPost(ALERT_WORKER+'/sync', body);
     // [NEW] sync portfolio ไป PRICES_WORKER เพื่อให้ brief worker อ่านได้
     if(portMapped.length>0){
-      fetch(PRICES_WORKER+'/user/portfolio',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(portMapped)
-      }).catch(()=>{});
+      _kvPost(PRICES_WORKER+'/user/portfolio', portMapped);
     }
     // ถ้ามี userToken ให้ sync พอร์ตแยกต่างหาก
     let userToken='';
     try{userToken=localStorage.getItem('userToken')||'';}catch{}
     if(userToken&&userToken.startsWith('sp_')){
-      fetch(ALERT_WORKER+'/portfolio/sync',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userToken,portfolio:portMapped})
-      }).catch(()=>{});
+      _kvPost(ALERT_WORKER+'/portfolio/sync', {userToken,portfolio:portMapped});
     }
   }catch{}
 }
@@ -2474,7 +2495,7 @@ function navTo(page, el){
 // ── Price Alerts ──
 function savePriceAlerts(){
   try{ localStorage.setItem('_sp_alerts', JSON.stringify(priceAlerts)); }catch{}
-  syncAlertsToWorker(); // sync ขึ้น Worker ทุกครั้งที่บันทึก
+  syncAlertsToWorkerDebounced(); // sync ขึ้น Worker แบบ debounce ป้องกันยิงถี่เกิน KV limit
 }
 
 function buildTickerSelect(){
@@ -4977,15 +4998,10 @@ function logTrade(ticker, price, score, aiAnalysis=''){
   }catch{}
   // [FIX] แสดง popup เมื่อมี signal ใหม่ (ไม่ว่าจะเปิดหน้าไหน)
   try{ showSignalToast(ticker, price, score); }catch{}
-  // บันทึก Worker KV (background) — sync ขึ้น PRICES_WORKER signal_log
+  // บันทึก Worker KV (background) — sync ขึ้น PRICES_WORKER signal_log (ผ่าน guard ป้องกันชน KV limit)
   const _ltCtrl=new AbortController();
   setTimeout(()=>_ltCtrl.abort(),5000);
-  fetch(PRICES_WORKER + '/signals/save', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(entry),
-    signal: _ltCtrl.signal
-  }).catch(() => {});
+  _kvPost(PRICES_WORKER + '/signals/save', entry, {signal:_ltCtrl.signal});
 }
 
 function updateTradeResults(){
@@ -11264,8 +11280,8 @@ function savePortfolio(){
     const d=new Date(); d.setFullYear(d.getFullYear()+1);
     document.cookie=`_sp_portfolio=${encodeURIComponent(data)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
   }catch{}
-  // Sync ขึ้น Worker KV ทุกครั้งที่บันทึกพอร์ต
-  setTimeout(syncAlertsToWorker, 500);
+  // Sync ขึ้น Worker KV แบบ debounce — ถ้าแก้พอร์ตรัวๆ จะรวมเป็น sync เดียว ป้องกันชน KV limit
+  syncAlertsToWorkerDebounced(4000);
 }
 
 // ── Cash สำรอง ──
