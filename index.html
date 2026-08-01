@@ -1708,7 +1708,7 @@ const STOCKS_DEFAULT=[
   // ── Consumer/Retail ──
   {t:"COST",n:"Costco"},{t:"WMT",n:"Walmart"},{t:"MP",n:"MP Materials"},
   // ── Energy/Industrial ──
-  {t:"XOM",n:"ExxonMobil"},{t:"AMSC",n:"American Superconductor"},
+  {t:"XOM",n:"ExxonMobil"},{t:"AMSC",n:"American Superconductor"},{t:"TE",n:"T1 Energy"},
   // ── China ──
   {t:"BABA",n:"Alibaba"},{t:"ALAB",n:"Astera Labs"},
   // ── Other ──
@@ -5344,6 +5344,8 @@ function _saveTrailingHigh(){
 }
 
 async function checkExitSignal(ticker, price){
+  // [ปิดใช้งาน] Exit Signal ทุกแบบถูกปิดตามคำขอผู้ใช้ — ลบบรรทัดนี้ออกเพื่อเปิดใช้งานอีกครั้ง
+  if(true) return;
   const s = stocksMap.get(ticker);
   if(!s||price<=0) return;
   const r1 = getR1(ticker, price);
