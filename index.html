@@ -1128,7 +1128,7 @@ canvas.bigchart{width:100%;height:100%}
 
         <div class="settings-row">
           <div class="settings-label">ล้าง Trade Log</div>
-          <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){try{localStorage.removeItem('_tl_v2');}catch{}renderAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
+          <button class="settings-btn danger" onclick="if(confirm('ล้าง Trade Log ทั้งหมด?')){try{localStorage.removeItem('_tl_v2');}catch{}loadAlerts();toast('ล้าง Trade Log แล้ว');}">🗑️ ล้างทั้งหมด</button>
         </div>
         <div class="settings-row">
           <div>
@@ -1162,7 +1162,7 @@ canvas.bigchart{width:100%;height:100%}
               stocks=JSON.parse(JSON.stringify(STOCKS_DEFAULT));
               try{saveStocks();}catch{}
               toast('✅ รีเซ็ตข้อมูลหุ้นแล้ว — กำลังโหลดใหม่...');
-              setTimeout(()=>{try{renderCards();updateDashboard();}catch{}},500);
+              setTimeout(()=>{try{renderStocks();renderOverview();}catch{}},500);
             }
           ">🔄 รีเซ็ต</button>
         </div>
@@ -1227,7 +1227,7 @@ canvas.bigchart{width:100%;height:100%}
   <div style="flex-shrink:0;padding:env(safe-area-inset-top,16px) 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:var(--bg0)">
     <button onclick="closeModal('earningsModal')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.5px;min-width:70px">← Back</button>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)">📅 Earnings Calendar</div>
-    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear',{method:'POST',signal:AbortSignal.timeout(5000)});}catch{}await fetchAndRenderEarnings(true);this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
+    <button onclick="(async()=>{this.textContent='⏳';localStorage.removeItem('_sp_earnings_cache');try{await fetch(PRICES_WORKER+'/earnings/clear',{method:'POST',signal:AbortSignal.timeout(5000)});}catch{}try{await fetch(PRICES_WORKER+'/earnings/clear',{signal:AbortSignal.timeout(5000)});}catch{}await fetchAndRenderEarnings(true);this.textContent='🔄'})()" style="background:rgba(100,210,255,0.1);border:1px solid rgba(100,210,255,0.25);border-radius:10px;padding:9px 12px;color:var(--ice);font-size:11px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">🔄</button>
   </div>
   <div id="earningsBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 80px"></div>
 </div>
@@ -1384,32 +1384,6 @@ canvas.bigchart{width:100%;height:100%}
 
       <!-- Holdings List -->
       <div id="portDebugPanel" style="display:none;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:10px;padding:10px;margin-bottom:10px;font-size:10px;color:var(--ice);font-family:'IBM Plex Mono',monospace;line-height:1.5"></div>
-
-      <!-- Portfolio Charts -->
-      <div id="portChartSection" style="display:none;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-          <button class="port-chart-tab active" onclick="switchPortChart('pnl',this)">📈 P&amp;L</button>
-          <button class="port-chart-tab" onclick="switchPortChart('pie',this)">🥧 Allocation</button>
-        </div>
-        <div id="portPnlChartWrap" style="background:linear-gradient(145deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3)">Total P&amp;L</div>
-            <div id="portPnlChartVal" style="font-family:'Manrope',sans-serif;font-size:16px;font-weight:800;color:var(--text2)">$0.00</div>
-          </div>
-          <div id="pnlRangebtns" style="display:flex;gap:6px;margin-bottom:8px">
-            <button class="port-range-btn active" onclick="switchPnlRange('1D',this)">1D</button>
-            <button class="port-range-btn" onclick="switchPnlRange('1W',this)">1W</button>
-            <button class="port-range-btn" onclick="switchPnlRange('1M',this)">1M</button>
-          </div>
-          <canvas id="portPnlCanvas" style="width:100%;height:120px;display:block"></canvas>
-        </div>
-        <div id="portPieChartWrap" style="display:none;background:linear-gradient(145deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <canvas id="portPieCanvas" style="width:120px;height:120px;flex-shrink:0"></canvas>
-            <div id="portPieLegend" style="flex:1;display:flex;flex-direction:column;gap:5px;min-width:0"></div>
-          </div>
-        </div>
-      </div>
 
       <div id="portHoldingsList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:100px">
         <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:11px;opacity:0.6">กรอก ticker + ราคาซื้อ + จำนวนหุ้น แล้วกด Add</span></div>
@@ -1605,14 +1579,9 @@ canvas.bigchart{width:100%;height:100%}
       </div>
     </div>
     <div class="drawer-price">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button id="drawerWlBtn" onclick="toggleWatchlistFromDrawer()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:var(--text3);transition:all 0.2s;flex-shrink:0">☆</button>
-        <div style="text-align:right">
-          <div class="drawer-price-val" id="drawerPrice">--</div>
-          <div class="card-chg" id="drawerChg">--</div>
-          <div id="drawerExtPrice" style="display:none"></div>
-        </div>
-      </div>
+      <div class="drawer-price-val" id="drawerPrice">--</div>
+      <div class="card-chg" id="drawerChg">--</div>
+      <div id="drawerExtPrice" style="display:none"></div>
     </div>
 
   </div>
@@ -1921,7 +1890,7 @@ async function initLiveData(){
                   if(!s._revFromWorker){
                     s.revLive = yoy.toFixed(1) + '%' + (negBase ? '*' : '');
                     s._revNegBase = negBase;
-                    if(typeof renderCards==='function') renderCards();
+                    if(typeof renderStocks==='function') renderStocks();
                   }
                 }
               }
@@ -2640,7 +2609,7 @@ ${ticker} ${a.dir==='above'?'↑ ขึ้นถึง':'↓ ลงถึง'} $
 ราคาปัจจุบัน ${fmt(price)}`);
     updateAlertBadge();
     // refresh list ถ้าอยู่หน้า alerts
-    if(document.getElementById('panelTradeLog')?.style.display!=='none') renderAlerts();
+    if(document.getElementById('panelTradeLog')?.style.display!=='none') loadAlerts();
   });
 }
 
@@ -7228,7 +7197,7 @@ if(document.readyState!=='complete'){
 setTimeout(()=>{ try{ _preloadCandles(); }catch{} }, 4000);
 
 // ── initLiveData: ดึง fundamentals + sector ทุกตัว หลังเปิดแอป 6 วินาที ──
-setTimeout(()=>{ initLiveData().then(()=>{ if(typeof renderCards==='function') renderCards(); }).catch(e=>console.warn('initLiveData err',e)); }, 6000);
+setTimeout(()=>{ initLiveData().then(()=>{ if(typeof renderStocks==='function') renderStocks(); }).catch(e=>console.warn('initLiveData err',e)); }, 6000);
 
 // ── initEliteCalendar: ดึง economic calendar หลังเปิดแอป 8 วินาที ──
 setTimeout(()=>{
@@ -7265,7 +7234,7 @@ setTimeout(async()=>{
           if(m.revLatestQ!=null && s.revLatestQ==null){ const rq=+m.revLatestQ; if(isFinite(rq)&&rq!==0) s.revLatestQ=rq; }
         }
         // re-render cards ให้เห็นข้อมูลใหม่
-        if(typeof renderCards==='function') renderCards();
+        if(typeof renderStocks==='function') renderStocks();
       }catch{}
       await new Promise(r=>setTimeout(r,500));
     }
@@ -8213,63 +8182,6 @@ async function testCohereKey(){
     statusEl.textContent=e.name==='AbortError'?'⏱️ Cohere ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
   }
   btn.disabled=false; btn.textContent='🧪 ทดสอบ';
-}
-
-// ── testOpenRouterKey ──
-async function testOpenRouterKey(){
-  const statusEl=document.getElementById('openrouterKeyStatus');
-  const btn=document.getElementById('testOpenRouterBtn');
-  const key=document.getElementById('openrouterKeyInput')?.value?.trim()||'';
-  if(!statusEl) return;
-  if(!key){
-    statusEl.style.display='block';
-    statusEl.style.background='rgba(255,77,106,0.12)';
-    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-    statusEl.style.color='var(--red)';
-    statusEl.textContent='❌ กรุณาใส่ API Key ก่อน';
-    return;
-  }
-  if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
-  statusEl.style.display='block';
-  statusEl.style.background='rgba(255,255,255,0.05)';
-  statusEl.style.border='1px solid rgba(255,255,255,0.1)';
-  statusEl.style.color='var(--text2)';
-  statusEl.textContent='กำลังทดสอบ...';
-  const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),10000);
-  try{
-    const r=await _fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://stockpro.app'},
-      body:JSON.stringify({model:'google/gemini-2.0-flash-exp:free',messages:[{role:'user',content:'Reply with the single word: ok'}],max_tokens:5}),
-      signal:ctrl.signal
-    });
-    clearTimeout(tid);
-    if(r.ok){
-      try{ localStorage.setItem('openrouterKey',key); }catch{}
-      statusEl.style.background='rgba(0,230,118,0.1)';
-      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
-      statusEl.style.color='var(--green)';
-      statusEl.textContent='✅ OpenRouter ใช้งานได้! (บันทึกแล้ว)';
-    } else if(r.status===401||r.status===403){
-      statusEl.style.background='rgba(255,77,106,0.12)';
-      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-      statusEl.style.color='var(--red)';
-      statusEl.textContent='❌ API Key ไม่ถูกต้อง (HTTP '+r.status+')';
-    } else {
-      statusEl.style.background='rgba(201,168,76,0.12)';
-      statusEl.style.border='1px solid rgba(201,168,76,0.3)';
-      statusEl.style.color='var(--gold)';
-      statusEl.textContent='⚠️ ได้รับ HTTP '+r.status+' — Key อาจถูกต้องแต่มีปัญหาอื่น';
-    }
-  }catch(e){
-    clearTimeout(tid);
-    statusEl.style.background='rgba(255,77,106,0.12)';
-    statusEl.style.border='1px solid rgba(255,77,106,0.3)';
-    statusEl.style.color='var(--red)';
-    statusEl.textContent='❌ ไม่สามารถเชื่อมต่อได้: '+(e.name==='AbortError'?'timeout':e.message);
-  }
-  if(btn){ btn.disabled=false; btn.textContent='🧪 ทดสอบ'; }
 }
 
 // ── Twelve Data config ──
@@ -14125,12 +14037,9 @@ function switchPortChart(type, btn){
   _portChartType = type;
   document.querySelectorAll('.port-chart-tab').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const pnlWrap=document.getElementById('portPnlChartWrap');
-  const pieWrap=document.getElementById('portPieChartWrap');
-  const rangeBtns=document.getElementById('pnlRangebtns');
-  if(pnlWrap) pnlWrap.style.display = type==='pnl' ? 'block' : 'none';
-  if(pieWrap) pieWrap.style.display = type==='pie' ? 'block' : 'none';
-  if(rangeBtns) rangeBtns.style.display = type==='pnl' ? 'flex' : 'none';
+  document.getElementById('portPnlChartWrap').style.display = type==='pnl' ? 'block' : 'none';
+  document.getElementById('portPieChartWrap').style.display = type==='pie' ? 'block' : 'none';
+  document.getElementById('pnlRangebtns').style.display = type==='pnl' ? 'flex' : 'none';
   if(type==='pnl') renderPnlChart();
   else renderPieChart();
 }
@@ -16856,13 +16765,13 @@ function _renderEliteModal(idx){
             <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ Direct Impact</div>
             <div style="display:flex;flex-direction:column;gap:6px">${direct.map(b=>`
               <div style="display:flex;align-items:flex-start;gap:8px">
-                <span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openDrawer('${b.t||b}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer;flex-shrink:0">${b.t||b}</span>
+                <span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${b.t||b}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer;flex-shrink:0">${b.t||b}</span>
                 ${b.reason?`<span style="font-size:11px;color:#a8b8d0;line-height:1.5;padding-top:3px">${b.reason}</span>`:''}
               </div>`).join('')}
             </div></div>`;
           else if((n.stocks_buy||[]).length) h+=`<div style="margin-bottom:8px">
             <div style="font-size:9px;color:#00e676;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">✅ Direct Impact</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_buy||[]).map(t=>`<span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openDrawer('${t}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer">${t}</span>`).join('')}</div></div>`;
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${(n.stocks_buy||[]).map(t=>`<span onclick="event.stopPropagation();navTo('stocks',document.querySelector('[onclick*=stocks]'));setTimeout(()=>openStockCard('${t}'),300)" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);border-radius:8px;padding:5px 10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#00e676;cursor:pointer">${t}</span>`).join('')}</div></div>`;
           if(directLosers.length) h+=`<div style="margin-bottom:8px">
             <div style="font-size:9px;color:#ff4d6a;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">⚠️ ระวัง</div>
             <div style="display:flex;flex-direction:column;gap:6px">${directLosers.map(l=>`
@@ -18193,333 +18102,5 @@ window.addEventListener('load', ()=>{
 });
 
 </script>
-<script data-pplx-inline-edit>
-(function () {
-  if (window === window.top) return;
-
-  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
-  const MAX_FONT_BYTES = 500 * 1024;
-  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
-  let scrollForwarding = false;
-  let scrollRaf = 0;
-  let trustedTopOrigin = null;
-
-  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
-  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
-  // across multiple labels.
-  function matchesAllowedOrigin(origin) {
-    if (!origin) return false;
-    for (const entry of allowedParentOrigins) {
-      if (!entry.includes("*")) {
-        if (entry === origin) return true;
-        continue;
-      }
-      const pattern = new RegExp(
-        "^" +
-          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
-          "$",
-      );
-      if (pattern.test(origin)) return true;
-    }
-    return false;
-  }
-
-  // Trust decision: when the sender is same-origin-visible (event.origin is a
-  // real origin like https://www.perplexity.ai) we trust event.origin directly.
-  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
-  // broker's stamped `parentOrigin` to identify the top window. The fallback
-  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
-  // on the response path (see postToTrustedTop) to ensure replies can't be
-  // delivered to anyone but the actual top window of that claimed origin.
-  function getTrustedParentOrigin(event) {
-    const forwardedParentOrigin =
-      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
-    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
-    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
-  }
-
-  // All responses go to window.top with targetOrigin = the allowlisted origin.
-  // An attacker that iframes us inside their own null-origin broker can claim
-  // any parentOrigin they like, but the browser will drop the reply whenever
-  // the real top's origin doesn't match — so the screenshot never leaves.
-  function postToTrustedTop(message) {
-    if (!trustedTopOrigin) return;
-    try {
-      window.top.postMessage(message, trustedTopOrigin);
-    } catch (_error) {}
-  }
-
-  function inlineAll(original, clone) {
-    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
-
-    try {
-      const computedStyle = getComputedStyle(original);
-      // cssText on a computed style is the serialized declaration in modern
-      // Chromium/Safari — a single read beats enumerating ~400 longhand
-      // properties. Firefox returns "" here, so we fall back on empty.
-      const serialized = computedStyle.cssText;
-      if (serialized) {
-        clone.style.cssText = serialized;
-      } else {
-        const parts = new Array(computedStyle.length);
-        for (let index = 0; index < computedStyle.length; index += 1) {
-          const property = computedStyle[index];
-          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
-        }
-        clone.style.cssText = parts.join("");
-      }
-    } catch (_error) {}
-
-    const originalChildren = original.children;
-    const clonedChildren = clone.children;
-    for (
-      let index = 0;
-      index < originalChildren.length && index < clonedChildren.length;
-      index += 1
-    ) {
-      inlineAll(originalChildren[index], clonedChildren[index]);
-    }
-  }
-
-  function extractFontUrl(srcValue) {
-    const matches = [
-      ...srcValue.matchAll(
-        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
-      ),
-    ];
-    if (matches.length === 0) return null;
-    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
-    if (woff2) return woff2[1];
-    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
-    if (woff) return woff[1];
-    return matches[0][1];
-  }
-
-  // Cache resolved font URL -> data URI across captures. Fonts on a page
-  // essentially never change, and a batch run emits multiple captures back to
-  // back — without this we'd refetch + re-base64 every time.
-  const fontDataUriCache = new Map();
-  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
-
-  async function fetchAsDataUri(url) {
-    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
-    let dataUri = null;
-    try {
-      const response = await fetch(url, { mode: "cors", credentials: "omit" });
-      if (response.ok) {
-        const blob = await response.blob();
-        if (blob.size <= MAX_FONT_BYTES) {
-          dataUri = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () =>
-              resolve(typeof reader.result === "string" ? reader.result : null);
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(blob);
-          });
-        }
-      }
-    } catch (_error) {
-      dataUri = null;
-    }
-    fontDataUriCache.set(url, dataUri);
-    return dataUri;
-  }
-
-  function collectFontFaceRuleTexts() {
-    const rules = [];
-    for (const sheet of document.styleSheets) {
-      let cssRules;
-      try {
-        cssRules = sheet.cssRules;
-      } catch (_error) {
-        continue;
-      }
-      if (!cssRules) continue;
-      for (const rule of cssRules) {
-        const cssText = rule.cssText || "";
-        if (cssText.startsWith("@font-face")) rules.push(cssText);
-      }
-    }
-    return rules;
-  }
-
-  async function buildInlinedFontCss() {
-    const ruleTexts = collectFontFaceRuleTexts();
-    if (ruleTexts.length === 0) return null;
-
-    const resolved = ruleTexts.map((cssText) => {
-      if (!SRC_DECLARATION_RE.test(cssText)) return null;
-      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
-      if (!srcMatch) return null;
-      const url = extractFontUrl(srcMatch[1]);
-      if (!url) return null;
-      try {
-        return { cssText, url: new URL(url, document.baseURI).href };
-      } catch (_error) {
-        return null;
-      }
-    });
-
-    const dataUris = await Promise.all(
-      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
-    );
-
-    const inlined = [];
-    let totalBytes = 0;
-    for (let index = 0; index < resolved.length; index += 1) {
-      const entry = resolved[index];
-      const dataUri = dataUris[index];
-      if (!entry || !dataUri) continue;
-      const approxBytes = dataUri.length * 0.75;
-      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
-      totalBytes += approxBytes;
-      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
-    }
-    return inlined.length > 0 ? inlined.join("\n") : null;
-  }
-
-  function stripExternal(clone) {
-    const images = clone.querySelectorAll("img");
-    for (let index = 0; index < images.length; index += 1) {
-      const src = images[index].getAttribute("src");
-      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
-    }
-
-    const elements = clone.querySelectorAll("*");
-    for (let index = 0; index < elements.length; index += 1) {
-      const style = elements[index].style.cssText;
-      if (style && style.includes("url(")) {
-        elements[index].style.cssText = style.replace(
-          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
-          "none",
-        );
-      }
-    }
-  }
-
-  function emitScroll() {
-    scrollRaf = 0;
-    if (!scrollForwarding) return;
-    postToTrustedTop({
-      type: "INLINE_EDIT_SCROLL",
-      scrollX: window.scrollX,
-      scrollY: window.scrollY,
-    });
-  }
-
-  window.addEventListener(
-    "scroll",
-    function () {
-      if (!scrollForwarding || scrollRaf) return;
-      scrollRaf = requestAnimationFrame(emitScroll);
-    },
-    { passive: true, capture: true },
-  );
-
-  async function handleCaptureRequest(event) {
-    const requestId = event.data.requestId;
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    function postResult(dataUrl) {
-      postToTrustedTop({
-        type: "INLINE_EDIT_SCREENSHOT_RESULT",
-        requestId,
-        dataUrl,
-        scrollX,
-        scrollY,
-      });
-    }
-
-    try {
-      // Wait for any pending web fonts to resolve so both inline metrics and
-      // the @font-face inlining below see the same loaded faces.
-      if (document.fonts && document.fonts.ready) {
-        try {
-          await document.fonts.ready;
-        } catch (_error) {}
-      }
-
-      const clone = document.documentElement.cloneNode(true);
-      inlineAll(document.documentElement, clone);
-
-      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
-      for (let index = 0; index < removedNodes.length; index += 1) {
-        removedNodes[index].remove();
-      }
-
-      stripExternal(clone);
-
-      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
-      // can resolve them — external font URLs aren't fetched during
-      // foreignObject rendering, which would otherwise force a fallback face
-      // and change text metrics.
-      const inlinedFontCss = await buildInlinedFontCss();
-      if (inlinedFontCss) {
-        const styleEl = document.createElement("style");
-        styleEl.textContent = inlinedFontCss;
-        const head = clone.querySelector("head");
-        if (head) head.appendChild(styleEl);
-        else clone.insertBefore(styleEl, clone.firstChild);
-      }
-
-      const html = new XMLSerializer().serializeToString(clone);
-      const svg =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-        '<foreignObject width="100%" height="100%">' +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
-        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
-        html +
-        "</div></div></foreignObject></svg>";
-      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      const image = new Image();
-      image.onload = function () {
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d").drawImage(image, 0, 0);
-        postResult(canvas.toDataURL("image/png"));
-      };
-      image.onerror = function () {
-        postResult(null);
-      };
-      image.src = svgUrl;
-    } catch (_error) {
-      postResult(null);
-    }
-  }
-
-  window.addEventListener("message", function (event) {
-    if (!event.data) return;
-    // Only accept messages from the direct parent frame. Blocks sibling /
-    // unrelated-window postMessage senders that could otherwise reach us.
-    if (event.source !== window.parent) return;
-
-    const trustedParentOrigin = getTrustedParentOrigin(event);
-    if (!trustedParentOrigin) return;
-    trustedTopOrigin = trustedParentOrigin;
-
-    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
-      scrollForwarding = true;
-      emitScroll();
-      return;
-    }
-
-    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
-      scrollForwarding = false;
-      if (scrollRaf) cancelAnimationFrame(scrollRaf);
-      scrollRaf = 0;
-      return;
-    }
-
-    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
-
-    handleCaptureRequest(event);
-  });
-})();
-
-
-</script></body>
+</body>
 </html>
