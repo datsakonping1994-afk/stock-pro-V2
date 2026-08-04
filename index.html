@@ -11615,6 +11615,7 @@ Sector: ${sectorText}
 //  1. Gemini Flash (ฟรี)  2. Groq Vision (ฟรี)  3. Claude Haiku
 // ══════════════════════════════════════════════
 let _slipData = null;
+let _slipLastError = '';
 const SLIP_PROMPT = 'อ่านสลิปซื้อขายหุ้นนี้แล้วตอบ JSON เท่านั้น ห้ามอธิบายเพิ่ม: {"action":"buy","ticker":"AMSC","price":44.06,"shares":2.3728876,"date":"2026-06-05"} - action: ซื้อ/Buy=buy | ขาย/Sell=sell - ticker: ชื่อหุ้นอังกฤษ - price: ราคาที่ได้จริง - shares: จำนวน - date: YYYY-MM-DD ถ้าไม่ใช่สลิปตอบ {"error":"not_a_slip"}';
 
 async function _parseSlipGemini(b64,mime){
@@ -11624,9 +11625,11 @@ async function _parseSlipGemini(b64,mime){
     try{
     const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
     const d=await r.json();
+    if(!r.ok){throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));}
     const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-  }catch(e){console.warn('[slip:gemini key]',e.message); continue;}
+    throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
+  }catch(e){console.warn('[slip:gemini key]',e.message); _slipLastError='Gemini: '+e.message; continue;}
   }
   return null;
 }
@@ -11636,11 +11639,13 @@ async function _parseSlipGroq(b64,mime){
   if(!keys.length) return null;
   for(const key of keys){
   try{
-    const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',max_tokens:200,messages:[{role:'user',content:[{type:'image_url',image_url:{url:'data:'+mime+';base64,'+b64}},{type:'text',text:SLIP_PROMPT}]}]})},10000);
+    const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'qwen/qwen3.6-27b',max_tokens:200,messages:[{role:'user',content:[{type:'image_url',image_url:{url:'data:'+mime+';base64,'+b64}},{type:'text',text:SLIP_PROMPT}]}]})},10000);
     const d=await r.json();
+    if(!r.ok){throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));}
     const t=d.choices?.[0]?.message?.content||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-  }catch(e){console.warn('[slip:groq key]',e.message); continue;}
+    throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
+  }catch(e){console.warn('[slip:groq key]',e.message); _slipLastError='Groq: '+e.message; continue;}
   }
   return null;
 }
@@ -11651,9 +11656,11 @@ async function _parseSlipClaude(b64,mime){
   try{
     const r=await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:b64}},{type:'text',text:SLIP_PROMPT}]}]})},12000);
     const d=await r.json();
+    if(!r.ok){throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));}
     const t=d.content?.[0]?.text||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-  }catch(e){console.warn('[slip:claude]',e.message);}
+    throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
+  }catch(e){console.warn('[slip:claude]',e.message); _slipLastError='Claude: '+e.message;}
   return null;
 }
 
@@ -11666,7 +11673,7 @@ async function parseSlipImage(input){
   const confirmBtn=document.getElementById('slipConfirmBtn');
   preview.style.display='block';
   status.innerHTML='⏳ กำลังอ่านสลิป...';
-  result.innerHTML=''; confirmBtn.style.display='none'; _slipData=null;
+  result.innerHTML=''; confirmBtn.style.display='none'; _slipData=null; _slipLastError='';
   try{
     const mime=file.type||'image/jpeg';
     const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(',')[1]);rd.onerror=rej;rd.readAsDataURL(file);});
@@ -11681,7 +11688,11 @@ async function parseSlipImage(input){
       parsed=await p.fn();
       if(parsed&&!parsed.error){status.innerHTML='✅ <b>'+p.name+'</b> อ่านสำเร็จ';break;}
     }
-    if(!parsed||parsed.error){status.textContent='❌ AI อ่านไม่ได้ — ลองรูปที่ชัดกว่านี้ครับ';return;}
+    if(!parsed||parsed.error){
+      const reason=parsed?.error?('ตอบว่าไม่ใช่สลิป':_slipLastError||'ไม่มี AI key ที่ใช้งานได้');
+      status.textContent='❌ AI อ่านไม่ได้ — '+reason;
+      return;
+    }
     _slipData=parsed;
     const isBuy=parsed.action==='buy';
     const color=isBuy?'var(--green)':'var(--red)';
