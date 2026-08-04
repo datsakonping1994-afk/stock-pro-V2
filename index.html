@@ -11689,7 +11689,7 @@ async function parseSlipImage(input){
       if(parsed&&!parsed.error){status.innerHTML='✅ <b>'+p.name+'</b> อ่านสำเร็จ';break;}
     }
     if(!parsed||parsed.error){
-      const reason=parsed?.error?('ตอบว่าไม่ใช่สลิป':_slipLastError||'ไม่มี AI key ที่ใช้งานได้');
+      const reason=parsed?.error?'ตอบว่าไม่ใช่สลิป':(_slipLastError||'ไม่มี AI key ที่ใช้งานได้');
       status.textContent='❌ AI อ่านไม่ได้ — '+reason;
       return;
     }
