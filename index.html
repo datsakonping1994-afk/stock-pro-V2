@@ -11646,7 +11646,7 @@ async function _parseSlipGroq(b64,mime){
 }
 
 async function _parseSlipClaude(b64,mime){
-  const key=_ank||'';
+  const key=localStorage.getItem('anthropicKey')||'';
   if(!key) return null;
   try{
     const r=await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mime,data:b64}},{type:'text',text:SLIP_PROMPT}]}]})},12000);
