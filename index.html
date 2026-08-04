@@ -14834,15 +14834,15 @@ function _buildLosers(eventTypes,sentiment,aiStocksWatch,headline,aiItem){
     if(losers.length>=3) break;
   }
 
-  // ── ลำดับ 2: stocks_watch จาก AI ──
+  // ── ลำดับ 2: stocks_watch จาก AI — เอาเฉพาะตัวที่ถูกเอ่ยถึงในข่าวจริงเท่านั้น
+  // (ตัวที่ AI ใส่มาแต่ไม่ได้เอ่ยถึงในข่าว มักเป็นการเดาเชื่อมโยงลอยๆ ไม่มีเหตุผลรองรับจริง เลยตัดทิ้งไปเลยแทนที่จะแสดงพร้อมข้อความกลางๆ)
   for(const ticker of (aiStocksWatch||[])){
     const clean=String(ticker).toUpperCase().trim();
     if(seen.has(clean)||!STOCK_UNIVERSE.has(clean)||ETF_UNIVERSE.has(clean)) continue;
     const mentioned=_isCompanyMentioned(clean,headline,'');
-    const reason=mentioned
-      ?`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`
-      :`AI มองว่าควรระมัดระวังเพิ่มเติมจากแนวโน้มข่าวนี้`;
-    losers.push({t:clean,reason,source:'ai',indirect:!mentioned});
+    if(!mentioned) continue;
+    const reason=`อาจได้รับผลกระทบเชิงลบจาก${headline?headline.slice(0,25):'เหตุการณ์นี้'}`;
+    losers.push({t:clean,reason,source:'ai',indirect:false});
     seen.add(clean);
     if(losers.length>=3) break;
   }
@@ -14960,7 +14960,12 @@ function buildNewsAnalysis(item,sourceUrl){
     : null;
   const etfImpact=aiEtfImpact||_buildEtfImpact(eventTypes,clean.sentiment);
   const beneficiaries=_buildBeneficiaries(eventTypes,clean.sentiment,clean.stocks_buy,clean.headline,clean);
-  const losers=_buildLosers(eventTypes,clean.sentiment,clean.stocks_watch,clean.headline,clean);
+  let losers=_buildLosers(eventTypes,clean.sentiment,clean.stocks_watch,clean.headline,clean);
+  // [FIX] กันหุ้นตัวเดียวกันขึ้นทั้ง Direct Impact (บวก) และ ระวัง (ลบ) พร้อมกันแบบขัดแย้งกันเอง
+  // เช่น AMZN ขึ้นเป็นทั้ง "ได้ประโยชน์โดยตรง" และ "ควรระวัง" ในข่าวเดียวกัน — ให้ priority กับ beneficiaries เสมอ
+  // (โดยเฉพาะ ticker ของบริษัท/บุคคลเจ้าของข่าวเอง ซึ่งมาจาก person.ticker ในลำดับ 1 ของ _buildBeneficiaries)
+  const _benTickers=new Set(beneficiaries.map(b=>b.t));
+  losers=losers.filter(l=>!_benTickers.has(l.t));
   const aiTake=clean.ai_take||_buildAiTake(eventTypes,clean.sentiment,clean.impact,clean.headline);
   // ── ตรวจ read_game ซ้ำกับ ai_take/headline — ถ้าคล้ายกันมาก (สรุปเดิมซ้ำ) ให้ตัดทิ้ง ──
   const _wordSet=(s)=>new Set((s||'').replace(/[^\u0E00-\u0E7Fa-zA-Z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1));
