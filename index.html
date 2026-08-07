@@ -642,13 +642,6 @@ canvas.bigchart{width:100%;height:100%}
   *{animation-duration:0.01ms !important;transition-duration:0.01ms !important}
 }
 
-/* ── AI PICKS PAGE ── */
-.aipick-tab{flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:6px 14px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;transition:all 0.2s;letter-spacing:0.3px}
-.aipick-tab.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.5);color:var(--gold)}
-.aipick-card{background:linear-gradient(160deg,rgba(22,30,45,0.98),rgba(14,20,32,0.99));border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:16px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.35)}
-.aipick-card:active{transform:scale(0.98)}
-.aipick-score-bar{height:5px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:5px}
-.aipick-score-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
 </style>
 </head>
 <body>
@@ -1383,7 +1376,6 @@ canvas.bigchart{width:100%;height:100%}
       </div>
 
       <!-- Holdings List -->
-      <div id="portDebugPanel" style="display:none;background:rgba(100,210,255,0.08);border:1px solid rgba(100,210,255,0.2);border-radius:10px;padding:10px;margin-bottom:10px;font-size:10px;color:var(--ice);font-family:'IBM Plex Mono',monospace;line-height:1.5"></div>
 
       <div id="portHoldingsList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:100px">
         <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ยังไม่มีหุ้นในพอร์ต<br><span style="font-size:11px;opacity:0.6">กรอก ticker + ราคาซื้อ + จำนวนหุ้น แล้วกด Add</span></div>
@@ -1404,10 +1396,17 @@ canvas.bigchart{width:100%;height:100%}
         <input id="srSearchInput" type="text" placeholder="ค้นหา ticker หรือชื่อหุ้น..." oninput="renderSRTable()" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none">
       </div>
 
-      <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
         <button onclick="srSetFilter('all')" id="srFilterAll" class="sr-filter-chip active" style="flex:1;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.5);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">ทั้งหมด</button>
         <button onclick="srSetFilter('support')" id="srFilterSupport" class="sr-filter-chip" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">🎯 ใกล้แนวรับ</button>
         <button onclick="srSetFilter('resistance')" id="srFilterResistance" class="sr-filter-chip" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">⚠️ ใกล้แนวต้าน</button>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <button onclick="srTogglePortfolioOnly()" id="srPortfolioToggle" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;font-size:11.5px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">
+          <span id="srPortfolioToggleDot" style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block;flex-shrink:0"></span>
+          💼 เฉพาะหุ้นในพอร์ตของฉัน
+        </button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
@@ -2249,11 +2248,24 @@ function _recommendedLimit(ticker){
 
 // ── Named constants (ป้องกัน magic numbers กระจัดกระจาย) ──
 const BUY_SIGNAL_THRESHOLD = 50;   // คะแนน Buy Score ขั้นต่ำที่จะแสดง signal
-const WS_SUBSCRIBE_LIMIT   = 80;   // จำนวนหุ้นสูงสุดที่ subscribe WS พร้อมกัน
+const WS_SUBSCRIBE_LIMIT   = 50;   // Finnhub free tier จำกัด WebSocket ที่ 50 symbol พร้อมกัน (ยิงเกินนี้ระบบจะเมิน/ตัดการเชื่อมต่อ)
 const POLL_STAGGER_MS      = 120;  // หน่วง ms ระหว่าง HTTP request ป้องกัน rate limit
 const PRELOAD_PARALLEL     = 3;    // โหลด candle พร้อมกันสูงสุด N ตัว
 const PRELOAD_STAGGER_MS   = 150;  // หน่วง ms ระหว่าง batch ของ preload
 const BUY_SIGNAL_COOLDOWN  = 300000; // 5 นาที cooldown ต่อ ticker
+
+// ── จัดลำดับความสำคัญของหุ้น: พอร์ต > watchlist > ที่เหลือ ──
+// ใช้ตอนเลือกว่าจะ subscribe WS ตัวไหนก่อน / poll ตัวไหนก่อน เวลารายการหุ้นมีเยอะ (100-200+ ตัว)
+// เกิน limit ของ Finnhub free tier (WS 50 ตัว, REST 60 call/นาที) หุ้นที่ผู้ใช้ถืออยู่จริงจะได้ราคาสดก่อนเสมอ
+function getPriorityOrderedStocks(){
+  let portTickers=[], wlTickers=[];
+  try{ portTickers = portfolio.map(p=>p.t); }catch{}
+  try{ wlTickers = [...watchlist]; }catch{}
+  const priSet = new Set([...portTickers, ...wlTickers]);
+  const priority = stocks.filter(s=>priSet.has(s.t));
+  const rest = stocks.filter(s=>!priSet.has(s.t));
+  return [...priority, ...rest];
+}
 let ws=null, wsPing=null, isLive=false, _wsReconnectTimer=null, _wsReconnectCount=0;
 let pollTimer=null, signalTimer=null;
 let _pollInFlight=false; // FIX: ย้ายมาประกาศ global ป้องกัน undefined ใน _manualRefresh
@@ -2990,6 +3002,7 @@ function getR2(t,p){
 
 // ── Support/Resistance Table Page ──
 let _srFilterMode='all'; // 'all' | 'support' | 'resistance'
+let _srPortfolioOnly=false;
 function srSetFilter(mode){
   _srFilterMode = mode;
   ['All','Support','Resistance'].forEach(k=>{
@@ -3000,6 +3013,21 @@ function srSetFilter(mode){
     btn.style.borderColor = isActive ? 'rgba(201,168,76,0.5)' : 'var(--border)';
     btn.style.color = isActive ? 'var(--gold)' : 'var(--text2)';
   });
+  renderSRTable();
+}
+function srGetPortfolioTickers(){
+  try{ return JSON.parse(localStorage.getItem('_sp_portfolio')||'[]').map(p=>p.t); }catch{ return []; }
+}
+function srTogglePortfolioOnly(){
+  _srPortfolioOnly = !_srPortfolioOnly;
+  const btn=document.getElementById('srPortfolioToggle');
+  const dot=document.getElementById('srPortfolioToggleDot');
+  if(btn){
+    btn.style.background = _srPortfolioOnly ? 'rgba(201,168,76,0.15)' : 'var(--bg2)';
+    btn.style.borderColor = _srPortfolioOnly ? 'rgba(201,168,76,0.5)' : 'var(--border)';
+    btn.style.color = _srPortfolioOnly ? 'var(--gold)' : 'var(--text2)';
+  }
+  if(dot) dot.style.background = _srPortfolioOnly ? 'var(--gold)' : 'var(--text3)';
   renderSRTable();
 }
 // ── คำนวณระยะห่างจากแนวรับ/แนวต้าน + ตัดสินโซนที่ "ใกล้จริง" ──
@@ -3036,14 +3064,18 @@ function renderSRTable(){
   const tbody=document.getElementById('srTableBody');
   if(!tbody) return;
   const q=(document.getElementById('srSearchInput')?.value||'').trim().toUpperCase();
+  const portTickers = _srPortfolioOnly ? srGetPortfolioTickers() : null;
+  const portSet = portTickers ? new Set(portTickers) : null;
 
-  let rows = stocks
-    .filter(s=>s.p>0)
+  let baseStocks = stocks.filter(s=>s.p>0);
+  if(portSet) baseStocks = baseStocks.filter(s=>portSet.has(s.t));
+
+  let rows = baseStocks
     .filter(s=>!q || s.t.toUpperCase().includes(q) || (s.n||'').toUpperCase().includes(q))
     .map(s=>({s, ...srMetrics(s.t, s.p)}));
 
-  // อัปเดตการ์ดสรุป (คำนวณจากหุ้นทั้งหมด ไม่ขึ้นกับตัวกรอง/คำค้นหา)
-  const allMetrics = stocks.filter(s=>s.p>0).map(s=>srMetrics(s.t, s.p));
+  // อัปเดตการ์ดสรุป (คำนวณจากขอบเขตหุ้นที่เลือก คือทั้งหมด หรือเฉพาะพอร์ตถ้าเปิดใช้งาน ไม่ขึ้นกับคำค้นหา)
+  const allMetrics = baseStocks.map(s=>srMetrics(s.t, s.p));
   document.getElementById('srCount').textContent = allMetrics.length;
   document.getElementById('srNearSupport').textContent = allMetrics.filter(m=>m.zone==='support' && m.distS<=3).length;
   document.getElementById('srNearResistance').textContent = allMetrics.filter(m=>m.zone==='resistance' && m.distR<=3).length;
@@ -3059,6 +3091,10 @@ function renderSRTable(){
     rows.sort((a,b)=>a.s.t.localeCompare(b.s.t));
   }
 
+  if(portSet && portSet.size===0){
+    tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:'Inter',sans-serif">ยังไม่มีหุ้นในพอร์ตของคุณ<br><span style="font-size:11px">เพิ่มหุ้นได้ที่แท็บ Portfolio</span></td></tr>`;
+    return;
+  }
   if(rows.length===0){
     const msg = _srFilterMode==='support' ? 'ไม่มีหุ้นที่ใกล้แนวรับตอนนี้' :
                 _srFilterMode==='resistance' ? 'ไม่มีหุ้นที่ใกล้แนวต้านตอนนี้' : 'ไม่พบหุ้นที่ค้นหา';
@@ -5292,67 +5328,6 @@ function _showSignalDetail(idx){
   document.body.appendChild(modal);
 }
 
-// ── Portfolio Debug + Backup Tools ──
-function _debugPortfolio(){
-  const panel = document.getElementById('portDebugPanel');
-  if(!panel) return;
-  if(panel.style.display !== 'none'){ panel.style.display='none'; return; }
-  let ls_raw=null, ls_parsed=null, ls_err='';
-  try{ ls_raw=localStorage.getItem('_sp_portfolio'); }catch(e){ ls_err=e.message; }
-  try{ ls_parsed=ls_raw?JSON.parse(ls_raw):null; }catch(e){ ls_err='parse:'+e.message; }
-  let ss_raw=null;
-  try{ ss_raw=sessionStorage.getItem('_sp_portfolio'); }catch{}
-  let ck=null;
-  try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) ck='found('+decodeURIComponent(m[1]).length+'chars)'; }catch{}
-  const NL=String.fromCharCode(10);
-  const mem=portfolio;
-  let info='[memory] '+mem.length+' items'+NL;
-  if(mem.length) info+='  '+mem.map(function(p){return p.t+'x'+p.shares;}).join(', ')+NL;
-  info+='[localStorage] '+(ls_raw?ls_raw.length+'chars':'NULL')+NL;
-  if(ls_parsed) info+='  '+ls_parsed.length+' items: '+ls_parsed.map(function(p){return p.t||'?';}).join(',')+NL;
-  if(ls_err) info+='  ERR: '+ls_err+NL;
-  info+='[sessionStorage] '+(ss_raw?ss_raw.length+'chars':'NULL')+NL;
-  info+='[cookie] '+(ck||'not found')+NL;
-  info+='[cash] '+(localStorage.getItem('_sp_cash')||'0')+NL;
-  panel.style.display='block';
-  panel.innerHTML='<pre style="margin:0">'+info+'</pre>'+
-    '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+
-    '<button onclick="_forceLoadPortfolio()" style="font-size:10px;background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);border-radius:6px;padding:4px 10px;color:#00e676;cursor:pointer">🔄 Force Load</button>'+
-    '<button onclick="_forceSavePortfolio()" style="font-size:10px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:4px 10px;color:#c9a84c;cursor:pointer">💾 Force Save</button>'+
-    '<button onclick="_clearPortfolioData()" style="font-size:10px;background:rgba(255,77,106,0.15);border:1px solid rgba(255,77,106,0.3);border-radius:6px;padding:4px 10px;color:#ff4d6a;cursor:pointer">🗑️ Clear All</button>'+
-    '</div>';
-}
-function _forceLoadPortfolio(){
-  let loaded=null;
-  try{ const ls=localStorage.getItem('_sp_portfolio'); if(ls) loaded=JSON.parse(ls); }catch{}
-  if(!loaded||!loaded.length){ try{ const ss=sessionStorage.getItem('_sp_portfolio'); if(ss) loaded=JSON.parse(ss); }catch{} }
-  if(!loaded||!loaded.length){ try{ const m=document.cookie.match(/_sp_portfolio=([^;]+)/); if(m) loaded=JSON.parse(decodeURIComponent(m[1])); }catch{} }
-  if(loaded&&loaded.length){
-    portfolio.length=0;
-    loaded.filter(function(p){return p&&p.t&&p.shares>0;}).forEach(function(p){portfolio.push(p);});
-    renderPortfolio();
-    document.getElementById('portDebugPanel').style.display='none';
-    toast('✅ โหลด '+portfolio.length+' หุ้น');
-  } else {
-    toast('❌ ไม่พบข้อมูลพอร์ตใน storage ใดเลย');
-  }
-}
-function _forceSavePortfolio(){
-  if(!portfolio.length){ toast('⚠️ portfolio ว่างเปล่า ไม่มีอะไรบันทึก'); return; }
-  const data=JSON.stringify(portfolio);
-  try{ localStorage.setItem('_sp_portfolio',data); }catch(e){ toast('❌ localStorage error: '+e.message); return; }
-  try{ sessionStorage.setItem('_sp_portfolio',data); }catch{}
-  toast('✅ Force save '+portfolio.length+' หุ้น');
-  document.getElementById('portDebugPanel').style.display='none';
-}
-function _clearPortfolioData(){
-  if(!confirm('ลบข้อมูลพอร์ตทั้งหมด?')) return;
-  try{ localStorage.removeItem('_sp_portfolio'); }catch{}
-  try{ sessionStorage.removeItem('_sp_portfolio'); }catch{}
-  portfolio.length=0;
-  renderPortfolio();
-  toast('🗑️ ลบข้อมูลพอร์ตแล้ว');
-}
 function exportPortfolioBackup(){
   try{
     const data={version:2,exportedAt:new Date().toISOString(),portfolio:portfolio,cash:_portCash};
@@ -5807,11 +5782,6 @@ function checkEarningsAlert(){
     });
     sendTG(`${msg}\n💰 ราคา $${fmt(s.p)} | P&L ${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%\n⚠️ ระวัง volatility ก่อน/หลัง Earnings`);
   });
-}
-
-// ── Buy Signal — ใช้ _calcBuyScore เต็มๆ ทุกครั้ง ──
-function checkBuySignal(ticker,price){
-  checkBuySignalFull(ticker,price);
 }
 
 // ── Alert Sound — Web Audio API (ไม่ต้องไฟล์เสียง) ──
@@ -6342,11 +6312,6 @@ function maskKey(str){
   if(str.length<=4) return '••••';
   return str.slice(0,3)+'•'.repeat(Math.min(str.length-4,12))+str.slice(-2);
 }
-
-// ── Lock functions (stub — ระบบ lock ถูกเอาออกแล้ว) ──
-function lockSection(){}
-function unlockSection(){}
-function applyLockState(){}
 
 // ── Settings ──
 async function registerFriend(){
@@ -7155,7 +7120,7 @@ async function wsConnect() {
   ws = new WebSocket(`wss://ws.finnhub.io?token=${token}`);
   ws.onopen = () => {
     _wsReconnectCount = 0;
-    stocks.slice(0, WS_SUBSCRIBE_LIMIT).forEach(s => ws.send(JSON.stringify({ type: 'subscribe', symbol: s.t })));
+    getPriorityOrderedStocks().slice(0, WS_SUBSCRIBE_LIMIT).forEach(s => ws.send(JSON.stringify({ type: 'subscribe', symbol: s.t })));
     clearInterval(wsPing);
     wsPing = setInterval(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); }, 20000);
     // WS connected — หยุด pollTimer ประหยัด quota
@@ -7204,13 +7169,23 @@ async function wsConnect() {
   ws.onerror = () => { try { ws.close(); } catch {} };
 }
 
-// ── Finnhub rate limit guard: max 30 req/s, เราใช้ max 8 ทุก 15s = ปลอดภัย ──
+// ── Finnhub rate limit guard: free tier = 60 call/นาที ──
+// เมื่อหุ้นในรายการเยอะ (100-200+) เกินกว่าที่ WS (50 ตัว) + REST budget จะไหว
+// จึงรีเฟรชหุ้นในพอร์ต/watchlist ถี่กว่า (10s) ส่วนหุ้นอื่นๆ รีเฟรชห่างขึ้น (45s) เพื่อไม่ยิง request เกิน rate limit
 // _pollInFlight ประกาศไว้ที่ global scope แล้ว
 async function httpPoll(){
   if(!hasApiKey()||_pollInFlight)return;
   _pollInFlight=true;
   try{
-    const stale=stocks.filter(s=>!liveCache[s.t]||Date.now()-liveCache[s.t]>10000);
+    let portTickers=[], wlTickers=[];
+    try{ portTickers = portfolio.map(p=>p.t); }catch{}
+    try{ wlTickers = [...watchlist]; }catch{}
+    const priSet = new Set([...portTickers, ...wlTickers]);
+    const ordered = getPriorityOrderedStocks();
+    const stale = ordered.filter(s=>{
+      const staleMs = priSet.has(s.t) ? 10000 : 45000; // หุ้นถือ/watchlist ถี่กว่า หุ้นทั่วไปห่างขึ้นเพื่อกัน rate limit
+      return !liveCache[s.t]||Date.now()-liveCache[s.t]>staleMs;
+    });
     const batch=stale.slice(0,50);
     // ดึงพร้อมกัน 10 ตัว ลด stagger เหลือ 50ms
     const chunkSize=15;
@@ -7267,7 +7242,7 @@ function checkAllBuySignals(){
       if(sc){const sd=JSON.parse(sc);if(Date.now()-sd.ts<300000){const ss=stocksMap.get(t);if(ss){ss.p=sd.p;ss.c=sd.c;}}}
     }catch{}
   }
-  for(const s of stocks){
+  for(const s of getPriorityOrderedStocks()){
         if(s.p>0 && !_isBuyAlerted(s.t)){
           await checkBuySignalFull(s.t,s.p);
         }
@@ -13123,675 +13098,6 @@ async function syncPortfolioNow(){
   }catch(e){
     if(statusEl){ statusEl.style.background='rgba(255,77,106,0.15)'; statusEl.style.color='var(--red)'; statusEl.textContent='❌ Sync ไม่สำเร็จ: '+e.message; }
   }
-}
-
-// ── AI PICKS ──
-let _aiPickTab = 'ai';
-
-// ══════════════════════════════════════════════
-//  ARTICLES — บทความวิเคราะห์หุ้น
-// ══════════════════════════════════════════════
-const ARTICLES_KEY = '_sp_articles';
-
-function _loadArticles(){
-  try{ return JSON.parse(localStorage.getItem(ARTICLES_KEY)||'[]'); }catch{ return []; }
-}
-function _saveArticles(arts){
-  try{ localStorage.setItem(ARTICLES_KEY, JSON.stringify(arts)); }catch{}
-}
-
-function renderArticles(){
-  const grid = document.getElementById('aiPicksGrid');
-  const label = document.getElementById('aiPicksLabel');
-  const countEl = document.getElementById('aiPicksCount');
-  if(!grid) return;
-
-  const arts = _loadArticles();
-  if(label) label.textContent = '📝 บทความวิเคราะห์';
-  if(countEl) countEl.textContent = arts.length + ' บทความ';
-
-  grid.innerHTML = `
-    <!-- Write Article Button -->
-    <button onclick="openArticleEditor()" style="width:100%;background:linear-gradient(135deg,rgba(100,210,255,0.12),rgba(100,210,255,0.04));
-      border:1px solid rgba(100,210,255,0.3);border-radius:14px;padding:12px;
-      font-size:13px;font-weight:700;color:var(--ice);cursor:pointer;
-      font-family:'Syne',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px">
-      ✏️ เขียนบทความใหม่
-    </button>
-
-    <!-- Article List -->
-    ${arts.length === 0
-      ? `<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">
-          📝 ยังไม่มีบทความ<br>
-          <span style="font-size:11px">กด "เขียนบทความใหม่" เพื่อเริ่ม</span>
-         </div>`
-      : arts.slice().reverse().map((art, i) => {
-          const idx = arts.length - 1 - i;
-          const dateStr = art.date ? new Date(art.date).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : '';
-          const preview = (art.content||'').replace(/<[^>]+>/g,'').slice(0,100);
-          const tags = (art.tickers||[]).map(t=>`<span onclick="event.stopPropagation();goCard('${t}')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--gold);cursor:pointer">${t}</span>`).join('');
-          const catColor = art.category==='bullish'?'var(--green)':art.category==='bearish'?'var(--red)':'var(--gold)';
-          const catLabel = art.category==='bullish'?'📈 Bullish':art.category==='bearish'?'📉 Bearish':'🔍 Analysis';
-          return `<div onclick="openArticleView(${idx})" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color 0.2s" onmouseenter="this.style.borderColor='rgba(201,168,76,0.4)'" onmouseleave="this.style.borderColor='var(--border)'">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-              <span style="font-size:10px;font-weight:700;color:${catColor};font-family:'Syne',sans-serif">${catLabel}</span>
-              <div style="display:flex;gap:6px;align-items:center">
-                <span style="font-size:10px;color:var(--text3)">${dateStr}</span>
-                <button onclick="event.stopPropagation();deleteArticle(${idx})" style="background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:6px;padding:2px 6px;font-size:10px;color:var(--red);cursor:pointer">🗑</button>
-              </div>
-            </div>
-            <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);margin-bottom:6px;line-height:1.3">${art.title||'ไม่มีชื่อ'}</div>
-            <div style="font-size:12px;color:var(--text3);margin-bottom:8px;line-height:1.5">${preview}${preview.length>=100?'...':''}</div>
-            ${tags?`<div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>`:''}
-          </div>`;
-        }).join('')
-    }
-    <div style="height:100px"></div>
-  `;
-}
-
-function openArticleEditor(idx=null){
-  const arts = _loadArticles();
-  const art = idx!==null ? arts[idx] : {title:'',content:'',tickers:[],category:'analysis',date:new Date().toISOString()};
-
-  const modal = document.createElement('div');
-  modal.id = 'articleEditorModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:var(--bg0);display:flex;flex-direction:column;overflow:hidden';
-  modal.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
-      <button onclick="document.getElementById('articleEditorModal').remove()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:8px 14px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">← Back</button>
-      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text)">${idx!==null?'แก้ไขบทความ':'เขียนบทความใหม่'}</div>
-      <button onclick="_saveArticle(${idx})" style="margin-left:auto;background:var(--gold);border:none;border-radius:10px;padding:8px 16px;font-size:12px;font-weight:800;color:#000;cursor:pointer;font-family:'Syne',sans-serif">บันทึก</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px">
-      <!-- Category -->
-      <div style="display:flex;gap:6px">
-        <button onclick="_setArticleCat('bullish',this)" class="_art-cat" style="flex:1;padding:8px;border-radius:8px;border:1px solid ${art.category==='bullish'?'rgba(0,230,118,0.5)':'var(--border)'};background:${art.category==='bullish'?'rgba(0,230,118,0.12)':'var(--bg3)'};color:${art.category==='bullish'?'var(--green)':'var(--text3)'};font-size:12px;font-weight:700;cursor:pointer">📈 Bullish</button>
-        <button onclick="_setArticleCat('bearish',this)" class="_art-cat" style="flex:1;padding:8px;border-radius:8px;border:1px solid ${art.category==='bearish'?'rgba(255,77,106,0.5)':'var(--border)'};background:${art.category==='bearish'?'rgba(255,77,106,0.12)':'var(--bg3)'};color:${art.category==='bearish'?'var(--red)':'var(--text3)'};font-size:12px;font-weight:700;cursor:pointer">📉 Bearish</button>
-        <button onclick="_setArticleCat('analysis',this)" class="_art-cat" style="flex:1;padding:8px;border-radius:8px;border:1px solid ${art.category==='analysis'?'rgba(201,168,76,0.5)':'var(--border)'};background:${art.category==='analysis'?'rgba(201,168,76,0.12)':'var(--bg3)'};color:${art.category==='analysis'?'var(--gold)':'var(--text3)'};font-size:12px;font-weight:700;cursor:pointer">🔍 Analysis</button>
-      </div>
-      <!-- Title -->
-      <input id="artTitle" placeholder="ชื่อบทความ เช่น ทำไม AXON ถึงน่าซื้อตอนนี้" value="${(art.title||'').replace(/"/g,'&quot;')}"
-        style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif;outline:none;width:100%;box-sizing:border-box">
-      <!-- Tickers -->
-      <div>
-        <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif">หุ้นที่เกี่ยวข้อง (คั่นด้วย , เช่น AXON,KTOS)</div>
-        <input id="artTickers" placeholder="AXON, KTOS, AVAV" value="${(art.tickers||[]).join(', ')}"
-          style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:'Syne',sans-serif;outline:none;width:100%;box-sizing:border-box;text-transform:uppercase"
-          oninput="this.value=this.value.toUpperCase()">
-      </div>
-      <!-- AI Write Button -->
-      <button onclick="_aiWriteArticle()" 
-        style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.2),rgba(201,168,76,0.08));
-               border:1px solid rgba(201,168,76,0.4);border-radius:12px;padding:12px;
-               font-size:13px;font-weight:800;color:var(--gold);cursor:pointer;
-               font-family:'Syne',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px"
-        id="aiWriteBtn">
-        🤖 ให้ AI เขียนบทความให้
-      </button>
-      <!-- Content -->
-      <div>
-        <div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:4px;font-family:'Syne',sans-serif">เนื้อหาบทความ <span style="color:var(--text3);font-weight:400">(AI จะเขียนให้ หรือพิมพ์เองก็ได้)</span></div>
-        <textarea id="artContent" placeholder="กด &quot;ให้ AI เขียนบทความให้&quot; ด้านบน หรือพิมพ์เองที่นี่..." rows="14"
-          style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif;outline:none;width:100%;box-sizing:border-box;resize:none;line-height:1.7">${art.content||''}</textarea>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  // Set category
-  window._currentArticleCat = art.category||'analysis';
-}
-
-async function _aiWriteArticle(){
-  const btn = document.getElementById('aiWriteBtn');
-  const titleEl = document.getElementById('artTitle');
-  const tickersEl = document.getElementById('artTickers');
-  const contentEl = document.getElementById('artContent');
-  if(!btn||!titleEl||!tickersEl||!contentEl) return;
-
-  const tickers = tickersEl.value.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);
-  const cat = window._currentArticleCat || 'analysis';
-
-  if(!tickers.length){
-    toast('⚠️ ใส่ชื่อหุ้นก่อนครับ เช่น NOW, AXON');
-    tickersEl.focus();
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '⏳ AI กำลังเขียนบทความ...';
-  contentEl.value = '';
-
-  try{
-    // ดึงข้อมูลหุ้นจากระบบ
-    const stockData = tickers.map(t=>{
-      const s = stocksMap.get(t);
-      const rsi = rsiData[t]||50;
-      const s1 = s?+getS1(t,s.p).toFixed(2):0;
-      const r1 = s?+getR1(t,s.p).toFixed(2):0;
-      const ind = s&&candleCache[t]?.data&&!candleCache[t]?.data?._mock
-        ? _calcBuyScore(t,s.p,s1,r1) : null;
-      return `${t}: ราคา $${s?.p||'N/A'} (${s?.c>=0?'+':''}${s?.c||0}%) | RSI ${rsi} | S1 $${s1} | R1 $${r1} | Score ${ind?.score||'N/A'} | P/E ${s?.pe||'N/A'} | Beta ${s?.beta||'N/A'}`;
-    }).join('\n');
-
-    // ดึงข่าวล่าสุดของหุ้น
-    let newsCtx = '';
-    for(const t of tickers.slice(0,2)){
-      try{
-        const nr = await _fetchWithTimeout(`https://finnhub.io/api/v1/company-news?symbol=${t}&from=${new Date(Date.now()-7*86400000).toISOString().slice(0,10)}&to=${new Date().toISOString().slice(0,10)}&token=${FINNHUB_KEY}`,{},6000);
-        if(nr.ok){
-          const nd = await nr.json();
-          const headlines = (nd||[]).slice(0,3).map(n=>n.headline).join(', ');
-          if(headlines) newsCtx += `
-${t} ข่าวล่าสุด: ${headlines}`;
-        }
-      }catch{}
-    }
-
-    // ── Web Search ก่อนเขียน — ข่าวเป็นหลัก ──
-    let webNews = '';
-    const _ank = localStorage.getItem('anthropicKey')||'';
-    btn.innerHTML = '🔍 กำลังค้นข่าวล่าสุด...';
-
-    // ลอง Claude web_search ก่อน
-    if(_ank){
-      try{
-        const sr = await _fetchWithTimeout('https://api.anthropic.com/v1/messages',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':_ank,
-                   'anthropic-version':'2023-06-01',
-                   'anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({
-            model:'claude-haiku-4-5',
-            max_tokens:1500,
-            tools:[{type:'web_search_20250305',name:'web_search'}],
-            messages:[{role:'user',content:`Search for the latest news about ${tickers.join(', ')} stock. Find:
-1. Latest earnings results (EPS, revenue vs estimates)
-2. Management guidance and forward outlook
-3. Recent major news (M&A, product launch, regulatory, CEO comments)
-4. Why the stock has been moving up or down recently
-5. Analyst upgrades/downgrades and price target changes
-Provide detailed factual information with specific numbers.`}]
-          })
-        }, 25000);
-        if(sr.ok){
-          const sd = await sr.json();
-          const st = (sd.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
-          if(st) webNews = st.slice(0,3000);
-        }
-      }catch(e){ console.warn('[article:claude]',e.message); }
-    }
-
-    // Tavily — รันเสมอถ้า webNews ยังว่าง (ไม่ว่า Claude จะมี key หรือไม่)
-    if(!webNews){
-      const tvKeys = [localStorage.getItem('tavilyKey'),localStorage.getItem('tavilyKey2'),localStorage.getItem('tavilyKey3')].filter(Boolean);
-      for(const tvKey of tvKeys){
-        try{
-          const tr = await _fetchWithTimeout('https://api.tavily.com/search',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              api_key: tvKey,
-              query: `${tickers.join(' ')} stock news ${new Date().toISOString().slice(0,7)} earnings analyst upgrade downgrade catalyst`,
-              search_depth: 'advanced',
-              max_results: 8,
-              include_answer: true,
-              include_raw_content: false
-            })
-          }, 10000);
-          if(tr.ok){
-            const td = await tr.json();
-            const answer = td.answer||'';
-            const results = (td.results||[]).map(r=>
-              `📰 ${r.title} (${r.published_date?.slice(0,10)||''}): ${r.content?.slice(0,300)||''}`
-            ).join('\n\n');
-            webNews = `ข้อมูลจาก Web Search:\n${answer}\n\nบทความล่าสุด:\n${results}`.slice(0,4000);
-            if(webNews.trim()) break;
-          }
-        }catch(e){ console.warn('[article:tavily]',e.message); }
-      }
-    }
-
-    // Alpha Vantage NEWS_SENTIMENT — ถ้ามี key
-    if(!webNews){
-      const avKeys=[localStorage.getItem('alphaVantageKey'),localStorage.getItem('alphaVantageKey2'),localStorage.getItem('alphaVantageKey3')].filter(Boolean);
-      const avKey=avKeys[Math.floor(Date.now()/60000)%Math.max(avKeys.length,1)]||'';
-      if(avKey){
-        try{
-          const avr = await _fetchWithTimeout(
-            `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${tickers.slice(0,3).join(',')}&limit=10&sort=LATEST&apikey=${avKey}`,
-            {}, 8000
-          );
-          if(avr.ok){
-            const avd = await avr.json();
-            if(avd.feed?.length>0){
-              const avNews = avd.feed.slice(0,8).map(n=>{
-                const sentiment = n.overall_sentiment_label||'Neutral';
-                const score = n.overall_sentiment_score?`(${(+n.overall_sentiment_score).toFixed(2)})`:'';
-                const tickerSent = n.ticker_sentiment?.find(t=>tickers.includes(t.ticker));
-                const tSent = tickerSent?` | ${tickerSent.ticker}: ${tickerSent.ticker_sentiment_label}`:'';
-                return `📰 [${sentiment}${score}${tSent}] ${n.title} — ${n.summary?.slice(0,200)||''}`;
-              }).join('\n\n');
-              webNews = `ข้อมูลจาก Alpha Vantage News Sentiment:
-${avNews}`;
-            }
-          }
-        }catch(e){ console.warn('[article:alphavantage]',e.message); }
-      }
-    }
-
-    // Fallback: Finnhub news ถ้าไม่มี key เลย
-    if(!webNews){
-      try{
-        const weekAgo = new Date(Date.now()-14*86400000).toISOString().slice(0,10);
-        const today = new Date().toISOString().slice(0,10);
-        const fnews = await _fetchWithTimeout(
-          `https://finnhub.io/api/v1/company-news?symbol=${tickers[0]}&from=${weekAgo}&to=${today}&token=${FINNHUB_KEY}`,
-          {}, 6000
-        );
-        if(fnews.ok){
-          const fdata = await fnews.json();
-          webNews = (fdata||[]).slice(0,8).map(n=>`${n.headline}: ${n.summary?.slice(0,150)||''}`).join('\n');
-        }
-      }catch(e){}
-    }
-
-    if(!webNews) webNews = 'ไม่พบข้อมูลข่าวล่าสุด';
-
-
-    // ── Earnings + Financial data ──
-    btn.innerHTML = '📊 กำลังดึงข้อมูลงบการเงิน...';
-    let earningsCtx = '';
-    for(const t of tickers.slice(0,2)){
-      try{
-        // 1. EPS history จาก Finnhub
-        const er = await _fetchWithTimeout(`${PRICES_WORKER}/stock/earnings?t=${t}`,{},8000);
-        const ed = await er.json();
-        const epsHistory = ed.ok&&ed.data?.length ? ed.data.slice(0,4) : [];
-        
-        // 2. Financial details จาก Yahoo Finance
-        const yhT = t.replace('.','-');
-        const yd = await _fetchYahooQuoteSummary(yhT, 'incomeStatementHistoryQuarterly,cashflowStatementHistoryQuarterly,financialData,defaultKeyStatistics,earningsTrend', 8000);
-        const yhData = yd?.quoteSummary?.result?.[0];
-        
-        // Parse ข้อมูล
-        const finData = yhData?.financialData||{};
-        const keyStats = yhData?.defaultKeyStatistics||{};
-        const earnTrend = yhData?.earningsTrend?.trend||[];
-        const incomeQ = yhData?.incomeStatementHistoryQuarterly?.incomeStatementHistory||[];
-        
-        // EPS ล่าสุด
-        let epsLine = '';
-        if(epsHistory.length){
-          const lat = epsHistory[0];
-          const prev = epsHistory[4]||epsHistory[epsHistory.length-1];
-          const beat = lat.actual!=null&&lat.estimate!=null
-            ?(lat.actual>=lat.estimate
-              ?`Beat ✅ EPS $${lat.actual} vs คาด $${lat.estimate} (+${((lat.actual-lat.estimate)/Math.abs(lat.estimate)*100).toFixed(1)}%)`
-              :`Miss ❌ EPS $${lat.actual} vs คาด $${lat.estimate} (${((lat.actual-lat.estimate)/Math.abs(lat.estimate)*100).toFixed(1)}%)`)
-            :'';
-          const epsYoY = lat.actual!=null&&prev?.actual!=null&&prev.actual!==0
-            ?` | YoY ${((lat.actual-prev.actual)/Math.abs(prev.actual)*100).toFixed(1)}%`:'';
-          epsLine = beat + epsYoY;
-        }
-        
-        // Revenue
-        let revLine = '';
-        if(incomeQ.length>=2){
-          const rev0 = incomeQ[0]?.totalRevenue?.raw||0;
-          const rev4 = incomeQ[4]?.totalRevenue?.raw||incomeQ[incomeQ.length-1]?.totalRevenue?.raw||0;
-          const revB = (rev0/1e9).toFixed(2);
-          const revYoY = rev4>0?((rev0-rev4)/rev4*100).toFixed(1):null;
-          const grossP = incomeQ[0]?.grossProfit?.raw||0;
-          const grossM = rev0>0?(grossP/rev0*100).toFixed(1):null;
-          const opInc = incomeQ[0]?.operatingIncome?.raw||0;
-          const opM = rev0>0?(opInc/rev0*100).toFixed(1):null;
-          revLine = `Revenue $${revB}B${revYoY?` (YoY ${revYoY>=0?'+':''}${revYoY}%)`:''}${grossM?` | Gross Margin ${grossM}%`:''}${opM?` | Op Margin ${opM}%`:''}`;
-        }
-        
-        // Guidance
-        let guidanceLine = '';
-        const nextQ = earnTrend.find(t=>t.period==='0q');
-        const nextY = earnTrend.find(t=>t.period==='0y');
-        if(nextQ?.earningsEstimate?.avg?.raw){
-          guidanceLine += `EPS guidance Q ถัดไป: $${nextQ.earningsEstimate.avg.raw.toFixed(2)}`;
-        }
-        if(finData.revenueEstimates?.avg?.raw){
-          const revEst = (finData.revenueEstimates.avg.raw/1e9).toFixed(2);
-          guidanceLine += guidanceLine?` | Rev guidance: $${revEst}B`:`Rev guidance: $${revEst}B`;
-        }
-        if(finData.revenueGrowth?.raw){
-          guidanceLine += ` | Rev Growth: ${(finData.revenueGrowth.raw*100).toFixed(1)}%`;
-        }
-        
-        // Backlog / RPO (ถ้ามีใน keyStats)
-        let backlogLine = '';
-        const bookValue = keyStats.bookValue?.raw||0;
-        const forwardPE = keyStats.forwardPE?.raw||0;
-        const pegRatio = keyStats.pegRatio?.raw||0;
-        if(forwardPE) backlogLine += `Forward P/E: ${forwardPE.toFixed(1)}x`;
-        if(pegRatio) backlogLine += backlogLine?` | PEG: ${pegRatio.toFixed(2)}`:`PEG: ${pegRatio.toFixed(2)}`;
-        
-        // Analyst target
-        const targetMean = finData.targetMeanPrice?.raw||0;
-        const curPrice = stocksMap.get(t)?.p||0;
-        const upside = targetMean&&curPrice?(((targetMean-curPrice)/curPrice)*100).toFixed(1):null;
-        const analystLine = targetMean?`Analyst target: $${targetMean.toFixed(2)}${upside?` (Upside ${upside}%)`:''}${finData.recommendationKey?` | Rating: ${finData.recommendationKey}`:''}`:''
-        
-        earningsCtx += `
-
-${t} งบการเงินล่าสุด:`;
-        if(epsLine) earningsCtx += `
-EPS: ${epsLine}`;
-        if(revLine) earningsCtx += `
-Revenue: ${revLine}`;
-        if(guidanceLine) earningsCtx += `
-Guidance: ${guidanceLine}`;
-        if(backlogLine) earningsCtx += `
-Valuation: ${backlogLine}`;
-        if(analystLine) earningsCtx += `
-Analyst: ${analystLine}`;
-        
-      }catch(e){ console.warn('[earnings]',e.message); }
-    }
-
-    // สร้าง prompt
-    btn.innerHTML = '✍️ AI กำลังเขียนบทความ...';
-    const catTh = cat==='bullish'?'Bullish (น่าซื้อ)':cat==='bearish'?'Bearish (น่าขาย/ระวัง)':'Analysis (วิเคราะห์รอบด้าน)';
-    const sys = `คุณคือนักวิเคราะห์หุ้น sell-side ระดับมืออาชีพ
-กฎสำคัญ:
-- ใช้เฉพาะข้อมูลที่ให้มาเท่านั้น ถ้าไม่มีข้อมูลให้บอกตรงๆ ว่า "ยังไม่มีข้อมูลเพียงพอ"
-- ห้ามเดาหรือแต่งตัวเลขขึ้นมาเอง
-- ถ้าข้อมูลไม่เพียงพอให้ Rating ระบุเป็น "UNDER REVIEW"
-- ห้ามใช้ **, #, bullet ทุกรูปแบบ
-- เขียนเป็นย่อหน้าต่อเนื่องภาษาไทย อ่านเหมือนบทวิเคราะห์จริง`;
-
-    const prompt = `เขียนบทวิเคราะห์หุ้น ${tickers.join(', ')} แบบ ${catTh}
-
-ข้อมูลที่มี:
-${earningsCtx||'ไม่มีข้อมูลงบการเงิน'}
-${newsCtx}${webNews}
-
-เขียนตามโครงสร้างมาตรฐานนักวิเคราะห์ 5 ส่วน (เป็นย่อหน้าต่อเนื่อง ห้าม header ห้าม bullet):
-
-ส่วนที่ 1 - สรุปผู้บริหาร (Executive Summary): ระบุ Rating (Buy/Hold/Sell/Under Review), Target Price, Upside จากราคาปัจจุบัน และเหตุผลสั้นๆ
-
-ส่วนที่ 2 - ประเด็นสำคัญ (Key Investment Thesis): เหตุผลหลัก 3 ข้อว่าทำไมถึงแนะนำ Rating นี้ อิงข้อมูลจริงที่ให้มา
-
-ส่วนที่ 3 - ผลประกอบการและแนวโน้ม (Earnings Outlook): วิเคราะห์งบล่าสุด EPS Beat/Miss, Revenue growth, Margin, Guidance ถ้าไม่มีข้อมูลระบุว่า "รอรายงานงบ"
-
-ส่วนที่ 4 - การประเมินมูลค่า (Valuation): Forward P/E เทียบ sector, Analyst Target Price, บอกว่าแพงหรือถูกเทียบกับ growth
-
-ส่วนที่ 5 - ความเสี่ยง (Key Risks): 2-3 ปัจจัยเสี่ยงหลักที่อาจทำให้ผิดคาด
-
-ความยาว 400-500 คำ ใช้ตัวเลขจริงเท่านั้น`;
-
-    let article = await callAI_Analyze(sys, prompt, 2000);
-    if(!article){ toast('❌ AI เขียนไม่ได้ ลองใหม่ครับ'); return; }
-
-    // ใส่ชื่อบทความอัตโนมัติ ถ้ายังไม่มี
-    if(!titleEl.value.trim()){
-      const autoTitle = cat==='bullish'?`ทำไม ${tickers[0]} ถึงน่าซื้อตอนนี้`:
-                        cat==='bearish'?`${tickers[0]} — ทำไมต้องระวัง`:
-                        `วิเคราะห์ ${tickers.join(', ')} — มุมมองรอบด้าน`;
-      titleEl.value = autoTitle;
-    }
-
-    contentEl.value = article.trim();
-    toast('✅ AI เขียนบทความให้แล้ว กด "บันทึก" ได้เลย');
-
-  }catch(e){
-    toast('❌ Error: '+e.message);
-  }
-  btn.disabled = false;
-  btn.innerHTML = '🤖 ให้ AI เขียนบทความให้';
-}
-
-
-function _setArticleCat(cat, btn){
-  window._currentArticleCat = cat;
-  const colors = {bullish:['rgba(0,230,118,0.5)','rgba(0,230,118,0.12)','var(--green)'], bearish:['rgba(255,77,106,0.5)','rgba(255,77,106,0.12)','var(--red)'], analysis:['rgba(201,168,76,0.5)','rgba(201,168,76,0.12)','var(--gold)']};
-  document.querySelectorAll('._art-cat').forEach(b=>{
-    b.style.borderColor = 'var(--border)';
-    b.style.background = 'var(--bg3)';
-    b.style.color = 'var(--text3)';
-  });
-  const [bc,bg,c] = colors[cat]||colors.analysis;
-  btn.style.borderColor=bc; btn.style.background=bg; btn.style.color=c;
-}
-
-function _saveArticle(idx){
-  const title = document.getElementById('artTitle')?.value?.trim();
-  const content = document.getElementById('artContent')?.value?.trim();
-  const tickersRaw = document.getElementById('artTickers')?.value||'';
-  const tickers = tickersRaw.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);
-  if(!title){ toast('⚠️ ใส่ชื่อบทความด้วยครับ'); return; }
-  if(!content){ toast('⚠️ ใส่เนื้อหาบทความด้วยครับ'); return; }
-
-  const arts = _loadArticles();
-  const art = { title, content, tickers, category: window._currentArticleCat||'analysis', date: new Date().toISOString() };
-
-  if(idx !== null && idx !== undefined){ arts[idx] = art; }
-  else { arts.push(art); }
-  _saveArticles(arts);
-
-  document.getElementById('articleEditorModal')?.remove();
-  renderArticles();
-  toast('✅ บันทึกบทความแล้ว');
-}
-
-function openArticleView(idx){
-  const arts = _loadArticles();
-  const art = arts[idx];
-  if(!art) return;
-
-  const dateStr = new Date(art.date).toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const catColor = art.category==='bullish'?'var(--green)':art.category==='bearish'?'var(--red)':'var(--gold)';
-  const catLabel = art.category==='bullish'?'📈 Bullish':art.category==='bearish'?'📉 Bearish':'🔍 Analysis';
-  const tags = (art.tickers||[]).map(t=>`<span onclick="goCard('${t}')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer">${t}</span>`).join('');
-
-  const modal = document.createElement('div');
-  modal.id = 'articleViewModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:900;background:var(--bg0);display:flex;flex-direction:column;overflow:hidden';
-  modal.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
-      <button onclick="document.getElementById('articleViewModal').remove()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:8px 14px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">← Back</button>
-      <button onclick="document.getElementById('articleViewModal').remove();openArticleEditor(${idx})" style="margin-left:auto;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700">✏️ แก้ไข</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:20px 16px">
-      <div style="font-size:11px;font-weight:700;color:${catColor};font-family:'Syne',sans-serif;margin-bottom:8px">${catLabel} · ${dateStr}</div>
-      <h1 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text);line-height:1.3;margin:0 0 12px">${art.title}</h1>
-      ${tags?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${tags}</div>`:''}
-      <div style="font-size:14px;color:var(--text2);line-height:1.9;font-family:'Inter',sans-serif">${mdToHtml(art.content)}</div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-}
-
-function deleteArticle(idx){
-  if(!confirm('ลบบทความนี้?')) return;
-  const arts = _loadArticles();
-  arts.splice(idx, 1);
-  _saveArticles(arts);
-  renderArticles();
-  toast('🗑 ลบบทความแล้ว');
-}
-
-
-function switchAIPickTab(tab, el){
-  _aiPickTab = tab;
-  document.querySelectorAll('.aipick-tab').forEach(b=>b.classList.remove('active'));
-  if(el) el.classList.add('active');
-  const labels = {ai:'⭐ หุ้นที่คัดเลือกโดย AI', value:'💎 หุ้นมูลค่าต่ำกว่าพื้นฐาน', growth:'🚀 หุ้น Growth สูง', articles:'📝 บทความวิเคราะห์'};
-  const el2 = document.getElementById('aiPicksLabel');
-  if(el2) el2.textContent = labels[tab]||'';
-
-  // ── Articles Tab ──
-  const statsRow = document.querySelector('#page-aipicks [style*="grid-template-columns:1fr 1fr 1fr"]');
-  const runBtn = document.getElementById('aiPicksBtn');
-  const aiResult = document.getElementById('aiPicksAIResult');
-
-  if(tab === 'articles'){
-    if(statsRow) statsRow.style.display = 'none';
-    if(runBtn) runBtn.style.display = 'none';
-    if(aiResult) aiResult.style.display = 'none';
-    renderArticles();
-  } else {
-    if(statsRow) statsRow.style.display = 'grid';
-    if(runBtn) runBtn.style.display = 'flex';
-    renderAIPickCards();
-  }
-}
-
-function _getAIPickStocks(tab){
-  if(!stocks || !stocks.length) return [];
-  return stocks
-    .filter(s => s.p > 0)
-    .map(s => {
-      const score = calcFundScore(s);
-      const upside = s.target && s.p > 0 ? Math.round((s.target - s.p)/s.p*100) : 0;
-      const rev = parseFloat(s.revLive||s.rev)||0;
-      return {...s, _score:score, _upside:upside, _rev:rev};
-    })
-    .filter(s => {
-      if(tab==='ai') return s._score >= 50;
-      if(tab==='value') return s.pe && s.pe < 25 && s._upside > 10;
-      if(tab==='growth') return s._rev >= 25;
-      return true;
-    })
-    .sort((a,b) => {
-      if(tab==='growth') return b._rev - a._rev;
-      if(tab==='value') return b._upside - a._upside;
-      return b._score - a._score;
-    })
-    .slice(0, 10);
-}
-
-function renderAIPickCards(){
-  const grid = document.getElementById('aiPicksGrid');
-  const countEl = document.getElementById('aiPicksCount');
-  if(!grid) return;
-  const list = _getAIPickStocks(_aiPickTab);
-  if(!list.length){
-    grid.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">ไม่พบหุ้นที่ตรงเกณฑ์</div>';
-    return;
-  }
-  if(countEl) countEl.textContent = list.length + ' ตัว';
-  // update stats
-  const topScore = document.getElementById('aiPickTopScore');
-  const avgUpside = document.getElementById('aiPickAvgUpside');
-  if(topScore) topScore.textContent = list[0]?._score || '--';
-  if(avgUpside){
-    const avg = Math.round(list.reduce((s,x)=>s+x._upside,0)/list.length);
-    avgUpside.textContent = avg > 0 ? '+'+avg+'%' : avg+'%';
-  }
-
-  const tagMap = {ai:'🤖 AI Score', value:'💎 มูลค่าต่ำ', growth:'🚀 Growth'};
-
-  grid.innerHTML = list.map((s,i) => {
-    const rev = s._rev || 0;
-    const revBar = Math.min(100, Math.max(0, rev + 20));
-    const upsideBar = Math.min(100, Math.max(0, s._upside));
-    const scoreBar = s._score;
-
-    // สีตาม Score
-    const scoreColor = s._score >= 75 ? 'var(--green)' : s._score >= 55 ? 'var(--gold)' : 'var(--red2)';
-    const scoreLabel = s._score >= 75 ? '✅ ดีมาก' : s._score >= 55 ? '⚠️ พอได้' : '❌ ระวัง';
-
-    // Buy Signal จาก S1
-    const s1 = getS1(s.t, s.p);
-    const distS1 = s1 > 0 ? ((s.p - s1)/s1*100).toFixed(1) : null;
-    const buySignal = distS1 !== null ?
-      (parseFloat(distS1) <= 2 ? '🟢 ใกล้แนวรับ น่าซื้อ' :
-       parseFloat(distS1) <= 5 ? '🟡 ใกล้แนวรับ รอก่อน' : '⚪ ยังห่างแนวรับ') : '';
-
-    // เหตุผลสั้นๆ ว่าทำไมถึงติดลิสต์
-    const reasons = [];
-    if(rev >= 25) reasons.push(`รายได้โต ${rev}%`);
-    if(s._upside >= 30) reasons.push(`ราคาถูกกว่าเป้า ${s._upside}%`);
-    if(s.pe && s.pe < 20) reasons.push(`P/E ต่ำ ${s.pe}`);
-    if(s.short && parseFloat(s.short) > 15) reasons.push(`⚠️ Short สูง ${s.short}`);
-    const reasonText = reasons.slice(0,2).join(' · ');
-
-    return `<div class="aipick-card" onclick="openDrawer('${s.t}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div>
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${scoreColor};box-shadow:0 0 6px ${scoreColor}"></div>
-            <span style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text)">${s.t}</span>
-            <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:2px 7px;font-size:9px;color:var(--text3);font-family:'Syne',sans-serif">${tagMap[_aiPickTab]||''}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text3)">${s.n}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:${scoreColor}">Score ${s._score}</div>
-          <div style="font-size:10px;color:${scoreColor};margin-top:1px">${scoreLabel}</div>
-        </div>
-      </div>
-
-      ${reasonText ? `<div style="font-size:11px;color:var(--ice);margin-bottom:8px;padding:4px 8px;background:rgba(100,200,255,0.06);border-radius:6px;border-left:2px solid var(--ice)">📌 ${reasonText}</div>` : ''}
-      ${buySignal ? `<div style="font-size:11px;margin-bottom:8px">${buySignal}${distS1 ? ` (ห่างแนวรับ ${distS1}%)` : ''}</div>` : ''}
-
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:10px;color:var(--text3)">Fund Score</span>
-            <span style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace">${scoreBar}/100</span>
-          </div>
-          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${scoreBar}%;background:${scoreColor}88"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:10px;color:var(--text3)">Revenue Growth</span>
-            <span style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace">${rev >= 0 ? '+' : ''}${rev}%</span>
-          </div>
-          <div class="aipick-score-bar"><div class="aipick-score-fill" style="width:${revBar}%;background:var(--green)88"></div></div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px">
-        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
-          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">$${s.p}</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:1px">ราคา</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
-          <div style="font-size:11px;font-weight:600;color:${s.pe?'var(--text)':'var(--text3)'};font-family:'Manrope',sans-serif">${s.pe||'N/A'}</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:1px">P/E</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px">
-          <div style="font-size:11px;font-weight:600;color:var(--text);font-family:'Manrope',sans-serif">${s.mktcapLive||s.mktcap||'--'}</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:1px">Mkt Cap</div>
-        </div>
-      </div>
-      <div style="margin-top:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:10px;color:var(--text3)">
-        ⚡ Score สูง ≠ ซื้อได้เลย — กดดูกราฟและ Buy Signal ประกอบก่อนตัดสินใจ
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function runAIPicks(){
-  const btn = document.getElementById('aiPicksBtn');
-  const resultEl = document.getElementById('aiPicksAIResult');
-  if(btn) btn.textContent = '⏳ กำลังวิเคราะห์...';
-
-  // render cards ก่อนเลย
-  renderAIPickCards();
-
-  // ขอ AI summary
-  if(resultEl){
-    resultEl.style.display = 'block';
-    resultEl.innerHTML = '⏳ AI กำลังวิเคราะห์หุ้นเด่น...';
-    const topList = _getAIPickStocks(_aiPickTab).slice(0,5);
-    const summary = topList.map(s=>`${s.t}(Score:${s._score} Rev:${s._rev}% Upside:${s._upside}%)`).join(', ');
-    const prompt = `หุ้นที่ AI คัดเลือกวันนี้: ${summary}\nสรุปทำไมหุ้นเหล่านี้น่าสนใจ และหุ้นตัวไหนเด่นที่สุด ตอบ 3-4 ประโยคภาษาไทย ใช้ emoji`;
-    try{
-      const reply = await callAI_Brief('คุณคือที่ปรึกษาการลงทุน วิเคราะห์หุ้นกระชับตรงประเด็น', prompt, 300);
-      resultEl.innerHTML = reply ? mdToHtml(reply) : '✅ คัดหุ้นเสร็จแล้ว ดูด้านล่างได้เลย';
-    }catch(e){
-      resultEl.innerHTML = '✅ คัดหุ้นเสร็จแล้ว ดูด้านล่างได้เลย';
-    }
-  }
-  if(btn) btn.textContent = '🔄 รีเฟรช AI คัดหุ้น';
 }
 
 // ── Push Notification Setup ──
