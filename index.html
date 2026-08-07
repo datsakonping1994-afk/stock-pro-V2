@@ -3002,29 +3002,33 @@ function srSetFilter(mode){
   });
   renderSRTable();
 }
+// ── คำนวณระยะห่างจากแนวรับ/แนวต้าน + ตัดสินโซนที่ "ใกล้จริง" ──
+// หมายเหตุ: R1 คำนวณอิงระยะจาก S1 (range=p-s1) ดังนั้นเมื่อราคาชิด S1 มากๆ
+// ค่า R1 ก็มักจะขยับใกล้ราคาไปด้วยโดยปริยาย ต้องเทียบว่าใกล้ฝั่งไหน "มากกว่ากัน" จริงๆ
+function srMetrics(t,p){
+  const s1=getS1(t,p), s2=getS2(t,p), r1=getR1(t,p), r2=getR2(t,p);
+  const distS = s1>0 ? (p-s1)/s1*100 : 999;   // % ห่างจากแนวรับ S1 (ยิ่งน้อย=ยิ่งใกล้)
+  const distR = r1>0 ? (r1-p)/r1*100 : 999;   // % ห่างจากแนวต้าน R1
+  const zone = distS<=distR ? 'support' : 'resistance'; // ใกล้ฝั่งไหนมากกว่า
+  return {s1,s2,r1,r2,distS,distR,zone};
+}
 // ── ไฮไลท์แถวเมื่อราคาใกล้/ถึงแนวรับ-แนวต้าน (สีเข้ม = ใกล้มาก, สีจาง = ใกล้น้อย) ──
-function srRowHighlight(price, s1, r1){
-  if(!s1 || !r1 || price<=0) return null;
-  const distS = (price - s1) / s1 * 100; // ห่างจากแนวรับ (บวก=อยู่เหนือแนวรับ)
-  const distR = (r1 - price) / r1 * 100; // ห่างจากแนวต้าน (บวก=อยู่ใต้แนวต้าน)
-
-  if(distS <= 5){
-    // ใกล้/หลุดแนวรับ → โทนแดง เข้มขึ้นเมื่อใกล้มากขึ้น
+function srRowHighlight(distS, distR, zone){
+  if(zone==='support' && distS<=5){
     let alpha;
-    if(distS <= 0) alpha = 0.38;      // หลุดแนวรับแล้ว
-    else if(distS <= 1) alpha = 0.26; // ชิดมาก
-    else if(distS <= 3) alpha = 0.15; // ใกล้
-    else alpha = 0.07;                // เริ่มเข้าเขต
-    return {bg:`rgba(255,77,106,${alpha})`, tag: distS<=0?' 🔴':' 🎯', kind:'support'};
+    if(distS<=0) alpha=0.38;
+    else if(distS<=1) alpha=0.26;
+    else if(distS<=3) alpha=0.15;
+    else alpha=0.07;
+    return {bg:`rgba(255,77,106,${alpha})`, tag: distS<=0?' 🔴':' 🎯'};
   }
-  if(distR <= 5){
-    // ใกล้/หลุดแนวต้าน → โทนเขียว เข้มขึ้นเมื่อใกล้มากขึ้น
+  if(zone==='resistance' && distR<=5){
     let alpha;
-    if(distR <= 0) alpha = 0.38;      // ทะลุแนวต้านแล้ว
-    else if(distR <= 1) alpha = 0.26;
-    else if(distR <= 3) alpha = 0.15;
-    else alpha = 0.07;
-    return {bg:`rgba(0,230,118,${alpha})`, tag: distR<=0?' 🟢':' ⚠️', kind:'resistance'};
+    if(distR<=0) alpha=0.38;
+    else if(distR<=1) alpha=0.26;
+    else if(distR<=3) alpha=0.15;
+    else alpha=0.07;
+    return {bg:`rgba(0,230,118,${alpha})`, tag: distR<=0?' 🟢':' ⚠️'};
   }
   return null;
 }
@@ -3036,31 +3040,20 @@ function renderSRTable(){
   let rows = stocks
     .filter(s=>s.p>0)
     .filter(s=>!q || s.t.toUpperCase().includes(q) || (s.n||'').toUpperCase().includes(q))
-    .map(s=>{
-      const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p), r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
-      const distS = s1>0 ? (s.p-s1)/s1*100 : 999; // % ห่างจากแนวรับ S1
-      const distR = r1>0 ? (r1-s.p)/r1*100 : 999; // % ห่างจากแนวต้าน R1
-      return {s,s1,s2,r1,r2,distS,distR};
-    });
+    .map(s=>({s, ...srMetrics(s.t, s.p)}));
 
   // อัปเดตการ์ดสรุป (คำนวณจากหุ้นทั้งหมด ไม่ขึ้นกับตัวกรอง/คำค้นหา)
-  const allWithPrice = stocks.filter(s=>s.p>0);
-  document.getElementById('srCount').textContent = allWithPrice.length;
-  document.getElementById('srNearSupport').textContent = allWithPrice.filter(s=>{
-    const s1=getS1(s.t,s.p);
-    return s1>0 && (s.p-s1)/s1*100 <= 3;
-  }).length;
-  document.getElementById('srNearResistance').textContent = allWithPrice.filter(s=>{
-    const r1=getR1(s.t,s.p);
-    return r1>0 && (r1-s.p)/r1*100 <= 3;
-  }).length;
+  const allMetrics = stocks.filter(s=>s.p>0).map(s=>srMetrics(s.t, s.p));
+  document.getElementById('srCount').textContent = allMetrics.length;
+  document.getElementById('srNearSupport').textContent = allMetrics.filter(m=>m.zone==='support' && m.distS<=3).length;
+  document.getElementById('srNearResistance').textContent = allMetrics.filter(m=>m.zone==='resistance' && m.distR<=3).length;
 
-  // กรองตามโหมดที่เลือก
+  // กรองตามโหมดที่เลือก (ใช้ zone เพื่อไม่ให้หุ้นที่จริงๆ ใกล้แนวรับหลุดเข้ามาในฝั่งแนวต้าน)
   if(_srFilterMode==='support'){
-    rows = rows.filter(r=>r.distS<=5);
+    rows = rows.filter(r=>r.zone==='support' && r.distS<=5);
     rows.sort((a,b)=>a.distS-b.distS);
   } else if(_srFilterMode==='resistance'){
-    rows = rows.filter(r=>r.distR<=5);
+    rows = rows.filter(r=>r.zone==='resistance' && r.distR<=5);
     rows.sort((a,b)=>a.distR-b.distR);
   } else {
     rows.sort((a,b)=>a.s.t.localeCompare(b.s.t));
@@ -3073,13 +3066,11 @@ function renderSRTable(){
     return;
   }
 
-  tbody.innerHTML = rows.map(({s,s1,s2,r1,r2,distS,distR})=>{
-    const hl = srRowHighlight(s.p, s1, r1);
+  tbody.innerHTML = rows.map(({s,s1,s2,r1,r2,distS,distR,zone})=>{
+    const hl = srRowHighlight(distS, distR, zone);
     const rowBg = hl ? hl.bg : '';
     const nearTag = hl ? hl.tag : '';
-    // แสดง % ระยะห่างที่ใกล้ที่สุด (แนวรับหรือแนวต้าน) ใต้ราคา
-    const closerToSupport = distS <= distR;
-    const distLabel = closerToSupport
+    const distLabel = zone==='support'
       ? `<div style="font-size:9.5px;color:var(--red2);opacity:0.85;margin-top:1px">S1 ${distS>=0?'-':'+'}${Math.abs(distS).toFixed(1)}%</div>`
       : `<div style="font-size:9.5px;color:var(--green2);opacity:0.85;margin-top:1px">R1 ${distR>=0?'+':'-'}${Math.abs(distR).toFixed(1)}%</div>`;
     return `<tr data-bg="${rowBg}" style="cursor:pointer;background:${rowBg}" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=this.dataset.bg||''">
