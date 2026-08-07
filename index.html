@@ -1400,40 +1400,61 @@ canvas.bigchart{width:100%;height:100%}
         <p style="color:var(--text3);font-size:12px;margin:0">รวมทุกหุ้น · S2 / S1 / ราคา / R1 / R2</p>
       </div>
 
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input id="srSearchInput" type="text" placeholder="ค้นหา ticker หรือชื่อหุ้น..." oninput="renderSRTable()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none">
-        <button onclick="srToggleSort()" id="srSortBtn" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">🎯 ใกล้แนวรับ</button>
+      <div style="margin-bottom:10px">
+        <input id="srSearchInput" type="text" placeholder="ค้นหา ticker หรือชื่อหุ้น..." oninput="renderSRTable()" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none">
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="srSetFilter('all')" id="srFilterAll" class="sr-filter-chip active" style="flex:1;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.5);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">ทั้งหมด</button>
+        <button onclick="srSetFilter('support')" id="srFilterSupport" class="sr-filter-chip" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">🎯 ใกล้แนวรับ</button>
+        <button onclick="srSetFilter('resistance')" id="srFilterResistance" class="sr-filter-chip" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">⚠️ ใกล้แนวต้าน</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
           <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="srCount">--</div>
-          <div style="color:var(--text3);font-size:10px;margin-top:2px">หุ้นทั้งหมด</div>
+          <div style="color:var(--text3);font-size:9.5px;margin-top:2px">หุ้นทั้งหมด</div>
         </div>
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--green)" id="srNearSupport">--</div>
-          <div style="color:var(--text3);font-size:10px;margin-top:2px">ใกล้แนวรับ (&lt;3%)</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--red2)" id="srNearSupport">--</div>
+          <div style="color:var(--text3);font-size:9.5px;margin-top:2px">ใกล้แนวรับ (&lt;3%)</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--green2)" id="srNearResistance">--</div>
+          <div style="color:var(--text3);font-size:9.5px;margin-top:2px">ใกล้แนวต้าน (&lt;3%)</div>
         </div>
       </div>
 
-      <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border);margin-bottom:100px">
-        <table style="width:100%;border-collapse:collapse;min-width:560px;font-family:'IBM Plex Mono',monospace">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:9.5px;color:var(--text3)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,77,106,0.38);display:inline-block"></span>หลุดแนวรับ</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,77,106,0.15);display:inline-block"></span>ใกล้แนวรับ</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(0,230,118,0.15);display:inline-block"></span>ใกล้แนวต้าน</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(0,230,118,0.38);display:inline-block"></span>ทะลุแนวต้าน</span>
+      </div>
+
+      <div style="border-radius:14px;border:1px solid var(--border);margin-bottom:100px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:'IBM Plex Mono',monospace">
+          <colgroup>
+            <col style="width:38%">
+            <col style="width:22%">
+            <col style="width:18%">
+            <col style="width:22%">
+          </colgroup>
           <thead>
             <tr style="background:var(--bg2)">
-              <th style="position:sticky;left:0;background:var(--bg2);text-align:left;padding:10px 12px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">หุ้น</th>
-              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--red2);border-bottom:1px solid var(--border)">S2</th>
-              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--red2);border-bottom:1px solid var(--border)">S1</th>
-              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text);border-bottom:1px solid var(--border)">ราคา</th>
-              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--border)">R1</th>
-              <th style="text-align:right;padding:10px 12px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--border)">R2</th>
+              <th style="text-align:left;padding:9px 10px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">หุ้น</th>
+              <th style="text-align:right;padding:9px 8px;font-family:'Syne',sans-serif;font-size:8.5px;letter-spacing:0.5px;text-transform:uppercase;color:var(--red2);border-bottom:1px solid var(--border)">แนวรับ<br>S2 / S1</th>
+              <th style="text-align:right;padding:9px 6px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text);border-bottom:1px solid var(--border)">ราคา</th>
+              <th style="text-align:right;padding:9px 10px;font-family:'Syne',sans-serif;font-size:8.5px;letter-spacing:0.5px;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--border)">แนวต้าน<br>R1 / R2</th>
             </tr>
           </thead>
           <tbody id="srTableBody">
-            <tr><td colspan="6" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:'Inter',sans-serif">⏳ กำลังโหลดข้อมูล...</td></tr>
+            <tr><td colspan="4" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:'Inter',sans-serif">⏳ กำลังโหลดข้อมูล...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
+
   </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1691,7 +1712,7 @@ const STOCKS_DEFAULT=[
   {t:"ARM",n:"Arm Holdings"},{t:"SMCI",n:"Super Micro Computer"},
   {t:"ASML",n:"ASML Holding"},{t:"TSM",n:"TSMC"},{t:"MRVL",n:"Marvell Technology"},{t:"SKHY",n:"SK Hynix"},
   {t:"AMBA",n:"Ambarella"},{t:"NVTS",n:"Navitas Semiconductor"},{t:"AEHR",n:"Aehr Test Systems"},
-  {t:"SNDK",n:"SanDisk"},{t:"STX",n:"Seagate"},{t:"NOK",n:"Nokia"},
+  {t:"SNDK",n:"SanDisk"},{t:"STX",n:"Seagate"},{t:"NOK",n:"Nokia"},{t:"ON",n:"ON Semiconductor"},
   // ── AI/Defense/Space ──
   {t:"AVAV",n:"AeroVironment"},{t:"RKLB",n:"Rocket Lab"},{t:"SPCX",n:"SpaceX"},
   {t:"KTOS",n:"Kratos Defense"},{t:"AXON",n:"Axon Enterprise"},{t:"NBIS",n:"Nebius Group"},
@@ -2968,12 +2989,44 @@ function getR2(t,p){
 }
 
 // ── Support/Resistance Table Page ──
-let _srSortMode='near'; // 'near' = ใกล้แนวรับก่อน, 'az' = เรียง ticker
-function srToggleSort(){
-  _srSortMode = _srSortMode==='near' ? 'az' : 'near';
-  const btn=document.getElementById('srSortBtn');
-  if(btn) btn.textContent = _srSortMode==='near' ? '🎯 ใกล้แนวรับ' : '🔤 A-Z';
+let _srFilterMode='all'; // 'all' | 'support' | 'resistance'
+function srSetFilter(mode){
+  _srFilterMode = mode;
+  ['All','Support','Resistance'].forEach(k=>{
+    const btn=document.getElementById('srFilter'+k);
+    if(!btn) return;
+    const isActive = k.toLowerCase()===mode;
+    btn.style.background = isActive ? 'rgba(201,168,76,0.15)' : 'var(--bg2)';
+    btn.style.borderColor = isActive ? 'rgba(201,168,76,0.5)' : 'var(--border)';
+    btn.style.color = isActive ? 'var(--gold)' : 'var(--text2)';
+  });
   renderSRTable();
+}
+// ── ไฮไลท์แถวเมื่อราคาใกล้/ถึงแนวรับ-แนวต้าน (สีเข้ม = ใกล้มาก, สีจาง = ใกล้น้อย) ──
+function srRowHighlight(price, s1, r1){
+  if(!s1 || !r1 || price<=0) return null;
+  const distS = (price - s1) / s1 * 100; // ห่างจากแนวรับ (บวก=อยู่เหนือแนวรับ)
+  const distR = (r1 - price) / r1 * 100; // ห่างจากแนวต้าน (บวก=อยู่ใต้แนวต้าน)
+
+  if(distS <= 5){
+    // ใกล้/หลุดแนวรับ → โทนแดง เข้มขึ้นเมื่อใกล้มากขึ้น
+    let alpha;
+    if(distS <= 0) alpha = 0.38;      // หลุดแนวรับแล้ว
+    else if(distS <= 1) alpha = 0.26; // ชิดมาก
+    else if(distS <= 3) alpha = 0.15; // ใกล้
+    else alpha = 0.07;                // เริ่มเข้าเขต
+    return {bg:`rgba(255,77,106,${alpha})`, tag: distS<=0?' 🔴':' 🎯', kind:'support'};
+  }
+  if(distR <= 5){
+    // ใกล้/หลุดแนวต้าน → โทนเขียว เข้มขึ้นเมื่อใกล้มากขึ้น
+    let alpha;
+    if(distR <= 0) alpha = 0.38;      // ทะลุแนวต้านแล้ว
+    else if(distR <= 1) alpha = 0.26;
+    else if(distR <= 3) alpha = 0.15;
+    else alpha = 0.07;
+    return {bg:`rgba(0,230,118,${alpha})`, tag: distR<=0?' 🟢':' ⚠️', kind:'resistance'};
+  }
+  return null;
 }
 function renderSRTable(){
   const tbody=document.getElementById('srTableBody');
@@ -2985,41 +3038,67 @@ function renderSRTable(){
     .filter(s=>!q || s.t.toUpperCase().includes(q) || (s.n||'').toUpperCase().includes(q))
     .map(s=>{
       const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p), r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
-      const distS1 = s1>0 ? (s.p-s1)/s1*100 : 999;
-      return {s,s1,s2,r1,r2,distS1};
+      const distS = s1>0 ? (s.p-s1)/s1*100 : 999; // % ห่างจากแนวรับ S1
+      const distR = r1>0 ? (r1-s.p)/r1*100 : 999; // % ห่างจากแนวต้าน R1
+      return {s,s1,s2,r1,r2,distS,distR};
     });
 
-  if(rows.length===0){
-    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:\'Inter\',sans-serif">ไม่พบหุ้นที่ค้นหา</td></tr>';
-    document.getElementById('srCount').textContent='0';
-    document.getElementById('srNearSupport').textContent='0';
-    return;
-  }
+  // อัปเดตการ์ดสรุป (คำนวณจากหุ้นทั้งหมด ไม่ขึ้นกับตัวกรอง/คำค้นหา)
+  const allWithPrice = stocks.filter(s=>s.p>0);
+  document.getElementById('srCount').textContent = allWithPrice.length;
+  document.getElementById('srNearSupport').textContent = allWithPrice.filter(s=>{
+    const s1=getS1(s.t,s.p);
+    return s1>0 && (s.p-s1)/s1*100 <= 3;
+  }).length;
+  document.getElementById('srNearResistance').textContent = allWithPrice.filter(s=>{
+    const r1=getR1(s.t,s.p);
+    return r1>0 && (r1-s.p)/r1*100 <= 3;
+  }).length;
 
-  if(_srSortMode==='near'){
-    rows.sort((a,b)=>Math.abs(a.distS1)-Math.abs(b.distS1));
+  // กรองตามโหมดที่เลือก
+  if(_srFilterMode==='support'){
+    rows = rows.filter(r=>r.distS<=5);
+    rows.sort((a,b)=>a.distS-b.distS);
+  } else if(_srFilterMode==='resistance'){
+    rows = rows.filter(r=>r.distR<=5);
+    rows.sort((a,b)=>a.distR-b.distR);
   } else {
     rows.sort((a,b)=>a.s.t.localeCompare(b.s.t));
   }
 
-  document.getElementById('srCount').textContent = stocks.filter(s=>s.p>0).length;
-  document.getElementById('srNearSupport').textContent = stocks.filter(s=>s.p>0).map(s=>{
-    const s1=getS1(s.t,s.p);
-    return s1>0 ? (s.p-s1)/s1*100 : 999;
-  }).filter(d=>d<=3).length;
+  if(rows.length===0){
+    const msg = _srFilterMode==='support' ? 'ไม่มีหุ้นที่ใกล้แนวรับตอนนี้' :
+                _srFilterMode==='resistance' ? 'ไม่มีหุ้นที่ใกล้แนวต้านตอนนี้' : 'ไม่พบหุ้นที่ค้นหา';
+    tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:'Inter',sans-serif">${msg}</td></tr>`;
+    return;
+  }
 
-  tbody.innerHTML = rows.map(({s,s1,s2,r1,r2,distS1})=>{
-    const nearTag = distS1<=3 ? ' 🎯' : '';
-    return `<tr style="cursor:pointer" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-      <td style="position:sticky;left:0;background:var(--bg1);padding:9px 12px;border-bottom:1px solid var(--border)">
-        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}${nearTag}</div>
-        <div style="font-size:9.5px;color:var(--text3);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis">${s.n||''}</div>
+  tbody.innerHTML = rows.map(({s,s1,s2,r1,r2,distS,distR})=>{
+    const hl = srRowHighlight(s.p, s1, r1);
+    const rowBg = hl ? hl.bg : '';
+    const nearTag = hl ? hl.tag : '';
+    // แสดง % ระยะห่างที่ใกล้ที่สุด (แนวรับหรือแนวต้าน) ใต้ราคา
+    const closerToSupport = distS <= distR;
+    const distLabel = closerToSupport
+      ? `<div style="font-size:9.5px;color:var(--red2);opacity:0.85;margin-top:1px">S1 ${distS>=0?'-':'+'}${Math.abs(distS).toFixed(1)}%</div>`
+      : `<div style="font-size:9.5px;color:var(--green2);opacity:0.85;margin-top:1px">R1 ${distR>=0?'+':'-'}${Math.abs(distR).toFixed(1)}%</div>`;
+    return `<tr data-bg="${rowBg}" style="cursor:pointer;background:${rowBg}" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=this.dataset.bg||''">
+      <td style="padding:9px 10px;border-bottom:1px solid var(--border);overflow:hidden">
+        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.t}${nearTag}</div>
+        <div style="font-size:9.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.n||''}</div>
       </td>
-      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--red2);opacity:0.75">${s2.toFixed(2)}</td>
-      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--red2);font-weight:600">${s1.toFixed(2)}</td>
-      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:700">${s.p.toFixed(2)}</td>
-      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green2);font-weight:600">${r1.toFixed(2)}</td>
-      <td style="text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--green2);opacity:0.75">${r2.toFixed(2)}</td>
+      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--red2);font-weight:600">${s1.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--red2);opacity:0.65">${s2.toFixed(2)}</div>
+      </td>
+      <td style="text-align:right;padding:9px 6px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12.5px;color:var(--text);font-weight:700">${s.p.toFixed(2)}</div>
+        ${distLabel}
+      </td>
+      <td style="text-align:right;padding:9px 10px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--green2);font-weight:600">${r1.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--green2);opacity:0.65">${r2.toFixed(2)}</div>
+      </td>
     </tr>`;
   }).join('');
 }
