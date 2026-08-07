@@ -1409,6 +1409,12 @@ canvas.bigchart{width:100%;height:100%}
         </button>
       </div>
 
+      <div style="margin-bottom:12px">
+        <button onclick="srAutoSetPortfolioAlerts()" id="srAutoAlertBtn" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.18),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);border-radius:10px;padding:9px 6px;font-size:11.5px;color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer">
+          🔔 ตั้งเตือน S1/R1 ให้พอร์ตทั้งหมด <span style="opacity:0.7;font-weight:400">— หรือแตะ 🔔 รายตัวในตารางด้านล่าง</span>
+        </button>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
           <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="srCount">--</div>
@@ -2563,6 +2569,53 @@ function addPriceAlert(){
   renderPriceAlerts();
 }
 
+// ── ตั้งเตือนอัตโนมัติที่แนวรับ S1 (below) และแนวต้าน R1 (above) ──
+// ใช้ระบบ priceAlerts เดิม แค่ auto-generate จุดเตือนจากค่า S1/R1 ที่คำนวณไว้แล้วในตาราง S/R
+// alert ที่สร้างจะมี flag auto:true — สร้างซ้ำจะลบของเก่า(ที่ auto สร้างไว้ ยังไม่ trigger) แล้วแทนที่ด้วยค่า S1/R1 ล่าสุด ไม่สะสมซ้ำ
+function _srCreateAutoAlertPair(ticker){
+  const s = stocksMap.get(ticker);
+  if(!s || !s.p) return null;
+  const s1 = getS1(ticker, s.p);
+  const r1 = getR1(ticker, s.p);
+  if(!(s1>0) || !(r1>0)) return null;
+  for(let i=priceAlerts.length-1;i>=0;i--){
+    const a=priceAlerts[i];
+    if(a.ticker===ticker && a.auto && !a.triggered) priceAlerts.splice(i,1);
+  }
+  const s1r=+s1.toFixed(2), r1r=+r1.toFixed(2);
+  priceAlerts.push({ticker, price:s1r, dir:'below', triggered:false, addedAt:Date.now(), currentAtAdd:s.p, auto:true});
+  priceAlerts.push({ticker, price:r1r, dir:'above', triggered:false, addedAt:Date.now(), currentAtAdd:s.p, auto:true});
+  return {s1:s1r, r1:r1r};
+}
+// ตั้งเตือนเฉพาะหุ้นตัวเดียว (กดจากไอคอน 🔔 ในแต่ละแถวของตาราง S/R)
+function srSetAlertForTicker(ticker){
+  const res = _srCreateAutoAlertPair(ticker);
+  if(!res){ toast('⚠️ ไม่มีข้อมูลราคา/แนวรับ-แนวต้านของ '+ticker); return; }
+  savePriceAlerts();
+  updateAlertBadge();
+  try{ renderPriceAlerts(); }catch{}
+  toast(`🔔 ตั้งเตือน ${ticker} ที่ S1 ${res.s1} / R1 ${res.r1} แล้ว`);
+}
+// ตั้งเตือนหุ้นทุกตัวในพอร์ตทีเดียว (ปุ่มด้านบนตาราง S/R)
+function srAutoSetPortfolioAlerts(){
+  let portTickers=[];
+  try{ portTickers = portfolio.map(p=>p.t); }catch{}
+  if(!portTickers.length){
+    toast('⚠️ ยังไม่มีหุ้นในพอร์ต — เพิ่มหุ้นที่แท็บ Portfolio ก่อน');
+    return;
+  }
+  let processed=0;
+  portTickers.forEach(t=>{ if(_srCreateAutoAlertPair(t)) processed++; });
+  if(!processed){
+    toast('⚠️ ไม่มีหุ้นในพอร์ตที่มีราคาสำหรับคำนวณ S1/R1');
+    return;
+  }
+  savePriceAlerts();
+  updateAlertBadge();
+  try{ renderPriceAlerts(); }catch{}
+  toast(`🔔 ตั้งเตือน S1/R1 ให้ ${processed} หุ้นแล้ว (${processed*2} จุดเตือน)`);
+}
+
 function deletePriceAlert(idx){
   priceAlerts.splice(idx,1);
   savePriceAlerts();
@@ -2597,6 +2650,7 @@ function renderPriceAlerts(){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
           <span class="pa-ticker">${a.ticker}</span>
           <span class="pa-dir ${a.dir}">${isAbove?'↑ ขึ้นถึง':'↓ ลงถึง'}</span>
+          ${a.auto?'<span style="font-size:9px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:5px;padding:1px 5px">AUTO S/R</span>':''}
           ${a.triggered?'<span style="font-size:10px;color:var(--gold);font-family:Syne,sans-serif;font-weight:700">✅ แจ้งแล้ว</span>':''}
         </div>
         <div style="display:flex;align-items:baseline;justify-content:space-between">
@@ -3062,8 +3116,15 @@ function srRowHighlight(distS, distR, zone){
 }
 // ── โหลด RSI ของหุ้นที่ยังไม่มีข้อมูล (background, ไม่บล็อก UI) แล้วรีเฟรชตารางเมื่อเสร็จ ──
 let _srRsiInFlight = new Set();
+let _srRsiFailedAt = {}; // ticker -> เวลาที่ลองโหลดแล้วยังไม่ได้ค่า (กันยิงซ้ำรัวๆ)
+const SR_RSI_RETRY_COOLDOWN = 300000; // 5 นาที ค่อยลองใหม่ ถ้ารอบก่อนโหลดไม่สำเร็จ
 async function srEnrichMissingRSI(tickers){
-  const todo = tickers.filter(t=>rsiData[t]==null && !_srRsiInFlight.has(t));
+  const now = Date.now();
+  const todo = tickers.filter(t =>
+    rsiData[t]==null &&
+    !_srRsiInFlight.has(t) &&
+    (!_srRsiFailedAt[t] || now - _srRsiFailedAt[t] > SR_RSI_RETRY_COOLDOWN)
+  );
   if(!todo.length) return;
   todo.forEach(t=>_srRsiInFlight.add(t));
   const batchSize=3;
@@ -3074,7 +3135,14 @@ async function srEnrichMissingRSI(tickers){
     }
     const batch=todo.slice(i,i+batchSize);
     await Promise.allSettled(batch.map(async t=>{
-      try{ await fetchCandles(t,60); await updateRSIFromCandles(t); }catch{}
+      try{
+        await fetchCandles(t,60);
+        await updateRSIFromCandles(t);
+        if(rsiData[t]==null) _srRsiFailedAt[t]=Date.now(); // พยายามแล้วแต่ยังไม่มีค่า = ล้มเหลว จำไว้กันยิงซ้ำ
+        else delete _srRsiFailedAt[t];
+      }catch{
+        _srRsiFailedAt[t]=Date.now();
+      }
       finally{ _srRsiInFlight.delete(t); }
     }));
     await new Promise(r=>setTimeout(r,300));
@@ -3136,7 +3204,10 @@ function renderSRTable(){
       : `<div style="font-size:9.5px;margin-top:1px;color:var(--text3);opacity:0.4">RSI --</div>`;
     return `<tr data-bg="${rowBg}" style="cursor:pointer;background:${rowBg}" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=this.dataset.bg||''">
       <td style="padding:9px 10px;border-bottom:1px solid var(--border);overflow:hidden">
-        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.t}${nearTag}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${s.t}${nearTag}</span>
+          <span onclick="event.stopPropagation();srSetAlertForTicker('${s.t}')" title="ตั้งเตือน S1/R1 ให้หุ้นตัวนี้" style="flex-shrink:0;font-size:12px;cursor:pointer;opacity:0.5;padding:2px 3px">🔔</span>
+        </div>
         <div style="font-size:9.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.n||''}</div>
         ${rsiLabel}
       </td>
@@ -4840,6 +4911,113 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
     console.warn('Groq error:', r.status);
   }catch(e){console.warn('Groq error:',e.message);}
   return null;
+}
+
+// ── OpenRouter (openrouterKey จาก Settings — ฟรี หลายโมเดล) ──
+async function _callOpenRouter(systemPrompt, userPrompt, maxTokens=800){
+  try{
+    let orKey='';
+    try{orKey=localStorage.getItem('openrouterKey')||'';}catch{}
+    if(!orKey) return null;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const r=await _fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${orKey}`,
+        'HTTP-Referer':'https://stockpro.app',
+        'X-Title':'StockPro'
+      },
+      body:JSON.stringify({
+        model:'meta-llama/llama-3.1-8b-instruct:free',
+        messages:[
+          {role:'system',content:systemPrompt},
+          {role:'user',content:userPrompt}
+        ],
+        max_tokens:maxTokens,
+        temperature:0.7
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.ok){
+      const d=await r.json();
+      return d?.choices?.[0]?.message?.content||null;
+    }
+    console.warn('OpenRouter error:', r.status);
+  }catch(e){console.warn('OpenRouter error:',e.message);}
+  return null;
+}
+async function testOpenRouterKey(){
+  const btn=document.getElementById('testOpenRouterBtn');
+  const statusEl=document.getElementById('openrouterKeyStatus');
+  if(!statusEl) return;
+  const key=document.getElementById('openrouterKeyInput')?.value?.trim()||'';
+  if(!key){
+    statusEl.style.display='block';
+    statusEl.style.background='rgba(255,215,0,0.1)';
+    statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+    statusEl.style.color='var(--yellow)';
+    statusEl.textContent='⚠️ กรุณาใส่ OpenRouter API Key ก่อน';
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent='⏳ กำลังตรวจสอบ...';
+  statusEl.style.display='block';
+  statusEl.style.background='rgba(100,210,255,0.08)';
+  statusEl.style.border='1px solid rgba(100,210,255,0.2)';
+  statusEl.style.color='var(--text2)';
+  statusEl.textContent='⏳ กำลังทดสอบ OpenRouter...';
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),12000);
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${key}`,
+        'HTTP-Referer':'https://stockpro.app',
+        'X-Title':'StockPro'
+      },
+      body:JSON.stringify({
+        model:'meta-llama/llama-3.1-8b-instruct:free',
+        messages:[{role:'user',content:'Reply with the single word: ok'}],
+        max_tokens:5
+      }),
+      signal:ctrl.signal
+    });
+    clearTimeout(tid);
+    if(r.status===401){
+      statusEl.style.background='rgba(255,77,106,0.12)';
+      statusEl.style.border='1px solid rgba(255,77,106,0.3)';
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='❌ API Key ไม่ถูกต้อง — ตรวจสอบที่ openrouter.ai/settings/keys';
+    } else if(r.status===429){
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent='⚠️ OpenRouter Key ใช้ได้ แต่โควตาหมด — ลองใหม่ภายหลัง';
+    } else if(r.ok){
+      try{localStorage.setItem('openrouterKey',key);}catch{}
+      statusEl.style.background='rgba(0,230,118,0.1)';
+      statusEl.style.border='1px solid rgba(0,230,118,0.3)';
+      statusEl.style.color='var(--green)';
+      statusEl.textContent='✅ OpenRouter ใช้งานได้! — llama-3.1-8b พร้อม (บันทึกแล้ว)';
+    } else {
+      statusEl.style.background='rgba(255,215,0,0.1)';
+      statusEl.style.border='1px solid rgba(255,215,0,0.3)';
+      statusEl.style.color='var(--yellow)';
+      statusEl.textContent=`⚠️ OpenRouter ตอบกลับ ${r.status}`;
+    }
+  }catch(e){
+    statusEl.style.background=e.name==='AbortError'?'rgba(255,215,0,0.1)':'rgba(255,77,106,0.12)';
+    statusEl.style.border=e.name==='AbortError'?'1px solid rgba(255,215,0,0.3)':'1px solid rgba(255,77,106,0.3)';
+    statusEl.style.color=e.name==='AbortError'?'var(--yellow)':'var(--red)';
+    statusEl.textContent=e.name==='AbortError'?'⏱️ OpenRouter ไม่ตอบสนอง':'❌ เชื่อมต่อล้มเหลว';
+  }
+  btn.disabled=false;
+  btn.textContent='🧪 ทดสอบ';
 }
 
 // ══════════════════════════════════════════════════════
