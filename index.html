@@ -1391,44 +1391,47 @@ canvas.bigchart{width:100%;height:100%}
     </div>
   </div>
 
-  <!-- AI PICKS PAGE -->
+  <!-- SUPPORT / RESISTANCE TABLE PAGE -->
   <div class="page" id="page-aipicks">
     <div style="padding:16px 14px 0">
-      <div style="margin-bottom:16px">
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">STOCKPRO · AI ENGINE</div>
-        <h2 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--text);line-height:1.1;margin:0 0 4px">กลายเป็น<br><span style="background:linear-gradient(90deg,var(--gold),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ตำนาน</span></h2>
-        <p style="color:var(--text3);font-size:12px;margin:0">AI คัดหุ้นเด่น · อัปเดตทุกวัน</p>
+      <div style="margin-bottom:14px">
+        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">STOCKPRO · TECHNICAL LEVELS</div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--text);line-height:1.1;margin:0 0 4px">แนวรับ · แนวต้าน</h2>
+        <p style="color:var(--text3);font-size:12px;margin:0">รวมทุกหุ้น · S2 / S1 / ราคา / R1 / R2</p>
       </div>
-      <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:16px;padding-bottom:2px">
-        <button class="aipick-tab active" onclick="switchAIPickTab('ai',this)">🤖 AI คัดเลือก</button>
-        <button class="aipick-tab" onclick="switchAIPickTab('value',this)">💎 มูลค่าต่ำกว่าพื้นฐาน</button>
-        <button class="aipick-tab" onclick="switchAIPickTab('growth',this)">🚀 Growth สูง</button>
-        <button class="aipick-tab" onclick="switchAIPickTab('articles',this)">📝 บทความ</button>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="srSearchInput" type="text" placeholder="ค้นหา ticker หรือชื่อหุ้น..." oninput="renderSRTable()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;outline:none">
+        <button onclick="srToggleSort()" id="srSortBtn" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:11px;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;white-space:nowrap">🎯 ใกล้แนวรับ</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="aiPickScanCount">75</div>
-          <div style="color:var(--text3);font-size:10px;margin-top:2px">หุ้นที่สแกน</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="srCount">--</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:2px">หุ้นทั้งหมด</div>
         </div>
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--gold)" id="aiPickTopScore">--</div>
-          <div style="color:var(--text3);font-size:10px;margin-top:2px">Top Score</div>
-        </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--green)" id="aiPickAvgUpside">--</div>
-          <div style="color:var(--text3);font-size:10px;margin-top:2px">Avg Upside</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--green)" id="srNearSupport">--</div>
+          <div style="color:var(--text3);font-size:10px;margin-top:2px">ใกล้แนวรับ (&lt;3%)</div>
         </div>
       </div>
-      <button onclick="runAIPicks()" id="aiPicksBtn" style="width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.18),rgba(201,168,76,0.08));border:1px solid rgba(201,168,76,0.4);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
-        🤖 AI วิเคราะห์และคัดหุ้น
-      </button>
-      <div id="aiPicksAIResult" style="display:none;background:var(--bg2);border:1px solid rgba(201,168,76,0.2);border-radius:14px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.8;font-family:'Inter',sans-serif"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)" id="aiPicksLabel">⭐ หุ้นที่คัดเลือกโดย AI</div>
-        <div style="font-size:10px;color:var(--text3)" id="aiPicksCount"></div>
-      </div>
-      <div id="aiPicksGrid" style="display:flex;flex-direction:column;gap:10px;padding-bottom:100px">
-        <div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px">⏳ กด "AI วิเคราะห์และคัดหุ้น" เพื่อเริ่ม</div>
+
+      <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border);margin-bottom:100px">
+        <table style="width:100%;border-collapse:collapse;min-width:560px;font-family:'IBM Plex Mono',monospace">
+          <thead>
+            <tr style="background:var(--bg2)">
+              <th style="position:sticky;left:0;background:var(--bg2);text-align:left;padding:10px 12px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)">หุ้น</th>
+              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--red2);border-bottom:1px solid var(--border)">S2</th>
+              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--red2);border-bottom:1px solid var(--border)">S1</th>
+              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text);border-bottom:1px solid var(--border)">ราคา</th>
+              <th style="text-align:right;padding:10px 8px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--border)">R1</th>
+              <th style="text-align:right;padding:10px 12px;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--border)">R2</th>
+            </tr>
+          </thead>
+          <tbody id="srTableBody">
+            <tr><td colspan="6" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:'Inter',sans-serif">⏳ กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -1557,9 +1560,9 @@ canvas.bigchart{width:100%;height:100%}
     <div class="nav-icon" aria-hidden="true">🔔</div>
     <div class="nav-label">Signals</div>
   </div>
-  <div class="nav-item" onclick="navTo('aipicks',this)" role="button" aria-label="AI คัดหุ้น">
-    <div class="nav-icon" aria-hidden="true">🤖</div>
-    <div class="nav-label">AI Picks</div>
+  <div class="nav-item" onclick="navTo('aipicks',this)" role="button" aria-label="แนวรับแนวต้าน">
+    <div class="nav-icon" aria-hidden="true">📊</div>
+    <div class="nav-label">S/R</div>
   </div>
   <div class="nav-item" onclick="navTo('settings',this)" role="button" aria-label="หน้าตั้งค่า">
     <div class="nav-icon" aria-hidden="true">⚙</div>
@@ -2488,6 +2491,7 @@ function navTo(page, el){
     else if(page==='port') renderPortfolio();
     else if(page==='news') loadEconNews();
     else if(page==='elite') initElitePage();
+    else if(page==='aipicks') renderSRTable();
   });
 }
 
@@ -2961,6 +2965,63 @@ function getR2(t,p){
   const maxR2Pct=p>500?0.18:p>100?0.20:p>20?0.23:0.25;
   const r2Raw=p+range*3.0;
   return +(Math.min(r2Raw, p*(1+maxR2Pct))).toFixed(2);
+}
+
+// ── Support/Resistance Table Page ──
+let _srSortMode='near'; // 'near' = ใกล้แนวรับก่อน, 'az' = เรียง ticker
+function srToggleSort(){
+  _srSortMode = _srSortMode==='near' ? 'az' : 'near';
+  const btn=document.getElementById('srSortBtn');
+  if(btn) btn.textContent = _srSortMode==='near' ? '🎯 ใกล้แนวรับ' : '🔤 A-Z';
+  renderSRTable();
+}
+function renderSRTable(){
+  const tbody=document.getElementById('srTableBody');
+  if(!tbody) return;
+  const q=(document.getElementById('srSearchInput')?.value||'').trim().toUpperCase();
+
+  let rows = stocks
+    .filter(s=>s.p>0)
+    .filter(s=>!q || s.t.toUpperCase().includes(q) || (s.n||'').toUpperCase().includes(q))
+    .map(s=>{
+      const s1=getS1(s.t,s.p), s2=getS2(s.t,s.p), r1=getR1(s.t,s.p), r2=getR2(s.t,s.p);
+      const distS1 = s1>0 ? (s.p-s1)/s1*100 : 999;
+      return {s,s1,s2,r1,r2,distS1};
+    });
+
+  if(rows.length===0){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;font-family:\'Inter\',sans-serif">ไม่พบหุ้นที่ค้นหา</td></tr>';
+    document.getElementById('srCount').textContent='0';
+    document.getElementById('srNearSupport').textContent='0';
+    return;
+  }
+
+  if(_srSortMode==='near'){
+    rows.sort((a,b)=>Math.abs(a.distS1)-Math.abs(b.distS1));
+  } else {
+    rows.sort((a,b)=>a.s.t.localeCompare(b.s.t));
+  }
+
+  document.getElementById('srCount').textContent = stocks.filter(s=>s.p>0).length;
+  document.getElementById('srNearSupport').textContent = stocks.filter(s=>s.p>0).map(s=>{
+    const s1=getS1(s.t,s.p);
+    return s1>0 ? (s.p-s1)/s1*100 : 999;
+  }).filter(d=>d<=3).length;
+
+  tbody.innerHTML = rows.map(({s,s1,s2,r1,r2,distS1})=>{
+    const nearTag = distS1<=3 ? ' 🎯' : '';
+    return `<tr style="cursor:pointer" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      <td style="position:sticky;left:0;background:var(--bg1);padding:9px 12px;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text)">${s.t}${nearTag}</div>
+        <div style="font-size:9.5px;color:var(--text3);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis">${s.n||''}</div>
+      </td>
+      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--red2);opacity:0.75">${s2.toFixed(2)}</td>
+      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--red2);font-weight:600">${s1.toFixed(2)}</td>
+      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:700">${s.p.toFixed(2)}</td>
+      <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green2);font-weight:600">${r1.toFixed(2)}</td>
+      <td style="text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--green2);opacity:0.75">${r2.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Render Card ──
