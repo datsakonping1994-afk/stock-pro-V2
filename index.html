@@ -3060,6 +3060,27 @@ function srRowHighlight(distS, distR, zone){
   }
   return null;
 }
+// ── โหลด RSI ของหุ้นที่ยังไม่มีข้อมูล (background, ไม่บล็อก UI) แล้วรีเฟรชตารางเมื่อเสร็จ ──
+let _srRsiInFlight = new Set();
+async function srEnrichMissingRSI(tickers){
+  const todo = tickers.filter(t=>rsiData[t]==null && !_srRsiInFlight.has(t));
+  if(!todo.length) return;
+  todo.forEach(t=>_srRsiInFlight.add(t));
+  const batchSize=3;
+  for(let i=0;i<todo.length;i+=batchSize){
+    if(!document.getElementById('page-aipicks')?.classList.contains('active')){
+      todo.forEach(t=>_srRsiInFlight.delete(t));
+      return; // ผู้ใช้ออกจากหน้านี้ไปแล้ว หยุดโหลดต่อ
+    }
+    const batch=todo.slice(i,i+batchSize);
+    await Promise.allSettled(batch.map(async t=>{
+      try{ await fetchCandles(t,60); await updateRSIFromCandles(t); }catch{}
+      finally{ _srRsiInFlight.delete(t); }
+    }));
+    await new Promise(r=>setTimeout(r,300));
+  }
+  if(document.getElementById('page-aipicks')?.classList.contains('active')) renderSRTable();
+}
 function renderSRTable(){
   const tbody=document.getElementById('srTableBody');
   if(!tbody) return;
@@ -3109,10 +3130,15 @@ function renderSRTable(){
     const distLabel = zone==='support'
       ? `<div style="font-size:9.5px;color:var(--red2);opacity:0.85;margin-top:1px">S1 ${distS>=0?'-':'+'}${Math.abs(distS).toFixed(1)}%</div>`
       : `<div style="font-size:9.5px;color:var(--green2);opacity:0.85;margin-top:1px">R1 ${distR>=0?'+':'-'}${Math.abs(distR).toFixed(1)}%</div>`;
+    const rsi = rsiData[s.t];
+    const rsiLabel = rsi!=null
+      ? `<div style="font-size:9.5px;margin-top:1px;color:${rsi>=70?'var(--red2)':rsi<=30?'var(--green2)':'var(--text3)'}">RSI ${rsi.toFixed(0)}${rsi>=70?' 🔥':rsi<=30?' ❄️':''}</div>`
+      : `<div style="font-size:9.5px;margin-top:1px;color:var(--text3);opacity:0.4">RSI --</div>`;
     return `<tr data-bg="${rowBg}" style="cursor:pointer;background:${rowBg}" onclick="openDrawer('${s.t}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=this.dataset.bg||''">
       <td style="padding:9px 10px;border-bottom:1px solid var(--border);overflow:hidden">
         <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.t}${nearTag}</div>
         <div style="font-size:9.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.n||''}</div>
+        ${rsiLabel}
       </td>
       <td style="text-align:right;padding:9px 8px;border-bottom:1px solid var(--border)">
         <div style="font-size:12px;color:var(--red2);font-weight:600">${s1.toFixed(2)}</div>
@@ -3128,6 +3154,10 @@ function renderSRTable(){
       </td>
     </tr>`;
   }).join('');
+
+  // โหลด RSI ของหุ้นที่ยังไม่มีข้อมูล (จำกัด 20 ตัวแรกที่แสดง) แล้วรีเฟรชตารางเมื่อเสร็จ
+  const missingRSI = rows.filter(r=>rsiData[r.s.t]==null).map(r=>r.s.t).slice(0,20);
+  if(missingRSI.length) srEnrichMissingRSI(missingRSI);
 }
 
 // ── Render Card ──
