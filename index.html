@@ -9914,7 +9914,7 @@ async function fetchAndRenderEarnings(force=false){
       {
         const allNeeded=[...new Set(stocks.map(s=>s.t))];
         const _apiTickers=new Set(items.filter(e=>e.date||e.d).map(e=>e.symbol||e.t));
-        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM'];
+        const priorityTickers=['AVAV','MU','SMCI','AMBA','PLTR','NVDA','AMD','TSLA','META','MSFT','ARM','SOFI','HOOD','LRCX','QCOM','RKLB','ASTS'];
         // [FIX] hardcode วันประกาศที่รู้แน่ๆ แต่ Finnhub/Yahoo ดึงไม่ได้
         const KNOWN_EARNINGS={
           'MU':  {date:'2026-06-24',epsEstimate:19.15,hour:'amc'},
@@ -9925,6 +9925,8 @@ async function fetchAndRenderEarnings(force=false){
           'AAPL':{date:'2026-07-30',epsEstimate:null,hour:'amc'},
           'AMZN':{date:'2026-07-30',epsEstimate:null,hour:'amc'},
           'MSFT':{date:'2026-07-28',epsEstimate:null,hour:'amc'},
+          'RKLB':{date:'2026-08-10',epsEstimate:-0.03,hour:'amc'},
+          'ASTS':{date:'2026-08-10',epsEstimate:null,hour:'amc'},
         };
         // ใส่ KNOWN_EARNINGS เข้า items ก่อน ถ้ายังไม่มีวันอนาคต
         const todayStr=new Date().toISOString().slice(0,10);
