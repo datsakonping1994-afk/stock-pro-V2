@@ -14953,7 +14953,9 @@ function switchEliteTab(tab){
 }
 
 // ── รีเฟรชการ์ด Elite Events ทุก 1 นาที เพื่อให้ตัวนับถอยหลัง ชม./นาที ไม่ค้าง (หยุดเองถ้าออกจากหน้า/แท็บนี้ไปแล้ว) ──
+// เมื่อ event ไหนเพิ่งข้ามจาก "ยังไม่ถึงเวลา" เป็น "ผ่านไปแล้ว" จะดึงข้อมูลใหม่จาก API อัตโนมัติ 1 ครั้ง (กันดักไว้ 3 นาทีให้ผลจริงมีเวลาอัปเดตในฝั่ง provider ก่อน) เพื่อให้เห็นผลจริงโดยไม่ต้องกดรีเฟรชเอง
 let _eliteCountdownTimer = null;
+let _eliteJustPassedKeys = new Set(); // event ที่เพิ่งข้ามเวลาไปแล้ว รอ auto-refetch ผลจริง
 function _startEliteCountdownRefresh(){
   _stopEliteCountdownRefresh();
   _eliteCountdownTimer = setInterval(()=>{
@@ -14963,6 +14965,24 @@ function _startEliteCountdownRefresh(){
       _stopEliteCountdownRefresh();
       return;
     }
+    // เช็คว่ามี event ไหนเพิ่งข้ามเวลาประกาศไปหรือยัง (ยังไม่มี actual result ในข้อมูลที่มีอยู่)
+    const now = new Date();
+    ELITE_EVENTS.forEach(ev=>{
+      const datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
+      const timePart = (ev.time||'').slice(0,5)||'00:00';
+      const evDate = _etDateTimeToDate(datePart, timePart);
+      if(isNaN(evDate.getTime())) return;
+      const key = ev.title+'|'+ev.date;
+      const hasActual = ev.actual!==undefined && ev.actual!==null && String(ev.actual).trim()!=='';
+      if(evDate < now && !hasActual && !_eliteJustPassedKeys.has(key)){
+        _eliteJustPassedKeys.add(key);
+        // รอ 3 นาทีให้ provider อัปเดตผลจริงก่อนค่อยดึงใหม่ (ยิงทันทีมักจะยังไม่มีข้อมูล)
+        setTimeout(()=>{
+          const stillActive = document.getElementById('page-elite')?.classList.contains('active');
+          if(stillActive) initEliteCalendar().catch(()=>{});
+        }, 180000);
+      }
+    });
     renderEliteEvents();
   }, 60000);
 }
@@ -16962,7 +16982,7 @@ async function initEliteCalendar(){
   if(headerEl){
     const liveCount = unique.filter(e=>!e._fallback).length;
     const fallbackCount = unique.filter(e=>e._fallback).length;
-    const refreshBtn = `<button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">🔄</button>`;
+    const refreshBtn = `<button onclick="localStorage.removeItem('${ELITE_EVENTS_CACHE_KEY}');initEliteCalendar()" title="ดึงข้อมูลล่าสุด (รวมผลจริงหลังประกาศ)" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:7px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;color:var(--gold);font-size:11px;cursor:pointer;vertical-align:middle;margin-left:4px">🔄</button>`;
     if(liveCount > 0 && fallbackCount > 0){
       headerEl.innerHTML = `<span style="color:var(--green)">● Live ${liveCount}</span> <span style="color:var(--text3)">+ประมาณการ ${fallbackCount}</span> ${refreshBtn}`;
     } else if(liveCount > 0){
