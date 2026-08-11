@@ -8161,6 +8161,32 @@ setTimeout(()=>{
 // ═══════════════════════════════════════
 
 const _thMonths={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
+
+// ── แปลงวัน-เวลาแบบ US Eastern Time (ET) → UTC ──
+// ข้อมูลเศรษฐกิจสหรัฐฯ (CPI, NFP, FOMC ฯลฯ) ประกาศเวลา ET เสมอ แต่ต้องรู้ก่อนว่าช่วงนั้น DST (EDT, UTC-4)
+// หรือเวลาปกติ (EST, UTC-5) เพื่อคำนวณเวลาไทยที่ถูกต้อง (ต่างจาก ET 11 ชม.ตอน EDT, 12 ชม.ตอน EST)
+function _isUSEasternDST(y, m, d){ // m: 0-11 (js month index)
+  // DST สหรัฐฯ: เริ่มวันอาทิตย์ที่ 2 ของมี.ค. 02:00 ท้องถิ่น ถึง วันอาทิตย์แรกของพ.ย. 02:00 ท้องถิ่น
+  function nthSunday(year, month, n){
+    const first = new Date(year, month, 1);
+    const firstSunday = 1 + ((7 - first.getDay()) % 7);
+    return firstSunday + (n-1)*7;
+  }
+  const dstStart = new Date(y, 2, nthSunday(y,2,2));   // มี.ค. อาทิตย์ที่ 2
+  const dstEnd   = new Date(y, 10, nthSunday(y,10,1)); // พ.ย. อาทิตย์แรก
+  const test = new Date(y, m, d);
+  return test >= dstStart && test < dstEnd;
+}
+// dateStr: 'YYYY-MM-DD', timeStr: 'HH:MM' (เวลา ET ตามที่หน่วยงานสหรัฐฯ ประกาศ, เช่น BLS/Fed) → คืนค่า Date object (UTC ถูกต้อง)
+function _etDateTimeToDate(dateStr, timeStr){
+  const parts = (dateStr||'').split('-').map(Number);
+  if(parts.length<3 || parts.some(isNaN)) return new Date(NaN);
+  const [y,m,d] = parts;
+  const isDST = _isUSEasternDST(y, m-1, d);
+  const offset = isDST ? '-04:00' : '-05:00';
+  const t = (timeStr||'00:00').slice(0,5);
+  return new Date(`${dateStr}T${t}:00${offset}`);
+}
 // earningsData — ใช้เป็น fallback เฉพาะตอน API ไม่ตอบ
 // ข้อมูลจริงดึงจาก Finnhub + Yahoo Finance ผ่าน worker-prices และ cache ใน KV
 var earningsData=[];
@@ -10901,11 +10927,15 @@ function _getEarningsDaysLeft(earnStr){
   if(!earnStr) return null;
   // FIX: กรองรูปแบบที่ parse ไม่ได้ออกก่อน เช่น "TBD", "Q3 2025", "N/A"
   if(/^(TBD|N\/A|ยังไม่กำหนด|--)/i.test(earnStr.trim())) return null;
+  // นับวันจาก "เที่ยงคืนวันนี้" เทียบกับ "เที่ยงคืนวันเป้าหมาย" เสมอ (ไม่ใช่เวลาปัจจุบันจริง)
+  // กันบั๊ก: ถ้าใช้ new Date() ตรงๆ ผลลัพธ์จะเพี้ยนตามเวลาปัจจุบันของวันนี้ เช่น event พรุ่งนี้แต่ตอนนี้บ่ายแล้ว
+  // อาจถูกปัดเป็น "วันนี้" ทั้งที่จริงคือพรุ่งนี้
+  const nowMidnight=new Date(); nowMidnight.setHours(0,0,0,0);
   // รองรับ ISO date เช่น "2025-07-15"
   if(/^\d{4}-\d{2}-\d{2}$/.test(earnStr.trim())){
     const earnDate=new Date(earnStr.trim()+'T00:00:00');
     if(isNaN(earnDate)) return null;
-    return Math.round((earnDate-new Date())/86400000);
+    return Math.round((earnDate-nowMidnight)/86400000);
   }
   const monPattern=Object.keys(_thMonths).map(k=>k.replace('.','\\.')).join('|');
   const m=earnStr.match(new RegExp('(\\d+)\\s*('+monPattern+')\\s*(\\d{4})'));
@@ -10917,7 +10947,7 @@ function _getEarningsDaysLeft(earnStr){
   if(isNaN(d)||isNaN(y)||d<1||d>31) return null;
   const earnDate=new Date(y,monIdx,d);
   if(isNaN(earnDate)) return null;
-  const diff=Math.round((earnDate-new Date())/86400000);
+  const diff=Math.round((earnDate-nowMidnight)/86400000);
   return diff;
 }
 
@@ -14916,7 +14946,28 @@ function switchEliteTab(tab){
     // force scroll top ให้เห็น content
     const content = document.getElementById('content');
     if(content) setTimeout(()=>{ content.scrollTop=0; }, 60);
+    _startEliteCountdownRefresh(); // อัปเดตนับถอยหลัง ชม./นาที ให้สดอยู่เรื่อยๆ ระหว่างเปิดหน้านี้
+  } else {
+    _stopEliteCountdownRefresh();
   }
+}
+
+// ── รีเฟรชการ์ด Elite Events ทุก 1 นาที เพื่อให้ตัวนับถอยหลัง ชม./นาที ไม่ค้าง (หยุดเองถ้าออกจากหน้า/แท็บนี้ไปแล้ว) ──
+let _eliteCountdownTimer = null;
+function _startEliteCountdownRefresh(){
+  _stopEliteCountdownRefresh();
+  _eliteCountdownTimer = setInterval(()=>{
+    const pageActive = document.getElementById('page-elite')?.classList.contains('active');
+    const evEl = document.getElementById('elite-tab-events');
+    if(!pageActive || !evEl || evEl.style.display==='none'){
+      _stopEliteCountdownRefresh();
+      return;
+    }
+    renderEliteEvents();
+  }, 60000);
+}
+function _stopEliteCountdownRefresh(){
+  if(_eliteCountdownTimer){ clearInterval(_eliteCountdownTimer); _eliteCountdownTimer=null; }
 }
 
 function initElitePage(){
@@ -16956,8 +17007,8 @@ function renderEliteEvents(){
   };
   // เรียง: past events (ล่าสุดก่อน) แล้วค่อย upcoming
   const sortedEvents = [...ELITE_EVENTS].sort((a,b)=>{
-    const da = new Date((a.date||'')+'T'+(a.time||'00:00')+':00');
-    const db = new Date((b.date||'')+'T'+(b.time||'00:00')+':00');
+    const da = _etDateTimeToDate((a.date||'').replace(/\//g,'-').slice(0,10), (a.time||'00:00').slice(0,5));
+    const db = _etDateTimeToDate((b.date||'').replace(/\//g,'-').slice(0,10), (b.time||'00:00').slice(0,5));
     const aPast = da < now, bPast = db < now;
     if(aPast && !bPast) return 1;   // past ไปอยู่ท้าย
     if(!aPast && bPast) return -1;  // upcoming ขึ้นมาก่อน
@@ -16965,16 +17016,37 @@ function renderEliteEvents(){
     return db - da; // past เรียงล่าสุดก่อน
   });
   grid.innerHTML = sortedEvents.map((ev,idx) => {
-    // parse date ให้ถูกต้องทุก platform
+    // parse date ให้ถูกต้องทุก platform — ev.time เป็นเวลา US Eastern (ET) เสมอ ต้องแปลงเป็นเวลาไทยจริงๆ ไม่ใช่ตีเป็นเวลาเครื่องตรงๆ
     const datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
     const timePart = (ev.time||'').slice(0,5)||'00:00';
-    const evDate = new Date(datePart+'T'+timePart+':00');
+    const evDate = _etDateTimeToDate(datePart, timePart);
     if(isNaN(evDate.getTime())) return ''; // skip invalid date
     const isPast = evDate < now;
-    const diffDays = Math.ceil((evDate - now) / 86400000);
+    // นับจำนวนวันจาก "วันที่ปฏิทิน" ไม่ใช่ผลต่างเวลาดิบ — กันบั๊ก event วันนี้แต่เวลาในอนาคต (เช่น ตอนนี้ 04:26 event 08:30) โดน ceil ปัดขึ้นเป็น "พรุ่งนี้" ทั้งที่เป็นวันนี้
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const evMidnight = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate());
+    const diffDays = Math.round((evMidnight - nowMidnight) / 86400000);
     const urgency = isPast ? 'later' : diffDays <= 0 ? 'urgent' : diffDays <= 3 ? 'urgent' : diffDays <= 10 ? 'soon' : 'later';
-    const countdownText = isPast ? 'ผ่านไปแล้ว' : diffDays === 0 ? '🔴 วันนี้!' : diffDays === 1 ? '🔴 พรุ่งนี้!' : diffDays<=3 ? `🔴 อีก ${diffDays} วัน` : diffDays<=10 ? `🟡 อีก ${diffDays} วัน` : `อีก ${diffDays} วัน`;
+    // ถ้าเป็น "วันนี้" นับถอยหลังเป็นชั่วโมง/นาทีแทน เพราะมีประโยชน์กว่าคำว่า "วันนี้!" เฉยๆ
+    let countdownText;
+    if(isPast){
+      countdownText = 'ผ่านไปแล้ว';
+    } else if(diffDays === 0){
+      const msLeft = evDate - now;
+      const hrsLeft = Math.floor(msLeft/3600000);
+      const minsLeft = Math.floor((msLeft%3600000)/60000);
+      countdownText = hrsLeft>0 ? `🔴 อีก ${hrsLeft} ชม. ${minsLeft} นาที` : `🔴 อีก ${minsLeft} นาที`;
+    } else if(diffDays === 1){
+      countdownText = '🔴 พรุ่งนี้!';
+    } else if(diffDays<=3){
+      countdownText = `🔴 อีก ${diffDays} วัน`;
+    } else if(diffDays<=10){
+      countdownText = `🟡 อีก ${diffDays} วัน`;
+    } else {
+      countdownText = `อีก ${diffDays} วัน`;
+    }
     const dateStr = evDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    const thTimeStr = ev.time ? evDate.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
     const urgColor = isPast ? 'var(--text3)' : urgency==='urgent'?'var(--red)':urgency==='soon'?'var(--gold)':'var(--ice)';
     const urgBg = isPast ? 'rgba(255,255,255,0.06)|rgba(255,255,255,0.12)' : urgency==='urgent'?'rgba(255,77,106,0.2)|rgba(255,77,106,0.4)':urgency==='soon'?'rgba(201,168,76,0.2)|rgba(201,168,76,0.4)':'rgba(100,210,255,0.15)|rgba(100,210,255,0.3)';
     const cardBorder = isPast ? 'rgba(255,255,255,0.07)' : urgency==='urgent'?'rgba(255,77,106,0.35)':urgency==='soon'?'rgba(201,168,76,0.25)':'rgba(100,210,255,0.15)';
@@ -16990,7 +17062,7 @@ function renderEliteEvents(){
         <div style="flex:1;min-width:0">
           <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${ev.title}${ev._fallback?` <span style="font-size:8px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:20px;padding:1px 6px;color:var(--gold);font-family:Inter,sans-serif;font-weight:600;vertical-align:middle">ประมาณการ</span>`:''}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-            <span style="font-size:11px;color:var(--text3)">${dateStr}${ev.time?' เวลา '+ev.time+' น.':''}</span>
+            <span style="font-size:11px;color:var(--text3)">${dateStr}${thTimeStr?' เวลา '+thTimeStr+' น. ไทย':''}${ev.time?` <span style="opacity:0.6">(${ev.time} ET)</span>`:''}</span>
             <span style="background:${cbg};border:1px solid ${cborder};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:${urgColor};font-family:'Syne',sans-serif">${countdownText}</span>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
@@ -17089,7 +17161,7 @@ async function summarizeEvent(idx, btn){
     // ── เช็กว่า event นี้ผ่านวันประกาศไปแล้วหรือยัง (เหมือน logic ตอน render การ์ด) ──
     const _datePart = (ev.date||'').replace(/\//g,'-').slice(0,10);
     const _timePart = (ev.time||'').slice(0,5)||'00:00';
-    const _evDate = new Date(_datePart+'T'+_timePart+':00');
+    const _evDate = _etDateTimeToDate(_datePart, _timePart);
     const isPastEvent = !isNaN(_evDate.getTime()) && _evDate < new Date();
 
     if(!text){
