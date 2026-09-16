@@ -11963,6 +11963,7 @@ Sector: ${sectorText}
 // ══════════════════════════════════════════════
 let _slipData = null;
 let _slipLastError = '';
+let _slipAllErrors = [];
 const SLIP_PROMPT = 'อ่านสลิปซื้อขายหุ้นนี้แล้วตอบ JSON เท่านั้น ห้ามอธิบายเพิ่ม: {"action":"buy","ticker":"AMSC","price":44.06,"shares":2.3728876,"date":"2026-06-05"} - action: ซื้อ/Buy=buy | ขาย/Sell=sell - ticker: ชื่อหุ้นอังกฤษ - price: ราคาที่ได้จริง - shares: จำนวน - date: YYYY-MM-DD ถ้าไม่ใช่สลิปตอบ {"error":"not_a_slip"}';
 
 async function _parseSlipGemini(b64,mime){
@@ -11976,7 +11977,7 @@ async function _parseSlipGemini(b64,mime){
     const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
     throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
-  }catch(e){console.warn('[slip:gemini key]',e.message); _slipLastError='Gemini: '+e.message; continue;}
+  }catch(e){console.warn('[slip:gemini key]',e.message); _slipLastError='Gemini: '+e.message; _slipAllErrors.push('Gemini: '+e.message); continue;}
   }
   return null;
 }
@@ -11992,7 +11993,7 @@ async function _parseSlipGroq(b64,mime){
     const t=d.choices?.[0]?.message?.content||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
     throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
-  }catch(e){console.warn('[slip:groq key]',e.message); _slipLastError='Groq: '+e.message; continue;}
+  }catch(e){console.warn('[slip:groq key]',e.message); _slipLastError='Groq: '+e.message; _slipAllErrors.push('Groq: '+e.message); continue;}
   }
   return null;
 }
@@ -12007,7 +12008,7 @@ async function _parseSlipClaude(b64,mime){
     const t=d.content?.[0]?.text||'';
     const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
     throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
-  }catch(e){console.warn('[slip:claude]',e.message); _slipLastError='Claude: '+e.message;}
+  }catch(e){console.warn('[slip:claude]',e.message); _slipLastError='Claude: '+e.message; _slipAllErrors.push('Claude: '+e.message);}
   return null;
 }
 
@@ -12020,7 +12021,7 @@ async function parseSlipImage(input){
   const confirmBtn=document.getElementById('slipConfirmBtn');
   preview.style.display='block';
   status.innerHTML='⏳ กำลังอ่านสลิป...';
-  result.innerHTML=''; confirmBtn.style.display='none'; _slipData=null; _slipLastError='';
+  result.innerHTML=''; confirmBtn.style.display='none'; _slipData=null; _slipLastError=''; _slipAllErrors=[];
   try{
     const mime=file.type||'image/jpeg';
     const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result.split(',')[1]);rd.onerror=rej;rd.readAsDataURL(file);});
@@ -12036,8 +12037,8 @@ async function parseSlipImage(input){
       if(parsed&&!parsed.error){status.innerHTML='✅ <b>'+p.name+'</b> อ่านสำเร็จ';break;}
     }
     if(!parsed||parsed.error){
-      const reason=parsed?.error?'ตอบว่าไม่ใช่สลิป':(_slipLastError||'ไม่มี AI key ที่ใช้งานได้');
-      status.textContent='❌ AI อ่านไม่ได้ — '+reason;
+      const reason=parsed?.error?'ตอบว่าไม่ใช่สลิป':(_slipAllErrors.length?_slipAllErrors.join(' | '):'ไม่มี AI key ที่ใช้งานได้');
+      status.innerHTML='❌ AI อ่านไม่ได้ — '+reason;
       return;
     }
     _slipData=parsed;
