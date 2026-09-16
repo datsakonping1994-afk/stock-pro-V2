@@ -4893,7 +4893,7 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
         'Authorization':`Bearer ${groqKey}`
       },
       body:JSON.stringify({
-        model:'llama-3.3-70b-versatile',
+        model:'llama-3.1-8b-instant',
         messages:[
           {role:'system',content:systemPrompt},
           {role:'user',content:userPrompt}
@@ -5077,7 +5077,7 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
       const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-        body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:systemPrompt},{role:'user',content:_trim(userPrompt,8000)}],max_tokens:maxTokens,temperature:0.7}),
+        body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:systemPrompt},{role:'user',content:_trim(userPrompt,8000)}],max_tokens:maxTokens,temperature:0.7}),
         signal:ctrl.signal
       });
       clearTimeout(tid);
@@ -6234,7 +6234,7 @@ Buy Score: ${score}/100
         const rg=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-          body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7}),
+          body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7}),
         }, 25000);
         if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null; if(reply) usedModel='⚡ Groq Llama 3.3';}
       }
@@ -6856,7 +6856,7 @@ async function _testOneGroqKey(key, idx){
     const r = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'ok'}],max_tokens:5})
+      body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'user',content:'ok'}],max_tokens:5})
     }, 8000);
     if(r.ok){ try{ localStorage.setItem('groqKey'+(idx>1?idx:''), key); }catch{} return {ok:true,status:r.status}; }
     return {ok:false, status:r.status};
@@ -6922,7 +6922,7 @@ async function testGroqKey(){
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
       body:JSON.stringify({
-        model:'llama-3.3-70b-versatile',
+        model:'llama-3.1-8b-instant',
         messages:[{role:'user',content:'Reply with the single word: ok'}],
         max_tokens:5
       }),
@@ -6935,7 +6935,7 @@ async function testGroqKey(){
       statusEl.style.background='rgba(0,230,118,0.1)';
       statusEl.style.border='1px solid rgba(0,230,118,0.3)';
       statusEl.style.color='var(--green)';
-      statusEl.textContent='✅ Groq ใช้งานได้! — llama-3.3-70b-versatile พร้อม (บันทึกแล้ว)';
+      statusEl.textContent='✅ Groq ใช้งานได้! — llama-3.1-8b-instant พร้อม (บันทึกแล้ว)';
     } else if(r.status===401){
       statusEl.style.background='rgba(255,77,106,0.12)';
       statusEl.style.border='1px solid rgba(255,77,106,0.3)';
@@ -15270,7 +15270,7 @@ async function _eliteDirectFallback(overlay){
         const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+gqk},
-          body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
+          body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
         }, 15000);
         if(gr.ok){ const gd=await gr.json(); rawText=gd?.choices?.[0]?.message?.content||null; if(rawText) console.log('[Elite] using Groq Llama key ...'+gqk.slice(-6)); }
         else { groqErr = 'HTTP '+gr.status; console.warn('[Elite Groq] key '+gqk.slice(-6)+' failed: '+groqErr); }
@@ -15627,7 +15627,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
       const r = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-        body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:sys},{role:'user',content:msg}],max_tokens:3000,temperature:0.3}),
+        body:JSON.stringify({model:'llama-3.1-8b-instant',messages:[{role:'system',content:sys},{role:'user',content:msg}],max_tokens:3000,temperature:0.3}),
         signal:AbortSignal.timeout(20000)
       });
       if(r.ok){ const d=await r.json(); text=d.choices?.[0]?.message?.content||null; }
@@ -17277,7 +17277,7 @@ ${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}วิเค�
           const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
             method:'POST',
             headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-            body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:800,messages:[{role:'user',content:prompt}]})
+            body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:800,messages:[{role:'user',content:prompt}]})
           }, 15000);
           const gd = await gr.json();
           const t = gd.choices?.[0]?.message?.content||'';
@@ -17442,7 +17442,7 @@ async function forecastEvent(idx, btn){
             const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
               method:'POST',
               headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-              body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+              body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:1200,messages:[{role:'user',content:prompt}]})
             }, 15000);
             const gd = await gr.json();
             if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
