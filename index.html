@@ -11970,14 +11970,22 @@ async function _parseSlipGemini(b64,mime){
   const keys=[localStorage.getItem('geminiKey'),localStorage.getItem('geminiKey2'),localStorage.getItem('geminiKey3')].filter(Boolean);
   if(!keys.length) return null;
   for(const key of keys){
-    try{
-    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
-    const d=await r.json();
-    if(!r.ok){throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));}
-    const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
-    throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
-  }catch(e){console.warn('[slip:gemini key]',e.message); _slipLastError='Gemini: '+e.message; _slipAllErrors.push('Gemini: '+e.message); continue;}
+    for(let attempt=0; attempt<2; attempt++){
+      try{
+      const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},25000);
+      const d=await r.json();
+      if(!r.ok){
+        if(r.status===503 && attempt===0){ await new Promise(res=>setTimeout(res,1500)); continue; }
+        throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));
+      }
+      const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      const m=t.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]);
+      throw new Error('ไม่พบ JSON ในคำตอบ: '+t.slice(0,150));
+    }catch(e){
+      if(e.name==='AbortError' && attempt===0){ continue; }
+      console.warn('[slip:gemini key]',e.message); _slipLastError='Gemini: '+e.message; _slipAllErrors.push('Gemini: '+e.message); break;
+    }
+    }
   }
   return null;
 }
