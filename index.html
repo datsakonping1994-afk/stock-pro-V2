@@ -4807,7 +4807,7 @@ async function _callGeminiDirect(systemPrompt, userPrompt, maxTokens=800){
     if(!geminiKey) return null;
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),20000);
-    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -4832,7 +4832,7 @@ async function _callGemini15Pro(systemPrompt, userPrompt, maxTokens=800){
     if(!geminiKey) return null;
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),25000);
-    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -6836,14 +6836,15 @@ async function testTavilyKey(){
       return {ok:false,status:r.status};
     }catch(e){ return {ok:false,err:e.message}; }
   }));
-  const lines=results.map((r,i)=>{
+  const lines=results.map((res,i)=>{
+    const r = res.status==='fulfilled' ? res.value : {ok:false, err:res.reason?.message||'timeout'};
     const label='Key '+(i+1);
     if(r.ok) return '<span style="color:var(--green)">✅ '+label+' ใช้งานได้</span>';
     if(r.status===429) return '<span style="color:var(--gold)">⚠️ '+label+' โควตาหมด</span>';
     if(r.status===401||r.status===403) return '<span style="color:var(--red)">❌ '+label+' key ผิด</span>';
     return '<span style="color:var(--red)">❌ '+label+' error '+(r.status||r.err||'')+'</span>';
   });
-  const anyOk=results.some(r=>r.ok);
+  const anyOk=results.some(res=>res.status==='fulfilled'&&res.value?.ok);
   statusEl.style.background=anyOk?'rgba(0,230,118,0.1)':'rgba(255,77,106,0.12)';
   statusEl.style.border=anyOk?'1px solid rgba(0,230,118,0.3)':'1px solid rgba(255,77,106,0.3)';
   statusEl.innerHTML=lines.join('<br>');
@@ -6866,7 +6867,7 @@ async function _testOneGroqKey(key, idx){
 // ── Test single Gemini key ──
 async function _testOneGeminiKey(key, idx){
   try{
-    const r = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
+    const r = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({contents:[{parts:[{text:'ok'}]}],generationConfig:{maxOutputTokens:5}})
@@ -7143,11 +7144,11 @@ async function testGeminiKey(){
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),10000);
-    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{
+    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'gemini-2.0-flash',
+        model:'gemini-3.5-flash',
         contents:[{parts:[{text:'Reply with the single word: ok'}]}],
         generationConfig:{maxOutputTokens:10}
       }),
@@ -7164,7 +7165,7 @@ async function testGeminiKey(){
       statusEl.style.background='rgba(0,230,118,0.1)';
       statusEl.style.border='1px solid rgba(0,230,118,0.3)';
       statusEl.style.color='var(--green)';
-      statusEl.textContent='✅ Gemini ใช้งานได้! — gemini-2.0-flash พร้อม (บันทึกแล้ว)';
+      statusEl.textContent='✅ Gemini ใช้งานได้! — gemini-3.5-flash พร้อม (บันทึกแล้ว)';
     } else if(r.status===400||r.status===401||r.status===403){
       statusEl.style.background='rgba(255,77,106,0.12)';
       statusEl.style.border='1px solid rgba(255,77,106,0.3)';
@@ -11969,7 +11970,7 @@ async function _parseSlipGemini(b64,mime){
   if(!keys.length) return null;
   for(const key of keys){
     try{
-    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
+    const r=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:SLIP_PROMPT}]}]})},10000);
     const d=await r.json();
     if(!r.ok){throw new Error('HTTP '+r.status+': '+(d.error?.message||JSON.stringify(d).slice(0,150)));}
     const t=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
@@ -15283,7 +15284,7 @@ async function _eliteDirectFallback(overlay){
     for(const gk of geminiKeys){
       if(rawText) break;
       try{
-        const gr=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gk}`,{
+        const gr=await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${gk}`,{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -17254,7 +17255,7 @@ ${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}วิเค�
               generationConfig:{maxOutputTokens:800,temperature:0.2}
             };
             if(!hasActual) gemBody.tools = [{ google_search: {} }];
-            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${gemKey}`,{
               method:'POST',headers:{'Content-Type':'application/json'},
               body:JSON.stringify(gemBody)
             }, 15000);
@@ -17454,7 +17455,7 @@ async function forecastEvent(idx, btn){
         const gemKey=localStorage.getItem('geminiKey')||localStorage.getItem('geminiKey2')||'';
         if(gemKey){
           try{
-            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${gemKey}`,{
+            const gem = await _fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${gemKey}`,{
               method:'POST',headers:{'Content-Type':'application/json'},
               body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
             }, 12000);
