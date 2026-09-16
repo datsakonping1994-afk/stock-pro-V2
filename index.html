@@ -4899,7 +4899,9 @@ async function _callGroq(systemPrompt, userPrompt, maxTokens=800){
           {role:'user',content:userPrompt}
         ],
         max_tokens:maxTokens,
-        temperature:0.7
+        temperature:0.7,
+        reasoning_effort:'low',
+        reasoning_format:'hidden'
       }),
       signal:ctrl.signal
     });
@@ -5077,7 +5079,7 @@ async function callAI_Chat(systemPrompt, userPrompt, maxTokens=800){
       const r=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-        body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:systemPrompt},{role:'user',content:_trim(userPrompt,8000)}],max_tokens:maxTokens,temperature:0.7}),
+        body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:systemPrompt},{role:'user',content:_trim(userPrompt,8000)}],max_tokens:maxTokens,temperature:0.7,reasoning_effort:'low',reasoning_format:'hidden'}),
         signal:ctrl.signal
       });
       clearTimeout(tid);
@@ -6234,7 +6236,7 @@ Buy Score: ${score}/100
         const rg=await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-          body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7}),
+          body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:sys},{role:'user',content:prompt}],max_tokens:600,temperature:0.7,reasoning_effort:'low',reasoning_format:'hidden'}),
         }, 25000);
         if(rg.ok){const dg=await rg.json();reply=dg?.choices?.[0]?.message?.content||null; if(reply) usedModel='⚡ Groq Llama 3.3';}
       }
@@ -6857,7 +6859,7 @@ async function _testOneGroqKey(key, idx){
     const r = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'user',content:'ok'}],max_tokens:5})
+      body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'user',content:'ok'}],max_tokens:5,reasoning_effort:'low',reasoning_format:'hidden'})
     }, 8000);
     if(r.ok){ try{ localStorage.setItem('groqKey'+(idx>1?idx:''), key); }catch{} return {ok:true,status:r.status}; }
     return {ok:false, status:r.status};
@@ -15280,7 +15282,7 @@ async function _eliteDirectFallback(overlay){
         const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+gqk},
-          body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3})
+          body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:eliteSys},{role:'user',content:eliteUser}],max_tokens:4000,temperature:0.3,reasoning_effort:'low',reasoning_format:'hidden'})
         }, 15000);
         if(gr.ok){ const gd=await gr.json(); rawText=gd?.choices?.[0]?.message?.content||null; if(rawText) console.log('[Elite] using Groq Llama key ...'+gqk.slice(-6)); }
         else { groqErr = 'HTTP '+gr.status; console.warn('[Elite Groq] key '+gqk.slice(-6)+' failed: '+groqErr); }
@@ -15637,7 +15639,7 @@ async function _eliteEnrichResultsInner(results, overlay, forceAll){
       const r = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-        body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:sys},{role:'user',content:msg}],max_tokens:3000,temperature:0.3}),
+        body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:sys},{role:'user',content:msg}],max_tokens:3000,temperature:0.3,reasoning_effort:'low',reasoning_format:'hidden'}),
         signal:AbortSignal.timeout(20000)
       });
       if(r.ok){ const d=await r.json(); text=d.choices?.[0]?.message?.content||null; }
@@ -17287,7 +17289,7 @@ ${facts ? 'ข้อมูลที่มี:\n'+facts+'\n\n' : ''}วิเค�
           const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
             method:'POST',
             headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-            body:JSON.stringify({model:'openai/gpt-oss-20b',max_tokens:800,messages:[{role:'user',content:prompt}]})
+            body:JSON.stringify({model:'openai/gpt-oss-20b',max_tokens:800,messages:[{role:'user',content:prompt}],reasoning_effort:'low',reasoning_format:'hidden'})
           }, 15000);
           const gd = await gr.json();
           const t = gd.choices?.[0]?.message?.content||'';
@@ -17452,7 +17454,7 @@ async function forecastEvent(idx, btn){
             const gr = await _fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions',{
               method:'POST',
               headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-              body:JSON.stringify({model:'openai/gpt-oss-20b',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+              body:JSON.stringify({model:'openai/gpt-oss-20b',max_tokens:1200,messages:[{role:'user',content:prompt}],reasoning_effort:'low',reasoning_format:'hidden'})
             }, 15000);
             const gd = await gr.json();
             if(gr.ok) text = gd.choices?.[0]?.message?.content||'';
