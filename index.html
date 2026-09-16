@@ -12536,9 +12536,9 @@ function renderPortfolio(){
                 </div>
               </div>
             </div>
-            <!-- Progress bar weight -->
+            <!-- Progress bar: สัดส่วนเทียบกับขีดจำกัดที่ตั้งไว้ -->
             <div style="margin-top:8px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">
-              <div class="port-bar-${safeTicker}" style="height:100%;background:${isUp?'linear-gradient(90deg,#00c882,#00e896)':'linear-gradient(90deg,#ff4d6a,#ff6b85)'};border-radius:2px;width:0%;transition:width 0.6s ease"></div>
+              <div class="port-bar-${safeTicker}" style="height:100%;background:linear-gradient(90deg,#00c882,#00e896);border-radius:2px;width:0%;transition:width 0.6s ease, background 0.3s ease"></div>
             </div>
           </div>
         </div>
@@ -12608,7 +12608,15 @@ function renderPortfolio(){
     }
     const barEl=list.querySelector(`.port-bar-${pos.t}`);
     if(barEl&&totalVal>0){
-      const newWidth=(val/totalVal*100).toFixed(1)+'%';
+      const limitRatio = limit>0 ? Math.min((wNum/limit*100), 100) : 0;
+      const newWidth=limitRatio.toFixed(1)+'%';
+      const barColor = overLimit
+        ? 'linear-gradient(90deg,#ff4d6a,#ff6b85)'
+        : wNum > limit*0.8
+          ? 'linear-gradient(90deg,#c9a84c,#e8c87a)'
+          : 'linear-gradient(90deg,#00c882,#00e896)';
+      barEl.style.background = barColor;
+      barEl.title = `${wNum.toFixed(1)}% ของพอร์ต — เต็ม ${limitRatio.toFixed(0)}% ของขีดจำกัด (${limit}%)`;
       if(!barEl.dataset.initialized){
         setTimeout(()=>{ barEl.style.width=newWidth; barEl.dataset.initialized='1'; },100);
       } else {
