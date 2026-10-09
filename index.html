@@ -100,8 +100,9 @@ body{font-family:'Inter',sans-serif;display:flex;flex-direction:column}
 .nav-item.active .nav-icon{color:var(--gold)}
 .nav-item.active .nav-label{color:var(--gold)}
 .nav-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:linear-gradient(90deg,transparent,#d4a843,transparent);border-radius:0 0 3px 3px;box-shadow:0 0 10px rgba(212,168,67,0.6)}
-.nav-icon{font-size:20px;color:var(--text3);transition:all 0.2s}
-.nav-label{font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
+.nav-icon{font-size:20px;line-height:24px;height:24px;width:28px;text-align:center;position:relative;color:var(--text3);transition:all 0.2s}
+.nav-icon .pa-badge{position:absolute;top:-4px;right:-8px;margin:0;padding:0 4px;min-width:14px;height:14px;line-height:14px;font-size:9px;text-align:center}
+.nav-label{white-space:nowrap;font-size:10px;color:var(--text3);letter-spacing:0.5px;font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase}
 
 /* ── AI SIGNALS ── */
 .ai-sig-filter{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer;color:var(--text3);border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);transition:all 0.2s}
@@ -1725,7 +1726,7 @@ const STOCKS_DEFAULT=[
   // ── Quantum/Energy ──
   {t:"IONQ",n:"IonQ"},{t:"OKLO",n:"Oklo"},{t:"IREN",n:"IREN Ltd"},{t:"ASTS",n:"AST SpaceMobile"},
   {t:"ONDS",n:"Ondas Holdings"},{t:"OSS",n:"One Stop Systems"},{t:"FPS",n:"FPS"},
-  {t:"CBRS",n:"CBRS"},{t:"PANW",n:"Palo Alto Networks"},
+  {t:"CBRS",n:"Cerebras"},{t:"PANW",n:"Palo Alto Networks"},
   // ── Biotech/Health ──
   {t:"LLY",n:"Eli Lilly"},{t:"UNH",n:"UnitedHealth"},{t:"NVO",n:"Novo Nordisk"},
   {t:"ISRG",n:"Intuitive Surgical"},{t:"HIMS",n:"Hims & Hers"},{t:"TEM",n:"Tempus AI"},
@@ -2041,7 +2042,7 @@ const sup0={}; // Support levels คำนวณจาก candle data เท่�
 const sectorMap={'ETF':['SMH','VIX'],
   'เซมิ':['NVDA','AMD','INTC','AVGO','TSM','ASML','MU','ARM','CRDO','QCOM','AMAT','LRCX','AAOI'],
   'คลาวด์':['MSFT','GOOGL','AAPL','META','AMZN','PLTR','NOW','CRWD','RBRK','AXON','NFLX','CRM','ADBE','SNOW','DDOG','MDB','NET'],
-  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI','APP'],
+  'AI Infra':['ANET','VRT','NBIS','CRWV','IREN','SPGI','APP','OSS','CBRS'],
   'อวกาศ':['RKLB','ASTS','KTOS','IONQ','OKLO','TEM','LUNR','RCAT'],
   'สุขภาพ':['LLY','NVO','ISRG','TMDX','HIMS'],
   'การเงิน':['JPM','HOOD','SOFI','V','MA','PFS','MCO','CBOE','BRK.B'],
@@ -2715,7 +2716,7 @@ function updateAlertBadge(){
     const badge=document.createElement('span');
     badge.className='pa-badge';
     badge.textContent=active;
-    alertNav.querySelector('.nav-label').appendChild(badge);
+    alertNav.querySelector('.nav-icon').appendChild(badge);
   }
 }
 
@@ -7338,7 +7339,7 @@ async function wsConnect() {
     clearInterval(pollTimer); pollTimer = null;
     const statusEl = $id('statusText');
     const liveDot = $id('liveDot');
-    if (statusEl) statusEl.textContent = '✅ Finnhub Live';
+    if (statusEl) statusEl.textContent = 'Finnhub Live';
     if (liveDot) liveDot.style.background = 'var(--green)';
   };
   ws.onmessage = e => {
@@ -7425,7 +7426,7 @@ async function httpPoll(){
     const liveDot=$id('liveDot');
     if(liveDot) liveDot.style.background='var(--green)';
     const _stEl=$id('statusText');
-    if(_stEl) _stEl.textContent=`✅ Finnhub Live`;
+    if(_stEl) _stEl.textContent=`Finnhub Live`;
   }finally{
     _pollInFlight=false;
   }
@@ -12596,7 +12597,7 @@ function renderPortfolio(){
     const limit = _posLimits[pos.t] || _recommendedLimit(pos.t);
     const overLimit = wNum > limit;
     if(wEl){
-      wEl.textContent = wNum.toFixed(1)+'%';
+      wEl.textContent = wNum.toFixed(1)+'%' + (overLimit ? ' (เกินลิมิต '+limit+'%)' : '');
       wEl.style.color = overLimit ? 'var(--red)' : wNum > limit*0.8 ? 'var(--gold)' : 'var(--text3)';
       wEl.title = `ขีดจำกัด: ${limit}%`;
     }
@@ -12722,7 +12723,7 @@ function renderPortfolio(){
     <div style="display:flex;flex-direction:column;gap:8px">
       ${sorted.map(([sec,val])=>{
         const pct=+(val/totalVal*100).toFixed(1);
-        const barW=+(val/maxVal*100).toFixed(0);
+        const barW=+(val/totalVal*100).toFixed(0);
         const col=sectorColors[sec]||'#6b7280';
         const valStr='$'+(val>=1000?(val/1000).toFixed(1)+'K':val.toFixed(0));
         return `<div>
